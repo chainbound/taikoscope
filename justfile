@@ -5,6 +5,9 @@ set dotenv-load := true
 default:
     @just --list --unsorted
 
+# start the Taikoscope binary for local development
+dev:
+    cargo run
 
 # run all recipes required to pass CI workflows
 ci:

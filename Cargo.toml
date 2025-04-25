@@ -1,4 +1,8 @@
-[package]
+[workspace]
+members = ["bin/*"]
+resolver = "2"
+
+[workspace.package]
 name = "taikoscope"
 version = "0.1.0"
 edition = "2024"
@@ -6,13 +10,9 @@ license = "MIT"
 exclude = [".github/"]
 repository = "https://github.com/chainbound/taikoscope"
 
-# Explicitly set the resolver to version 2, which is the default for packages with edition >= 2021
-# https://doc.rust-lang.org/edition-guide/rust-2021/default-cargo-resolver.html
-resolver = "2"
+[workspace.dependencies]
 
-[dependencies]
-
-[lints]
+[workspace.lints]
 rust.missing_debug_implementations = "warn"
 rust.missing_docs = "warn"
 rust.rust_2018_idioms = { level = "deny", priority = -1 }
@@ -20,7 +20,7 @@ rust.unreachable_pub = "warn"
 rust.unused_must_use = "deny"
 rustdoc.all = "warn"
 
-[lints.clippy]
+[workspace.lints.clippy]
 # These are some of clippy's nursery (i.e., experimental) lints that we like.
 # By default, nursery lints are allowed. Some of the lints below have made good
 # suggestions which we fixed. The others didn't have any findings, so we can
