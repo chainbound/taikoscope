@@ -1,4 +1,5 @@
 //! Entrypoint.
+
 fn main() {
-    println!("Hello, world!");
+    extractor::extractor();
 }
