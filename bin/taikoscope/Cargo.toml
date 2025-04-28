@@ -16,6 +16,8 @@ clap.workspace = true
 eyre.workspace = true
 tokio.workspace = true
 tokio-stream.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
 
 [[bin]]
 name = "taikoscope"
