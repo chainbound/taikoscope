@@ -1,13 +1,17 @@
 //! Entrypoint.
 
+use clap::Parser;
+use config::Opts;
 use extractor::Extractor;
 use inserter::ClickhouseClient;
 use tokio_stream::StreamExt;
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
+    let opts = Opts::parse();
+
     println!("Initializing ClickHouse client...");
-    let clickhouse_client = ClickhouseClient::new("http://localhost:8123")?;
+    let clickhouse_client = ClickhouseClient::new(&opts.clickhouse_url)?;
     clickhouse_client.init_db().await?;
 
     let rpc_url = "wss://eth.merkle.io";

@@ -12,12 +12,14 @@ repository = "https://github.com/chainbound/taikoscope"
 
 [workspace.dependencies]
 alloy = { version = "0.15.2", features = ["provider-ws"] }
+clap = { version = "4.5.37", features = ["derive", "env"] }
 clickhouse = "0.13.2"
 derive_more = { version = "1.0.0", features = ["debug"] }
 eyre = "0.6.12"
 serde = "1.0.219"
 tokio = { version = "1.44.1", features = ["rt-multi-thread", "sync"] }
 tokio-stream = "0.1.17"
+tracing = "0.1.41"
 
 [workspace.lints]
 rust.missing_debug_implementations = "warn"

@@ -8,9 +8,11 @@ description = "Taikoscope binary"
 default-run = "taikoscope"
 
 [dependencies]
+config = { path = "../../crates/config" }
 extractor = { path = "../../crates/extractor" }
 inserter = { path = "../../crates/inserter" }
 
+clap.workspace = true
 eyre.workspace = true
 tokio.workspace = true
 tokio-stream.workspace = true
