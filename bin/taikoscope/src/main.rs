@@ -18,9 +18,8 @@ async fn main() -> eyre::Result<()> {
     let clickhouse_client = ClickhouseClient::new(&opts.clickhouse_url)?;
     clickhouse_client.init_db().await?;
 
-    let rpc_url = "wss://eth.merkle.io";
     info!("Initializing extractor...");
-    let extractor = Extractor::new(rpc_url).await?;
+    let extractor = Extractor::new(&opts.rpc_url).await?;
     let mut block_stream = extractor.get_block_stream().await?;
 
     info!("Processing blocks...");

@@ -7,6 +7,9 @@ pub struct Opts {
     /// Clickhouse URL
     #[clap(long, default_value = "http://localhost:8123")]
     pub clickhouse_url: String,
+    /// RPC URL
+    #[clap(long, default_value = "wss://eth.merkle.io")]
+    pub rpc_url: String,
 }
 
 #[cfg(test)]
