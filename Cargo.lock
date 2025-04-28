@@ -2068,10 +2068,12 @@ dependencies = [
 name = "inserter"
 version = "0.1.0"
 dependencies = [
+ "alloy",
  "clickhouse",
  "derive_more 1.0.0",
  "extractor",
  "eyre",
+ "serde",
 ]
 
 [[package]]

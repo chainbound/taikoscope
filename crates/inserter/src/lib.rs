@@ -1,11 +1,26 @@
 //! Taikoscope Inserter
 
+use alloy::primitives::BlockHash;
 use derive_more::Debug;
 use eyre::{Result, WrapErr};
+use serde::Serialize;
 use std::sync::Arc;
 
-use clickhouse::Client;
+use clickhouse::{Client, Row};
 pub use extractor::Block;
+
+/// L1 head event
+#[derive(Debug, Row, Serialize)]
+pub struct L1HeadEvent {
+    /// L1 block number
+    pub l1_block_number: u64,
+    /// Block hash
+    pub block_hash: BlockHash,
+    /// Slot
+    pub slot: u64,
+    /// Block timestamp
+    pub block_ts: u64,
+}
 
 /// Clickhouse client
 #[derive(Debug)]
@@ -46,8 +61,18 @@ impl ClickhouseClient {
     }
 
     /// Insert block into `ClickHouse`
-    pub async fn insert_block(&self, _: &Block) -> Result<()> {
-        // TODO: implement
+    pub async fn insert_block(&self, block: &Block) -> Result<()> {
+        // Convert data into row format
+        let event = L1HeadEvent {
+            l1_block_number: block.number,
+            block_hash: block.hash,
+            slot: block.slot,
+            block_ts: block.timestamp,
+        };
+
+        let mut insert = self.client.insert("l1_head_events")?;
+        insert.write(&event).await?;
+        insert.end().await?;
 
         Ok(())
     }
