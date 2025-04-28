@@ -1545,6 +1545,7 @@ dependencies = [
  "eyre",
  "tokio",
  "tokio-stream",
+ "tracing",
 ]
 
 [[package]]

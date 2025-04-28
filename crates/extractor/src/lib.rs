@@ -9,6 +9,7 @@ use alloy::{
 use derive_more::Debug;
 use eyre::Result;
 use tokio_stream::{Stream, StreamExt};
+use tracing::info;
 
 /// Extractor client
 #[derive(Debug)]
@@ -44,7 +45,7 @@ impl Extractor {
         // Subscribe to new blocks
         let sub = self.provider.subscribe_blocks().await?;
         let stream = sub.into_stream();
-        println!("Subscribed to block headers");
+        info!("Subscribed to block headers");
 
         // Convert stream to block stream
         let block_stream = stream.map(|raw_block| Block {

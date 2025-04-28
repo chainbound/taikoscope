@@ -1,11 +1,11 @@
 //! Taikoscope Inserter
 
+pub use extractor::Block;
+
+use clickhouse::{Client, Row};
 use derive_more::Debug;
 use eyre::{Result, WrapErr};
 use serde::Serialize;
-
-use clickhouse::{Client, Row};
-pub use extractor::Block;
 
 /// L1 head event
 #[derive(Debug, Row, Serialize)]
