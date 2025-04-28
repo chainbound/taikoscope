@@ -56,8 +56,8 @@ impl ClickhouseClient {
     /// Init database schema
     pub async fn init_schema(&self) -> Result<()> {
         self.base
-            .query(
-                "CREATE TABLE IF NOT EXISTS l1_head_events (
+            .query(&format!(
+                "CREATE TABLE IF NOT EXISTS {}.l1_head_events (
                 l1_block_number UInt64,
                 block_hash FixedString(32),
                 slot UInt64,
@@ -65,7 +65,8 @@ impl ClickhouseClient {
                 inserted_at DateTime64(3) DEFAULT now64()
             ) ENGINE = MergeTree()
             ORDER BY (l1_block_number)",
-            )
+                self.db_name
+            ))
             .execute()
             .await
             .wrap_err("Failed to create l1_head_events table")?;
