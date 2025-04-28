@@ -5,6 +5,7 @@ use eyre::{Result, WrapErr};
 use std::sync::Arc;
 
 use clickhouse::Client;
+pub use extractor::Block;
 
 /// Clickhouse client
 #[derive(Debug)]
@@ -40,6 +41,13 @@ impl ClickhouseClient {
             .execute()
             .await
             .wrap_err("Failed to create l1_head_events table")?;
+
+        Ok(())
+    }
+
+    /// Insert block into `ClickHouse`
+    pub async fn insert_block(&self, _: &Block) -> Result<()> {
+        // TODO: implement
 
         Ok(())
     }

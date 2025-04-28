@@ -13,6 +13,7 @@ inserter = { path = "../../crates/inserter" }
 
 eyre.workspace = true
 tokio.workspace = true
+tokio-stream.workspace = true
 
 [[bin]]
 name = "taikoscope"

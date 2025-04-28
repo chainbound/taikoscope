@@ -2070,6 +2070,7 @@ version = "0.1.0"
 dependencies = [
  "clickhouse",
  "derive_more 1.0.0",
+ "extractor",
  "eyre",
 ]
 
@@ -3354,6 +3355,7 @@ dependencies = [
  "eyre",
  "inserter",
  "tokio",
+ "tokio-stream",
 ]
 
 [[package]]
