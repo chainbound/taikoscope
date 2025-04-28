@@ -1,10 +1,14 @@
 //! Taikoscope Extractor
 
 use alloy::providers::{Provider, ProviderBuilder, WsConnect};
+use derive_more::Debug;
 use eyre::Result;
 use tokio_stream::StreamExt;
 
+/// Extractor client
+#[derive(Debug)]
 pub struct Extractor {
+    #[debug(skip)]
     provider: Box<dyn Provider + Send + Sync>,
 }
 

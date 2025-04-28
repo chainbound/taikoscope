@@ -8,6 +8,7 @@ repository.workspace = true
 
 [dependencies]
 clickhouse.workspace = true
+derive_more.workspace = true
 eyre.workspace = true
 
 [lints]

@@ -1,12 +1,15 @@
 //! Taikoscope Inserter
 
+use derive_more::Debug;
 use eyre::{Result, WrapErr};
 use std::sync::Arc;
 
 use clickhouse::Client;
 
 /// Clickhouse client
+#[derive(Debug)]
 pub struct ClickhouseClient {
+    #[debug(skip)]
     client: Arc<Client>,
 }
 
