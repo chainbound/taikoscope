@@ -1,32 +1,33 @@
 //! Taikoscope Extractor
 
-use std::error::Error;
-
 use alloy::providers::{Provider, ProviderBuilder, WsConnect};
+use eyre::Result;
 use tokio_stream::StreamExt;
 
-/// Extract blocks from the Ethereum blockchain
-pub fn extractor() {
-    let rt = tokio::runtime::Runtime::new().unwrap();
-    rt.block_on(async {
-        let rpc_url = "wss://eth.merkle.io";
-        extract_blocks(rpc_url).await.unwrap();
-    })
+pub struct Extractor {
+    provider: Box<dyn Provider + Send + Sync>,
 }
 
-async fn extract_blocks(rpc_url: &str) -> Result<(), Box<dyn Error>> {
-    // Create a provider
-    let ws = WsConnect::new(rpc_url);
-    let provider = ProviderBuilder::new().connect_ws(ws).await?;
+impl Extractor {
+    /// Create a new extractor
+    pub async fn new(rpc_url: &str) -> Result<Self> {
+        let ws = WsConnect::new(rpc_url);
+        let provider = ProviderBuilder::new().connect_ws(ws).await?;
 
-    // Subscribe to new blocks
-    let sub = provider.subscribe_blocks().await?;
-    let mut stream = sub.into_stream();
-    println!("Subscribed to block headers");
-
-    while let Some(block) = stream.next().await {
-        println!("Block: number {:?}", block.number);
+        Ok(Self { provider: Box::new(provider) })
     }
 
-    Ok(())
+    /// Process blocks
+    pub async fn process_blocks(&self) -> Result<()> {
+        // Subscribe to new blocks
+        let sub = self.provider.subscribe_blocks().await?;
+        let mut stream = sub.into_stream();
+        println!("Subscribed to block headers");
+
+        while let Some(block) = stream.next().await {
+            println!("Block: number {:?}", block.number);
+        }
+
+        Ok(())
+    }
 }
