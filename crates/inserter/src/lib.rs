@@ -41,6 +41,12 @@ impl ClickhouseClient {
 
     /// Create database
     pub async fn init_db(&self) -> Result<()> {
+        // Drop the existing table if it exists
+        self.base
+            .query(&format!("DROP TABLE IF EXISTS {}.l1_head_events", self.db_name))
+            .execute()
+            .await?;
+
         // Create database
         self.base
             .query(&format!("CREATE DATABASE IF NOT EXISTS {}", self.db_name))
