@@ -3,7 +3,6 @@ members = ["bin/*", "crates/*"]
 resolver = "2"
 
 [workspace.package]
-name = "taikoscope"
 version = "0.1.0"
 edition = "2024"
 license = "MIT"
