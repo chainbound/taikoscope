@@ -13,9 +13,9 @@ dev:
 ci:
     @just fmt lint test
 
-# run unit tests
+# run tests
 test:
-    cargo nextest run --workspace -E "kind(lib) | kind(bin) | kind(proc-macro)"
+    cargo nextest run --workspace --all-targets
 
 # run collection of clippy lints
 lint:
