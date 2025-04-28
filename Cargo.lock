@@ -3311,6 +3311,7 @@ version = "0.1.0"
 dependencies = [
  "extractor",
  "inserter",
+ "tokio",
 ]
 
 [[package]]
