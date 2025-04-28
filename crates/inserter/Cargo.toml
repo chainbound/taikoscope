@@ -1,0 +1,13 @@
+[package]
+name = "inserter"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+exclude.workspace = true
+repository.workspace = true
+
+[dependencies]
+clickhouse.workspace = true
+
+[lints]
+workspace = true

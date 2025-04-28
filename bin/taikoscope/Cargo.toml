@@ -9,6 +9,7 @@ default-run = "taikoscope"
 
 [dependencies]
 extractor = { path = "../../crates/extractor" }
+inserter = { path = "../../crates/inserter" }
 
 [[bin]]
 name = "taikoscope"
