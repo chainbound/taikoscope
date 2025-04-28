@@ -1,6 +1,7 @@
 //! Taikoscope Inserter
 
-use std::{error::Error, sync::Arc};
+use eyre::{Result, WrapErr};
+use std::sync::Arc;
 
 use clickhouse::Client;
 
@@ -11,7 +12,7 @@ pub struct ClickhouseClient {
 
 impl ClickhouseClient {
     /// Create a new clickhouse client
-    pub fn new(url: &str) -> Result<Self, Box<dyn Error>> {
+    pub fn new(url: &str) -> Result<Self> {
         let client = Client::default().with_url(url).with_database("taikoscope");
 
         // Wrap client
@@ -21,7 +22,7 @@ impl ClickhouseClient {
     }
 
     /// Init database schema
-    pub async fn init_schema(&self) -> Result<(), Box<dyn Error>> {
+    pub async fn init_schema(&self) -> Result<()> {
         self.client
             .query(
                 "CREATE TABLE IF NOT EXISTS l1_head_events (
@@ -35,7 +36,7 @@ impl ClickhouseClient {
             )
             .execute()
             .await
-            .map_err(|e| format!("Failed to create l1_head_events table: {}", e))?;
+            .wrap_err("Failed to create l1_head_events table")?;
 
         Ok(())
     }

@@ -10,6 +10,8 @@ default-run = "taikoscope"
 [dependencies]
 extractor = { path = "../../crates/extractor" }
 inserter = { path = "../../crates/inserter" }
+
+eyre.workspace = true
 tokio.workspace = true
 
 [[bin]]
