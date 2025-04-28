@@ -8,7 +8,7 @@ use tokio_stream::StreamExt;
 async fn main() -> eyre::Result<()> {
     println!("Initializing ClickHouse client...");
     let clickhouse_client = ClickhouseClient::new("http://localhost:8123")?;
-    clickhouse_client.init_schema().await?;
+    clickhouse_client.init_db().await?;
 
     let rpc_url = "wss://eth.merkle.io";
     println!("Initializing extractor...");

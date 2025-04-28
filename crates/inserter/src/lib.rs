@@ -4,7 +4,6 @@ use alloy::primitives::BlockHash;
 use derive_more::Debug;
 use eyre::{Result, WrapErr};
 use serde::Serialize;
-use std::sync::Arc;
 
 use clickhouse::{Client, Row};
 pub use extractor::Block;
@@ -25,24 +24,38 @@ pub struct L1HeadEvent {
 /// Clickhouse client
 #[derive(Debug)]
 pub struct ClickhouseClient {
+    /// Base client
     #[debug(skip)]
-    client: Arc<Client>,
+    base: Client,
+    /// Database name
+    db_name: String,
 }
 
 impl ClickhouseClient {
     /// Create a new clickhouse client
     pub fn new(url: &str) -> Result<Self> {
-        let client = Client::default().with_url(url).with_database("taikoscope");
+        let client = Client::default().with_url(url);
 
-        // Wrap client
-        let client = Arc::new(client);
+        Ok(Self { base: client, db_name: "taikoscope".into() })
+    }
 
-        Ok(Self { client })
+    /// Create database
+    pub async fn init_db(&self) -> Result<()> {
+        // Create database
+        self.base
+            .query(&format!("CREATE DATABASE IF NOT EXISTS {}", self.db_name))
+            .execute()
+            .await?;
+
+        // Init schema
+        self.init_schema().await?;
+
+        Ok(())
     }
 
     /// Init database schema
     pub async fn init_schema(&self) -> Result<()> {
-        self.client
+        self.base
             .query(
                 "CREATE TABLE IF NOT EXISTS l1_head_events (
                 l1_block_number UInt64,
@@ -62,6 +75,7 @@ impl ClickhouseClient {
 
     /// Insert block into `ClickHouse`
     pub async fn insert_block(&self, block: &Block) -> Result<()> {
+        let client = self.base.clone().with_database(&self.db_name);
         // Convert data into row format
         let event = L1HeadEvent {
             l1_block_number: block.number,
@@ -70,7 +84,7 @@ impl ClickhouseClient {
             block_ts: block.timestamp,
         };
 
-        let mut insert = self.client.insert("l1_head_events")?;
+        let mut insert = client.insert("l1_head_events")?;
         insert.write(&event).await?;
         insert.end().await?;
 
