@@ -1,6 +1,5 @@
 //! Taikoscope Inserter
 
-use alloy::primitives::BlockHash;
 use derive_more::Debug;
 use eyre::{Result, WrapErr};
 use serde::Serialize;
@@ -14,7 +13,7 @@ pub struct L1HeadEvent {
     /// L1 block number
     pub l1_block_number: u64,
     /// Block hash
-    pub block_hash: BlockHash,
+    pub block_hash: [u8; 32],
     /// Slot
     pub slot: u64,
     /// Block timestamp
@@ -67,7 +66,7 @@ impl ClickhouseClient {
                 l1_block_number UInt64,
                 block_hash FixedString(32),
                 slot UInt64,
-                block_ts DateTime64(3), -- ms
+                block_ts UInt64,
                 inserted_at DateTime64(3) DEFAULT now64()
             ) ENGINE = MergeTree()
             ORDER BY (l1_block_number)",
@@ -83,10 +82,15 @@ impl ClickhouseClient {
     /// Insert block into `ClickHouse`
     pub async fn insert_block(&self, block: &Block) -> Result<()> {
         let client = self.base.clone().with_database(&self.db_name);
+
+        // Convert block hash to [u8, 32]
+        let mut hash_bytes = [0u8; 32];
+        hash_bytes.copy_from_slice(block.hash.as_slice());
+
         // Convert data into row format
         let event = L1HeadEvent {
             l1_block_number: block.number,
-            block_hash: block.hash,
+            block_hash: hash_bytes,
             slot: block.slot,
             block_ts: block.timestamp,
         };
