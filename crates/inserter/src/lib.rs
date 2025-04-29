@@ -5,10 +5,10 @@ pub use extractor::Block;
 use clickhouse::{Client, Row};
 use derive_more::Debug;
 use eyre::{Result, WrapErr};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 /// L1 head event
-#[derive(Debug, Row, Serialize)]
+#[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq)]
 pub struct L1HeadEvent {
     /// L1 block number
     pub l1_block_number: u64,
@@ -100,5 +100,42 @@ impl ClickhouseClient {
         insert.end().await?;
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use alloy::primitives::FixedBytes;
+    use clickhouse::test::{Mock, handlers};
+    use extractor::Block;
+
+    use crate::{ClickhouseClient, L1HeadEvent};
+
+    #[tokio::test]
+    async fn test_insert_block() {
+        // 1) Spin up mock server
+        let mock = Mock::new();
+
+        // 2) Attach recorder to mock server
+        let recorder = mock.add(handlers::record::<L1HeadEvent>());
+
+        // 3) Point client to mock server and do inserts
+        let client = ClickhouseClient::new(mock.url()).unwrap();
+        let fake =
+            Block { number: 1, hash: FixedBytes::from_slice(&[0u8; 32]), slot: 1, timestamp: 1 };
+        client.insert_block(&fake).await.unwrap();
+
+        // 4) Collect and assert
+        let rows: Vec<L1HeadEvent> = recorder.collect().await;
+        assert_eq!(rows.len(), 1);
+        assert_eq!(
+            rows[0],
+            L1HeadEvent {
+                l1_block_number: 1,
+                block_hash: *FixedBytes::from_slice(&[0u8; 32]),
+                slot: 1,
+                block_ts: 1,
+            }
+        );
     }
 }

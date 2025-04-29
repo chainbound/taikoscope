@@ -14,5 +14,9 @@ extractor = { version = "0.1.0", path = "../extractor" }
 eyre.workspace = true
 serde.workspace = true
 
+[dev-dependencies]
+clickhouse = { workspace = true, features = ["test-util"] }
+tokio      = { version = "1.44.1",   features = ["macros"] }
+
 [lints]
 workspace = true
