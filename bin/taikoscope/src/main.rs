@@ -22,7 +22,7 @@ async fn main() -> eyre::Result<()> {
 
     info!("Initializing extractor...");
     let inbox_address = Address::from_str(&opts.inbox_address).unwrap();
-    let extractor = Extractor::new(&opts.rpc_url, inbox_address).await?;
+    let extractor = Extractor::new(&opts.l1_rpc_url, &opts.l2_rpc_url, inbox_address).await?;
 
     let mut block_stream = extractor.get_block_stream().await?;
     let mut batch_stream = extractor.get_batch_proposed_stream().await?;

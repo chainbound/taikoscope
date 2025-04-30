@@ -42,6 +42,7 @@ async fn test_get_block_stream() -> Result<()> {
     // Create Extractor
     let ext = Extractor::new(
         WS_URL,
+        WS_URL,
         Address::from_str("0x71C7656EC7ab88b098defB751B7401B5f6d8976F").unwrap(),
     )
     .await?;

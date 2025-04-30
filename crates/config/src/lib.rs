@@ -7,9 +7,12 @@ pub struct Opts {
     /// Clickhouse URL
     #[clap(long, default_value = "http://localhost:8123")]
     pub clickhouse_url: String,
-    /// RPC URL
+    /// L1 RPC URL
     #[clap(long, default_value = "wss://eth.merkle.io")]
-    pub rpc_url: String,
+    pub l1_rpc_url: String,
+    /// L2 RPC URL
+    #[clap(long, default_value = "wss://taiko.drpc.org")]
+    pub l2_rpc_url: String,
     /// Taiko inbox address
     #[clap(long)]
     pub inbox_address: String,
