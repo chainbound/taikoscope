@@ -2,10 +2,12 @@
 
 use std::{
     process::{Child, Command},
+    str::FromStr,
     thread::sleep,
     time::Duration,
 };
 
+use alloy::primitives::Address;
 use extractor::{Block, Extractor};
 
 use eyre::Result;
@@ -38,7 +40,11 @@ async fn test_get_block_stream() -> Result<()> {
     sleep(Duration::from_millis(500));
 
     // Create Extractor
-    let ext = Extractor::new(WS_URL).await?;
+    let ext = Extractor::new(
+        WS_URL,
+        Address::from_str("0x71C7656EC7ab88b098defB751B7401B5f6d8976F").unwrap(),
+    )
+    .await?;
     let mut stream = ext.get_block_stream().await?;
 
     // Wait for the first block

@@ -1078,6 +1078,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
+name = "chainio"
+version = "0.1.0"
+dependencies = [
+ "alloy",
+ "alloy-sol-macro",
+ "alloy-sol-types",
+ "derive_more 1.0.0",
+ "url",
+]
+
+[[package]]
 name = "chrono"
 version = "0.4.40"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1541,6 +1552,7 @@ name = "extractor"
 version = "0.1.0"
 dependencies = [
  "alloy",
+ "chainio",
  "derive_more 1.0.0",
  "eyre",
  "tokio",
@@ -3496,6 +3508,7 @@ dependencies = [
 name = "taikoscope"
 version = "0.1.0"
 dependencies = [
+ "alloy-primitives",
  "clap",
  "config",
  "extractor",
@@ -3918,6 +3931,7 @@ dependencies = [
  "form_urlencoded",
  "idna",
  "percent-encoding",
+ "serde",
 ]
 
 [[package]]

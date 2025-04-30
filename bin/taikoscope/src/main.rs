@@ -4,8 +4,10 @@ use extractor::Extractor;
 use inserter::ClickhouseClient;
 use tokio_stream::StreamExt;
 
+use alloy_primitives::Address;
 use clap::Parser;
 use config::Opts;
+use std::str::FromStr;
 use tracing::info;
 
 #[tokio::main]
@@ -19,17 +21,25 @@ async fn main() -> eyre::Result<()> {
     clickhouse_client.init_db().await?;
 
     info!("Initializing extractor...");
-    let extractor = Extractor::new(&opts.rpc_url).await?;
+    let inbox_address = Address::from_str(&opts.inbox_address).unwrap();
+    let extractor = Extractor::new(&opts.rpc_url, inbox_address).await?;
+
     let mut block_stream = extractor.get_block_stream().await?;
+    let mut batch_stream = extractor.get_batch_proposed_stream().await?;
 
-    info!("Processing blocks...");
-    while let Some(block) = block_stream.next().await {
-        info!("Processing block: {:?}", block.number);
-
-        // Insert block into ClickHouse
-        clickhouse_client.insert_block(&block).await?;
-        info!("Inserted block: {:?}", block.number);
+    info!("Processing events...");
+    loop {
+        tokio::select! {
+            Some(block) = block_stream.next() => {
+                info!("Processing block: {:?}", block.number);
+                // Insert block into ClickHouse
+                clickhouse_client.insert_block(&block).await?;
+                info!("Inserted block: {:?}", block.number);
+            }
+            Some(batch) = batch_stream.next() => {
+                info!("Processing batch: {:?}", batch.last_block_number());
+                // TODO: Insert batch into ClickHouse
+            }
+        }
     }
-
-    Ok(())
 }

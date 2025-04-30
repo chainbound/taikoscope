@@ -1,11 +1,14 @@
 //! Taikoscope Extractor
+use chainio::{self, ITaikoInbox::BatchProposed};
 
 use std::pin::Pin;
 
 use alloy::{
-    primitives::BlockHash,
+    primitives::{Address, BlockHash},
     providers::{Provider, ProviderBuilder, WsConnect},
+    rpc::types::eth::Log,
 };
+use chainio::TaikoInbox;
 use derive_more::Debug;
 use eyre::Result;
 use tokio_stream::{Stream, StreamExt};
@@ -16,6 +19,7 @@ use tracing::info;
 pub struct Extractor {
     #[debug(skip)]
     provider: Box<dyn Provider + Send + Sync>,
+    taiko_inbox: TaikoInbox,
 }
 
 /// Block
@@ -33,11 +37,13 @@ pub struct Block {
 
 impl Extractor {
     /// Create a new extractor
-    pub async fn new(rpc_url: &str) -> Result<Self> {
+    pub async fn new(rpc_url: &str, inbox_address: Address) -> Result<Self> {
         let ws = WsConnect::new(rpc_url);
         let provider = ProviderBuilder::new().connect_ws(ws).await?;
 
-        Ok(Self { provider: Box::new(provider) })
+        let taiko_inbox = TaikoInbox::new_readonly(inbox_address, provider.clone());
+
+        Ok(Self { provider: Box::new(provider), taiko_inbox })
     }
 
     /// Get a stream of blocks from the provider
@@ -56,5 +62,29 @@ impl Extractor {
         });
 
         Ok(Box::pin(block_stream))
+    }
+
+    /// Subscribes to the `TaikoInbox`  `BatchProposed` event and returns a stream of decoded
+    /// events.
+    pub async fn get_batch_proposed_stream(
+        &self,
+    ) -> Result<Pin<Box<dyn Stream<Item = BatchProposed> + Send>>> {
+        let filter = self.taiko_inbox.batch_proposed_filter();
+        let logs = self.provider.subscribe_logs(&filter).await?.into_stream();
+
+        // Convert stream to batch proposed stream
+        let batch_proposed_stream =
+            logs.filter_map(|log: Log| match log.log_decode::<BatchProposed>() {
+                Ok(decoded) => {
+                    // Extract the BatchProposed event from the Log<BatchProposed>
+                    Some(decoded.data().clone())
+                }
+                Err(err) => {
+                    tracing::warn!("Failed to decode log: {}", err);
+                    None
+                }
+            });
+
+        Ok(Box::pin(batch_proposed_stream))
     }
 }

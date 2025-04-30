@@ -12,6 +12,7 @@ config = { path = "../../crates/config" }
 extractor = { path = "../../crates/extractor" }
 inserter = { path = "../../crates/inserter" }
 
+alloy-primitives.workspace = true
 clap.workspace = true
 eyre.workspace = true
 tokio.workspace = true

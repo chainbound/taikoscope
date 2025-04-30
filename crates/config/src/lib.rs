@@ -10,6 +10,9 @@ pub struct Opts {
     /// RPC URL
     #[clap(long, default_value = "wss://eth.merkle.io")]
     pub rpc_url: String,
+    /// Taiko inbox address
+    #[clap(long)]
+    pub inbox_address: String,
 }
 
 #[cfg(test)]
