@@ -82,6 +82,11 @@ impl ClickhouseClient {
             .execute()
             .await?;
 
+        self.base
+            .query(&format!("DROP TABLE IF EXISTS {}.batches", self.db_name))
+            .execute()
+            .await?;
+
         // Create database
         self.base
             .query(&format!("CREATE DATABASE IF NOT EXISTS {}", self.db_name))
