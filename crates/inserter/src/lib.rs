@@ -1,5 +1,6 @@
 //! Taikoscope Inserter
 
+use chainio::ITaikoInbox;
 use clickhouse::{Client, Row};
 use derive_more::Debug;
 pub use extractor::{L1Block, L2Block};
@@ -75,10 +76,10 @@ pub struct BatchRow {
     pub blob_total_bytes: u32,
 }
 
-impl TryFrom<&chainio::ITaikoInbox::BatchProposed> for BatchRow {
+impl TryFrom<&ITaikoInbox::BatchProposed> for BatchRow {
     type Error = eyre::Error;
 
-    fn try_from(batch: &chainio::ITaikoInbox::BatchProposed) -> Result<Self, Self::Error> {
+    fn try_from(batch: &ITaikoInbox::BatchProposed) -> Result<Self, Self::Error> {
         let batch_size = u16::try_from(batch.info.blocks.len())?;
         let blob_count = u8::try_from(batch.info.blobHashes.len())?;
 
