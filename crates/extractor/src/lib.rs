@@ -38,8 +38,8 @@ pub struct Block {
 impl Extractor {
     /// Create a new extractor
     pub async fn new(rpc_url: &str, inbox_address: Address) -> Result<Self> {
-        let ws = WsConnect::new(rpc_url);
-        let provider = ProviderBuilder::new().connect_ws(ws).await?;
+        let l1_el = WsConnect::new(rpc_url);
+        let provider = ProviderBuilder::new().connect_ws(l1_el).await?;
 
         let taiko_inbox = TaikoInbox::new_readonly(inbox_address, provider.clone());
 
