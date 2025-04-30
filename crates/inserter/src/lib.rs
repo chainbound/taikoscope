@@ -60,6 +60,7 @@ impl ClickhouseClient {
 
     /// Init database schema
     pub async fn init_schema(&self) -> Result<()> {
+        // Create l1_head_events table
         self.base
             .query(&format!(
                 "CREATE TABLE IF NOT EXISTS {}.l1_head_events (
@@ -75,6 +76,25 @@ impl ClickhouseClient {
             .execute()
             .await
             .wrap_err("Failed to create l1_head_events table")?;
+
+        // Create batches table
+        self.base
+            .query(&format!(
+                "CREATE TABLE IF NOT EXISTS {}.batches (
+                l1_block_number UInt64,
+                batch_id UInt64,
+                batch_size UInt16,
+                proposer_addr FixedString(20),
+                blob_count UInt8,
+                blob_total_bytes UInt32,
+                inserted_at DateTime64(3) DEFAULT now64()
+            ) ENGINE = MergeTree(),
+            ORDER BY (l1_block_number, batch_id)",
+                self.db_name
+            ))
+            .execute()
+            .await
+            .wrap_err("Failed to create batches table")?;
 
         Ok(())
     }
