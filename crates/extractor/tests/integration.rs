@@ -46,7 +46,7 @@ async fn test_get_block_stream() -> Result<()> {
         Address::from_str("0x71C7656EC7ab88b098defB751B7401B5f6d8976F").unwrap(),
     )
     .await?;
-    let mut stream = ext.get_block_stream().await?;
+    let mut stream = ext.get_l1_block_stream().await?;
 
     // Wait for the first block
     let block: Block = stream.next().await.expect("stream ended unexpectedly");
