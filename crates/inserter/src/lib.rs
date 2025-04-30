@@ -118,6 +118,26 @@ impl ClickhouseClient {
             .await
             .wrap_err("Failed to create l1_head_events table")?;
 
+        // Create l2_head_events table
+        self.base
+            .query(&format!(
+                "CREATE TABLE IF NOT EXISTS {}.l2_head_events (
+                l2_block_number UInt64,
+                block_hash FixedString(32),
+                block_ts UInt64,
+                sum_gas_used UInt128,
+                sum_tx UInt32,
+                sum_priority_fee UInt128,
+                sequencer FixedString(20),
+                inserted_at DateTime64(3) DEFAULT now64()
+            ) ENGINE = MergeTree()
+            ORDER BY (l2_block_number)",
+                self.db_name
+            ))
+            .execute()
+            .await
+            .wrap_err("Failed to create l2_head_events table")?;
+
         // Create batches table
         self.base
             .query(&format!(
