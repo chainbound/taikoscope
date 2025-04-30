@@ -8,7 +8,7 @@ use std::{
 };
 
 use alloy::primitives::Address;
-use extractor::{Extractor, L1Block};
+use extractor::{Extractor, L1Header};
 
 use eyre::Result;
 use tokio_stream::StreamExt;
@@ -46,11 +46,11 @@ async fn test_get_block_stream() -> Result<()> {
         Address::from_str("0x71C7656EC7ab88b098defB751B7401B5f6d8976F").unwrap(),
     )
     .await?;
-    let mut stream = ext.get_l1_block_stream().await?;
+    let mut stream = ext.get_l1_header_stream().await?;
 
     // Wait for the first block
-    let block: L1Block = stream.next().await.expect("stream ended unexpectedly");
-    assert!(block.number > 0);
-    assert!(block.timestamp > 0);
+    let header: L1Header = stream.next().await.expect("stream ended unexpectedly");
+    assert!(header.number > 0);
+    assert!(header.timestamp > 0);
     Ok(())
 }

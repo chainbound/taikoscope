@@ -24,22 +24,22 @@ async fn main() -> eyre::Result<()> {
     let inbox_address = Address::from_str(&opts.inbox_address).unwrap();
     let extractor = Extractor::new(&opts.l1_rpc_url, &opts.l2_rpc_url, inbox_address).await?;
 
-    let mut l1_block_stream = extractor.get_l1_block_stream().await?;
-    let mut l2_block_stream = extractor.get_l2_block_stream().await?;
+    let mut l1_header_stream = extractor.get_l1_header_stream().await?;
+    let mut l2_header_stream = extractor.get_l2_header_stream().await?;
     let mut batch_stream = extractor.get_batch_proposed_stream().await?;
 
     info!("Processing events...");
     loop {
         tokio::select! {
-            Some(block) = l1_block_stream.next() => {
-                info!("Processing L1 block: {:?}", block.number);
-                clickhouse_client.insert_l1_block(&block).await?;
-                info!("Inserted L1 block: {:?}", block.number);
+            Some(header) = l1_header_stream.next() => {
+                info!("Processing L1 header: {:?}", header.number);
+                clickhouse_client.insert_l1_header(&header).await?;
+                info!("Inserted L1 header: {:?}", header.number);
             }
-            Some(block) = l2_block_stream.next() => {
-                info!("Processing L2 block: {:?}", block.number);
-                clickhouse_client.insert_l2_block(&block).await?;
-                info!("Inserted L2 block: {:?}", block.number);
+            Some(header) = l2_header_stream.next() => {
+                info!("Processing L2 header: {:?}", header.number);
+                clickhouse_client.insert_l2_header(&header).await?;
+                info!("Inserted L2 header: {:?}", header.number);
             }
             Some(batch) = batch_stream.next() => {
                 info!("Processing batch: {:?}", batch.last_block_number());

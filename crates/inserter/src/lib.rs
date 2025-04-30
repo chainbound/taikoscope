@@ -3,7 +3,7 @@
 use chainio::ITaikoInbox;
 use clickhouse::{Client, Row};
 use derive_more::Debug;
-pub use extractor::{L1Block, L2Block};
+pub use extractor::{L1Header, L2Header};
 use eyre::{Result, WrapErr};
 use serde::{Deserialize, Serialize};
 
@@ -39,19 +39,19 @@ pub struct L2HeadEvent {
     pub sequencer: [u8; 20],
 }
 
-impl TryFrom<&L2Block> for L2HeadEvent {
+impl TryFrom<&L2Header> for L2HeadEvent {
     type Error = eyre::Error;
 
-    fn try_from(block: &L2Block) -> Result<Self, Self::Error> {
+    fn try_from(header: &L2Header) -> Result<Self, Self::Error> {
         let mut hash_bytes = [0u8; 32];
-        hash_bytes.copy_from_slice(block.hash.as_slice());
-        let sequencer = block.beneficiary.into_array();
+        hash_bytes.copy_from_slice(header.hash.as_slice());
+        let sequencer = header.beneficiary.into_array();
 
         Ok(Self {
-            l2_block_number: block.number,
+            l2_block_number: header.number,
             block_hash: hash_bytes,
-            block_ts: block.timestamp,
-            sum_gas_used: block.gas_used as u128,
+            block_ts: header.timestamp,
+            sum_gas_used: header.gas_used as u128,
             sum_tx: 0,           // TODO: pull receipts and sum (or use RPC batch)
             sum_priority_fee: 0, // TODO: pull receipts and sum (or use RPC batch)
             sequencer,
@@ -200,20 +200,20 @@ impl ClickhouseClient {
         Ok(())
     }
 
-    /// Insert block into `ClickHouse`
-    pub async fn insert_l1_block(&self, block: &L1Block) -> Result<()> {
+    /// Insert header into `ClickHouse`
+    pub async fn insert_l1_header(&self, header: &L1Header) -> Result<()> {
         let client = self.base.clone().with_database(&self.db_name);
 
         // Convert block hash to [u8, 32]
         let mut hash_bytes = [0u8; 32];
-        hash_bytes.copy_from_slice(block.hash.as_slice());
+        hash_bytes.copy_from_slice(header.hash.as_slice());
 
         // Convert data into row format
         let event = L1HeadEvent {
-            l1_block_number: block.number,
+            l1_block_number: header.number,
             block_hash: hash_bytes,
-            slot: block.slot,
-            block_ts: block.timestamp,
+            slot: header.slot,
+            block_ts: header.timestamp,
         };
 
         let mut insert = client.insert("l1_head_events")?;
@@ -223,11 +223,11 @@ impl ClickhouseClient {
         Ok(())
     }
 
-    /// Insert L2 block into `ClickHouse`
-    pub async fn insert_l2_block(&self, block: &L2Block) -> Result<()> {
+    /// Insert L2 header into `ClickHouse`
+    pub async fn insert_l2_header(&self, header: &L2Header) -> Result<()> {
         let client = self.base.clone().with_database(&self.db_name);
 
-        let row = L2HeadEvent::try_from(block)?;
+        let row = L2HeadEvent::try_from(header)?;
 
         let mut insert = client.insert("l2_head_events")?;
         insert.write(&row).await?;
@@ -255,7 +255,7 @@ impl ClickhouseClient {
 mod tests {
     use alloy::primitives::FixedBytes;
     use clickhouse::test::{Mock, handlers};
-    use extractor::L1Block;
+    use extractor::L1Header;
 
     use crate::{ClickhouseClient, L1HeadEvent};
 
@@ -270,8 +270,8 @@ mod tests {
         // 3) Point client to mock server and do inserts
         let client = ClickhouseClient::new(mock.url()).unwrap();
         let fake =
-            L1Block { number: 1, hash: FixedBytes::from_slice(&[0u8; 32]), slot: 1, timestamp: 1 };
-        client.insert_l1_block(&fake).await.unwrap();
+            L1Header { number: 1, hash: FixedBytes::from_slice(&[0u8; 32]), slot: 1, timestamp: 1 };
+        client.insert_l1_header(&fake).await.unwrap();
 
         // 4) Collect and assert
         let rows: Vec<L1HeadEvent> = recorder.collect().await;
