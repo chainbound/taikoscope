@@ -24,9 +24,9 @@ pub struct Extractor {
     taiko_inbox: TaikoInbox,
 }
 
-/// Block
+/// L1 Block
 #[derive(Debug)]
-pub struct Block {
+pub struct L1Block {
     /// Block number
     pub number: u64,
     /// Block hash
@@ -35,6 +35,21 @@ pub struct Block {
     pub slot: u64,
     /// Extracted block timestamp
     pub timestamp: u64,
+}
+
+/// L2 Block
+#[derive(Debug)]
+pub struct L2Block {
+    /// Block number
+    pub number: u64,
+    /// Block hash
+    pub hash: BlockHash,
+    /// Block timestamp
+    pub timestamp: u64,
+    /// Gas used
+    pub gas_used: u64,
+    /// Beneficiary
+    pub beneficiary: Address,
 }
 
 impl Extractor {
@@ -55,14 +70,14 @@ impl Extractor {
     }
 
     /// Get a stream of L1 blocks
-    pub async fn get_l1_block_stream(&self) -> Result<Pin<Box<dyn Stream<Item = Block> + Send>>> {
+    pub async fn get_l1_block_stream(&self) -> Result<Pin<Box<dyn Stream<Item = L1Block> + Send>>> {
         // Subscribe to new blocks
         let sub = self.l1_provider.subscribe_blocks().await?;
         let stream = sub.into_stream();
         info!("Subscribed to L1 block headers");
 
         // Convert stream to block stream
-        let block_stream = stream.map(|raw_block| Block {
+        let block_stream = stream.map(|raw_block| L1Block {
             number: raw_block.number,
             hash: raw_block.hash,
             slot: raw_block.number, // TODO: Get slot instead
@@ -73,18 +88,19 @@ impl Extractor {
     }
 
     /// Get a stream of L2 blocks
-    pub async fn get_l2_block_stream(&self) -> Result<Pin<Box<dyn Stream<Item = Block> + Send>>> {
+    pub async fn get_l2_block_stream(&self) -> Result<Pin<Box<dyn Stream<Item = L2Block> + Send>>> {
         // Subscribe to new blocks
         let sub = self.l2_provider.subscribe_blocks().await?;
         let stream = sub.into_stream();
         info!("Subscribed to L2 block headers");
 
         // Convert stream to block stream
-        let block_stream = stream.map(|raw_block| Block {
+        let block_stream = stream.map(|raw_block| L2Block {
             number: raw_block.number,
             hash: raw_block.hash,
-            slot: raw_block.number, // TODO: Get slot instead
             timestamp: raw_block.timestamp,
+            gas_used: raw_block.gas_used,
+            beneficiary: raw_block.beneficiary,
         });
 
         Ok(Box::pin(block_stream))

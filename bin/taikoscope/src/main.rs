@@ -33,13 +33,13 @@ async fn main() -> eyre::Result<()> {
         tokio::select! {
             Some(block) = l1_block_stream.next() => {
                 info!("Processing L1 block: {:?}", block.number);
-                // Insert block into ClickHouse
-                clickhouse_client.insert_block(&block).await?;
+                clickhouse_client.insert_l1_block(&block).await?;
                 info!("Inserted L1 block: {:?}", block.number);
             }
             Some(block) = l2_block_stream.next() => {
                 info!("Processing L2 block: {:?}", block.number);
-                // TODO: Insert block into ClickHouse
+                clickhouse_client.insert_l2_block(&block).await?;
+                info!("Inserted L2 block: {:?}", block.number);
             }
             Some(batch) = batch_stream.next() => {
                 info!("Processing batch: {:?}", batch.last_block_number());
