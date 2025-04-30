@@ -7,6 +7,8 @@ exclude.workspace = true
 repository.workspace = true
 
 [dependencies]
+chainio = { path = "../chainio" }
+
 alloy.workspace = true
 clickhouse.workspace = true
 derive_more.workspace = true

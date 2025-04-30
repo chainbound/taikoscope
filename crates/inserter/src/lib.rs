@@ -1,9 +1,8 @@
 //! Taikoscope Inserter
 
-pub use extractor::Block;
-
 use clickhouse::{Client, Row};
 use derive_more::Debug;
+pub use extractor::Block;
 use eyre::{Result, WrapErr};
 use serde::{Deserialize, Serialize};
 
@@ -18,6 +17,43 @@ pub struct L1HeadEvent {
     pub slot: u64,
     /// Block timestamp
     pub block_ts: u64,
+}
+
+/// Batch row
+#[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq)]
+pub struct BatchRow {
+    /// L1 block number
+    pub l1_block_number: u64,
+    /// Batch ID
+    pub batch_id: u64,
+    /// Batch size
+    pub batch_size: u16,
+    /// Proposer address
+    pub proposer_addr: [u8; 20],
+    /// Blob count
+    pub blob_count: u8,
+    /// Blob total bytes
+    pub blob_total_bytes: u32,
+}
+
+impl TryFrom<&chainio::ITaikoInbox::BatchProposed> for BatchRow {
+    type Error = eyre::Error;
+
+    fn try_from(batch: &chainio::ITaikoInbox::BatchProposed) -> Result<Self, Self::Error> {
+        let batch_size = u16::try_from(batch.info.blocks.len())?;
+        let blob_count = u8::try_from(batch.info.blobHashes.len())?;
+
+        let proposer_addr = batch.meta.proposer.into_array();
+
+        Ok(Self {
+            l1_block_number: batch.info.proposedIn,
+            batch_id: batch.meta.batchId,
+            batch_size,
+            proposer_addr,
+            blob_count,
+            blob_total_bytes: batch.info.blobByteSize,
+        })
+    }
 }
 
 /// Clickhouse client
@@ -117,6 +153,20 @@ impl ClickhouseClient {
 
         let mut insert = client.insert("l1_head_events")?;
         insert.write(&event).await?;
+        insert.end().await?;
+
+        Ok(())
+    }
+
+    /// Insert batch into `ClickHouse`
+    pub async fn insert_batch(&self, batch: &chainio::ITaikoInbox::BatchProposed) -> Result<()> {
+        let client = self.base.clone().with_database(&self.db_name);
+
+        // Convert batch into BatchRow
+        let batch_row = BatchRow::try_from(batch)?;
+
+        let mut insert = client.insert("batches")?;
+        insert.write(&batch_row).await?;
         insert.end().await?;
 
         Ok(())
