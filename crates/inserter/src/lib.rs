@@ -189,7 +189,7 @@ impl ClickhouseClient {
                 blob_count UInt8,
                 blob_total_bytes UInt32,
                 inserted_at DateTime64(3) DEFAULT now64()
-            ) ENGINE = MergeTree(),
+            ) ENGINE = MergeTree()
             ORDER BY (l1_block_number, batch_id)",
                 self.db_name
             ))
