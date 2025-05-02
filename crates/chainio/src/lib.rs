@@ -2,68 +2,15 @@
 use ITaikoInbox::{BatchProposed, ITaikoInboxInstance};
 
 use alloy::{
-    network::EthereumWallet,
     primitives::Address,
-    providers::{
-        RootProvider,
-        fillers::{
-            BlobGasFiller, ChainIdFiller, FillProvider, GasFiller, JoinFill, NonceFiller,
-            SimpleNonceManager, WalletFiller,
-        },
-        utils::JoinedRecommendedFillers,
-    },
-    rpc::{client::RpcClient, types::Filter},
-    signers::local::PrivateKeySigner,
+    providers::{RootProvider, fillers::FillProvider, utils::JoinedRecommendedFillers},
+    rpc::types::Filter,
     sol,
 };
 use derive_more::derive::Deref;
 
-/// Alias to the joined recommended fillers + wallet filler for Ethereum wallets.
-pub type JoinedWalletFillers = JoinFill<JoinedRecommendedFillers, WalletFiller<EthereumWallet>>;
-
-/// Alias to the default wallet provider with all recommended fillers (read + write).
-pub type DefaultWalletProvider = FillProvider<JoinedWalletFillers, RootProvider>;
-
 /// Alias to the default provider with all recommended fillers (read-only).
 pub type DefaultProvider = FillProvider<JoinedRecommendedFillers, RootProvider>;
-
-/// Alias to the default fillers with a simple nonce manager instead of the default cached one.
-pub type DefaultFillersWithSimpleNonceManager = JoinFill<
-    GasFiller,
-    JoinFill<BlobGasFiller, JoinFill<NonceFiller<SimpleNonceManager>, ChainIdFiller>>,
->;
-
-/// Alias to the wallet provider with recommended fillers (read + write) and a simple nonce manager.
-pub type WalletProviderWithSimpleNonceManager = FillProvider<
-    JoinFill<DefaultFillersWithSimpleNonceManager, WalletFiller<EthereumWallet>>,
-    RootProvider,
->;
-
-/// Create a new wallet provider with a simple nonce manager instead of the default cached one.
-/// We have to build the entire provider fill stack manually :)
-///
-/// This is necessary after alloy 0.14.0 because of: <https://github.com/alloy-rs/alloy/pull/2289>
-pub fn new_wallet_provider_with_simple_nonce_management(
-    rpc_client: RpcClient,
-    wallet: PrivateKeySigner,
-) -> WalletProviderWithSimpleNonceManager {
-    FillProvider::new(
-        RootProvider::new(rpc_client),
-        JoinFill::new(
-            JoinFill::new(
-                GasFiller,
-                JoinFill::new(
-                    BlobGasFiller,
-                    JoinFill::new(
-                        NonceFiller::new(SimpleNonceManager::default()),
-                        ChainIdFiller::default(),
-                    ),
-                ),
-            ),
-            WalletFiller::new(wallet.into()),
-        ),
-    )
-}
 
 /// A wrapper over a `ITaikoInbox` contract that exposes various utility methods.
 #[derive(Debug, Clone, Deref)]
