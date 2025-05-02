@@ -85,7 +85,6 @@ impl Extractor {
         // Subscribe to new blocks
         let sub = self.l1_provider.subscribe_blocks().await?;
         let stream = sub.into_stream();
-        info!("Subscribed to L1 block headers");
 
         // Convert stream to header stream
         let header_stream = stream.map(|header| L1Header {
@@ -95,6 +94,7 @@ impl Extractor {
             timestamp: header.timestamp,
         });
 
+        info!("Subscribed to L1 block headers");
         Ok(Box::pin(header_stream))
     }
 
@@ -105,7 +105,6 @@ impl Extractor {
         // Subscribe to new blocks
         let sub = self.l2_provider.subscribe_blocks().await?;
         let stream = sub.into_stream();
-        info!("Subscribed to L2 block headers");
 
         // Convert stream to header stream
         let header_stream = stream.map(|header| L2Header {
@@ -116,6 +115,7 @@ impl Extractor {
             beneficiary: header.beneficiary,
         });
 
+        info!("Subscribed to L2 block headers");
         Ok(Box::pin(header_stream))
     }
 
@@ -139,6 +139,8 @@ impl Extractor {
                     None
                 }
             });
+
+        info!("Subscribed to TaikoInbox BatchProposed events");
 
         Ok(Box::pin(batch_proposed_stream))
     }
