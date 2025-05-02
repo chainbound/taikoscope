@@ -10,7 +10,7 @@ exclude = [".github/"]
 repository = "https://github.com/chainbound/taikoscope"
 
 [workspace.dependencies]
-alloy = { version = "0.15.2", features = ["provider-ws"] }
+alloy = { version = "0.15.7", features = ["provider-ws"] }
 alloy-primitives = "1.0.0"
 alloy-sol-types = "1.0.0"
 alloy-sol-macro = "1.0.0"
