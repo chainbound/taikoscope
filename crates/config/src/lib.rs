@@ -21,6 +21,9 @@ pub struct Opts {
     /// Taiko preconf whitelist address on Masaya
     #[clap(long, default_value = "0x3ea351Db28A9d4833Bf6c519F52766788DE14eC1")]
     pub preconf_whitelist_address: Address,
+    /// Taiko wrapper address on Masaya
+    #[clap(long, default_value = "0x962C95233f04Ef08E7FaA84DBd1c5171f06f5616")]
+    pub taiko_wrapper_address: Address,
 }
 
 #[cfg(test)]

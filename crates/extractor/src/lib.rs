@@ -1,5 +1,12 @@
 //! Taikoscope Extractor
-use chainio::{self, ITaikoInbox::BatchProposed, taiko::preconf_whitelist::TaikoPreconfWhitelist};
+use chainio::{
+    self,
+    ITaikoInbox::BatchProposed,
+    taiko::{
+        preconf_whitelist::TaikoPreconfWhitelist,
+        wrapper::{ITaikoWrapper::ForcedInclusionProcessed, TaikoWrapper},
+    },
+};
 
 use std::pin::Pin;
 
@@ -23,6 +30,7 @@ pub struct Extractor {
     l2_provider: Box<dyn Provider + Send + Sync>,
     preconf_whitelist: TaikoPreconfWhitelist,
     taiko_inbox: TaikoInbox,
+    taiko_wrapper: TaikoWrapper,
 }
 
 /// L1 Header
@@ -60,6 +68,7 @@ impl Extractor {
         l2_rpc_url: Url,
         inbox_address: Address,
         preconf_whitelist_address: Address,
+        taiko_wrapper_address: Address,
     ) -> Result<Self> {
         let l1_el = WsConnect::new(l1_rpc_url.clone());
         let l2_el = WsConnect::new(l2_rpc_url);
@@ -68,13 +77,15 @@ impl Extractor {
 
         let taiko_inbox = TaikoInbox::new_readonly(inbox_address, l1_provider.clone());
         let preconf_whitelist =
-            TaikoPreconfWhitelist::from_address(l1_rpc_url, preconf_whitelist_address);
+            TaikoPreconfWhitelist::from_address(l1_rpc_url.clone(), preconf_whitelist_address);
+        let taiko_wrapper = TaikoWrapper::from_address(l1_rpc_url, taiko_wrapper_address);
 
         Ok(Self {
             l1_provider: Box::new(l1_provider),
             l2_provider: Box::new(l2_provider),
             preconf_whitelist,
             taiko_inbox,
+            taiko_wrapper,
         })
     }
 
@@ -143,6 +154,28 @@ impl Extractor {
         info!("Subscribed to TaikoInbox BatchProposed events");
 
         Ok(Box::pin(batch_proposed_stream))
+    }
+
+    /// Subscribes to the `TaikoWrapper` `ForcedInclusionProcessed` event and returns a stream of
+    /// decoded events.
+    pub async fn get_forced_inclusion_processed_stream(
+        &self,
+    ) -> Result<Pin<Box<dyn Stream<Item = ForcedInclusionProcessed> + Send>>> {
+        let filter = self.taiko_wrapper.forced_inclusion_processed_filter();
+        let logs = self.l1_provider.subscribe_logs(&filter).await?.into_stream();
+
+        // Convert stream to forced inclusion processed stream
+        let forced_inclusion_processed_stream =
+            logs.filter_map(|log: Log| match log.log_decode::<ForcedInclusionProcessed>() {
+                Ok(decoded) => Some(decoded.data().clone()),
+                Err(err) => {
+                    tracing::warn!("Failed to decode log: {}", err);
+                    None
+                }
+            });
+
+        info!("Subscribed to TaikoWrapper ForcedInclusionProcessed events");
+        Ok(Box::pin(forced_inclusion_processed_stream))
     }
 
     /// Get the current epoch operator
