@@ -1,4 +1,6 @@
 //! `ChainIO` is a library for interacting with on-chain contracts.
+pub mod taiko;
+
 use ITaikoInbox::{BatchProposed, ITaikoInboxInstance};
 
 use alloy::{

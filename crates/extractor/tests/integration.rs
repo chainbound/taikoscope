@@ -2,18 +2,16 @@
 
 use std::{
     process::{Child, Command},
-    str::FromStr,
     thread::sleep,
     time::Duration,
 };
 
-use alloy::primitives::Address;
+use alloy::primitives::address;
 use extractor::{Extractor, L1Header};
 
 use eyre::Result;
 use tokio_stream::StreamExt;
-
-const WS_URL: &str = "ws://127.0.0.1:8545";
+use url::Url;
 
 /// Spawn Anvil as a child process (auto-mining every second),
 /// and kill it when dropped.
@@ -39,11 +37,14 @@ async fn test_get_block_stream() -> Result<()> {
     // Give it some time to start
     sleep(Duration::from_millis(500));
 
+    let ws: Url = Url::parse("ws://127.0.0.1:8545").unwrap();
+
     // Create Extractor
     let ext = Extractor::new(
-        WS_URL,
-        WS_URL,
-        Address::from_str("0x71C7656EC7ab88b098defB751B7401B5f6d8976F").unwrap(),
+        ws.clone(),
+        ws,
+        address!("0xa7B208DE7F35E924D59C2b5f7dE3bb346E8A138C"),
+        address!("0x3ea351Db28A9d4833Bf6c519F52766788DE14eC1"),
     )
     .await?;
     let mut stream = ext.get_l1_header_stream().await?;

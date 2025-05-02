@@ -6,7 +6,7 @@ use derive_more::Debug;
 pub use extractor::{L1Header, L2Header};
 use eyre::{Result, WrapErr};
 use serde::{Deserialize, Serialize};
-
+use url::Url;
 /// L1 head event
 #[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq)]
 pub struct L1HeadEvent {
@@ -108,7 +108,7 @@ pub struct ClickhouseClient {
 
 impl ClickhouseClient {
     /// Create a new clickhouse client
-    pub fn new(url: &str) -> Result<Self> {
+    pub fn new(url: Url) -> Result<Self> {
         let client = Client::default().with_url(url);
 
         Ok(Self { base: client, db_name: "taikoscope".into() })
@@ -256,6 +256,7 @@ mod tests {
     use alloy::primitives::FixedBytes;
     use clickhouse::test::{Mock, handlers};
     use extractor::L1Header;
+    use url::Url;
 
     use crate::{ClickhouseClient, L1HeadEvent};
 
@@ -268,7 +269,8 @@ mod tests {
         let recorder = mock.add(handlers::record::<L1HeadEvent>());
 
         // 3) Point client to mock server and do inserts
-        let client = ClickhouseClient::new(mock.url()).unwrap();
+        let url = Url::parse(mock.url()).unwrap();
+        let client = ClickhouseClient::new(url).unwrap();
         let fake =
             L1Header { number: 1, hash: FixedBytes::from_slice(&[0u8; 32]), slot: 1, timestamp: 1 };
         client.insert_l1_header(&fake).await.unwrap();

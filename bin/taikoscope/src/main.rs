@@ -4,10 +4,8 @@ use extractor::Extractor;
 use inserter::ClickhouseClient;
 use tokio_stream::StreamExt;
 
-use alloy_primitives::Address;
 use clap::Parser;
 use config::Opts;
-use std::str::FromStr;
 use tracing::info;
 
 #[tokio::main]
@@ -17,12 +15,17 @@ async fn main() -> eyre::Result<()> {
     tracing_subscriber::fmt().with_max_level(tracing::Level::INFO).init();
 
     info!("Initializing ClickHouse client...");
-    let clickhouse_client = ClickhouseClient::new(&opts.clickhouse_url)?;
+    let clickhouse_client = ClickhouseClient::new(opts.clickhouse_url)?;
     clickhouse_client.init_db().await?;
 
     info!("Initializing extractor...");
-    let inbox_address = Address::from_str(&opts.inbox_address).unwrap();
-    let extractor = Extractor::new(&opts.l1_rpc_url, &opts.l2_rpc_url, inbox_address).await?;
+    let extractor = Extractor::new(
+        opts.l1_rpc_url,
+        opts.l2_rpc_url,
+        opts.inbox_address,
+        opts.preconf_whitelist_address,
+    )
+    .await?;
 
     let mut l1_header_stream = extractor.get_l1_header_stream().await?;
     let mut l2_header_stream = extractor.get_l2_header_stream().await?;
@@ -35,6 +38,9 @@ async fn main() -> eyre::Result<()> {
                 info!("Processing L1 header: {:?}", header.number);
                 clickhouse_client.insert_l1_header(&header).await?;
                 info!("Inserted L1 header: {:?}", header.number);
+
+                // TODO: Get information about active gateways
+                // For each slot call PreconfWhitelist.getOperatorCandidatesForCurrentEpoch()
             }
             Some(header) = l2_header_stream.next() => {
                 info!("Processing L2 header: {:?}", header.number);

@@ -1,5 +1,5 @@
 //! Taikoscope Extractor
-use chainio::{self, ITaikoInbox::BatchProposed};
+use chainio::{self, ITaikoInbox::BatchProposed, taiko::preconf_whitelist::TaikoPreconfWhitelist};
 
 use std::pin::Pin;
 
@@ -13,7 +13,7 @@ use derive_more::Debug;
 use eyre::Result;
 use tokio_stream::{Stream, StreamExt};
 use tracing::info;
-
+use url::Url;
 /// Extractor client
 #[derive(Debug)]
 pub struct Extractor {
@@ -21,6 +21,7 @@ pub struct Extractor {
     l1_provider: Box<dyn Provider + Send + Sync>,
     #[debug(skip)]
     l2_provider: Box<dyn Provider + Send + Sync>,
+    preconf_whitelist: TaikoPreconfWhitelist,
     taiko_inbox: TaikoInbox,
 }
 
@@ -54,17 +55,25 @@ pub struct L2Header {
 
 impl Extractor {
     /// Create a new extractor
-    pub async fn new(l1_rpc_url: &str, l2_rpc_url: &str, inbox_address: Address) -> Result<Self> {
-        let l1_el = WsConnect::new(l1_rpc_url);
+    pub async fn new(
+        l1_rpc_url: Url,
+        l2_rpc_url: Url,
+        inbox_address: Address,
+        preconf_whitelist_address: Address,
+    ) -> Result<Self> {
+        let l1_el = WsConnect::new(l1_rpc_url.clone());
         let l2_el = WsConnect::new(l2_rpc_url);
         let l1_provider = ProviderBuilder::new().connect_ws(l1_el).await?;
         let l2_provider = ProviderBuilder::new().connect_ws(l2_el).await?;
 
         let taiko_inbox = TaikoInbox::new_readonly(inbox_address, l1_provider.clone());
+        let preconf_whitelist =
+            TaikoPreconfWhitelist::from_address(l1_rpc_url, preconf_whitelist_address);
 
         Ok(Self {
             l1_provider: Box::new(l1_provider),
             l2_provider: Box::new(l2_provider),
+            preconf_whitelist,
             taiko_inbox,
         })
     }
@@ -132,5 +141,11 @@ impl Extractor {
             });
 
         Ok(Box::pin(batch_proposed_stream))
+    }
+
+    /// Get the current epoch operator
+    pub async fn get_operator_for_current_epoch(&self) -> Result<Address> {
+        let operator = self.preconf_whitelist.get_operator_for_current_epoch().await?;
+        Ok(operator)
     }
 }
