@@ -14,7 +14,8 @@ pub struct Opts {
     #[clap(long, default_value = "wss://taiko.drpc.org")]
     pub l2_rpc_url: String,
     /// Taiko inbox address
-    #[clap(long)]
+    /// `TaikoL1` from <https://docs.taiko.xyz/network-reference/alethia-addresses>
+    #[clap(long, default_value = "0x06a9Ab27c7e2255df1815E6CC0168d7755Feb19a")]
     pub inbox_address: String,
 }
 
