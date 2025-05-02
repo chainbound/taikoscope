@@ -53,7 +53,8 @@ async fn main() -> eyre::Result<()> {
             }
             Some(batch) = batch_stream.next() => {
                 info!("Processing batch: {:?}", batch.last_block_number());
-                // TODO: Insert batch into ClickHouse
+                clickhouse_client.insert_batch(&batch).await?;
+                info!("Inserted batch: {:?}", batch.last_block_number());
             }
         }
     }
