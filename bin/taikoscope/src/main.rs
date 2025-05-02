@@ -31,8 +31,7 @@ async fn main() -> eyre::Result<()> {
     let mut l1_header_stream = extractor.get_l1_header_stream().await?;
     let mut l2_header_stream = extractor.get_l2_header_stream().await?;
     let mut batch_stream = extractor.get_batch_proposed_stream().await?;
-    let mut forced_inclusion_processed_stream =
-        extractor.get_forced_inclusion_processed_stream().await?;
+    let mut forced_inclusion_stream = extractor.get_forced_inclusion_stream().await?;
 
     info!("Processing events...");
     loop {
@@ -56,8 +55,8 @@ async fn main() -> eyre::Result<()> {
                 clickhouse_client.insert_batch(&batch).await?;
                 info!("Inserted batch: {:?}", batch.last_block_number());
             }
-            Some(forced_inclusion_processed) = forced_inclusion_processed_stream.next() => {
-                // clickhouse_client.insert_forced_inclusion_processed(&forced_inclusion_processed).await?;
+            Some(forced_inclusion_processed) = forced_inclusion_stream.next() => {
+                clickhouse_client.insert_forced_inclusion(&forced_inclusion_processed).await?;
                 info!("Inserted forced inclusion processed: {:?}", forced_inclusion_processed.forcedInclusion.blobHash);
             }
         }

@@ -158,7 +158,7 @@ impl Extractor {
 
     /// Subscribes to the `TaikoWrapper` `ForcedInclusionProcessed` event and returns a stream of
     /// decoded events.
-    pub async fn get_forced_inclusion_processed_stream(
+    pub async fn get_forced_inclusion_stream(
         &self,
     ) -> Result<Pin<Box<dyn Stream<Item = ForcedInclusionProcessed> + Send>>> {
         let filter = self.taiko_wrapper.forced_inclusion_processed_filter();

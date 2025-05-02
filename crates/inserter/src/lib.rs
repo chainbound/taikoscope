@@ -111,6 +111,28 @@ impl TryFrom<&ITaikoInbox::BatchProposed> for BatchRow {
     }
 }
 
+/// Forced inclusion processed row
+#[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ForcedInclusionProcessedRow {
+    /// Blob hash
+    pub blob_hash: [u8; 32],
+}
+
+impl TryFrom<&chainio::taiko::wrapper::ITaikoWrapper::ForcedInclusionProcessed>
+    for ForcedInclusionProcessedRow
+{
+    type Error = eyre::Error;
+
+    fn try_from(
+        event: &chainio::taiko::wrapper::ITaikoWrapper::ForcedInclusionProcessed,
+    ) -> Result<Self, Self::Error> {
+        let mut hash_bytes = [0u8; 32];
+        hash_bytes.copy_from_slice(event.forcedInclusion.blobHash.as_slice());
+
+        Ok(Self { blob_hash: hash_bytes })
+    }
+}
+
 /// Clickhouse client
 #[derive(Debug)]
 pub struct ClickhouseClient {
@@ -303,6 +325,22 @@ impl ClickhouseClient {
 
         let mut insert = client.insert("batches")?;
         insert.write(&batch_row).await?;
+        insert.end().await?;
+
+        Ok(())
+    }
+
+    /// Insert forced inclusion processed into `ClickHouse`
+    pub async fn insert_forced_inclusion(
+        &self,
+        event: &chainio::taiko::wrapper::ITaikoWrapper::ForcedInclusionProcessed,
+    ) -> Result<()> {
+        let client = self.base.clone().with_database(&self.db_name);
+
+        // Convert forced inclusion processed into ForcedInclusionRow
+        let row = ForcedInclusionProcessedRow::try_from(event)?;
+        let mut insert = client.insert("forced_inclusion_processed")?;
+        insert.write(&row).await?;
         insert.end().await?;
 
         Ok(())
