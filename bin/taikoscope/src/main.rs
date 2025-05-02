@@ -35,7 +35,6 @@ async fn main() -> eyre::Result<()> {
     loop {
         tokio::select! {
             Some(header) = l1_header_stream.next() => {
-                info!("Processing L1 header: {:?}", header.number);
                 clickhouse_client.insert_l1_header(&header).await?;
                 info!("Inserted L1 header: {:?}", header.number);
 
@@ -47,12 +46,10 @@ async fn main() -> eyre::Result<()> {
                 info!("Inserted preconf data for slot: {:?}", header.slot);
             }
             Some(header) = l2_header_stream.next() => {
-                info!("Processing L2 header: {:?}", header.number);
                 clickhouse_client.insert_l2_header(&header).await?;
                 info!("Inserted L2 header: {:?}", header.number);
             }
             Some(batch) = batch_stream.next() => {
-                info!("Processing batch: {:?}", batch.last_block_number());
                 clickhouse_client.insert_batch(&batch).await?;
                 info!("Inserted batch: {:?}", batch.last_block_number());
             }
