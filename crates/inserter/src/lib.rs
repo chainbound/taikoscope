@@ -1,5 +1,6 @@
 //! Taikoscope Inserter
 
+use alloy::primitives::Address;
 use chainio::ITaikoInbox;
 use clickhouse::{Client, Row};
 use derive_more::Debug;
@@ -7,6 +8,7 @@ pub use extractor::{L1Header, L2Header};
 use eyre::{Result, WrapErr};
 use serde::{Deserialize, Serialize};
 use url::Url;
+
 /// L1 head event
 #[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq)]
 pub struct L1HeadEvent {
@@ -18,6 +20,19 @@ pub struct L1HeadEvent {
     pub slot: u64,
     /// Block timestamp
     pub block_ts: u64,
+}
+
+/// Preconf data
+#[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq)]
+pub struct PreconfData {
+    /// Slot
+    pub slot: u64,
+    /// Candidates
+    pub candidates: Vec<[u8; 20]>,
+    /// Current operator
+    pub current_operator: [u8; 20],
+    /// Next operator
+    pub next_operator: [u8; 20],
 }
 
 /// L2 head event
@@ -158,6 +173,23 @@ impl ClickhouseClient {
             .await
             .wrap_err("Failed to create l1_head_events table")?;
 
+        // Create preconf_data table
+        self.base
+            .query(&format!(
+                "CREATE TABLE IF NOT EXISTS {}.preconf_data (
+            slot UInt64,
+            candidates Array(FixedString(20)),
+            current_operator FixedString(20),
+            next_operator FixedString(20),
+            inserted_at DateTime64(3) DEFAULT now64()
+        ) ENGINE = MergeTree()
+        ORDER BY (slot)",
+                self.db_name
+            ))
+            .execute()
+            .await
+            .wrap_err("Failed to create preconf_data table")?;
+
         // Create l2_head_events table
         self.base
             .query(&format!(
@@ -218,6 +250,32 @@ impl ClickhouseClient {
 
         let mut insert = client.insert("l1_head_events")?;
         insert.write(&event).await?;
+        insert.end().await?;
+
+        Ok(())
+    }
+
+    /// Insert operator candidates into `ClickHouse`
+    pub async fn insert_preconf_data(
+        &self,
+        slot: u64,
+        candidates: Vec<Address>,
+        current_operator: Address,
+        next_operator: Address,
+    ) -> Result<()> {
+        let client = self.base.clone().with_database(&self.db_name);
+
+        let candidate_array = candidates.into_iter().map(|c| c.into_array()).collect();
+
+        let data = PreconfData {
+            slot,
+            candidates: candidate_array,
+            current_operator: current_operator.into_array(),
+            next_operator: next_operator.into_array(),
+        };
+
+        let mut insert = client.insert("preconf_data")?;
+        insert.write(&data).await?;
         insert.end().await?;
 
         Ok(())

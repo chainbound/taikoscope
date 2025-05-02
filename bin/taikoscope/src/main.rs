@@ -39,8 +39,12 @@ async fn main() -> eyre::Result<()> {
                 clickhouse_client.insert_l1_header(&header).await?;
                 info!("Inserted L1 header: {:?}", header.number);
 
-                // TODO: Get information about active gateways
-                // For each slot call PreconfWhitelist.getOperatorCandidatesForCurrentEpoch()
+                let candidates = extractor.get_operator_candidates_for_current_epoch().await?;
+                let current_operator = extractor.get_operator_for_current_epoch().await?;
+                let next_operator = extractor.get_operator_for_next_epoch().await?;
+
+                clickhouse_client.insert_preconf_data(header.slot, candidates, current_operator, next_operator).await?;
+                info!("Inserted preconf data for slot: {:?}", header.slot);
             }
             Some(header) = l2_header_stream.next() => {
                 info!("Processing L2 header: {:?}", header.number);

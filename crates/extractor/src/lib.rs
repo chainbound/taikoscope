@@ -148,4 +148,16 @@ impl Extractor {
         let operator = self.preconf_whitelist.get_operator_for_current_epoch().await?;
         Ok(operator)
     }
+
+    /// Get the next epoch operator
+    pub async fn get_operator_for_next_epoch(&self) -> Result<Address> {
+        let operator = self.preconf_whitelist.get_operator_for_next_epoch().await?;
+        Ok(operator)
+    }
+
+    /// Get the operator candidates for the current epoch
+    pub async fn get_operator_candidates_for_current_epoch(&self) -> Result<Vec<Address>> {
+        let candidates = self.preconf_whitelist.get_operator_candidates_for_current_epoch().await?;
+        Ok(candidates)
+    }
 }
