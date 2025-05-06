@@ -1,7 +1,7 @@
 /target
 .env
 *.env
-!.env.example
+!dev.env
 
 # macOS
 .DS_Store
