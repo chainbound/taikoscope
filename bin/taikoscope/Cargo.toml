@@ -14,6 +14,7 @@ inserter = { path = "../../crates/inserter" }
 
 alloy-primitives.workspace = true
 clap.workspace = true
+dotenvy.workspace = true
 eyre.workspace = true
 tokio.workspace = true
 tokio-stream.workspace = true

@@ -6,10 +6,18 @@ use tokio_stream::StreamExt;
 
 use clap::Parser;
 use config::Opts;
+use dotenvy::dotenv;
 use tracing::info;
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
+    if let Ok(custom_env_file) = std::env::var("ENV_FILE") {
+        dotenvy::from_filename(custom_env_file)?;
+    } else {
+        // Try the default .env file, and ignore if it doesn't exist.
+        dotenv().ok();
+    }
+
     let opts = Opts::parse();
 
     tracing_subscriber::fmt().with_max_level(tracing::Level::INFO).init();
