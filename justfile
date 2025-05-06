@@ -7,7 +7,7 @@ default:
 
 # start the Taikoscope binary for local development
 dev:
-    cargo run
+    cargo run -- --reset-db
 
 # run all recipes required to pass CI workflows
 ci:
