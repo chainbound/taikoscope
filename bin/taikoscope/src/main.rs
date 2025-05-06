@@ -23,7 +23,11 @@ async fn main() -> eyre::Result<()> {
     tracing_subscriber::fmt().with_max_level(tracing::Level::INFO).init();
 
     info!("Initializing ClickHouse client...");
-    let clickhouse_client = ClickhouseClient::new(opts.clickhouse_url)?;
+    let clickhouse_client = ClickhouseClient::new(
+        opts.clickhouse_url,
+        opts.clickhouse_username,
+        opts.clickhouse_password,
+    )?;
     clickhouse_client.init_db(opts.reset_db).await?;
 
     info!("Initializing extractor...");

@@ -7,8 +7,14 @@ use url::Url;
 #[derive(Debug, Clone, Parser)]
 pub struct Opts {
     /// Clickhouse URL
-    #[clap(long, default_value = "http://localhost:8123")]
+    #[clap(long, env = "CLICKHOUSE_URL", default_value = "http://localhost:8123")]
     pub clickhouse_url: Url,
+    /// Clickhouse username
+    #[clap(long, env = "CLICKHOUSE_USERNAME", default_value = "")]
+    pub clickhouse_username: String,
+    /// Clickhouse password
+    #[clap(long, env = "CLICKHOUSE_PASSWORD", default_value = "")]
+    pub clickhouse_password: String,
     /// L1 RPC URL
     #[clap(long, default_value = "ws://remotesmol:48546")]
     pub l1_rpc_url: Url,

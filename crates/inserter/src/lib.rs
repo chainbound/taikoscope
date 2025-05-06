@@ -158,8 +158,8 @@ pub struct ClickhouseClient {
 
 impl ClickhouseClient {
     /// Create a new clickhouse client
-    pub fn new(url: Url) -> Result<Self> {
-        let client = Client::default().with_url(url);
+    pub fn new(url: Url, username: String, password: String) -> Result<Self> {
+        let client = Client::default().with_url(url).with_user(username).with_password(password);
 
         Ok(Self { base: client, db_name: "taikoscope".into() })
     }
@@ -421,7 +421,8 @@ mod tests {
 
         // 3) Point client to mock server and do inserts
         let url = Url::parse(mock.url()).unwrap();
-        let client = ClickhouseClient::new(url).unwrap();
+        let client =
+            ClickhouseClient::new(url, "test_user".to_string(), "test_pass".to_string()).unwrap();
         let fake =
             L1Header { number: 1, hash: FixedBytes::from_slice(&[0u8; 32]), slot: 1, timestamp: 1 };
         client.insert_l1_header(&fake).await.unwrap();
