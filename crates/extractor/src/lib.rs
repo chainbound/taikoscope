@@ -53,6 +53,8 @@ pub struct L2Header {
     pub number: u64,
     /// Block hash
     pub hash: BlockHash,
+    /// Block parent hash
+    pub parent_hash: BlockHash,
     /// Block timestamp
     pub timestamp: u64,
     /// Gas used
@@ -121,6 +123,7 @@ impl Extractor {
         let header_stream = stream.map(|header| L2Header {
             number: header.number,
             hash: header.hash,
+            parent_hash: header.parent_hash,
             timestamp: header.timestamp,
             gas_used: header.gas_used,
             beneficiary: header.beneficiary,
@@ -219,7 +222,7 @@ impl ReorgDetector {
         number: BlockNumber,
         hash: BlockHash,
         parent: BlockHash,
-    ) -> Option<(BlockHash, BlockHash, BlockHash, u8)> {
+    ) -> Option<(BlockHash, BlockHash, u8)> {
         // First block ever
         if self.head_number == 0 {
             self.head_number = number;
@@ -254,6 +257,6 @@ impl ReorgDetector {
         self.cache.push_back((number, hash));
 
         // Return reorg info
-        Some((old_hash, hash, parent, depth))
+        Some((hash, old_hash, depth))
     }
 }

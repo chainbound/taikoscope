@@ -51,8 +51,8 @@ async fn main() -> eyre::Result<()> {
             }
             Some(header) = l2_header_stream.next() => {
                 // Detect reorgs
-                if let Some((old_hash, hash, parent, depth)) = reorg_detector.on_new_block(header.number, header.hash, header.parent_hash) {
-                    // TODO: clickhouse_client.insert_l2_reorg(old_hash, hash, parent, depth).await?;
+                if let Some((hash, old_hash, depth)) = reorg_detector.on_new_block(header.number, header.hash, header.parent_hash) {
+                    clickhouse_client.insert_l2_reorg(header.number, hash, old_hash, depth).await?;
                     info!("Inserted L2 reorg: {:?}", header.number);
                 } else {
                     clickhouse_client.insert_l2_header(&header).await?;
