@@ -194,13 +194,13 @@ impl ClickhouseClient {
         self.base
             .query(&format!(
                 "CREATE TABLE IF NOT EXISTS {}.l1_head_events (
-                l1_block_number UInt64,
-                block_hash FixedString(32),
-                slot UInt64,
-                block_ts UInt64,
-                inserted_at DateTime64(3) DEFAULT now64()
-            ) ENGINE = MergeTree()
-            ORDER BY (l1_block_number)",
+                    l1_block_number UInt64,
+                    block_hash FixedString(32),
+                    slot UInt64,
+                    block_ts UInt64,
+                    inserted_at DateTime64(3) DEFAULT now64()
+                ) ENGINE = MergeTree()
+                ORDER BY (l1_block_number)",
                 self.db_name
             ))
             .execute()
@@ -211,13 +211,13 @@ impl ClickhouseClient {
         self.base
             .query(&format!(
                 "CREATE TABLE IF NOT EXISTS {}.preconf_data (
-            slot UInt64,
-            candidates Array(FixedString(20)),
-            current_operator FixedString(20),
-            next_operator FixedString(20),
-            inserted_at DateTime64(3) DEFAULT now64()
-        ) ENGINE = MergeTree()
-        ORDER BY (slot)",
+                    slot UInt64,
+                    candidates Array(FixedString(20)),
+                    current_operator FixedString(20),
+                    next_operator FixedString(20),
+                    inserted_at DateTime64(3) DEFAULT now64()
+                ) ENGINE = MergeTree()
+                ORDER BY (slot)",
                 self.db_name
             ))
             .execute()
@@ -228,16 +228,16 @@ impl ClickhouseClient {
         self.base
             .query(&format!(
                 "CREATE TABLE IF NOT EXISTS {}.l2_head_events (
-                l2_block_number UInt64,
-                block_hash FixedString(32),
-                block_ts UInt64,
-                sum_gas_used UInt128,
-                sum_tx UInt32,
-                sum_priority_fee UInt128,
-                sequencer FixedString(20),
-                inserted_at DateTime64(3) DEFAULT now64()
-            ) ENGINE = MergeTree()
-            ORDER BY (l2_block_number)",
+                    l2_block_number UInt64,
+                    block_hash FixedString(32),
+                    block_ts UInt64,
+                    sum_gas_used UInt128,
+                    sum_tx UInt32,
+                    sum_priority_fee UInt128,
+                    sequencer FixedString(20),
+                    inserted_at DateTime64(3) DEFAULT now64()
+                ) ENGINE = MergeTree()
+                ORDER BY (l2_block_number)",
                 self.db_name
             ))
             .execute()
@@ -248,15 +248,15 @@ impl ClickhouseClient {
         self.base
             .query(&format!(
                 "CREATE TABLE IF NOT EXISTS {}.batches (
-                l1_block_number UInt64,
-                batch_id UInt64,
-                batch_size UInt16,
-                proposer_addr FixedString(20),
-                blob_count UInt8,
-                blob_total_bytes UInt32,
-                inserted_at DateTime64(3) DEFAULT now64()
-            ) ENGINE = MergeTree()
-            ORDER BY (l1_block_number, batch_id)",
+                    l1_block_number UInt64,
+                    batch_id UInt64,
+                    batch_size UInt16,
+                    proposer_addr FixedString(20),
+                    blob_count UInt8,
+                    blob_total_bytes UInt32,
+                    inserted_at DateTime64(3) DEFAULT now64()
+                ) ENGINE = MergeTree()
+                ORDER BY (l1_block_number, batch_id)",
                 self.db_name
             ))
             .execute()
