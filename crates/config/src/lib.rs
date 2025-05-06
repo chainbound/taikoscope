@@ -9,6 +9,9 @@ pub struct Opts {
     /// Clickhouse URL
     #[clap(long, env = "CLICKHOUSE_URL", default_value = "http://localhost:8123")]
     pub clickhouse_url: Url,
+    /// Clickhouse database
+    #[clap(long, env = "CLICKHOUSE_DB", default_value = "taikoscope")]
+    pub clickhouse_db: String,
     /// Clickhouse username
     #[clap(long, env = "CLICKHOUSE_USERNAME", default_value = "")]
     pub clickhouse_username: String,

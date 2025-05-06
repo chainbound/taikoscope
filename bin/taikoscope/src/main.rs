@@ -25,6 +25,7 @@ async fn main() -> eyre::Result<()> {
     info!("Initializing ClickHouse client...");
     let clickhouse_client = ClickhouseClient::new(
         opts.clickhouse_url,
+        opts.clickhouse_db,
         opts.clickhouse_username,
         opts.clickhouse_password,
     )?;
