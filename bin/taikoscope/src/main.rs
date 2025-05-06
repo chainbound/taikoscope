@@ -16,7 +16,7 @@ async fn main() -> eyre::Result<()> {
 
     info!("Initializing ClickHouse client...");
     let clickhouse_client = ClickhouseClient::new(opts.clickhouse_url)?;
-    clickhouse_client.init_db().await?;
+    clickhouse_client.init_db(opts.reset_db).await?;
 
     info!("Initializing extractor...");
     let extractor = Extractor::new(

@@ -164,8 +164,8 @@ impl ClickhouseClient {
         Ok(Self { base: client, db_name: "taikoscope".into() })
     }
 
-    /// Create database
-    pub async fn init_db(&self) -> Result<()> {
+    /// Create database and optionally drop existing tables if reset is true
+    pub async fn init_db(&self, reset: bool) -> Result<()> {
         // Create database
         self.base
             .query(&format!("CREATE DATABASE IF NOT EXISTS {}", self.db_name))
@@ -175,11 +175,13 @@ impl ClickhouseClient {
         const TABLES: &[&str] =
             &["l1_head_events", "preconf_data", "l2_head_events", "batches", "l2_reorgs"];
 
-        for table in TABLES {
-            self.base
-                .query(&format!("DROP TABLE IF EXISTS {}.{}", self.db_name, table))
-                .execute()
-                .await?;
+        if reset {
+            for table in TABLES {
+                self.base
+                    .query(&format!("DROP TABLE IF EXISTS {}.{}", self.db_name, table))
+                    .execute()
+                    .await?;
+            }
         }
 
         // Init schema

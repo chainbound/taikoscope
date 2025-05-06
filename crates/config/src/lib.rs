@@ -24,6 +24,9 @@ pub struct Opts {
     /// Taiko wrapper address on Masaya
     #[clap(long, default_value = "0x962C95233f04Ef08E7FaA84DBd1c5171f06f5616")]
     pub taiko_wrapper_address: Address,
+    /// If set, drop & re-create all tables (local/dev only)
+    #[clap(long)]
+    pub reset_db: bool,
 }
 
 #[cfg(test)]
