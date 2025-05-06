@@ -172,9 +172,19 @@ impl ClickhouseClient {
             .execute()
             .await?;
 
-        // Drop the existing table if it exists
+        // Drop the existing tables if it exists
         self.base
             .query(&format!("DROP TABLE IF EXISTS {}.l1_head_events", self.db_name))
+            .execute()
+            .await?;
+
+        self.base
+            .query(&format!("DROP TABLE IF EXISTS {}.preconf_data", self.db_name))
+            .execute()
+            .await?;
+
+        self.base
+            .query(&format!("DROP TABLE IF EXISTS {}.l2_head_events", self.db_name))
             .execute()
             .await?;
 
