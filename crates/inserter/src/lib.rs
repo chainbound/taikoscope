@@ -1,6 +1,6 @@
 //! Taikoscope Inserter
 
-use alloy::primitives::Address;
+use alloy::primitives::{Address, BlockHash, BlockNumber};
 use chainio::ITaikoInbox;
 use clickhouse::{Client, Row};
 use derive_more::Debug;
@@ -91,6 +91,19 @@ pub struct BatchRow {
     pub blob_total_bytes: u32,
 }
 
+/// L2 reorg row
+#[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq)]
+pub struct L2ReorgRow {
+    /// Block number
+    pub l2_block_number: u64,
+    /// Old hash
+    pub old_hash: [u8; 32],
+    /// New hash
+    pub hash: [u8; 32],
+    /// Depth
+    pub depth: u8,
+}
+
 impl TryFrom<&ITaikoInbox::BatchProposed> for BatchRow {
     type Error = eyre::Error;
 
@@ -161,6 +174,11 @@ impl ClickhouseClient {
 
         self.base
             .query(&format!("DROP TABLE IF EXISTS {}.batches", self.db_name))
+            .execute()
+            .await?;
+
+        self.base
+            .query(&format!("DROP TABLE IF EXISTS {}.l2_reorgs", self.db_name))
             .execute()
             .await?;
 
@@ -251,6 +269,23 @@ impl ClickhouseClient {
             .await
             .wrap_err("Failed to create batches table")?;
 
+        // Create reorgs table
+        self.base
+            .query(&format!(
+                "CREATE TABLE IF NOT EXISTS {}.l2_reorgs (
+                    block_number UInt64,
+                    old_hash FixedString(32),
+                    new_hash FixedString(32),
+                    depth UInt8,
+                    detected_at DateTime64(3) DEFAULT now64()
+                ) ENGINE = MergeTree()
+                ORDER BY detected_at;",
+                self.db_name
+            ))
+            .execute()
+            .await
+            .wrap_err("Failed to create l2_reorgs table")?;
+
         Ok(())
     }
 
@@ -340,6 +375,30 @@ impl ClickhouseClient {
         // Convert forced inclusion processed into ForcedInclusionRow
         let row = ForcedInclusionProcessedRow::try_from(event)?;
         let mut insert = client.insert("forced_inclusion_processed")?;
+        insert.write(&row).await?;
+        insert.end().await?;
+
+        Ok(())
+    }
+
+    /// Insert L2 reorg into `ClickHouse`
+    pub async fn insert_l2_reorg(
+        &self,
+        block_number: BlockNumber,
+        old_hash: BlockHash,
+        hash: BlockHash,
+        depth: u8,
+    ) -> Result<()> {
+        let client = self.base.clone().with_database(&self.db_name);
+
+        let row = L2ReorgRow {
+            l2_block_number: block_number,
+            old_hash: old_hash.into(),
+            hash: hash.into(),
+            depth,
+        };
+
+        let mut insert = client.insert("l2_reorgs")?;
         insert.write(&row).await?;
         insert.end().await?;
 
