@@ -7,31 +7,31 @@ use url::Url;
 #[derive(Debug, Clone, Parser)]
 pub struct Opts {
     /// Clickhouse URL
-    #[clap(long, env = "CLICKHOUSE_URL", default_value = "http://localhost:8123")]
+    #[clap(long, env = "CLICKHOUSE_URL")]
     pub clickhouse_url: Url,
     /// Clickhouse database
-    #[clap(long, env = "CLICKHOUSE_DB", default_value = "taikoscope")]
+    #[clap(long, env = "CLICKHOUSE_DB")]
     pub clickhouse_db: String,
     /// Clickhouse username
-    #[clap(long, env = "CLICKHOUSE_USERNAME", default_value = "")]
+    #[clap(long, env = "CLICKHOUSE_USERNAME")]
     pub clickhouse_username: String,
     /// Clickhouse password
-    #[clap(long, env = "CLICKHOUSE_PASSWORD", default_value = "")]
+    #[clap(long, env = "CLICKHOUSE_PASSWORD")]
     pub clickhouse_password: String,
     /// L1 RPC URL
-    #[clap(long, default_value = "ws://remotesmol:48546")]
+    #[clap(long, env = "L1_RPC_URL")]
     pub l1_rpc_url: Url,
     /// L2 RPC URL
-    #[clap(long, default_value = "ws://mk1-masaya-replica-0:8546")]
+    #[clap(long, env = "L2_RPC_URL")]
     pub l2_rpc_url: Url,
     /// Taiko inbox address on Masaya
-    #[clap(long, default_value = "0xa7B208DE7F35E924D59C2b5f7dE3bb346E8A138C")]
+    #[clap(long, env = "TAIKO_INBOX_ADDRESS")]
     pub inbox_address: Address,
     /// Taiko preconf whitelist address on Masaya
-    #[clap(long, default_value = "0x3ea351Db28A9d4833Bf6c519F52766788DE14eC1")]
+    #[clap(long, env = "TAIKO_PRECONF_WHITELIST_ADDRESS")]
     pub preconf_whitelist_address: Address,
     /// Taiko wrapper address on Masaya
-    #[clap(long, default_value = "0x962C95233f04Ef08E7FaA84DBd1c5171f06f5616")]
+    #[clap(long, env = "TAIKO_WRAPPER_ADDRESS")]
     pub taiko_wrapper_address: Address,
     /// If set, drop & re-create all tables (local/dev only)
     #[clap(long)]
