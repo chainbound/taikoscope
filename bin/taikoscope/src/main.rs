@@ -1,6 +1,6 @@
 //! Entrypoint.
 
-use extractor::Extractor;
+use extractor::{Extractor, ReorgDetector};
 use inserter::ClickhouseClient;
 use tokio_stream::StreamExt;
 
@@ -33,6 +33,8 @@ async fn main() -> eyre::Result<()> {
     let mut batch_stream = extractor.get_batch_proposed_stream().await?;
     let mut forced_inclusion_stream = extractor.get_forced_inclusion_stream().await?;
 
+    let mut reorg_detector = ReorgDetector::new();
+
     info!("Processing events...");
     loop {
         tokio::select! {
@@ -48,8 +50,14 @@ async fn main() -> eyre::Result<()> {
                 info!("Inserted preconf data for slot: {:?}", header.slot);
             }
             Some(header) = l2_header_stream.next() => {
-                clickhouse_client.insert_l2_header(&header).await?;
-                info!("Inserted L2 header: {:?}", header.number);
+                // Detect reorgs
+                if let Some((old_hash, hash, parent, depth)) = reorg_detector.on_new_block(header.number, header.hash, header.parent_hash) {
+                    // TODO: clickhouse_client.insert_l2_reorg(old_hash, hash, parent, depth).await?;
+                    info!("Inserted L2 reorg: {:?}", header.number);
+                } else {
+                    clickhouse_client.insert_l2_header(&header).await?;
+                    info!("Inserted L2 header: {:?}", header.number);
+                }
             }
             Some(batch) = batch_stream.next() => {
                 clickhouse_client.insert_batch(&batch).await?;

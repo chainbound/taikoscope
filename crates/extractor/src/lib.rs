@@ -8,10 +8,10 @@ use chainio::{
     },
 };
 
-use std::pin::Pin;
+use std::{collections::VecDeque, pin::Pin};
 
 use alloy::{
-    primitives::{Address, BlockHash},
+    primitives::{Address, BlockHash, BlockNumber},
     providers::{Provider, ProviderBuilder, WsConnect},
     rpc::types::eth::Log,
 };
@@ -194,5 +194,66 @@ impl Extractor {
     pub async fn get_operator_candidates_for_current_epoch(&self) -> Result<Vec<Address>> {
         let candidates = self.preconf_whitelist.get_operator_candidates_for_current_epoch().await?;
         Ok(candidates)
+    }
+}
+
+/// Detects reorgs
+/// Stores the last 256 blocks in a cache
+#[derive(Debug)]
+pub struct ReorgDetector {
+    head_number: BlockNumber,
+    head_hash: BlockHash,
+    cache: VecDeque<(BlockNumber, BlockHash)>,
+}
+
+impl ReorgDetector {
+    /// Create a new reorg detector
+    #[allow(clippy::new_without_default)]
+    pub fn new() -> Self {
+        Self { head_number: 0, head_hash: BlockHash::ZERO, cache: VecDeque::with_capacity(256) }
+    }
+
+    /// Returns info about the reorg if there is a reorg
+    pub fn on_new_block(
+        &mut self,
+        number: BlockNumber,
+        hash: BlockHash,
+        parent: BlockHash,
+    ) -> Option<(BlockHash, BlockHash, BlockHash, u8)> {
+        // First block ever
+        if self.head_number == 0 {
+            self.head_number = number;
+            self.head_hash = hash;
+            return None;
+        }
+
+        // Normal case, extend current head
+        if number == self.head_number + 1 && parent == self.head_hash {
+            self.head_number = number;
+            self.head_hash = hash;
+            self.cache.push_back((number, hash));
+            if self.cache.len() > 256 {
+                self.cache.pop_front();
+            }
+            return None;
+        }
+
+        // Reorg detected
+        // Either parent mismatch or same/older slot
+        let depth = (self.head_number - number + 1).max(1) as u8;
+        // Look up old hash in cache
+        let old_hash =
+            self.cache.iter().find_map(|(n, h)| (*n == number).then_some(*h)).unwrap_or_default();
+
+        // Prune everything at or beyond the reorged block
+        self.cache.retain(|entry| entry.0 < number);
+
+        // Switch head to the new fork
+        self.head_number = number;
+        self.head_hash = hash;
+        self.cache.push_back((number, hash));
+
+        // Return reorg info
+        Some((old_hash, hash, parent, depth))
     }
 }
