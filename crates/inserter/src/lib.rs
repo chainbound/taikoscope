@@ -172,31 +172,15 @@ impl ClickhouseClient {
             .execute()
             .await?;
 
-        // Drop the existing tables if it exists
-        self.base
-            .query(&format!("DROP TABLE IF EXISTS {}.l1_head_events", self.db_name))
-            .execute()
-            .await?;
+        const TABLES: &[&str] =
+            &["l1_head_events", "preconf_data", "l2_head_events", "batches", "l2_reorgs"];
 
-        self.base
-            .query(&format!("DROP TABLE IF EXISTS {}.preconf_data", self.db_name))
-            .execute()
-            .await?;
-
-        self.base
-            .query(&format!("DROP TABLE IF EXISTS {}.l2_head_events", self.db_name))
-            .execute()
-            .await?;
-
-        self.base
-            .query(&format!("DROP TABLE IF EXISTS {}.batches", self.db_name))
-            .execute()
-            .await?;
-
-        self.base
-            .query(&format!("DROP TABLE IF EXISTS {}.l2_reorgs", self.db_name))
-            .execute()
-            .await?;
+        for table in TABLES {
+            self.base
+                .query(&format!("DROP TABLE IF EXISTS {}.{}", self.db_name, table))
+                .execute()
+                .await?;
+        }
 
         // Init schema
         self.init_schema().await?;
