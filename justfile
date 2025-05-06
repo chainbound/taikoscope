@@ -9,6 +9,10 @@ default:
 dev:
     cargo run -- --reset-db
 
+# start the Taikoscope binary with Masaya testnet config
+masaya:
+    cargo run
+
 # run all recipes required to pass CI workflows
 ci:
     @just fmt lint test
