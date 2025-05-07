@@ -1,17 +1,15 @@
 [package]
-name = "taikoscope"
+name = "driver"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+exclude.workspace = true
 repository.workspace = true
-description = "Taikoscope binary"
-default-run = "taikoscope"
 
 [dependencies]
-config = { path = "../../crates/config" }
-driver = { path = "../../crates/driver" }
-extractor = { path = "../../crates/extractor" }
-inserter = { path = "../../crates/inserter" }
+config = { path = "../config" }
+extractor = { path = "../extractor" }
+inserter = { path = "../inserter" }
 
 alloy-primitives.workspace = true
 clap.workspace = true
@@ -20,7 +18,7 @@ eyre.workspace = true
 tokio.workspace = true
 tokio-stream.workspace = true
 tracing.workspace = true
+tracing-subscriber.workspace = true
 
-[[bin]]
-name = "taikoscope"
-path = "src/main.rs"
+[lints]
+workspace = true
