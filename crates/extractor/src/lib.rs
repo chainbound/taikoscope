@@ -1,6 +1,6 @@
 //! Taikoscope Extractor
 use chainio::{
-    self,
+    self, DefaultProvider,
     ITaikoInbox::BatchProposed,
     taiko::{
         preconf_whitelist::TaikoPreconfWhitelist,
@@ -21,13 +21,14 @@ use eyre::Result;
 use tokio_stream::{Stream, StreamExt};
 use tracing::info;
 use url::Url;
+
 /// Extractor client
 #[derive(Debug)]
 pub struct Extractor {
     #[debug(skip)]
-    l1_provider: Box<dyn Provider + Send + Sync>,
+    l1_provider: DefaultProvider,
     #[debug(skip)]
-    l2_provider: Box<dyn Provider + Send + Sync>,
+    l2_provider: DefaultProvider,
     preconf_whitelist: TaikoPreconfWhitelist,
     taiko_inbox: TaikoInbox,
     taiko_wrapper: TaikoWrapper,
@@ -82,13 +83,7 @@ impl Extractor {
             TaikoPreconfWhitelist::new_readonly(preconf_whitelist_address, l1_provider.clone());
         let taiko_wrapper = TaikoWrapper::new_readonly(taiko_wrapper_address, l1_provider.clone());
 
-        Ok(Self {
-            l1_provider: Box::new(l1_provider),
-            l2_provider: Box::new(l2_provider),
-            preconf_whitelist,
-            taiko_inbox,
-            taiko_wrapper,
-        })
+        Ok(Self { l1_provider, l2_provider, preconf_whitelist, taiko_inbox, taiko_wrapper })
     }
 
     /// Get a stream of L1 headers
