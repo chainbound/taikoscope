@@ -7,6 +7,8 @@ exclude.workspace = true
 repository.workspace = true
 
 [dependencies]
+primitives = { path = "../primitives" }
+
 alloy.workspace = true
 alloy-contract.workspace = true
 alloy-primitives.workspace = true

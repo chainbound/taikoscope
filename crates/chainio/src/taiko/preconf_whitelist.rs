@@ -8,6 +8,7 @@ use alloy::{
 use alloy_primitives::Address;
 use alloy_sol_macro::sol;
 use alloy_sol_types::{Error as SolError, SolInterface};
+use primitives::retries::DEFAULT_RETRY_LAYER;
 use url::Url;
 
 use crate::DefaultProvider;
@@ -22,7 +23,7 @@ pub struct TaikoPreconfWhitelist(IPreconfWhitelistInstance<DefaultProvider>);
 impl TaikoPreconfWhitelist {
     /// Create a new `TaikoPreconfWhitelist` instance at the given contract address.
     pub fn from_address<U: Into<Url>>(el_client_url: U, address: Address) -> Self {
-        let client = ClientBuilder::default().http(el_client_url.into());
+        let client = ClientBuilder::default().layer(DEFAULT_RETRY_LAYER).http(el_client_url.into());
         let provider = ProviderBuilder::new().connect_client(client);
         Self(IPreconfWhitelistInstance::new(address, provider))
     }
