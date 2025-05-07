@@ -1524,7 +1524,6 @@ dependencies = [
  "tokio",
  "tokio-stream",
  "tracing",
- "tracing-subscriber",
 ]
 
 [[package]]
@@ -2255,6 +2254,7 @@ dependencies = [
  "eyre",
  "serde",
  "tokio",
+ "tracing",
  "url",
 ]
 
@@ -3610,6 +3610,7 @@ dependencies = [
  "tokio",
  "tokio-stream",
  "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]

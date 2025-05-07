@@ -20,7 +20,8 @@ async fn main() -> eyre::Result<()> {
     }
 
     let opts = Opts::parse();
+    tracing_subscriber::fmt().with_max_level(tracing::Level::INFO).init();
     info!("🔭 Taikoscope engine starting...");
 
-    Driver::new(opts).await?.startup_sync().await?.start().await
+    Driver::new(opts).await?.start().await
 }

@@ -44,14 +44,6 @@ impl Driver {
         Ok(Self { clickhouse, extractor, reorg: ReorgDetector::new() })
     }
 
-    /// Hook for any synchronous startup work (e.g. telemetry, tracing subscriber, etc.)
-    pub async fn startup_sync(self) -> Result<Self> {
-        // set up tracing subscriber, telemetry, allocator, etc.
-        tracing_subscriber::fmt().with_max_level(tracing::Level::INFO).init();
-        info!("Driver initialized");
-        Ok(self)
-    }
-
     /// Consume the driver and drive the infinite processing loop.
     pub async fn start(mut self) -> Result<()> {
         info!("Starting event loop...");
