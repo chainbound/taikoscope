@@ -55,6 +55,8 @@ async fn main() -> eyre::Result<()> {
                 clickhouse_client.insert_l1_header(&header).await?;
                 info!("Inserted L1 header: {:?}", header.number);
 
+
+
                 // TODO: uncomment this when this is deployed
                 /*
                 let opt_candidates = match extractor.get_operator_candidates_for_current_epoch().await {
@@ -83,7 +85,10 @@ async fn main() -> eyre::Result<()> {
                 let opt_next_operator = match extractor.get_operator_for_next_epoch().await {
                     Ok(op) => Some(op),
                     Err(e) => {
-                        tracing::error!(block = header.number, err = %e, "get_operator_for_next_epoch failed");
+                        // The first slot in the epoch doesn't have any next operator
+                        if header.slot % 32 != 0 {
+                            tracing::error!(block = header.number, err = %e, "get_operator_for_next_epoch failed");
+                        }
                         None
                     }
                 };
