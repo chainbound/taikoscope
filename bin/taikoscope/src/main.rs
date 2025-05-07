@@ -57,6 +57,8 @@ async fn main() -> eyre::Result<()> {
                 clickhouse_client.insert_l1_header(&header).await?;
                 info!("Inserted L1 header: {:?}", header.number);
 
+                // TODO: uncomment this when this is deployed
+                /*
                 let opt_candidates = match extractor.get_operator_candidates_for_current_epoch().await {
                     Ok(c) => Some(c),
                     Err(e) => {
@@ -69,6 +71,8 @@ async fn main() -> eyre::Result<()> {
                         None
                     }
                 };
+                */
+                let opt_candidates = Some(vec![]);
 
                 let opt_current_operator = match extractor.get_operator_for_current_epoch().await {
                     Ok(op) => Some(op),
