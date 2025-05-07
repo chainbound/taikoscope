@@ -82,7 +82,7 @@ impl Extractor {
         preconf_whitelist_address: Address,
         taiko_wrapper_address: Address,
     ) -> Result<Self> {
-        let l1_el = WsConnect::new(l1_rpc_url.clone());
+        let l1_el = WsConnect::new(l1_rpc_url);
         let l2_el = WsConnect::new(l2_rpc_url);
         let l1_provider = ProviderBuilder::new().connect_ws(l1_el).await?;
         let l2_provider = ProviderBuilder::new().connect_ws(l2_el).await?;
