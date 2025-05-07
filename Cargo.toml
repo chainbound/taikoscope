@@ -10,24 +10,24 @@ exclude = [".github/"]
 repository = "https://github.com/chainbound/taikoscope"
 
 [workspace.dependencies]
-alloy = { version = "0.15.7", features = ["provider-ws"] }
-alloy-contract = { version = "0.15.2" }
-alloy-json-rpc = { version = "0.15.2" }
-alloy-primitives = "1.0.0"
-alloy-sol-types = "1.0.0"
-alloy-sol-macro = "1.0.0"
+alloy = { version = "0.15.9", features = ["provider-ws"] }
+alloy-contract = { version = "0.15.9" }
+alloy-json-rpc = { version = "0.15.9" }
+alloy-primitives = "1.1.0"
+alloy-sol-types = "1.1.0"
+alloy-sol-macro = "1.1.0"
 clap = { version = "4.5.37", features = ["derive", "env"] }
 clickhouse = { version = "0.13.2", features = ["test-util"] }
 derive_more = { version = "1.0.0", features = ["debug", "deref"] }
 dotenvy = "0.15.7"
 eyre = "0.6.12"
 serde = "1.0.219"
-serde_json = "1.0.1"
-tokio = { version = "1.44.1", features = ["macros", "rt-multi-thread", "sync"] }
+serde_json = "1.0.140"
+tokio = { version = "1.45.0", features = ["macros", "rt-multi-thread", "sync"] }
 tokio-retry = "0.3.0"
 tokio-stream = "0.1.17"
 tracing = "0.1.41"
-tracing-subscriber = "0.3.0"
+tracing-subscriber = "0.3.19"
 url = { version = "2.5.4", features = ["serde"] }
 
 [workspace.lints]
