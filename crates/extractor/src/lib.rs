@@ -64,6 +64,15 @@ pub struct L2Header {
     pub beneficiary: Address,
 }
 
+/// Stream of L1 headers
+pub type L1HeaderStream = Pin<Box<dyn Stream<Item = L1Header> + Send>>;
+/// Stream of L2 headers
+pub type L2HeaderStream = Pin<Box<dyn Stream<Item = L2Header> + Send>>;
+/// Stream of batch proposed events
+pub type BatchProposedStream = Pin<Box<dyn Stream<Item = BatchProposed> + Send>>;
+/// Stream of forced inclusion processed events
+pub type ForcedInclusionStream = Pin<Box<dyn Stream<Item = ForcedInclusionProcessed> + Send>>;
+
 impl Extractor {
     /// Create a new extractor
     pub async fn new(
@@ -87,9 +96,7 @@ impl Extractor {
     }
 
     /// Get a stream of L1 headers
-    pub async fn get_l1_header_stream(
-        &self,
-    ) -> Result<Pin<Box<dyn Stream<Item = L1Header> + Send>>> {
+    pub async fn get_l1_header_stream(&self) -> Result<L1HeaderStream> {
         // Subscribe to new blocks
         let sub = self.l1_provider.subscribe_blocks().await?;
         let stream = sub.into_stream();
@@ -107,9 +114,7 @@ impl Extractor {
     }
 
     /// Get a stream of L2 headers
-    pub async fn get_l2_header_stream(
-        &self,
-    ) -> Result<Pin<Box<dyn Stream<Item = L2Header> + Send>>> {
+    pub async fn get_l2_header_stream(&self) -> Result<L2HeaderStream> {
         // Subscribe to new blocks
         let sub = self.l2_provider.subscribe_blocks().await?;
         let stream = sub.into_stream();
@@ -130,9 +135,7 @@ impl Extractor {
 
     /// Subscribes to the `TaikoInbox`  `BatchProposed` event and returns a stream of decoded
     /// events.
-    pub async fn get_batch_proposed_stream(
-        &self,
-    ) -> Result<Pin<Box<dyn Stream<Item = BatchProposed> + Send>>> {
+    pub async fn get_batch_proposed_stream(&self) -> Result<BatchProposedStream> {
         let filter = self.taiko_inbox.batch_proposed_filter();
         let logs = self.l1_provider.subscribe_logs(&filter).await?.into_stream();
 
@@ -156,9 +159,7 @@ impl Extractor {
 
     /// Subscribes to the `TaikoWrapper` `ForcedInclusionProcessed` event and returns a stream of
     /// decoded events.
-    pub async fn get_forced_inclusion_stream(
-        &self,
-    ) -> Result<Pin<Box<dyn Stream<Item = ForcedInclusionProcessed> + Send>>> {
+    pub async fn get_forced_inclusion_stream(&self) -> Result<ForcedInclusionStream> {
         let filter = self.taiko_wrapper.forced_inclusion_processed_filter();
         let logs = self.l1_provider.subscribe_logs(&filter).await?.into_stream();
 
