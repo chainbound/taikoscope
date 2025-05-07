@@ -30,9 +30,9 @@ pub struct PreconfData {
     /// Candidates
     pub candidates: Vec<[u8; 20]>,
     /// Current operator
-    pub current_operator: [u8; 20],
+    pub current_operator: Option<[u8; 20]>,
     /// Next operator
-    pub next_operator: [u8; 20],
+    pub next_operator: Option<[u8; 20]>,
 }
 
 /// L2 head event
@@ -317,8 +317,8 @@ impl ClickhouseClient {
         &self,
         slot: u64,
         candidates: Vec<Address>,
-        current_operator: Address,
-        next_operator: Address,
+        current_operator: Option<Address>,
+        next_operator: Option<Address>,
     ) -> Result<()> {
         let client = self.base.clone().with_database(&self.db_name);
 
@@ -327,8 +327,8 @@ impl ClickhouseClient {
         let data = PreconfData {
             slot,
             candidates: candidate_array,
-            current_operator: current_operator.into_array(),
-            next_operator: next_operator.into_array(),
+            current_operator: current_operator.map(|c| c.into_array()),
+            next_operator: next_operator.map(|c| c.into_array()),
         };
 
         let mut insert = client.insert("preconf_data")?;

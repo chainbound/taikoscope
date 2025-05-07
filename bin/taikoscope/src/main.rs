@@ -75,7 +75,7 @@ async fn main() -> eyre::Result<()> {
                     }
                 };
                 */
-                let opt_candidates = Some(vec![]);
+                let candidates = Vec::new();
 
                 let opt_current_operator = match extractor.get_operator_for_current_epoch().await {
                     Ok(op) => Some(op),
@@ -96,10 +96,8 @@ async fn main() -> eyre::Result<()> {
                     }
                 };
 
-                if let (Some(candidates), Some(current_operator), Some(next_operator)) =
-                    (opt_candidates, opt_current_operator, opt_next_operator)
-                {
-                    clickhouse_client.insert_preconf_data(header.slot, candidates, current_operator, next_operator).await?;
+                if   opt_current_operator.is_some() || opt_next_operator.is_some() {
+                    clickhouse_client.insert_preconf_data(header.slot, candidates, opt_current_operator, opt_next_operator).await?;
                     info!("Inserted preconf data for slot: {:?}", header.slot);
                 } else {
                     info!("Skipping preconf data insertion for slot {:?} due to errors fetching operator data.", header.slot);
