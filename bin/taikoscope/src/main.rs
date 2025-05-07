@@ -57,12 +57,43 @@ async fn main() -> eyre::Result<()> {
                 clickhouse_client.insert_l1_header(&header).await?;
                 info!("Inserted L1 header: {:?}", header.number);
 
-                let candidates = extractor.get_operator_candidates_for_current_epoch().await?;
-                let current_operator = extractor.get_operator_for_current_epoch().await?;
-                let next_operator = extractor.get_operator_for_next_epoch().await?;
+                let opt_candidates = match extractor.get_operator_candidates_for_current_epoch().await {
+                    Ok(c) => Some(c),
+                    Err(e) => {
+                        tracing::error!(
+                            slot = header.slot,
+                            block = header.number,
+                            err = %e,
+                            "Failed picking operator candidates"
+                        );
+                        None
+                    }
+                };
 
-                clickhouse_client.insert_preconf_data(header.slot, candidates, current_operator, next_operator).await?;
-                info!("Inserted preconf data for slot: {:?}", header.slot);
+                let opt_current_operator = match extractor.get_operator_for_current_epoch().await {
+                    Ok(op) => Some(op),
+                    Err(e) => {
+                        tracing::error!(block = header.number, err = %e, "get_operator_for_current_epoch failed");
+                        None
+                    }
+                };
+
+                let opt_next_operator = match extractor.get_operator_for_next_epoch().await {
+                    Ok(op) => Some(op),
+                    Err(e) => {
+                        tracing::error!(block = header.number, err = %e, "get_operator_for_next_epoch failed");
+                        None
+                    }
+                };
+
+                if let (Some(candidates), Some(current_operator), Some(next_operator)) =
+                    (opt_candidates, opt_current_operator, opt_next_operator)
+                {
+                    clickhouse_client.insert_preconf_data(header.slot, candidates, current_operator, next_operator).await?;
+                    info!("Inserted preconf data for slot: {:?}", header.slot);
+                } else {
+                    info!("Skipping preconf data insertion for slot {:?} due to errors fetching operator data.", header.slot);
+                }
             }
             Some(header) = l2_header_stream.next() => {
                 // Detect reorgs
