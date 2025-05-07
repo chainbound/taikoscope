@@ -197,19 +197,19 @@ impl Extractor {
 }
 
 /// Detects reorgs
-/// Stores the last 256 blocks in a cache
+/// Stores the last 256 blocks in a buffer
 #[derive(Debug)]
 pub struct ReorgDetector {
     head_number: BlockNumber,
     head_hash: BlockHash,
-    cache: VecDeque<(BlockNumber, BlockHash)>,
+    buf: [BlockHash; 256],
 }
 
 impl ReorgDetector {
     /// Create a new reorg detector
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
-        Self { head_number: 0, head_hash: BlockHash::ZERO, cache: VecDeque::with_capacity(256) }
+        Self { head_number: 0, head_hash: BlockHash::ZERO, buf: [BlockHash::ZERO; 256] }
     }
 
     /// Returns info about the reorg if there is a reorg
@@ -223,36 +223,27 @@ impl ReorgDetector {
         if self.head_number == 0 {
             self.head_number = number;
             self.head_hash = hash;
+            self.buf[(number % 256) as usize] = hash;
             return None;
         }
+
+        let idx = (number % 256) as usize;
+        let old_hash = self.buf[idx];
 
         // Normal case, extend current head
         if number == self.head_number + 1 && parent == self.head_hash {
             self.head_number = number;
             self.head_hash = hash;
-            self.cache.push_back((number, hash));
-            if self.cache.len() > 256 {
-                self.cache.pop_front();
-            }
+            self.buf[idx] = hash;
             return None;
         }
 
         // Reorg detected
-        // Either parent mismatch or same/older slot
         let depth = (self.head_number - number + 1).max(1) as u8;
-        // Look up old hash in cache
-        let old_hash =
-            self.cache.iter().find_map(|(n, h)| (*n == number).then_some(*h)).unwrap_or_default();
-
-        // Prune everything at or beyond the reorged block
-        self.cache.retain(|entry| entry.0 < number);
-
-        // Switch head to the new fork
         self.head_number = number;
         self.head_hash = hash;
-        self.cache.push_back((number, hash));
+        self.buf[idx] = hash;
 
-        // Return reorg info
         Some((hash, old_hash, depth))
     }
 }
