@@ -8,7 +8,7 @@ use chainio::{
     },
 };
 
-use std::{collections::VecDeque, pin::Pin};
+use std::pin::Pin;
 
 use alloy::{
     primitives::{Address, BlockHash, BlockNumber},
@@ -208,7 +208,7 @@ pub struct ReorgDetector {
 impl ReorgDetector {
     /// Create a new reorg detector
     #[allow(clippy::new_without_default)]
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self { head_number: 0, head_hash: BlockHash::ZERO, buf: [BlockHash::ZERO; 256] }
     }
 
