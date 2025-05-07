@@ -9,6 +9,9 @@ use config::Opts;
 use dotenvy::dotenv;
 use tracing::info;
 
+/// An EPOCH is a series of 32 slots.
+pub const EPOCH_SLOTS: u64 = 32;
+
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
     if let Ok(custom_env_file) = std::env::var("ENV_FILE") {
@@ -86,7 +89,7 @@ async fn main() -> eyre::Result<()> {
                     Ok(op) => Some(op),
                     Err(e) => {
                         // The first slot in the epoch doesn't have any next operator
-                        if header.slot % 32 != 0 {
+                        if header.slot % EPOCH_SLOTS != 0 {
                             tracing::error!(block = header.number, err = %e, "get_operator_for_next_epoch failed");
                         }
                         None
