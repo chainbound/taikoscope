@@ -7,6 +7,7 @@ use derive_more::Debug;
 pub use extractor::{L1Header, L2Header};
 use eyre::{Result, WrapErr};
 use serde::{Deserialize, Serialize};
+use tracing::info;
 use url::Url;
 
 /// L1 head event
@@ -186,6 +187,7 @@ impl ClickhouseClient {
                     .execute()
                     .await?;
             }
+            info!("Database reset complete for: {}", self.db_name);
         }
 
         // Init schema
