@@ -51,8 +51,6 @@ async fn main() -> eyre::Result<()> {
     info!("Processing events...");
     loop {
         tokio::select! {
-            biased;
-
             Some(header) = l1_header_stream.next() => {
                 clickhouse_client.insert_l1_header(&header).await?;
                 info!("Inserted L1 header: {:?}", header.number);
