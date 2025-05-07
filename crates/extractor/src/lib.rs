@@ -79,8 +79,8 @@ impl Extractor {
 
         let taiko_inbox = TaikoInbox::new_readonly(inbox_address, l1_provider.clone());
         let preconf_whitelist =
-            TaikoPreconfWhitelist::from_address(l1_rpc_url.clone(), preconf_whitelist_address);
-        let taiko_wrapper = TaikoWrapper::from_address(l1_rpc_url, taiko_wrapper_address);
+            TaikoPreconfWhitelist::new_readonly(preconf_whitelist_address, l1_provider.clone());
+        let taiko_wrapper = TaikoWrapper::new_readonly(taiko_wrapper_address, l1_provider.clone());
 
         Ok(Self {
             l1_provider: Box::new(l1_provider),

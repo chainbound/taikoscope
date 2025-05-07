@@ -1,15 +1,9 @@
 //! Taiko preconf whitelist contract
 use IPreconfWhitelist::{IPreconfWhitelistErrors, IPreconfWhitelistInstance};
-use alloy::{
-    contract::{Error as ContractError, Result as ContractResult},
-    providers::ProviderBuilder,
-    rpc::client::ClientBuilder,
-};
+use alloy::contract::{Error as ContractError, Result as ContractResult};
 use alloy_primitives::Address;
 use alloy_sol_macro::sol;
 use alloy_sol_types::{Error as SolError, SolInterface};
-use primitives::retries::DEFAULT_RETRY_LAYER;
-use url::Url;
 
 use crate::DefaultProvider;
 
@@ -21,10 +15,8 @@ pub type Timestamp = u64;
 pub struct TaikoPreconfWhitelist(IPreconfWhitelistInstance<DefaultProvider>);
 
 impl TaikoPreconfWhitelist {
-    /// Create a new `TaikoPreconfWhitelist` instance at the given contract address.
-    pub fn from_address<U: Into<Url>>(el_client_url: U, address: Address) -> Self {
-        let client = ClientBuilder::default().layer(DEFAULT_RETRY_LAYER).http(el_client_url.into());
-        let provider = ProviderBuilder::new().connect_client(client);
+    /// Create a new `TaikoPreconfWhitelist` instance over an existing WS-based provider.
+    pub const fn new_readonly(address: Address, provider: DefaultProvider) -> Self {
         Self(IPreconfWhitelistInstance::new(address, provider))
     }
 

@@ -1,13 +1,8 @@
 //! Taiko wrapper contract
-use alloy::{
-    providers::ProviderBuilder,
-    rpc::{client::ClientBuilder, types::Filter},
-};
+use alloy::rpc::types::Filter;
 use alloy_primitives::Address;
 use alloy_sol_macro::sol;
 use derive_more::derive::Deref;
-use primitives::retries::DEFAULT_RETRY_LAYER;
-use url::Url;
 
 use crate::DefaultProvider;
 
@@ -18,10 +13,8 @@ use ITaikoWrapper::ITaikoWrapperInstance;
 pub struct TaikoWrapper(ITaikoWrapperInstance<DefaultProvider>);
 
 impl TaikoWrapper {
-    /// Create a new `TaikoWrapper` instance at the given contract address.
-    pub fn from_address<U: Into<Url>>(el_client_url: U, address: Address) -> Self {
-        let client = ClientBuilder::default().layer(DEFAULT_RETRY_LAYER).http(el_client_url.into());
-        let provider = ProviderBuilder::new().connect_client(client);
+    /// Create a new `TaikoWrapper` instance over an existing WS-based provider.
+    pub const fn new_readonly(address: Address, provider: DefaultProvider) -> Self {
         Self(ITaikoWrapperInstance::new(address, provider))
     }
 
