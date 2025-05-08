@@ -177,8 +177,14 @@ impl ClickhouseClient {
             .execute()
             .await?;
 
-        const TABLES: &[&str] =
-            &["l1_head_events", "preconf_data", "l2_head_events", "batches", "l2_reorgs"];
+        const TABLES: &[&str] = &[
+            "l1_head_events",
+            "preconf_data",
+            "l2_head_events",
+            "batches",
+            "l2_reorgs",
+            "forced_inclusion_processed",
+        ];
 
         if reset {
             for table in TABLES {
