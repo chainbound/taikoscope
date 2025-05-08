@@ -227,8 +227,8 @@ impl ClickhouseClient {
                 "CREATE TABLE IF NOT EXISTS {}.preconf_data (
                     slot UInt64,
                     candidates Array(FixedString(20)),
-                    current_operator FixedString(20),
-                    next_operator FixedString(20),
+                    current_operator Nullable(FixedString(20)),
+                    next_operator Nullable(FixedString(20)),
                     inserted_at DateTime64(3) DEFAULT now64()
                 ) ENGINE = MergeTree()
                 ORDER BY (slot)",
@@ -435,7 +435,7 @@ mod tests {
     use extractor::L1Header;
     use url::Url;
 
-    use crate::{ClickhouseClient, L1HeadEvent};
+    use crate::{ClickhouseClient, L1HeadEvent, PreconfData};
 
     #[tokio::test]
     async fn test_insert_l1_block() {
@@ -469,6 +469,43 @@ mod tests {
                 slot: 1,
                 block_ts: 1,
             }
+        );
+    }
+
+    #[tokio::test]
+    async fn test_null_next_preconf_operator() {
+        // 1) Spin up mock server
+        let mock = Mock::new();
+
+        // 2) Attach recorder to mock server
+        let recorder = mock.add(handlers::record::<PreconfData>());
+
+        // 3) Point client to mock server and do inserts
+        let url = Url::parse(mock.url()).unwrap();
+        let client = ClickhouseClient::new(
+            url,
+            "test-db".to_string(),
+            "test_user".to_string(),
+            "test_pass".to_string(),
+        )
+        .unwrap();
+
+        let slot = 42;
+        let candidates = vec![];
+        let current_operator = None;
+        let next_operator = None;
+
+        client
+            .insert_preconf_data(slot, candidates.clone(), current_operator, next_operator)
+            .await
+            .unwrap();
+
+        // 4) Collect and assert
+        let rows: Vec<PreconfData> = recorder.collect().await;
+        assert_eq!(rows.len(), 1);
+        assert_eq!(
+            rows[0],
+            PreconfData { slot, candidates: vec![], current_operator: None, next_operator: None }
         );
     }
 }
