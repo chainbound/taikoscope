@@ -6,6 +6,7 @@ use clap::Parser;
 use config::Opts;
 use dotenvy::dotenv;
 use tracing::info;
+use tracing_subscriber::filter::EnvFilter;
 
 /// An EPOCH is a series of 32 slots.
 pub const EPOCH_SLOTS: u64 = 32;
@@ -20,7 +21,9 @@ async fn main() -> eyre::Result<()> {
     }
 
     let opts = Opts::parse();
-    tracing_subscriber::fmt().with_max_level(tracing::Level::INFO).init();
+
+    tracing_subscriber::fmt().with_env_filter(EnvFilter::from_default_env()).init();
+
     info!("🔭 Taikoscope engine starting...");
 
     Driver::new(opts).await?.start().await

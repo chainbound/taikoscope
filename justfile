@@ -7,7 +7,7 @@ default:
 
 # start the Taikoscope binary for local development
 dev:
-    ENV_FILE=dev.env cargo run -- --reset-db
+    ENV_FILE=dev.env RUST_LOG=debug cargo run -- --reset-db
 
 # start the Taikoscope binary with Masaya testnet config
 masaya:
