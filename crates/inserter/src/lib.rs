@@ -294,6 +294,20 @@ impl ClickhouseClient {
             .await
             .wrap_err("Failed to create l2_reorgs table")?;
 
+        // Create forced_inclusion_processed table
+        self.base
+            .query(&format!(
+                "CREATE TABLE IF NOT EXISTS {}.forced_inclusion_processed (
+                    blob_hash FixedString(32),
+                    inserted_at DateTime64(3) DEFAULT now64()
+                ) ENGINE = MergeTree()
+                ORDER BY inserted_at;",
+                self.db_name
+            ))
+            .execute()
+            .await
+            .wrap_err("Failed to create forced_inclusion_processed table")?;
+
         Ok(())
     }
 
