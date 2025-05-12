@@ -1,0 +1,12 @@
+[package]
+name = "incident"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+exclude.workspace = true
+repository.workspace = true
+
+[dependencies]
+
+[lints]
+workspace = true
