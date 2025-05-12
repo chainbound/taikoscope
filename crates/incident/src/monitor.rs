@@ -135,6 +135,7 @@ impl InstatusMonitor {
         });
     }
 
+    /// Runs the monitor.
     async fn run(&mut self) -> Result<()> {
         self.active = self.client.open_incident(&self.component_id).await?;
         let mut tick = tokio::time::interval(self.interval);
@@ -147,6 +148,7 @@ impl InstatusMonitor {
         }
     }
 
+    /// Handles a new L2 head event.
     async fn handle(&mut self, last: DateTime<Utc>) -> Result<()> {
         let age = Utc::now().signed_duration_since(last).to_std()?;
         match (&self.active, age > self.threshold) {
@@ -171,6 +173,7 @@ impl InstatusMonitor {
         Ok(())
     }
 
+    /// Opens a new incident.
     async fn open(&self, last: DateTime<Utc>) -> Result<String> {
         let body = NewIncident {
             name: "No L2 head events - Possible Outage".into(),
@@ -186,6 +189,7 @@ impl InstatusMonitor {
         Ok(id)
     }
 
+    /// Closes an incident.
     async fn close(&self, id: &str) -> Result<()> {
         let body = ResolveIncident {
             message: "L2 head events have resumed.".into(),

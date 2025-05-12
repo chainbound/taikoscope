@@ -74,7 +74,7 @@ mod tests {
     #[test]
     fn test_new_incident_serialization() {
         let payload = NewIncident {
-            name: "No L2 head events – Possible Outage".to_string(),
+            name: "No L2 head events - Possible Outage".to_string(),
             message: "No L2 head event for 30s".to_string(),
             status: IncidentState::Investigating,
             components: vec!["comp1".to_string()],
