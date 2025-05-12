@@ -87,7 +87,7 @@ mod tests {
             started: Some("2025-05-12T07:48:00Z".to_string()),
         };
         let expected = json!({
-            "name": "No L2 head events – Possible Outage",
+            "name": "No L2 head events - Possible Outage",
             "message": "No L2 head event for 30s",
             "status": "INVESTIGATING",
             "components": ["comp1"],
