@@ -36,10 +36,7 @@ impl Client {
 
     /// Resolve an existing incident on Instatus.
     pub async fn resolve_incident(&self, id: &str, body: &ResolveIncident) -> Result<()> {
-        let url = format!(
-            "https://api.instatus.com/v1/{}/incidents/{}/incident-updates",
-            self.page_id, id
-        );
+        let url = format!("https://api.instatus.com/v1/{}/incidents/{}", self.page_id, id);
         self.auth(self.http.post(&url)).json(body).send().await?.error_for_status()?;
         Ok(())
     }
