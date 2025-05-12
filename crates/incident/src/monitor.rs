@@ -7,7 +7,7 @@ use std::time::Duration;
 use tracing::{error, info};
 
 /// Incident‐level state sent to Instatus.
-#[derive(Debug, Serialize, Clone, Copy)]
+#[derive(Debug, Serialize, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum IncidentState {
     /// Incident is being investigated.
@@ -21,7 +21,7 @@ pub enum IncidentState {
 }
 
 /// Component health inside an incident update.
-#[derive(Debug, Serialize, Clone, Copy)]
+#[derive(Debug, Serialize, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum ComponentHealth {
     /// Component is operational.
@@ -61,7 +61,7 @@ pub struct NewIncident {
     /// Incident message/description
     pub message: String,
     /// Incident status (e.g. INVESTIGATING)
-    pub status: String,
+    pub status: IncidentState,
     /// Affected component IDs
     pub components: Vec<String>,
     /// Component statuses
@@ -79,7 +79,7 @@ pub struct ResolveIncident {
     /// Update message
     pub message: String,
     /// Status (should be RESOLVED)
-    pub status: String,
+    pub status: IncidentState,
     /// Affected component IDs
     pub components: Vec<String>,
     /// Component statuses
@@ -99,6 +99,8 @@ pub struct InstatusMonitor {
     threshold: Duration,
     interval: Duration,
     active: Option<String>,
+    healthy_needed: u8,
+    healthy_seen: u8,
 }
 
 impl InstatusMonitor {
@@ -110,8 +112,18 @@ impl InstatusMonitor {
         threshold: Duration,
         interval: Duration,
         active: Option<String>,
+        healthy_needed: u8,
     ) -> Self {
-        Self { clickhouse, client, component_id, threshold, interval, active }
+        Self {
+            clickhouse,
+            client,
+            component_id,
+            threshold,
+            interval,
+            active,
+            healthy_needed,
+            healthy_seen: 0,
+        }
     }
 
     /// Spawns the monitor on the Tokio runtime.
@@ -138,10 +150,21 @@ impl InstatusMonitor {
     async fn handle(&mut self, last: DateTime<Utc>) -> Result<()> {
         let age = Utc::now().signed_duration_since(last).to_std()?;
         match (&self.active, age > self.threshold) {
-            (None, true) => self.active = Some(self.open(last).await?),
+            // outage begins
+            (None, true) => {
+                self.active = Some(self.open(last).await?);
+                self.healthy_seen = 0;
+            }
+            // still down
+            (Some(_), true) => self.healthy_seen = 0,
+            // up again
             (Some(id), false) => {
-                self.close(id).await?;
-                self.active = None;
+                self.healthy_seen += 1;
+                if self.healthy_seen >= self.healthy_needed {
+                    self.close(id).await?;
+                    self.active = None;
+                    self.healthy_seen = 0;
+                }
             }
             _ => {}
         }
@@ -150,9 +173,9 @@ impl InstatusMonitor {
 
     async fn open(&self, last: DateTime<Utc>) -> Result<String> {
         let body = NewIncident {
-            name: "No L2 head events – Possible Outage".into(),
+            name: "No L2 head events - Possible Outage".into(),
             message: format!("No L2 head event for {} s", self.threshold.as_secs()),
-            status: "INVESTIGATING".into(),
+            status: IncidentState::Investigating,
             components: vec![self.component_id.clone()],
             statuses: vec![ComponentStatus::major_outage(&self.component_id)],
             notify: true,
@@ -166,7 +189,7 @@ impl InstatusMonitor {
     async fn close(&self, id: &str) -> Result<()> {
         let body = ResolveIncident {
             message: "L2 head events have resumed.".into(),
-            status: "RESOLVED".into(),
+            status: IncidentState::Resolved,
             components: vec![self.component_id.clone()],
             statuses: vec![ComponentStatus::operational(&self.component_id)],
             notify: true,

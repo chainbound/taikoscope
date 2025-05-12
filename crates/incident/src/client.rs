@@ -67,7 +67,7 @@ impl Client {
 mod tests {
     use super::*;
 
-    use crate::monitor::ComponentStatus;
+    use crate::monitor::{ComponentStatus, IncidentState};
 
     use serde_json::json;
 
@@ -76,7 +76,7 @@ mod tests {
         let payload = NewIncident {
             name: "No L2 head events – Possible Outage".to_string(),
             message: "No L2 head event for 30s".to_string(),
-            status: "INVESTIGATING".to_string(),
+            status: IncidentState::Investigating,
             components: vec!["comp1".to_string()],
             statuses: vec![ComponentStatus {
                 id: "comp1".to_string(),
@@ -102,7 +102,7 @@ mod tests {
     fn test_resolve_incident_serialization() {
         let payload = ResolveIncident {
             message: "L2 head events have resumed.".to_string(),
-            status: "RESOLVED".to_string(),
+            status: IncidentState::Resolved,
             components: vec!["comp1".to_string()],
             statuses: vec![ComponentStatus {
                 id: "comp1".to_string(),
