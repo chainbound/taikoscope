@@ -1549,6 +1549,7 @@ name = "driver"
 version = "0.1.0"
 dependencies = [
  "alloy-primitives",
+ "chrono",
  "clap",
  "clickhouse 0.1.0",
  "config",
@@ -2299,9 +2300,13 @@ dependencies = [
 name = "incident"
 version = "0.1.0"
 dependencies = [
+ "chrono",
+ "clickhouse 0.1.0",
  "reqwest",
  "serde",
  "serde_json",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]

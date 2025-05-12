@@ -11,7 +11,7 @@ config = { path = "../config" }
 extractor = { path = "../extractor" }
 clickhouse = { path = "../clickhouse" }
 incident = { path = "../incident" }
-
+chrono.workspace = true
 alloy-primitives.workspace = true
 clap.workspace = true
 dotenvy.workspace = true

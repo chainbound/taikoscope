@@ -7,7 +7,7 @@ use tracing::info;
 use clickhouse::ClickhouseClient;
 use config::Opts;
 use extractor::{Extractor, ReorgDetector};
-use incident::client::Client as IncidentClient;
+use incident::{InstatusMonitor, client::Client as IncidentClient};
 
 /// An EPOCH is a series of 32 slots.
 pub const EPOCH_SLOTS: u64 = 32;
@@ -18,7 +18,8 @@ pub struct Driver {
     clickhouse: ClickhouseClient,
     extractor: Extractor,
     reorg: ReorgDetector,
-    _incident_client: IncidentClient,
+    incident_client: IncidentClient,
+    instatus_component_id: String,
 }
 
 impl Driver {
@@ -43,18 +44,20 @@ impl Driver {
         )
         .await?;
 
-        // init incident client
+        // init incident client and component ID
+        let instatus_component_id = opts.instatus_component_id.clone();
         let incident_client = IncidentClient::new(
             opts.instatus_api_key.clone(),
             opts.instatus_page_id.clone(),
-            opts.instatus_component_id.clone(),
+            instatus_component_id.clone(),
         );
 
         Ok(Self {
             clickhouse,
             extractor,
             reorg: ReorgDetector::new(),
-            _incident_client: incident_client,
+            incident_client,
+            instatus_component_id,
         })
     }
 
@@ -66,6 +69,14 @@ impl Driver {
         let mut l2_stream = self.extractor.get_l2_header_stream().await?;
         let mut batch_stream = self.extractor.get_batch_proposed_stream().await?;
         let mut forced_stream = self.extractor.get_forced_inclusion_stream().await?;
+
+        // spawn Instatus monitor
+        InstatusMonitor::new(
+            self.clickhouse.clone(),
+            self.incident_client.clone(),
+            self.instatus_component_id.clone(),
+        )
+        .spawn();
 
         loop {
             tokio::select! {
