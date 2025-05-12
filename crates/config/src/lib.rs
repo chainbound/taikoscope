@@ -36,6 +36,15 @@ pub struct Opts {
     /// If set, drop & re-create all tables (local/dev only)
     #[clap(long)]
     pub reset_db: bool,
+    /// Instatus API key
+    #[clap(long, env = "INSTATUS_API_KEY")]
+    pub instatus_api_key: String,
+    /// Instatus page ID
+    #[clap(long, env = "INSTATUS_PAGE_ID")]
+    pub instatus_page_id: String,
+    /// Instatus component ID
+    #[clap(long, env = "INSTATUS_COMPONENT_ID")]
+    pub instatus_component_id: String,
 }
 
 #[cfg(test)]
