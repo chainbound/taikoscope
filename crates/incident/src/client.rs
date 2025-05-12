@@ -14,7 +14,7 @@ pub struct Client {
 
 impl Client {
     /// Create a new Instatus API client.
-    pub fn new(api_key: String, page_id: String, _component_id: String) -> Self {
+    pub fn new(api_key: String, page_id: String) -> Self {
         Self { http: HttpClient::new(), api_key, page_id }
     }
 

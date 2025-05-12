@@ -48,11 +48,8 @@ impl Driver {
 
         // init incident client and component ID
         let instatus_component_id = opts.instatus_component_id.clone();
-        let incident_client = IncidentClient::new(
-            opts.instatus_api_key.clone(),
-            opts.instatus_page_id.clone(),
-            instatus_component_id.clone(),
-        );
+        let incident_client =
+            IncidentClient::new(opts.instatus_api_key.clone(), opts.instatus_page_id.clone());
 
         Ok(Self {
             clickhouse,
