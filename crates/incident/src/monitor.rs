@@ -1,9 +1,92 @@
-use crate::client::{Client as IncidentClient, ComponentStatus, NewIncident, ResolveIncident};
+use crate::client::Client as IncidentClient;
 use chrono::{DateTime, Utc};
 use clickhouse::ClickhouseClient;
 use eyre::Result;
+use serde::Serialize;
 use std::time::Duration;
 use tracing::{error, info};
+
+/// Incident‐level state sent to Instatus.
+#[derive(Debug, Serialize, Clone, Copy)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum IncidentState {
+    /// Incident is being investigated.
+    Investigating,
+    /// Incident is identified.
+    Identified,
+    /// Incident is being monitored.
+    Monitoring,
+    /// Incident is resolved.
+    Resolved,
+}
+
+/// Component health inside an incident update.
+#[derive(Debug, Serialize, Clone, Copy)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum ComponentHealth {
+    /// Component is operational.
+    Operational,
+    /// Component is experiencing a partial outage.
+    PartialOutage,
+    /// Component is experiencing a major outage.
+    MajorOutage,
+}
+
+/// Status for a single component.
+#[derive(Debug, Serialize, PartialEq, Eq)]
+pub struct ComponentStatus {
+    /// Component ID
+    pub id: String,
+    /// Status (e.g. MAJOROUTAGE, OPERATIONAL)
+    pub status: String,
+}
+
+impl ComponentStatus {
+    /// Create a new component status for a major outage.
+    pub fn major_outage(id: &str) -> Self {
+        Self { id: id.into(), status: "MAJOROUTAGE".into() }
+    }
+
+    /// Create a new component status for an operational component.
+    pub fn operational(id: &str) -> Self {
+        Self { id: id.into(), status: "OPERATIONAL".into() }
+    }
+}
+
+/// Payload for creating a new incident.
+#[derive(Debug, Serialize, PartialEq, Eq)]
+pub struct NewIncident {
+    /// Incident name
+    pub name: String,
+    /// Incident message/description
+    pub message: String,
+    /// Incident status (e.g. INVESTIGATING)
+    pub status: String,
+    /// Affected component IDs
+    pub components: Vec<String>,
+    /// Component statuses
+    pub statuses: Vec<ComponentStatus>,
+    /// Whether to notify subscribers
+    pub notify: bool,
+    /// Optional start timestamp
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub started: Option<String>,
+}
+
+/// Payload for resolving an incident.
+#[derive(Debug, Serialize, PartialEq, Eq)]
+pub struct ResolveIncident {
+    /// Update message
+    pub message: String,
+    /// Status (should be RESOLVED)
+    pub status: String,
+    /// Affected component IDs
+    pub components: Vec<String>,
+    /// Component statuses
+    pub statuses: Vec<ComponentStatus>,
+    /// Whether to notify subscribers
+    pub notify: bool,
+}
 
 /// Monitors `ClickHouse` L2 head events and manages Instatus incidents.
 /// Polls `ClickHouse` every `interval` seconds; if no L2 head event for `threshold` seconds, it
