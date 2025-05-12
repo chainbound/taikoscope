@@ -4,6 +4,19 @@ use serde::Deserialize;
 
 use crate::monitor::{NewIncident, ResolveIncident};
 
+#[derive(Deserialize)]
+struct IncidentComponent {
+    id: String,
+    status: String,
+    name: String,
+}
+
+#[derive(Deserialize)]
+struct IncidentSummary {
+    id: String,
+    components: Vec<IncidentComponent>,
+}
+
 /// Client for interacting with the Instatus API.
 #[derive(Debug, Clone)]
 pub struct Client {
@@ -43,11 +56,6 @@ impl Client {
 
     /// Return open incident ID for `component_id`, if any.
     pub async fn open_incident(&self, component_id: &str) -> Result<Option<String>> {
-        #[derive(Deserialize)]
-        struct Inc {
-            id: String,
-            components: Vec<String>,
-        }
         let url =
             format!("https://api.instatus.com/v1/{}/incidents?status=INVESTIGATING", self.page_id);
         let list = self
@@ -55,12 +63,23 @@ impl Client {
             .send()
             .await?
             .error_for_status()?
-            .json::<Vec<Inc>>()
+            .json::<Vec<IncidentSummary>>()
             .await?;
-        Ok(list
-            .into_iter()
-            .find(|inc| inc.components.iter().any(|c| c == component_id))
-            .map(|i| i.id))
+
+        // find the first incident touching our component
+        if let Some((incident_id, comp)) = list.into_iter().find_map(|inc| {
+            inc.components.into_iter().find(|c| c.id == component_id).map(|comp| (inc.id, comp))
+        }) {
+            tracing::info!(
+                incident_id = %incident_id,
+                component_name = %comp.name,
+                component_status = %comp.status,
+                "Found open incident for component"
+            );
+            Ok(Some(incident_id))
+        } else {
+            Ok(None)
+        }
     }
 }
 
