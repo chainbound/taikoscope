@@ -7,11 +7,12 @@ exclude.workspace = true
 repository.workspace = true
 
 [dependencies]
+chrono.workspace = true
+clickhouse = { path = "../clickhouse" }
+eyre.workspace = true
 reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-clickhouse = { path = "../clickhouse" }
-chrono.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 

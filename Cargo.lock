@@ -2302,6 +2302,7 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "clickhouse 0.1.0",
+ "eyre",
  "reqwest",
  "serde",
  "serde_json",

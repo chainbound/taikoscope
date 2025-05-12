@@ -1,42 +1,6 @@
+use eyre::Result;
 use reqwest::Client as HttpClient;
-use serde::Serialize;
-
-/// Client for interacting with the Instatus API.
-#[derive(Debug, Clone)]
-pub struct Client {
-    http: HttpClient,
-    api_key: String,
-    page_id: String,
-}
-
-impl Client {
-    /// Create a new Instatus API client.
-    pub fn new(api_key: String, page_id: String, _component_id: String) -> Self {
-        Self { http: HttpClient::new(), api_key, page_id }
-    }
-
-    /// Create a new incident on Instatus.
-    pub async fn create_incident(&self, payload: NewIncident) -> Result<String, reqwest::Error> {
-        let url = format!("https://api.instatus.com/v1/{}/incidents", self.page_id);
-        let resp = self.http.post(&url).bearer_auth(&self.api_key).json(&payload).send().await?;
-        let json: serde_json::Value = resp.json().await?;
-        Ok(json["id"].as_str().unwrap_or("").to_string())
-    }
-
-    /// Resolve an existing incident on Instatus.
-    pub async fn resolve_incident(
-        &self,
-        incident_id: &str,
-        payload: ResolveIncident,
-    ) -> Result<(), reqwest::Error> {
-        let url = format!(
-            "https://api.instatus.com/v1/{}/incidents/{}/incident-updates",
-            self.page_id, incident_id
-        );
-        self.http.post(&url).bearer_auth(&self.api_key).json(&payload).send().await?;
-        Ok(())
-    }
-}
+use serde::{Deserialize, Serialize};
 
 /// Payload for creating a new incident.
 #[derive(Debug, Serialize, PartialEq, Eq)]
@@ -80,6 +44,77 @@ pub struct ComponentStatus {
     pub id: String,
     /// Status (e.g. MAJOROUTAGE, OPERATIONAL)
     pub status: String,
+}
+
+impl ComponentStatus {
+    /// Create a new component status for a major outage.
+    pub fn major_outage(id: &str) -> Self {
+        Self { id: id.into(), status: "MAJOROUTAGE".into() }
+    }
+
+    /// Create a new component status for an operational component.
+    pub fn operational(id: &str) -> Self {
+        Self { id: id.into(), status: "OPERATIONAL".into() }
+    }
+}
+
+/// Client for interacting with the Instatus API.
+#[derive(Debug, Clone)]
+pub struct Client {
+    http: HttpClient,
+    api_key: String,
+    page_id: String,
+}
+
+impl Client {
+    /// Create a new Instatus API client.
+    pub fn new(api_key: String, page_id: String, _component_id: String) -> Self {
+        Self { http: HttpClient::new(), api_key, page_id }
+    }
+
+    fn auth(&self, rb: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
+        rb.bearer_auth(&self.api_key)
+    }
+
+    /// Create a new incident on Instatus.
+    pub async fn create_incident(&self, body: &NewIncident) -> Result<String> {
+        #[derive(Deserialize)]
+        struct Resp {
+            id: String,
+        }
+        let url = format!("https://api.instatus.com/v1/{}/incidents", self.page_id);
+        let resp = self.auth(self.http.post(&url)).json(body).send().await?.error_for_status()?;
+        Ok(resp.json::<Resp>().await?.id)
+    }
+
+    /// Resolve an existing incident on Instatus.
+    pub async fn resolve_incident(&self, id: &str, body: &ResolveIncident) -> Result<()> {
+        let url = format!(
+            "https://api.instatus.com/v1/{}/incidents/{}/incident-updates",
+            self.page_id, id
+        );
+        self.auth(self.http.post(&url)).json(body).send().await?.error_for_status()?;
+        Ok(())
+    }
+
+    /// Return open incident ID for `component_id`, if any.
+    pub async fn open_incident(&self, component_id: &str) -> Result<Option<String>> {
+        #[derive(Deserialize)]
+        struct Inc {
+            id: String,
+            components: Vec<String>,
+        }
+        let url =
+            format!("https://api.instatus.com/v1/{}/incidents?status=INVESTIGATING", self.page_id);
+        let list = self
+            .auth(self.http.get(&url))
+            .send()
+            .await?
+            .error_for_status()?
+            .json::<Vec<Inc>>()
+            .await?;
+        Ok(list.into_iter().find(|i| i.components.contains(&component_id.to_owned())).map(|i| i.id))
+    }
 }
 
 #[cfg(test)]

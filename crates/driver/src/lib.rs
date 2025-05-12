@@ -1,5 +1,7 @@
 //! Taikoscope Driver
 
+use std::time::Duration;
+
 use eyre::Result;
 use tokio_stream::StreamExt;
 use tracing::info;
@@ -75,6 +77,9 @@ impl Driver {
             self.clickhouse.clone(),
             self.incident_client.clone(),
             self.instatus_component_id.clone(),
+            Duration::from_secs(30),
+            Duration::from_secs(30),
+            None,
         )
         .spawn();
 
