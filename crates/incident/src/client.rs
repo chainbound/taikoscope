@@ -18,6 +18,7 @@ impl Client {
         Self { http: HttpClient::new(), api_key, page_id }
     }
 
+    /// Authenticate the request.
     fn auth(&self, rb: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
         rb.bearer_auth(&self.api_key)
     }
