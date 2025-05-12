@@ -6,6 +6,7 @@ use tracing::info;
 
 use config::Opts;
 use extractor::{Extractor, ReorgDetector};
+use incident::client::Client as IncidentClient;
 use inserter::ClickhouseClient;
 
 /// An EPOCH is a series of 32 slots.
@@ -17,6 +18,7 @@ pub struct Driver {
     clickhouse: ClickhouseClient,
     extractor: Extractor,
     reorg: ReorgDetector,
+    _incident_client: IncidentClient,
 }
 
 impl Driver {
@@ -41,7 +43,19 @@ impl Driver {
         )
         .await?;
 
-        Ok(Self { clickhouse, extractor, reorg: ReorgDetector::new() })
+        // init incident client
+        let incident_client = IncidentClient::new(
+            opts.instatus_api_key.clone(),
+            opts.instatus_page_id.clone(),
+            opts.instatus_component_id.clone(),
+        );
+
+        Ok(Self {
+            clickhouse,
+            extractor,
+            reorg: ReorgDetector::new(),
+            _incident_client: incident_client,
+        })
     }
 
     /// Consume the driver and drive the infinite processing loop.
