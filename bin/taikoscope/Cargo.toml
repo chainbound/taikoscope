@@ -11,7 +11,7 @@ default-run = "taikoscope"
 config = { path = "../../crates/config" }
 driver = { path = "../../crates/driver" }
 extractor = { path = "../../crates/extractor" }
-inserter = { path = "../../crates/inserter" }
+clickhouse = { path = "../../crates/clickhouse" }
 
 alloy-primitives.workspace = true
 clap.workspace = true

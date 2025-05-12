@@ -4,10 +4,10 @@ use eyre::Result;
 use tokio_stream::StreamExt;
 use tracing::info;
 
+use clickhouse::ClickhouseClient;
 use config::Opts;
 use extractor::{Extractor, ReorgDetector};
 use incident::client::Client as IncidentClient;
-use inserter::ClickhouseClient;
 
 /// An EPOCH is a series of 32 slots.
 pub const EPOCH_SLOTS: u64 = 32;

@@ -1187,6 +1187,23 @@ checksum = "f46ad14479a25103f283c0f10005961cf086d8dc42205bb44c46ac563475dca6"
 
 [[package]]
 name = "clickhouse"
+version = "0.1.0"
+dependencies = [
+ "alloy",
+ "chainio",
+ "chrono",
+ "clickhouse 0.13.2",
+ "derive_more 1.0.0",
+ "extractor",
+ "eyre",
+ "serde",
+ "tokio",
+ "tracing",
+ "url",
+]
+
+[[package]]
+name = "clickhouse"
 version = "0.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d9894248c4c5a4402f76a56c273836a0c32547ec8a68166aedee7e01b7b8d102"
@@ -1533,12 +1550,12 @@ version = "0.1.0"
 dependencies = [
  "alloy-primitives",
  "clap",
+ "clickhouse 0.1.0",
  "config",
  "dotenvy",
  "extractor",
  "eyre",
  "incident",
- "inserter",
  "tokio",
  "tokio-stream",
  "tracing",
@@ -2313,23 +2330,6 @@ dependencies = [
  "equivalent",
  "hashbrown 0.15.3",
  "serde",
-]
-
-[[package]]
-name = "inserter"
-version = "0.1.0"
-dependencies = [
- "alloy",
- "chainio",
- "chrono",
- "clickhouse",
- "derive_more 1.0.0",
- "extractor",
- "eyre",
- "serde",
- "tokio",
- "tracing",
- "url",
 ]
 
 [[package]]
@@ -3747,12 +3747,12 @@ version = "0.1.0"
 dependencies = [
  "alloy-primitives",
  "clap",
+ "clickhouse 0.1.0",
  "config",
  "dotenvy",
  "driver",
  "extractor",
  "eyre",
- "inserter",
  "tokio",
  "tokio-stream",
  "tracing",
