@@ -60,7 +60,10 @@ impl Client {
             .error_for_status()?
             .json::<Vec<Inc>>()
             .await?;
-        Ok(list.into_iter().find(|i| i.components.contains(&component_id.to_owned())).map(|i| i.id))
+        Ok(list
+            .into_iter()
+            .find(|inc| inc.components.iter().any(|c| c == component_id))
+            .map(|i| i.id))
     }
 }
 
