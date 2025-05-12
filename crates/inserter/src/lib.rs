@@ -2,6 +2,7 @@
 
 use alloy::primitives::{Address, BlockHash, BlockNumber};
 use chainio::ITaikoInbox;
+use chrono::{DateTime, LocalResult, TimeZone, Utc};
 use clickhouse::{Client, Row};
 use derive_more::Debug;
 pub use extractor::{L1Header, L2Header};
@@ -145,6 +146,11 @@ impl TryFrom<&chainio::taiko::wrapper::ITaikoWrapper::ForcedInclusionProcessed>
 
         Ok(Self { blob_hash: hash_bytes })
     }
+}
+
+#[derive(Row, Serialize, Deserialize)]
+struct MaxTs {
+    block_ts: u64,
 }
 
 /// Clickhouse client
@@ -426,16 +432,42 @@ impl ClickhouseClient {
 
         Ok(())
     }
+
+    /// Get timestamp of the latest L2 head event in UTC.
+    pub async fn get_last_l2_head_time(&self) -> Result<Option<DateTime<Utc>>> {
+        let client = self.base.clone().with_database(&self.db_name);
+        let query =
+            format!("SELECT max(block_ts) AS block_ts FROM {}.l2_head_events", &self.db_name);
+        let mut rows = client.query(&query).fetch_all::<MaxTs>().await?;
+        if let Some(r) = rows.pop() {
+            let ts_opt = match Utc.timestamp_opt(r.block_ts as i64, 0) {
+                LocalResult::Single(dt) => Some(dt),
+                _ => None,
+            };
+            Ok(ts_opt)
+        } else {
+            Ok(None)
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use alloy::primitives::FixedBytes;
-    use clickhouse::test::{Mock, handlers};
+    use clickhouse::{
+        Row,
+        test::{Mock, handlers},
+    };
     use extractor::L1Header;
+    use serde::Serialize;
     use url::Url;
 
     use crate::{ClickhouseClient, L1HeadEvent, PreconfData};
+
+    #[derive(Serialize, Row)]
+    struct MaxRow {
+        block_ts: u64,
+    }
 
     #[tokio::test]
     async fn test_insert_l1_block() {
@@ -507,5 +539,22 @@ mod tests {
             rows[0],
             PreconfData { slot, candidates: vec![], current_operator: None, next_operator: None }
         );
+    }
+
+    #[tokio::test]
+    async fn test_get_last_l2_head_time_empty() {
+        // Spin up mock server
+        let mock = Mock::new();
+        // Provide no rows
+        mock.add(handlers::provide(Vec::<MaxRow>::new()));
+
+        // Initialize client
+        let url = Url::parse(mock.url()).unwrap();
+        let ch = ClickhouseClient::new(url, "test-db".to_string(), "user".into(), "pass".into())
+            .unwrap();
+
+        // Call the function under test
+        let result = ch.get_last_l2_head_time().await.unwrap();
+        assert_eq!(result, None);
     }
 }
