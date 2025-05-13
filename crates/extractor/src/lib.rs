@@ -247,3 +247,46 @@ impl ReorgDetector {
         Some((hash, old_hash, depth))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use alloy::primitives::BlockHash;
+
+    #[test]
+    fn initial_block() {
+        let mut det = ReorgDetector::new();
+        // first ever block: should return None
+        assert!(det.on_new_block(5, BlockHash::ZERO, BlockHash::ZERO).is_none());
+    }
+
+    #[test]
+    fn extend_chain() {
+        let mut det = ReorgDetector::new();
+        // seed with block 1
+        det.on_new_block(1, BlockHash::ZERO, BlockHash::ZERO);
+        // next block parent matches head_hash → no reorg
+        assert!(det.on_new_block(2, BlockHash::ZERO, BlockHash::ZERO).is_none());
+    }
+
+    #[test]
+    fn detect_reorg_depth() {
+        let mut det = ReorgDetector::new();
+        // seed with block 10
+        det.on_new_block(10, BlockHash::ZERO, BlockHash::ZERO);
+        // feed block 8 (parent mismatch) → reorg of depth 10–8+1 = 3
+        let depth = det.on_new_block(8, BlockHash::ZERO, BlockHash::ZERO).map(|(_, _, d)| d);
+        assert_eq!(depth, Some(3));
+    }
+
+    #[test]
+    #[should_panic]
+    fn overflow_panics() {
+        let mut det = ReorgDetector::new();
+        // seed with block 10
+        det.on_new_block(10, BlockHash::ZERO, BlockHash::ZERO);
+        // feeding block 20 triggers (10−20+1) overflow → panic
+        det.on_new_block(20, BlockHash::ZERO, BlockHash::ZERO);
+    }
+}
