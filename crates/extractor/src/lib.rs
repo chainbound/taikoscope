@@ -212,7 +212,7 @@ impl ReorgDetector {
     /// Checks a new block number against the current head number.
     /// Returns the reorg depth if the new block number is less than the current head.
     /// Always updates the internal head number to the new block number.
-    pub fn on_new_block(&mut self, new_block_number: BlockNumber) -> Option<u8> {
+    pub fn on_new_block(&mut self, new_block_number: BlockNumber) -> Option<u16> {
         // Assume no reorg
         let mut reorg_depth = None;
 
@@ -223,9 +223,9 @@ impl ReorgDetector {
             // e.g. if old head was 10 and new head is 8, depth is 2 (blocks 10 and 9 are orphaned).
             let depth_val = self.head_number.saturating_sub(new_block_number);
 
-            // Ensure a positive depth, then cap at u8::MAX.
+            // Ensure a positive depth, then cap at u16::MAX.
             if depth_val > 0 {
-                reorg_depth = Some(depth_val.min(u8::MAX as u64) as u8);
+                reorg_depth = Some(depth_val.min(u16::MAX as u64) as u16);
             }
         }
 
@@ -288,11 +288,11 @@ mod tests {
     }
 
     #[test]
-    fn reorg_depth_capped_at_u8_max() {
+    fn reorg_depth_capped_at_u16_max() {
         let mut det = ReorgDetector::new();
-        det.on_new_block(300); // head_number is 300
-        // New block 1. 1 < 300. Reorg. Depth = 300 - 1 = 299. Capped to 255.
-        assert_eq!(det.on_new_block(1), Some(255));
+        det.on_new_block(u16::MAX as u64 + 10);
+        // New block 1. 1 < u16::MAX + 10. Reorg. Depth = u16::MAX + 10 - 1. Capped to u16::MAX.
+        assert_eq!(det.on_new_block(1), Some(u16::MAX));
         assert_eq!(det.head_number, 1);
     }
 

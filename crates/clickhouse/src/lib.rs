@@ -99,7 +99,7 @@ pub struct L2ReorgRow {
     /// Block number
     pub l2_block_number: u64,
     /// Depth
-    pub depth: u8,
+    pub depth: u16,
 }
 
 impl TryFrom<&ITaikoInbox::BatchProposed> for BatchRow {
@@ -284,7 +284,7 @@ impl ClickhouseClient {
             .query(&format!(
                 "CREATE TABLE IF NOT EXISTS {}.l2_reorgs (
                     l2_block_number UInt64,
-                    depth UInt8,
+                    depth UInt16,
                     inserted_at DateTime64(3) DEFAULT now64()
                 ) ENGINE = MergeTree()
                 ORDER BY inserted_at;",
@@ -404,7 +404,7 @@ impl ClickhouseClient {
     }
 
     /// Insert L2 reorg into `ClickHouse`
-    pub async fn insert_l2_reorg(&self, block_number: BlockNumber, depth: u8) -> Result<()> {
+    pub async fn insert_l2_reorg(&self, block_number: BlockNumber, depth: u16) -> Result<()> {
         let client = self.base.clone().with_database(&self.db_name);
 
         let row = L2ReorgRow { l2_block_number: block_number, depth };
