@@ -65,8 +65,13 @@ impl TaikoPreconfWhitelist {
         match self.0.isOperatorActive(address, epoch_timestamp).call().await {
             Ok(result) => Ok(result),
             Err(err) => {
-                let decoded_error = try_parse_contract_error::<IPreconfWhitelistErrors>(err)?;
-                Err(SolError::custom(format!("{:?}", decoded_error)).into())
+                // Patch: handle the old whitelist contract implementation
+                if err.to_string().contains("execution reverted") {
+                    self.0.isOperator(address).call().await
+                } else {
+                    let decoded_error = try_parse_contract_error::<IPreconfWhitelistErrors>(err)?;
+                    Err(SolError::custom(format!("{:?}", decoded_error)).into())
+                }
             }
         }
     }
@@ -115,6 +120,10 @@ sol! {
         /// @param epochTimestamp The timestamp of the epoch to check.
         /// @return True if the address is an active operator in the given epoch.
         function isOperatorActive(address operator, uint64 epochTimestamp) external view returns (bool);
+
+        /// @notice The OLD whitelist method for checking if an address is whitelisted.
+        /// @dev This is kept for backwards compatibility.
+        function isOperator(address operator) external view returns (bool);
     }
 }
 
