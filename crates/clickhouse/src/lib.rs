@@ -435,6 +435,11 @@ impl ClickhouseClient {
             None => return Ok(None),
         };
 
+        // treat epoch-zero (0) as no data
+        if row.block_ts == 0 {
+            return Ok(None);
+        }
+
         // convert ts → DateTime or None if out-of-range/null
         let ts_opt = match Utc.timestamp_opt(row.block_ts as i64, 0) {
             LocalResult::Single(dt) => Some(dt),
