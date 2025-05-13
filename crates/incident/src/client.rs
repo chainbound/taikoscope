@@ -1,7 +1,7 @@
 use eyre::Result;
 use reqwest::{Client as HttpClient, Url};
 use serde::Deserialize;
-use tracing::info;
+use tracing::{debug, error, info};
 
 use crate::monitor::{NewIncident, ResolveIncident};
 
@@ -63,16 +63,22 @@ impl Client {
     /// Resolve an existing incident on Instatus.
     pub async fn resolve_incident(&self, id: &str, body: &ResolveIncident) -> Result<()> {
         let url = self.base_url.join(&format!("v1/{}/incidents/{}", self.page_id, id)).unwrap();
-        let response =
-            self.auth(self.http.post(url)).json(body).send().await?.error_for_status()?;
+        let response = self.auth(self.http.post(url.clone())).json(body).send().await?;
 
         let status = response.status();
         if !status.is_success() {
-            let error_body = response.text().await?;
-            return Err(eyre::eyre!("Instatus returned a bad request: {}", error_body));
+            let response_text = match response.text().await {
+                Ok(text) => text,
+                Err(_) => "Could not read response body".into(),
+            };
+            error!(
+                "Failed to resolve incident: status={}, url={}, body={}",
+                status, url, response_text
+            );
+            return Err(eyre::eyre!("HTTP error {}: {}", status, response_text));
         }
 
-        info!("Resolved incident {id} with status {}", status);
+        debug!("Successfully resolved incident id={}", id);
         Ok(())
     }
 

@@ -4,7 +4,7 @@ use clickhouse::ClickhouseClient;
 use eyre::Result;
 use serde::Serialize;
 use std::time::Duration;
-use tracing::{error, info};
+use tracing::{debug, error, info};
 
 /// Incident‐level state sent to Instatus.
 #[derive(Debug, Serialize, Clone, Copy, PartialEq, Eq)]
@@ -200,8 +200,18 @@ impl InstatusMonitor {
             statuses: vec![ComponentStatus::operational(&self.component_id)],
             notify: true,
         };
-        self.client.resolve_incident(id, &body).await?;
-        info!(%id, "Resolved incident");
-        Ok(())
+
+        debug!(%id, "Closing incident with body: {:?}", body);
+
+        match self.client.resolve_incident(id, &body).await {
+            Ok(_) => {
+                info!(%id, "Successfully resolved incident");
+                Ok(())
+            }
+            Err(e) => {
+                error!(%id, error = %e, "Failed to resolve incident");
+                Err(e)
+            }
+        }
     }
 }
