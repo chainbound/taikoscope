@@ -8,7 +8,7 @@ use derive_more::Debug;
 pub use extractor::{L1Header, L2Header};
 use eyre::{Result, WrapErr};
 use serde::{Deserialize, Serialize};
-use tracing::info;
+use tracing::{info, warn};
 use url::Url;
 
 /// L1 head event
@@ -436,16 +436,21 @@ impl ClickhouseClient {
     /// Get timestamp of the latest L2 head event in UTC.
     pub async fn get_last_l2_head_time(&self) -> Result<Option<DateTime<Utc>>> {
         let client = self.base.clone().with_database(&self.db_name);
-        let query =
-            format!("SELECT max(block_ts) AS block_ts FROM {}.l2_head_events", &self.db_name);
-        let mut rows = client.query(&query).fetch_all::<MaxTs>().await?;
-        if let Some(r) = rows.pop() {
-            let ts_opt = match Utc.timestamp_opt(r.block_ts as i64, 0) {
-                LocalResult::Single(dt) => Some(dt),
-                _ => None,
-            };
-            Ok(ts_opt)
+
+        let row = client
+            .query(&format!(
+                "SELECT max(block_ts) as block_ts FROM {}.l2_head_events",
+                &self.db_name
+            ))
+            .fetch_one::<MaxTs>()
+            .await
+            .context("fetching max(block_ts) failed")?;
+
+        // handle null or out-of-range ts gracefully
+        if let LocalResult::Single(dt) = Utc.timestamp_opt(row.block_ts as i64, 0) {
+            Ok(Some(dt))
         } else {
+            warn!(ts = row.block_ts, "invalid block_ts from ClickHouse");
             Ok(None)
         }
     }

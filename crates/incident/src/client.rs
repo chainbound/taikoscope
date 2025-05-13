@@ -1,7 +1,7 @@
 use eyre::Result;
 use reqwest::{Client as HttpClient, Url};
 use serde::Deserialize;
-use tracing::{debug, error, info};
+use tracing::{debug, error};
 
 use crate::monitor::{NewIncident, ResolveIncident};
 
