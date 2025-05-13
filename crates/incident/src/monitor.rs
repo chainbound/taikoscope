@@ -4,7 +4,8 @@ use clickhouse::ClickhouseClient;
 use eyre::Result;
 use serde::Serialize;
 use std::time::Duration;
-use tracing::{debug, error, info};
+use tokio::task::JoinHandle;
+use tracing::{debug, error, info, warn};
 
 /// Incident‐level state sent to Instatus.
 #[derive(Debug, Serialize, Clone, Copy, PartialEq, Eq)]
@@ -129,23 +130,33 @@ impl InstatusMonitor {
     }
 
     /// Spawns the monitor on the Tokio runtime.
-    pub fn spawn(mut self) {
+    pub fn spawn(self) -> JoinHandle<()> {
         tokio::spawn(async move {
             if let Err(e) = self.run().await {
-                error!(%e, "Instatus monitor exited");
+                error!(%e, "monitor exited unexpectedly");
             }
-        });
+        })
     }
 
     /// Runs the monitor.
-    async fn run(&mut self) -> Result<()> {
+    async fn run(mut self) -> Result<()> {
         self.active = self.client.open_incident(&self.component_id).await?;
-        let mut tick = tokio::time::interval(self.interval);
+        let mut interval = tokio::time::interval(self.interval);
 
         loop {
-            tick.tick().await;
-            if let Some(last) = self.clickhouse.get_last_l2_head_time().await? {
-                self.handle(last).await?;
+            interval.tick().await;
+            match self.clickhouse.get_last_l2_head_time().await {
+                Ok(Some(ts)) => {
+                    if let Err(e) = self.handle(ts).await {
+                        error!(%e, "handling new L2 head");
+                    }
+                }
+                Ok(None) => {
+                    warn!("no L2 head timestamp available this tick");
+                }
+                Err(e) => {
+                    error!(%e, "failed to query last L2 head time");
+                }
             }
         }
     }
