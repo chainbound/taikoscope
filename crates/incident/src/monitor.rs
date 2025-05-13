@@ -22,7 +22,7 @@ pub enum IncidentState {
 
 /// Component health inside an incident update.
 #[derive(Debug, Serialize, Clone, Copy, PartialEq, Eq)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[serde(rename_all = "UPPERCASE")]
 pub enum ComponentHealth {
     /// Component is operational.
     Operational,
