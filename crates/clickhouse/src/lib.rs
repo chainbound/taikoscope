@@ -287,7 +287,7 @@ impl ClickhouseClient {
         self.base
             .query(&format!(
                 "CREATE TABLE IF NOT EXISTS {}.l2_reorgs (
-                    block_number UInt64,
+                    l2_block_number UInt64,
                     old_hash FixedString(32),
                     new_hash FixedString(32),
                     depth UInt8,
