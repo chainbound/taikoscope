@@ -202,7 +202,18 @@ impl InstatusMonitor {
             started: Some(started),
         };
         let id = self.client.create_incident(&body).await?;
-        info!(%id, "Created incident");
+
+        info!(
+            incident_id = %id,
+            name = %body.name,
+            message = %body.message,
+            status = ?body.status,
+            components = ?body.components,
+            statuses = ?body.statuses,
+            notify = %body.notify,
+            started = ?body.started,
+            "Created incident"
+        );
         Ok(id)
     }
 
