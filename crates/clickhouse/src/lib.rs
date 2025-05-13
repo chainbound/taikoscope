@@ -1,6 +1,6 @@
 //! Taikoscope Inserter
 
-use alloy::primitives::{Address, BlockHash, BlockNumber};
+use alloy::primitives::{Address, BlockNumber};
 use chainio::ITaikoInbox;
 use chrono::{DateTime, LocalResult, TimeZone, Utc};
 use clickhouse::{Client, Row};
@@ -98,10 +98,6 @@ pub struct BatchRow {
 pub struct L2ReorgRow {
     /// Block number
     pub l2_block_number: u64,
-    /// Old hash
-    pub old_hash: [u8; 32],
-    /// New hash
-    pub hash: [u8; 32],
     /// Depth
     pub depth: u8,
 }
@@ -288,8 +284,6 @@ impl ClickhouseClient {
             .query(&format!(
                 "CREATE TABLE IF NOT EXISTS {}.l2_reorgs (
                     l2_block_number UInt64,
-                    old_hash FixedString(32),
-                    hash FixedString(32),
                     depth UInt8,
                     inserted_at DateTime64(3) DEFAULT now64()
                 ) ENGINE = MergeTree()
@@ -410,21 +404,10 @@ impl ClickhouseClient {
     }
 
     /// Insert L2 reorg into `ClickHouse`
-    pub async fn insert_l2_reorg(
-        &self,
-        block_number: BlockNumber,
-        old_hash: BlockHash,
-        hash: BlockHash,
-        depth: u8,
-    ) -> Result<()> {
+    pub async fn insert_l2_reorg(&self, block_number: BlockNumber, depth: u8) -> Result<()> {
         let client = self.base.clone().with_database(&self.db_name);
 
-        let row = L2ReorgRow {
-            l2_block_number: block_number,
-            old_hash: old_hash.into(),
-            hash: hash.into(),
-            depth,
-        };
+        let row = L2ReorgRow { l2_block_number: block_number, depth };
 
         let mut insert = client.insert("l2_reorgs")?;
         insert.write(&row).await?;

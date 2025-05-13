@@ -196,55 +196,43 @@ impl Extractor {
     }
 }
 
-/// Detects reorgs
-/// Stores the last 256 blocks in a buffer
+/// Detects reorgs based on block numbers.
 #[derive(Debug)]
 pub struct ReorgDetector {
     head_number: BlockNumber,
-    head_hash: BlockHash,
-    buf: [BlockHash; 256],
 }
 
 impl ReorgDetector {
     /// Create a new reorg detector
     #[allow(clippy::new_without_default)]
     pub const fn new() -> Self {
-        Self { head_number: 0, head_hash: BlockHash::ZERO, buf: [BlockHash::ZERO; 256] }
+        Self { head_number: 0 }
     }
 
-    /// Returns info about the reorg if there is a reorg
-    pub fn on_new_block(
-        &mut self,
-        number: BlockNumber,
-        hash: BlockHash,
-        parent: BlockHash,
-    ) -> Option<(BlockHash, BlockHash, u8)> {
-        // First block ever
-        if self.head_number == 0 {
-            self.head_number = number;
-            self.head_hash = hash;
-            self.buf[(number % 256) as usize] = hash;
-            return None;
+    /// Checks a new block number against the current head number.
+    /// Returns the reorg depth if the new block number is less than the current head.
+    /// Always updates the internal head number to the new block number.
+    pub fn on_new_block(&mut self, new_block_number: BlockNumber) -> Option<u8> {
+        // Assume no reorg
+        let mut reorg_depth = None;
+
+        // A reorg is detected if the new block's number is less than the current head's number.
+        // This check also implies self.head_number must have been initialized (i.e., not 0).
+        if new_block_number < self.head_number {
+            // Depth is the number of blocks orphaned from the previous chain.
+            // e.g. if old head was 10 and new head is 8, depth is 2 (blocks 10 and 9 are orphaned).
+            let depth_val = self.head_number.saturating_sub(new_block_number);
+
+            // Ensure a positive depth, then cap at u8::MAX.
+            if depth_val > 0 {
+                reorg_depth = Some(depth_val.min(u8::MAX as u64) as u8);
+            }
         }
 
-        let idx = (number % 256) as usize;
-        let old_hash = self.buf[idx];
+        // Always update the head to the new block number.
+        self.head_number = new_block_number;
 
-        // Normal case, extend current head
-        if number == self.head_number + 1 && parent == self.head_hash {
-            self.head_number = number;
-            self.head_hash = hash;
-            self.buf[idx] = hash;
-            return None;
-        }
-
-        // Reorg detected
-        let depth = (self.head_number - number + 1).max(1) as u8;
-        self.head_number = number;
-        self.head_hash = hash;
-        self.buf[idx] = hash;
-
-        Some((hash, old_hash, depth))
+        reorg_depth
     }
 }
 
@@ -252,41 +240,76 @@ impl ReorgDetector {
 mod tests {
     use super::*;
 
-    use alloy::primitives::BlockHash;
-
     #[test]
     fn initial_block() {
         let mut det = ReorgDetector::new();
-        // first ever block: should return None
-        assert!(det.on_new_block(5, BlockHash::ZERO, BlockHash::ZERO).is_none());
+        // First block received is 5. head_number is 0. 5 is not < 0. No reorg.
+        assert_eq!(det.on_new_block(5), None);
+        assert_eq!(det.head_number, 5);
     }
 
     #[test]
-    fn extend_chain() {
+    fn subsequent_blocks_increasing() {
         let mut det = ReorgDetector::new();
-        // seed with block 1
-        det.on_new_block(1, BlockHash::ZERO, BlockHash::ZERO);
-        // next block parent matches head_hash → no reorg
-        assert!(det.on_new_block(2, BlockHash::ZERO, BlockHash::ZERO).is_none());
+        det.on_new_block(5); // head_number becomes 5
+        // New block 6. 6 is not < 5. No reorg.
+        assert_eq!(det.on_new_block(6), None);
+        assert_eq!(det.head_number, 6);
+        // New block 7. 7 is not < 6. No reorg.
+        assert_eq!(det.on_new_block(7), None);
+        assert_eq!(det.head_number, 7);
     }
 
     #[test]
-    fn detect_reorg_depth() {
+    fn reorg_to_lower_number() {
         let mut det = ReorgDetector::new();
-        // seed with block 10
-        det.on_new_block(10, BlockHash::ZERO, BlockHash::ZERO);
-        // feed block 8 (parent mismatch) → reorg of depth 10–8+1 = 3
-        let depth = det.on_new_block(8, BlockHash::ZERO, BlockHash::ZERO).map(|(_, _, d)| d);
-        assert_eq!(depth, Some(3));
+        det.on_new_block(10); // head_number is 10
+        // New block 8. 8 < 10. Reorg. Depth = 10 - 8 = 2.
+        assert_eq!(det.on_new_block(8), Some(2));
+        assert_eq!(det.head_number, 8); // Head is updated to 8
     }
 
     #[test]
-    #[should_panic]
-    fn overflow_panics() {
+    fn reorg_by_one() {
         let mut det = ReorgDetector::new();
-        // seed with block 10
-        det.on_new_block(10, BlockHash::ZERO, BlockHash::ZERO);
-        // feeding block 20 triggers (10−20+1) overflow → panic
-        det.on_new_block(20, BlockHash::ZERO, BlockHash::ZERO);
+        det.on_new_block(10); // head_number is 10
+        // New block 9. 9 < 10. Reorg. Depth = 10 - 9 = 1.
+        assert_eq!(det.on_new_block(9), Some(1));
+        assert_eq!(det.head_number, 9);
+    }
+
+    #[test]
+    fn same_block_number_no_reorg() {
+        let mut det = ReorgDetector::new();
+        det.on_new_block(10); // head_number is 10
+        // New block 10. 10 is not < 10. No reorg.
+        assert_eq!(det.on_new_block(10), None);
+        assert_eq!(det.head_number, 10); // Head is updated to 10 (no change)
+    }
+
+    #[test]
+    fn reorg_depth_capped_at_u8_max() {
+        let mut det = ReorgDetector::new();
+        det.on_new_block(300); // head_number is 300
+        // New block 1. 1 < 300. Reorg. Depth = 300 - 1 = 299. Capped to 255.
+        assert_eq!(det.on_new_block(1), Some(255));
+        assert_eq!(det.head_number, 1);
+    }
+
+    #[test]
+    fn reorg_from_initial_zero_state() {
+        let mut det = ReorgDetector::new(); // head_number is 0
+        // New block 5. 5 is not < 0. No reorg.
+        assert_eq!(det.on_new_block(5), None);
+        assert_eq!(det.head_number, 5);
+    }
+
+    #[test]
+    fn reorg_to_zero_not_possible_if_blocks_are_positive() {
+        let mut det = ReorgDetector::new();
+        det.on_new_block(5); // head_number is 5
+        // New block 0. 0 < 5. Reorg. Depth = 5 - 0 = 5.
+        assert_eq!(det.on_new_block(0), Some(5));
+        assert_eq!(det.head_number, 0);
     }
 }

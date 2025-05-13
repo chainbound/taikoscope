@@ -132,12 +132,16 @@ impl Driver {
                 }
                 Some(header) = l2_stream.next() => {
                     // Detect reorgs
-                    if let Some((hash, old_hash, depth)) = self.reorg.on_new_block(header.number, header.hash, header.parent_hash) {
-                        self.clickhouse.insert_l2_reorg(header.number, hash, old_hash, depth).await?;
-                        info!("Inserted L2 reorg: {:?}", header.number);
+                    // The simplified on_new_block now only takes the new block's number.
+                    // It returns Some(depth) if new_block_number < current_head_number.
+                    if let Some(depth) = self.reorg.on_new_block(header.number) {
+                        // The insert_l2_reorg function expects (block_number, depth)
+                        // The block_number should be the new head number after the reorg.
+                        self.clickhouse.insert_l2_reorg(header.number, depth).await?;
+                        info!("Inserted L2 reorg: new head {}, depth {}", header.number, depth);
                     } else {
                         self.clickhouse.insert_l2_header(&header).await?;
-                        info!("Inserted L2 header: {:?}", header.number);
+                        info!("Inserted L2 header: {}", header.number);
                     }
                 }
                 Some(batch) = batch_stream.next() => {
