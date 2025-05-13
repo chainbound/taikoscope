@@ -22,7 +22,11 @@ async fn main() -> eyre::Result<()> {
 
     let opts = Opts::parse();
 
-    tracing_subscriber::fmt().with_env_filter(EnvFilter::from_default_env()).init();
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")),
+        )
+        .init();
 
     info!("🔭 Taikoscope engine starting...");
 
