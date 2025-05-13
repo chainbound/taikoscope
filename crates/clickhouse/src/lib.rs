@@ -289,11 +289,11 @@ impl ClickhouseClient {
                 "CREATE TABLE IF NOT EXISTS {}.l2_reorgs (
                     l2_block_number UInt64,
                     old_hash FixedString(32),
-                    new_hash FixedString(32),
+                    hash FixedString(32),
                     depth UInt8,
-                    detected_at DateTime64(3) DEFAULT now64()
+                    inserted_at DateTime64(3) DEFAULT now64()
                 ) ENGINE = MergeTree()
-                ORDER BY detected_at;",
+                ORDER BY inserted_at;",
                 self.db_name
             ))
             .execute()
