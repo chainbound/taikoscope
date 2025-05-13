@@ -150,7 +150,6 @@ mod tests {
     #[test]
     fn test_resolve_incident_serialization() {
         let payload = ResolveIncident {
-            message: "L2 head events have resumed.".to_string(),
             status: IncidentState::Resolved,
             components: vec!["comp1".to_string()],
             statuses: vec![ComponentStatus::operational("comp1")],
@@ -158,7 +157,6 @@ mod tests {
             started: Some("2025-05-12T07:48:00Z".to_string()),
         };
         let expected = json!({
-            "message": "L2 head events have resumed.",
             "status": "RESOLVED",
             "components": ["comp1"],
             "statuses": [{"id": "comp1", "status": "OPERATIONAL"}],
@@ -214,7 +212,6 @@ mod tests {
         let client =
             Client::with_base_url("testkey".into(), "page1".into(), server.url().parse().unwrap());
         let payload = ResolveIncident {
-            message: "Resolved".into(),
             status: IncidentState::Resolved,
             components: vec!["comp1".into()],
             statuses: vec![ComponentStatus::operational("comp1")],

@@ -79,8 +79,6 @@ pub struct NewIncident {
 /// Payload for resolving an incident.
 #[derive(Debug, Serialize, PartialEq, Eq)]
 pub struct ResolveIncident {
-    /// Update message
-    pub message: String,
     /// Status (should be RESOLVED)
     pub status: IncidentState,
     /// Affected component IDs
@@ -208,7 +206,6 @@ impl InstatusMonitor {
     /// Closes an incident.
     async fn close(&self, id: &str) -> Result<()> {
         let body = ResolveIncident {
-            message: "L2 head events have resumed.".into(),
             status: IncidentState::Resolved,
             components: vec![self.component_id.clone()],
             statuses: vec![ComponentStatus::operational(&self.component_id)],
