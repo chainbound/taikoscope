@@ -1,5 +1,5 @@
 use eyre::Result;
-use reqwest::Client as HttpClient;
+use reqwest::{Client as HttpClient, Url};
 use serde::Deserialize;
 
 use crate::monitor::{NewIncident, ResolveIncident};
@@ -21,7 +21,7 @@ struct IncidentSummary {
 #[derive(Debug, Clone)]
 pub struct Client {
     http: HttpClient,
-    base_url: String,
+    base_url: Url,
     api_key: String,
     page_id: String,
 }
@@ -31,7 +31,7 @@ impl Client {
     pub fn new(api_key: String, page_id: String) -> Self {
         Self {
             http: HttpClient::new(),
-            base_url: "https://api.instatus.com".to_string(),
+            base_url: Url::parse("https://api.instatus.com").expect("valid base URL"),
             api_key,
             page_id,
         }
@@ -39,7 +39,7 @@ impl Client {
 
     /// Create a client targeting a custom base URL (e.g. for tests).
     #[cfg(test)]
-    pub fn with_base_url(api_key: String, page_id: String, base_url: String) -> Self {
+    pub fn with_base_url(api_key: String, page_id: String, base_url: Url) -> Self {
         Self { http: HttpClient::new(), api_key, page_id, base_url }
     }
 
@@ -54,23 +54,26 @@ impl Client {
         struct Resp {
             id: String,
         }
-        let url = format!("{}/v1/{}/incidents", self.base_url, self.page_id);
-        let resp = self.auth(self.http.post(&url)).json(body).send().await?.error_for_status()?;
+        let url = self.base_url.join(&format!("v1/{}/incidents", self.page_id)).unwrap();
+        let resp = self.auth(self.http.post(url)).json(body).send().await?.error_for_status()?;
         Ok(resp.json::<Resp>().await?.id)
     }
 
     /// Resolve an existing incident on Instatus.
     pub async fn resolve_incident(&self, id: &str, body: &ResolveIncident) -> Result<()> {
-        let url = format!("{}/v1/{}/incidents/{}", self.base_url, self.page_id, id);
-        self.auth(self.http.post(&url)).json(body).send().await?.error_for_status()?;
+        let url = self.base_url.join(&format!("v1/{}/incidents/{}", self.page_id, id)).unwrap();
+        self.auth(self.http.post(url)).json(body).send().await?.error_for_status()?;
         Ok(())
     }
 
     /// Return open incident ID for `component_id`, if any.
     pub async fn open_incident(&self, component_id: &str) -> Result<Option<String>> {
-        let url = format!("{}/v1/{}/incidents?status=INVESTIGATING", self.base_url, self.page_id);
+        let url = self
+            .base_url
+            .join(&format!("v1/{}/incidents?status=INVESTIGATING", self.page_id))
+            .unwrap();
         let list = self
-            .auth(self.http.get(&url))
+            .auth(self.http.get(url))
             .send()
             .await?
             .error_for_status()?
@@ -178,7 +181,8 @@ mod tests {
             .create_async()
             .await;
 
-        let client = Client::with_base_url("testkey".into(), "page1".into(), server.url());
+        let client =
+            Client::with_base_url("testkey".into(), "page1".into(), server.url().parse().unwrap());
         let payload = NewIncident {
             name: "Test incident".into(),
             message: "Testing".into(),
@@ -214,7 +218,8 @@ mod tests {
             .create_async()
             .await;
 
-        let client = Client::with_base_url("testkey".into(), "page1".into(), server.url());
+        let client =
+            Client::with_base_url("testkey".into(), "page1".into(), server.url().parse().unwrap());
         let payload = ResolveIncident {
             message: "Resolved".into(),
             status: IncidentState::Resolved,
@@ -243,7 +248,8 @@ mod tests {
             .create_async()
             .await;
 
-        let client = Client::with_base_url("testkey".into(), "page1".into(), server.url());
+        let client =
+            Client::with_base_url("testkey".into(), "page1".into(), server.url().parse().unwrap());
         let id = client.open_incident("comp1").await.unwrap();
         assert_eq!(id, Some("inc2".into()));
         mock.assert_async().await;
