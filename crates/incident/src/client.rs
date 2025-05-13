@@ -114,10 +114,7 @@ mod tests {
             message: "No L2 head event for 30s".to_string(),
             status: IncidentState::Investigating,
             components: vec!["comp1".to_string()],
-            statuses: vec![ComponentStatus {
-                id: "comp1".to_string(),
-                status: "MAJOROUTAGE".to_string(),
-            }],
+            statuses: vec![ComponentStatus::major_outage("comp1")],
             notify: true,
             started: Some("2025-05-12T07:48:00Z".to_string()),
         };
@@ -140,10 +137,7 @@ mod tests {
             message: "L2 head events have resumed.".to_string(),
             status: IncidentState::Resolved,
             components: vec!["comp1".to_string()],
-            statuses: vec![ComponentStatus {
-                id: "comp1".to_string(),
-                status: "OPERATIONAL".to_string(),
-            }],
+            statuses: vec![ComponentStatus::operational("comp1")],
             notify: true,
         };
         let expected = json!({

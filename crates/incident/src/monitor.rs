@@ -38,18 +38,18 @@ pub struct ComponentStatus {
     /// Component ID
     pub id: String,
     /// Status (e.g. MAJOROUTAGE, OPERATIONAL)
-    pub status: String,
+    pub status: ComponentHealth,
 }
 
 impl ComponentStatus {
     /// Create a new component status for a major outage.
     pub fn major_outage(id: &str) -> Self {
-        Self { id: id.into(), status: "MAJOROUTAGE".into() }
+        Self { id: id.into(), status: ComponentHealth::MajorOutage }
     }
 
     /// Create a new component status for an operational component.
     pub fn operational(id: &str) -> Self {
-        Self { id: id.into(), status: "OPERATIONAL".into() }
+        Self { id: id.into(), status: ComponentHealth::Operational }
     }
 }
 
@@ -63,8 +63,10 @@ pub struct NewIncident {
     /// Incident status (e.g. INVESTIGATING)
     pub status: IncidentState,
     /// Affected component IDs
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub components: Vec<String>,
     /// Component statuses
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub statuses: Vec<ComponentStatus>,
     /// Whether to notify subscribers
     pub notify: bool,
