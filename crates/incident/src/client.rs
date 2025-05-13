@@ -63,7 +63,7 @@ impl Client {
     /// Resolve an existing incident on Instatus.
     pub async fn resolve_incident(&self, id: &str, body: &ResolveIncident) -> Result<()> {
         let url = self.base_url.join(&format!("v1/{}/incidents/{}", self.page_id, id)).unwrap();
-        let response = self.auth(self.http.post(url.clone())).json(body).send().await?;
+        let response = self.auth(self.http.put(url.clone())).json(body).send().await?;
 
         let status = response.status();
         if !status.is_success() {
@@ -155,13 +155,15 @@ mod tests {
             components: vec!["comp1".to_string()],
             statuses: vec![ComponentStatus::operational("comp1")],
             notify: true,
+            started: Some("2025-05-12T07:48:00Z".to_string()),
         };
         let expected = json!({
             "message": "L2 head events have resumed.",
             "status": "RESOLVED",
             "components": ["comp1"],
             "statuses": [{"id": "comp1", "status": "OPERATIONAL"}],
-            "notify": true
+            "notify": true,
+            "started": "2025-05-12T07:48:00Z"
         });
         let actual = serde_json::to_value(&payload).unwrap();
         assert_eq!(actual, expected);
@@ -201,7 +203,7 @@ mod tests {
         let mut server = Server::new_async().await;
 
         let mock = server
-            .mock("POST", "/v1/page1/incidents/incident123")
+            .mock("PUT", "/v1/page1/incidents/incident123")
             .match_header("authorization", "Bearer testkey")
             .match_header("content-type", "application/json")
             .with_status(200)
@@ -217,6 +219,7 @@ mod tests {
             components: vec!["comp1".into()],
             statuses: vec![ComponentStatus::operational("comp1")],
             notify: true,
+            started: Some("2025-05-12T07:48:00Z".to_string()),
         };
         client.resolve_incident("incident123", &payload).await.unwrap();
         mock.assert_async().await;

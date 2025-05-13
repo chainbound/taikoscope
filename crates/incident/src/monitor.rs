@@ -89,6 +89,9 @@ pub struct ResolveIncident {
     pub statuses: Vec<ComponentStatus>,
     /// Whether to notify subscribers
     pub notify: bool,
+    /// Incident start time in RFC3339 format
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub started: Option<String>,
 }
 
 /// Monitors `ClickHouse` L2 head events and manages Instatus incidents.
@@ -210,6 +213,7 @@ impl InstatusMonitor {
             components: vec![self.component_id.clone()],
             statuses: vec![ComponentStatus::operational(&self.component_id)],
             notify: true,
+            started: Some(Utc::now().to_rfc3339()),
         };
 
         debug!(%id, "Closing incident with body: {:?}", body);
