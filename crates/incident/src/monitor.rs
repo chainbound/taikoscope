@@ -1,5 +1,5 @@
 use crate::client::Client as IncidentClient;
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Duration as ChronoDuration, Utc};
 use clickhouse::ClickhouseClient;
 use eyre::Result;
 use serde::Serialize;
@@ -189,6 +189,9 @@ impl InstatusMonitor {
 
     /// Opens a new incident.
     async fn open(&self, last: DateTime<Utc>) -> Result<String> {
+        // The incident starts when the L2 block should have been processed
+        let started = (last + ChronoDuration::seconds(2)).to_rfc3339();
+
         let body = NewIncident {
             name: "No L2 head events - Possible Outage".into(),
             message: format!("No L2 head event for {} s", self.threshold.as_secs()),
@@ -196,7 +199,7 @@ impl InstatusMonitor {
             components: vec![self.component_id.clone()],
             statuses: vec![ComponentStatus::major_outage(&self.component_id)],
             notify: true,
-            started: Some(last.to_rfc3339()),
+            started: Some(started),
         };
         let id = self.client.create_incident(&body).await?;
         info!(%id, "Created incident");
