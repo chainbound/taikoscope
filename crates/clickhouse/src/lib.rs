@@ -163,8 +163,8 @@ impl ClickhouseClient {
     /// Create a new clickhouse client
     pub fn new(url: Url, db_name: String, username: String, password: String) -> Result<Self> {
         let client = Client::default()
-            .with_database(db_name)
             .with_url(url)
+            .with_database(db_name)
             .with_user(username)
             .with_password(password);
 

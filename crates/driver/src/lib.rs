@@ -84,8 +84,11 @@ impl Driver {
         loop {
             tokio::select! {
                 Some(header) = l1_stream.next() => {
-                    self.clickhouse.insert_l1_header(&header).await?;
-                    info!("Inserted L1 header: {:?}", header.number);
+                    if let Err(e) = self.clickhouse.insert_l1_header(&header).await {
+                        tracing::error!(header_number = header.number, err = %e, "Failed to insert L1 header");
+                    } else {
+                        info!("Inserted L1 header: {:?}", header.number);
+                    }
 
                     // TODO: uncomment this when this is deployed
                     /*
@@ -124,8 +127,11 @@ impl Driver {
                     };
 
                     if opt_current_operator.is_some() || opt_next_operator.is_some() {
-                        self.clickhouse.insert_preconf_data(header.slot, candidates, opt_current_operator, opt_next_operator).await?;
-                        info!("Inserted preconf data for slot: {:?}", header.slot);
+                        if let Err(e) = self.clickhouse.insert_preconf_data(header.slot, candidates, opt_current_operator, opt_next_operator).await {
+                            tracing::error!(slot = header.slot, err = %e, "Failed to insert preconf data");
+                        } else {
+                            info!("Inserted preconf data for slot: {:?}", header.slot);
+                        }
                     } else {
                         info!("Skipping preconf data insertion for slot {:?} due to errors fetching operator data.", header.slot);
                     }
@@ -137,20 +143,30 @@ impl Driver {
                     if let Some(depth) = self.reorg.on_new_block(header.number) {
                         // The insert_l2_reorg function expects (block_number, depth)
                         // The block_number should be the new head number after the reorg.
-                        self.clickhouse.insert_l2_reorg(header.number, depth).await?;
-                        info!("Inserted L2 reorg: new head {}, depth {}", header.number, depth);
+                        if let Err(e) = self.clickhouse.insert_l2_reorg(header.number, depth).await {
+                            tracing::error!(block_number = header.number, depth = depth, err = %e, "Failed to insert L2 reorg");
+                        } else {
+                            info!("Inserted L2 reorg: new head {}, depth {}", header.number, depth);
+                        }
+                    } else if let Err(e) = self.clickhouse.insert_l2_header(&header).await {
+                        tracing::error!(block_number = header.number, err = %e, "Failed to insert L2 header");
                     } else {
-                        self.clickhouse.insert_l2_header(&header).await?;
                         info!("Inserted L2 header: {}", header.number);
                     }
                 }
                 Some(batch) = batch_stream.next() => {
-                    self.clickhouse.insert_batch(&batch).await?;
-                    info!("Inserted batch: {:?}", batch.last_block_number());
+                    if let Err(e) = self.clickhouse.insert_batch(&batch).await {
+                        tracing::error!(batch_last_block = ?batch.last_block_number(), err = %e, "Failed to insert batch");
+                    } else {
+                        info!("Inserted batch: {:?}", batch.last_block_number());
+                    }
                 }
                 Some(fi) = forced_stream.next() => {
-                    self.clickhouse.insert_forced_inclusion(&fi).await?;
-                    info!("Inserted forced inclusion processed: {:?}", fi.forcedInclusion.blobHash);
+                    if let Err(e) = self.clickhouse.insert_forced_inclusion(&fi).await {
+                        tracing::error!(blob_hash = ?fi.forcedInclusion.blobHash, err = %e, "Failed to insert forced inclusion");
+                    } else {
+                        info!("Inserted forced inclusion processed: {:?}", fi.forcedInclusion.blobHash);
+                    }
                 }
             }
         }
