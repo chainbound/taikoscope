@@ -54,3 +54,21 @@ deploy-remote-hekla:
         --env-file ~/hekla/taikoscope/masaya.env \
         -p 3000:3000 \
         taikoscope-hekla"
+
+# Check the status of the service
+status-remote-hekla:
+    ssh shared@remotesmol "docker ps -f name=taikoscope-hekla"
+
+# View the logs of the service
+logs-remote-hekla:
+    ssh shared@remotesmol "docker logs -f taikoscope-hekla"
+
+# Deploy and tail logs
+deploy-logs-remote-hekla:
+    @just deploy-remote-hekla
+    @just logs-remote-hekla
+
+# Stop the service
+stop-remote-hekla:
+    ssh shared@remotesmol "docker stop taikoscope-hekla"
+    ssh shared@remotesmol "docker rm taikoscope-hekla"
