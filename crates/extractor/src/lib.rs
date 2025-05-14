@@ -13,7 +13,6 @@ use std::pin::Pin;
 use alloy::{
     primitives::{Address, BlockHash, BlockNumber},
     providers::{Provider, ProviderBuilder, WsConnect},
-    rpc::types::eth::Log,
 };
 use chainio::TaikoInbox;
 use derive_more::Debug;
@@ -185,48 +184,110 @@ impl Extractor {
         Ok(Box::pin(UnboundedReceiverStream::new(rx)))
     }
 
-    /// Subscribes to the `TaikoInbox`  `BatchProposed` event and returns a stream of decoded
-    /// events.
+    /// Subscribes to the `TaikoInbox` `BatchProposed` event and returns a stream of decoded events.
+    /// This stream will attempt to automatically resubscribe and continue yielding events.
     pub async fn get_batch_proposed_stream(&self) -> Result<BatchProposedStream> {
-        let filter = self.taiko_inbox.batch_proposed_filter();
-        let logs = self.l1_provider.subscribe_logs(&filter).await?.into_stream();
+        let (tx, rx) = mpsc::unbounded_channel();
+        let provider = self.l1_provider.clone();
+        let taiko_inbox = self.taiko_inbox.clone(); // Clone for use in the spawned task
 
-        // Convert stream to batch proposed stream
-        let batch_proposed_stream =
-            logs.filter_map(|log: Log| match log.log_decode::<BatchProposed>() {
-                Ok(decoded) => {
-                    // Extract the BatchProposed event from the Log<BatchProposed>
-                    Some(decoded.data().clone())
+        tokio::spawn(async move {
+            loop {
+                info!("Attempting to subscribe to TaikoInbox BatchProposed events...");
+                let filter = taiko_inbox.batch_proposed_filter();
+                let sub_result = provider.subscribe_logs(&filter).await;
+
+                let mut log_stream = match sub_result {
+                    Ok(sub) => {
+                        info!("Successfully subscribed to TaikoInbox BatchProposed events.");
+                        sub.into_stream()
+                    }
+                    Err(e) => {
+                        error!(
+                            "Failed to subscribe to BatchProposed logs: {}. Retrying in 5s...",
+                            e
+                        );
+                        sleep(Duration::from_secs(5)).await;
+                        continue;
+                    }
+                };
+
+                while let Some(log) = log_stream.next().await {
+                    match log.log_decode::<BatchProposed>() {
+                        Ok(decoded) => {
+                            if tx.send(decoded.data().clone()).is_err() {
+                                error!(
+                                    "BatchProposed receiver dropped. Stopping BatchProposed event task."
+                                );
+                                return; // Exit task if receiver is gone
+                            }
+                        }
+                        Err(err) => {
+                            warn!("Failed to decode BatchProposed log: {}", err);
+                            // Optionally, decide if this is a critical error or can be skipped.
+                            // For now, we just log and continue.
+                        }
+                    }
                 }
-                Err(err) => {
-                    tracing::warn!("Failed to decode log: {}", err);
-                    None
-                }
-            });
+                warn!("BatchProposed log stream ended. Attempting to resubscribe...");
+            }
+        });
 
-        info!("Subscribed to TaikoInbox BatchProposed events");
-
-        Ok(Box::pin(batch_proposed_stream))
+        Ok(Box::pin(UnboundedReceiverStream::new(rx)))
     }
 
     /// Subscribes to the `TaikoWrapper` `ForcedInclusionProcessed` event and returns a stream of
-    /// decoded events.
+    /// decoded events. This stream will attempt to automatically resubscribe and continue
+    /// yielding events.
     pub async fn get_forced_inclusion_stream(&self) -> Result<ForcedInclusionStream> {
-        let filter = self.taiko_wrapper.forced_inclusion_processed_filter();
-        let logs = self.l1_provider.subscribe_logs(&filter).await?.into_stream();
+        let (tx, rx) = mpsc::unbounded_channel();
+        let provider = self.l1_provider.clone();
+        let taiko_wrapper = self.taiko_wrapper.clone(); // Clone for use in the spawned task
 
-        // Convert stream to forced inclusion processed stream
-        let forced_inclusion_processed_stream =
-            logs.filter_map(|log: Log| match log.log_decode::<ForcedInclusionProcessed>() {
-                Ok(decoded) => Some(decoded.data().clone()),
-                Err(err) => {
-                    tracing::warn!("Failed to decode log: {}", err);
-                    None
+        tokio::spawn(async move {
+            loop {
+                info!("Attempting to subscribe to TaikoWrapper ForcedInclusionProcessed events...");
+                let filter = taiko_wrapper.forced_inclusion_processed_filter();
+                let sub_result = provider.subscribe_logs(&filter).await;
+
+                let mut log_stream = match sub_result {
+                    Ok(sub) => {
+                        info!(
+                            "Successfully subscribed to TaikoWrapper ForcedInclusionProcessed events."
+                        );
+                        sub.into_stream()
+                    }
+                    Err(e) => {
+                        error!(
+                            "Failed to subscribe to ForcedInclusionProcessed logs: {}. Retrying in 5s...",
+                            e
+                        );
+                        sleep(Duration::from_secs(5)).await;
+                        continue;
+                    }
+                };
+
+                while let Some(log) = log_stream.next().await {
+                    match log.log_decode::<ForcedInclusionProcessed>() {
+                        Ok(decoded) => {
+                            if tx.send(decoded.data().clone()).is_err() {
+                                error!(
+                                    "ForcedInclusionProcessed receiver dropped. Stopping ForcedInclusionProcessed event task."
+                                );
+                                return; // Exit task if receiver is gone
+                            }
+                        }
+                        Err(err) => {
+                            warn!("Failed to decode ForcedInclusionProcessed log: {}", err);
+                            // Optionally, decide if this is a critical error or can be skipped.
+                        }
+                    }
                 }
-            });
+                warn!("ForcedInclusionProcessed log stream ended. Attempting to resubscribe...");
+            }
+        });
 
-        info!("Subscribed to TaikoWrapper ForcedInclusionProcessed events");
-        Ok(Box::pin(forced_inclusion_processed_stream))
+        Ok(Box::pin(UnboundedReceiverStream::new(rx)))
     }
 
     /// Get the current epoch operator
