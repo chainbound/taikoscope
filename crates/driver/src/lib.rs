@@ -7,7 +7,9 @@ use tokio_stream::StreamExt;
 use tracing::info;
 
 use alloy_primitives::Address;
-use chainio::ITaikoInbox::BatchProposed;
+use chainio::{
+    ITaikoInbox::BatchProposed, taiko::wrapper::ITaikoWrapper::ForcedInclusionProcessed,
+};
 use clickhouse::ClickhouseClient;
 use config::Opts;
 use extractor::{Extractor, L1Header, L2Header, ReorgDetector};
@@ -115,11 +117,14 @@ impl Driver {
                         }
                     }
                 }
-                Some(fi) = forced_stream.next() => {
-                    if let Err(e) = self.clickhouse.insert_forced_inclusion(&fi).await {
-                        tracing::error!(blob_hash = ?fi.forcedInclusion.blobHash, err = %e, "Failed to insert forced inclusion");
-                    } else {
-                        info!("Inserted forced inclusion processed: {:?}", fi.forcedInclusion.blobHash);
+                maybe_fi = forced_stream.next() => {
+                    match maybe_fi {
+                        Some(fi) => {
+                            self.handle_forced_inclusion(fi).await;
+                        }
+                        None => {
+                            tracing::warn!("Forced inclusion stream ended. The driver will continue with other active streams if any.");
+                        }
                     }
                 }
                 else => {
@@ -221,6 +226,14 @@ impl Driver {
             tracing::error!(batch_last_block = ?batch.last_block_number(), err = %e, "Failed to insert batch");
         } else {
             info!("Inserted batch: {:?}", batch.last_block_number());
+        }
+    }
+
+    async fn handle_forced_inclusion(&self, fi: ForcedInclusionProcessed) {
+        if let Err(e) = self.clickhouse.insert_forced_inclusion(&fi).await {
+            tracing::error!(blob_hash = ?fi.forcedInclusion.blobHash, err = %e, "Failed to insert forced inclusion");
+        } else {
+            info!("Inserted forced inclusion processed: {:?}", fi.forcedInclusion.blobHash);
         }
     }
 }
