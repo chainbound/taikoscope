@@ -6,9 +6,10 @@ use eyre::Result;
 use tokio_stream::StreamExt;
 use tracing::info;
 
+use alloy_primitives::Address;
 use clickhouse::ClickhouseClient;
 use config::Opts;
-use extractor::{Extractor, ReorgDetector};
+use extractor::{Extractor, L1Header, ReorgDetector};
 use incident::{InstatusMonitor, client::Client as IncidentClient};
 
 /// An EPOCH is a series of 32 slots.
@@ -83,57 +84,14 @@ impl Driver {
 
         loop {
             tokio::select! {
-                Some(header) = l1_stream.next() => {
-                    if let Err(e) = self.clickhouse.insert_l1_header(&header).await {
-                        tracing::error!(header_number = header.number, err = %e, "Failed to insert L1 header");
-                    } else {
-                        info!("Inserted L1 header: {:?}", header.number);
-                    }
-
-                    // TODO: uncomment this when this is deployed
-                    /*
-                    let opt_candidates = match self.extractor.get_operator_candidates_for_current_epoch().await {
-                        Ok(c) => Some(c),
-                        Err(e) => {
-                            tracing::error!(
-                                slot = header.slot,
-                                block = header.number,
-                                err = %e,
-                                "Failed picking operator candidates"
-                            );
-                            None
+                maybe_l1_header = l1_stream.next() => {
+                    match maybe_l1_header {
+                        Some(header) => {
+                            self.handle_l1_header(header).await;
                         }
-                    };
-                    */
-                    let candidates = Vec::new();
-
-                    let opt_current_operator = match self.extractor.get_operator_for_current_epoch().await {
-                        Ok(op) => Some(op),
-                        Err(e) => {
-                            tracing::error!(block = header.number, err = %e, "get_operator_for_current_epoch failed");
-                            None
+                        None => {
+                            tracing::warn!("L1 header stream ended. The driver will continue with other active streams if any.");
                         }
-                    };
-
-                    let opt_next_operator = match self.extractor.get_operator_for_next_epoch().await {
-                        Ok(op) => Some(op),
-                        Err(e) => {
-                            // The first slot in the epoch doesn't have any next operator
-                            if header.slot % EPOCH_SLOTS != 0 {
-                                tracing::error!(block = header.number, err = %e, "get_operator_for_next_epoch failed");
-                            }
-                            None
-                        }
-                    };
-
-                    if opt_current_operator.is_some() || opt_next_operator.is_some() {
-                        if let Err(e) = self.clickhouse.insert_preconf_data(header.slot, candidates, opt_current_operator, opt_next_operator).await {
-                            tracing::error!(slot = header.slot, err = %e, "Failed to insert preconf data");
-                        } else {
-                            info!("Inserted preconf data for slot: {:?}", header.slot);
-                        }
-                    } else {
-                        info!("Skipping preconf data insertion for slot {:?} due to errors fetching operator data.", header.slot);
                     }
                 }
                 Some(header) = l2_stream.next() => {
@@ -168,7 +126,78 @@ impl Driver {
                         info!("Inserted forced inclusion processed: {:?}", fi.forcedInclusion.blobHash);
                     }
                 }
+                else => {
+                    tracing::info!("All event streams have ended. Shutting down driver loop.");
+                    break;
+                }
             }
+        }
+        Ok(())
+    }
+
+    async fn handle_l1_header(&self, header: L1Header) {
+        if let Err(e) = self.clickhouse.insert_l1_header(&header).await {
+            tracing::error!(header_number = header.number, err = %e, "Failed to insert L1 header");
+        } else {
+            info!("Inserted L1 header: {:?}", header.number);
+        }
+
+        // TODO: uncomment this when this is deployed
+        /*
+        let opt_candidates = match self.extractor.get_operator_candidates_for_current_epoch().await {
+            Ok(c) => Some(c),
+            Err(e) => {
+                tracing::error!(
+                    slot = header.slot,
+                    block = header.number,
+                    err = %e,
+                    "Failed picking operator candidates"
+                );
+                None
+            }
+        };
+        */
+        let candidates: Vec<Address> = Vec::new();
+
+        let opt_current_operator = match self.extractor.get_operator_for_current_epoch().await {
+            Ok(op) => Some(op),
+            Err(e) => {
+                tracing::error!(block = header.number, err = %e, "get_operator_for_current_epoch failed");
+                None
+            }
+        };
+
+        let opt_next_operator = match self.extractor.get_operator_for_next_epoch().await {
+            Ok(op) => Some(op),
+            Err(e) => {
+                // The first slot in the epoch doesn't have any next operator
+                if header.slot % EPOCH_SLOTS != 0 {
+                    tracing::error!(block = header.number, err = %e, "get_operator_for_next_epoch failed");
+                }
+                None
+            }
+        };
+
+        if opt_current_operator.is_some() || opt_next_operator.is_some() {
+            if let Err(e) = self
+                .clickhouse
+                .insert_preconf_data(
+                    header.slot,
+                    candidates,
+                    opt_current_operator,
+                    opt_next_operator,
+                )
+                .await
+            {
+                tracing::error!(slot = header.slot, err = %e, "Failed to insert preconf data");
+            } else {
+                info!("Inserted preconf data for slot: {:?}", header.slot);
+            }
+        } else {
+            info!(
+                "Skipping preconf data insertion for slot {:?} due to errors fetching operator data.",
+                header.slot
+            );
         }
     }
 }
