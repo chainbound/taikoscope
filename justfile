@@ -36,6 +36,9 @@ deploy-remote-hekla:
     # Check if "masaya.env" exists. if not, exit with error
     test -f masaya.env || (echo "No masaya.env file found. Exiting." && exit 1)
 
+    # Ensure remote directory exists
+    ssh shared@remotesmol "mkdir -p /home/shared/hekla/taikoscope"
+
     # Copy the project to remotesmol
     rsync -av --exclude target --exclude .git . shared@remotesmol:/home/shared/hekla/taikoscope
 
