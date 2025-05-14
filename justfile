@@ -29,7 +29,7 @@ lint:
 fmt:
     cargo +nightly fmt --all
 
-
+# deploy Taikoscope to remotesmol
 deploy-remote-hekla:
     @echo "Deploying Taikoscope on remotesmol"
 
