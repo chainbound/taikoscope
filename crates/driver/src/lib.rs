@@ -12,7 +12,10 @@ use chainio::{
 };
 use clickhouse::ClickhouseClient;
 use config::Opts;
-use extractor::{Extractor, L1Header, L2Header, ReorgDetector};
+use extractor::{
+    BatchProposedStream, Extractor, ForcedInclusionStream, L1Header, L1HeaderStream, L2Header,
+    L2HeaderStream, ReorgDetector,
+};
 use incident::{InstatusMonitor, client::Client as IncidentClient};
 
 /// An EPOCH is a series of 32 slots.
@@ -64,14 +67,62 @@ impl Driver {
         })
     }
 
+    async fn subscribe_l1(&self) -> L1HeaderStream {
+        loop {
+            match self.extractor.get_l1_header_stream().await {
+                Ok(s) => return s,
+                Err(e) => {
+                    tracing::error!("L1 subscribe failed: {}. Retrying in 5s…", e);
+                    tokio::time::sleep(Duration::from_secs(5)).await;
+                }
+            }
+        }
+    }
+
+    async fn subscribe_l2(&self) -> L2HeaderStream {
+        loop {
+            match self.extractor.get_l2_header_stream().await {
+                Ok(s) => return s,
+                Err(e) => {
+                    tracing::error!("L2 subscribe failed: {}. Retrying in 5s…", e);
+                    tokio::time::sleep(Duration::from_secs(5)).await;
+                }
+            }
+        }
+    }
+
+    async fn subscribe_batch(&self) -> BatchProposedStream {
+        loop {
+            match self.extractor.get_batch_proposed_stream().await {
+                Ok(s) => return s,
+                Err(e) => {
+                    tracing::error!("BatchProposed subscribe failed: {}. Retrying in 5s…", e);
+                    tokio::time::sleep(Duration::from_secs(5)).await;
+                }
+            }
+        }
+    }
+
+    async fn subscribe_forced(&self) -> ForcedInclusionStream {
+        loop {
+            match self.extractor.get_forced_inclusion_stream().await {
+                Ok(s) => return s,
+                Err(e) => {
+                    tracing::error!("ForcedInclusion subscribe failed: {}. Retrying in 5s…", e);
+                    tokio::time::sleep(Duration::from_secs(5)).await;
+                }
+            }
+        }
+    }
+
     /// Consume the driver and drive the infinite processing loop.
     pub async fn start(mut self) -> Result<()> {
         info!("Starting event loop...");
 
-        let mut l1_stream = self.extractor.get_l1_header_stream().await?;
-        let mut l2_stream = self.extractor.get_l2_header_stream().await?;
-        let mut batch_stream = self.extractor.get_batch_proposed_stream().await?;
-        let mut forced_stream = self.extractor.get_forced_inclusion_stream().await?;
+        let mut l1_stream = self.subscribe_l1().await;
+        let mut l2_stream = self.subscribe_l2().await;
+        let mut batch_stream = self.subscribe_batch().await;
+        let mut forced_stream = self.subscribe_forced().await;
 
         // spawn Instatus monitor
         InstatusMonitor::new(
@@ -93,7 +144,8 @@ impl Driver {
                             self.handle_l1_header(header).await;
                         }
                         None => {
-                            tracing::warn!("L1 header stream ended. The driver will continue with other active streams if any.");
+                            tracing::warn!("L1 header stream ended; re-subscribing…");
+                            l1_stream = self.subscribe_l1().await;
                         }
                     }
                 }
@@ -103,7 +155,8 @@ impl Driver {
                             self.handle_l2_header(header).await;
                         }
                         None => {
-                            tracing::warn!("L2 header stream ended. The driver will continue with other active streams if any.");
+                            tracing::warn!("L2 header stream ended; re-subscribing…");
+                            l2_stream = self.subscribe_l2().await;
                         }
                     }
                 }
@@ -113,7 +166,8 @@ impl Driver {
                             self.handle_batch_proposed(batch).await;
                         }
                         None => {
-                            tracing::warn!("Batch proposed stream ended. The driver will continue with other active streams if any.");
+                            tracing::warn!("Batch proposed stream ended; re-subscribing…");
+                            batch_stream = self.subscribe_batch().await;
                         }
                     }
                 }
@@ -123,12 +177,16 @@ impl Driver {
                             self.handle_forced_inclusion(fi).await;
                         }
                         None => {
-                            tracing::warn!("Forced inclusion stream ended. The driver will continue with other active streams if any.");
+                            tracing::warn!("Forced inclusion stream ended; re-subscribing…");
+                            forced_stream = self.subscribe_forced().await;
                         }
                     }
                 }
                 else => {
-                    tracing::info!("All event streams have ended. Shutting down driver loop.");
+                    // This branch should ideally not be reached if streams always re-subscribe.
+                    // If it is, it implies all streams terminated simultaneously and failed to re-subscribe,
+                    // which would be an unexpected state.
+                    tracing::error!("All event streams ended and failed to re-subscribe. This should not happen. Shutting down driver loop.");
                     break;
                 }
             }
