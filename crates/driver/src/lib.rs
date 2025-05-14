@@ -9,7 +9,7 @@ use tracing::info;
 use alloy_primitives::Address;
 use clickhouse::ClickhouseClient;
 use config::Opts;
-use extractor::{Extractor, L1Header, ReorgDetector};
+use extractor::{Extractor, L1Header, L2Header, ReorgDetector};
 use incident::{InstatusMonitor, client::Client as IncidentClient};
 
 /// An EPOCH is a series of 32 slots.
@@ -94,22 +94,14 @@ impl Driver {
                         }
                     }
                 }
-                Some(header) = l2_stream.next() => {
-                    // Detect reorgs
-                    // The simplified on_new_block now only takes the new block's number.
-                    // It returns Some(depth) if new_block_number < current_head_number.
-                    if let Some(depth) = self.reorg.on_new_block(header.number) {
-                        // The insert_l2_reorg function expects (block_number, depth)
-                        // The block_number should be the new head number after the reorg.
-                        if let Err(e) = self.clickhouse.insert_l2_reorg(header.number, depth).await {
-                            tracing::error!(block_number = header.number, depth = depth, err = %e, "Failed to insert L2 reorg");
-                        } else {
-                            info!("Inserted L2 reorg: new head {}, depth {}", header.number, depth);
+                maybe_l2_header = l2_stream.next() => {
+                    match maybe_l2_header {
+                        Some(header) => {
+                            self.handle_l2_header(header).await;
                         }
-                    } else if let Err(e) = self.clickhouse.insert_l2_header(&header).await {
-                        tracing::error!(block_number = header.number, err = %e, "Failed to insert L2 header");
-                    } else {
-                        info!("Inserted L2 header: {}", header.number);
+                        None => {
+                            tracing::warn!("L2 header stream ended. The driver will continue with other active streams if any.");
+                        }
                     }
                 }
                 Some(batch) = batch_stream.next() => {
@@ -198,6 +190,25 @@ impl Driver {
                 "Skipping preconf data insertion for slot {:?} due to errors fetching operator data.",
                 header.slot
             );
+        }
+    }
+
+    async fn handle_l2_header(&mut self, header: L2Header) {
+        // Detect reorgs
+        // The simplified on_new_block now only takes the new block's number.
+        // It returns Some(depth) if new_block_number < current_head_number.
+        if let Some(depth) = self.reorg.on_new_block(header.number) {
+            // The insert_l2_reorg function expects (block_number, depth)
+            // The block_number should be the new head number after the reorg.
+            if let Err(e) = self.clickhouse.insert_l2_reorg(header.number, depth).await {
+                tracing::error!(block_number = header.number, depth = depth, err = %e, "Failed to insert L2 reorg");
+            } else {
+                info!("Inserted L2 reorg: new head {}, depth {}", header.number, depth);
+            }
+        } else if let Err(e) = self.clickhouse.insert_l2_header(&header).await {
+            tracing::error!(block_number = header.number, err = %e, "Failed to insert L2 header");
+        } else {
+            info!("Inserted L2 header: {}", header.number);
         }
     }
 }
