@@ -18,8 +18,10 @@ use alloy::{
 use chainio::TaikoInbox;
 use derive_more::Debug;
 use eyre::Result;
-use tokio_stream::{Stream, StreamExt};
-use tracing::info;
+use std::time::Duration;
+use tokio::{sync::mpsc, time::sleep};
+use tokio_stream::{Stream, StreamExt, wrappers::UnboundedReceiverStream};
+use tracing::{error, info, warn};
 use url::Url;
 
 /// Extractor client
@@ -95,42 +97,92 @@ impl Extractor {
         Ok(Self { l1_provider, l2_provider, preconf_whitelist, taiko_inbox, taiko_wrapper })
     }
 
-    /// Get a stream of L1 headers
+    /// Get a stream of L1 headers. This stream will attempt to automatically
+    /// resubscribe and continue yielding headers in case of disconnections.
     pub async fn get_l1_header_stream(&self) -> Result<L1HeaderStream> {
-        // Subscribe to new blocks
-        let sub = self.l1_provider.subscribe_blocks().await?;
-        let stream = sub.into_stream();
+        let (tx, rx) = mpsc::unbounded_channel();
+        let provider = self.l1_provider.clone();
 
-        // Convert stream to header stream
-        let header_stream = stream.map(|header| L1Header {
-            number: header.number,
-            hash: header.hash,
-            slot: header.number, // TODO: Get slot instead
-            timestamp: header.timestamp,
+        tokio::spawn(async move {
+            loop {
+                info!("Attempting to subscribe to L1 block headers...");
+                let sub_result = provider.subscribe_blocks().await;
+
+                let mut block_stream = match sub_result {
+                    Ok(sub) => {
+                        info!("Successfully subscribed to L1 block headers.");
+                        sub.into_stream()
+                    }
+                    Err(e) => {
+                        error!("Failed to subscribe to L1 blocks: {}. Retrying in 5s...", e);
+                        sleep(Duration::from_secs(5)).await;
+                        continue;
+                    }
+                };
+
+                while let Some(block_data) = block_stream.next().await {
+                    let header = L1Header {
+                        number: block_data.number,
+                        hash: block_data.hash,
+                        // TODO: Get slot instead. For now, using block number as a placeholder.
+                        slot: block_data.number,
+                        timestamp: block_data.timestamp,
+                    };
+                    if tx.send(header).is_err() {
+                        error!("L1 header receiver dropped. Stopping L1 header task.");
+                        return; // Exit task if receiver is gone
+                    }
+                }
+                warn!("L1 block stream ended. Attempting to resubscribe...");
+                // Outer loop will retry subscription.
+            }
         });
 
-        info!("Subscribed to L1 block headers");
-        Ok(Box::pin(header_stream))
+        Ok(Box::pin(UnboundedReceiverStream::new(rx)))
     }
 
-    /// Get a stream of L2 headers
+    /// Get a stream of L2 headers. This stream will attempt to automatically
+    /// resubscribe and continue yielding headers in case of disconnections.
     pub async fn get_l2_header_stream(&self) -> Result<L2HeaderStream> {
-        // Subscribe to new blocks
-        let sub = self.l2_provider.subscribe_blocks().await?;
-        let stream = sub.into_stream();
+        let (tx, rx) = mpsc::unbounded_channel();
+        let provider = self.l2_provider.clone();
 
-        // Convert stream to header stream
-        let header_stream = stream.map(|header| L2Header {
-            number: header.number,
-            hash: header.hash,
-            parent_hash: header.parent_hash,
-            timestamp: header.timestamp,
-            gas_used: header.gas_used,
-            beneficiary: header.beneficiary,
+        tokio::spawn(async move {
+            loop {
+                info!("Attempting to subscribe to L2 block headers...");
+                let sub_result = provider.subscribe_blocks().await;
+
+                let mut block_stream = match sub_result {
+                    Ok(sub) => {
+                        info!("Successfully subscribed to L2 block headers.");
+                        sub.into_stream()
+                    }
+                    Err(e) => {
+                        error!("Failed to subscribe to L2 blocks: {}. Retrying in 5s...", e);
+                        sleep(Duration::from_secs(5)).await;
+                        continue;
+                    }
+                };
+
+                while let Some(block_data) = block_stream.next().await {
+                    let header = L2Header {
+                        number: block_data.number,
+                        hash: block_data.hash,
+                        parent_hash: block_data.parent_hash,
+                        timestamp: block_data.timestamp,
+                        gas_used: block_data.gas_used,
+                        beneficiary: block_data.beneficiary,
+                    };
+                    if tx.send(header).is_err() {
+                        error!("L2 header receiver dropped. Stopping L2 header task.");
+                        return; // Exit task if receiver is gone
+                    }
+                }
+                warn!("L2 block stream ended. Attempting to resubscribe...");
+            }
         });
 
-        info!("Subscribed to L2 block headers");
-        Ok(Box::pin(header_stream))
+        Ok(Box::pin(UnboundedReceiverStream::new(rx)))
     }
 
     /// Subscribes to the `TaikoInbox`  `BatchProposed` event and returns a stream of decoded
