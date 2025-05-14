@@ -1642,9 +1642,12 @@ name = "extractor"
 version = "0.1.0"
 dependencies = [
  "alloy",
+ "alloy-json-rpc",
+ "alloy-rpc-client",
  "chainio",
  "derive_more 1.0.0",
  "eyre",
+ "primitives",
  "tokio",
  "tokio-stream",
  "tracing",

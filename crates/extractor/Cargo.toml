@@ -8,8 +8,11 @@ repository.workspace = true
 
 [dependencies]
 chainio = { path = "../chainio" }
+primitives = { path = "../primitives" }
 
 alloy.workspace = true
+alloy-json-rpc.workspace = true
+alloy-rpc-client.workspace = true
 derive_more.workspace = true
 eyre.workspace = true
 tokio.workspace = true

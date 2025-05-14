@@ -12,11 +12,13 @@ use std::pin::Pin;
 
 use alloy::{
     primitives::{Address, BlockHash, BlockNumber},
-    providers::{Provider, ProviderBuilder, WsConnect},
+    providers::{Provider, ProviderBuilder},
 };
+use alloy_rpc_client::ClientBuilder;
 use chainio::TaikoInbox;
 use derive_more::Debug;
 use eyre::Result;
+use primitives::retries::{DEFAULT_RETRY_LAYER, RetryWsConnect};
 use std::time::Duration;
 use tokio::{sync::mpsc, time::sleep};
 use tokio_stream::{Stream, StreamExt, wrappers::UnboundedReceiverStream};
@@ -83,10 +85,13 @@ impl Extractor {
         preconf_whitelist_address: Address,
         taiko_wrapper_address: Address,
     ) -> Result<Self> {
-        let l1_el = WsConnect::new(l1_rpc_url);
-        let l2_el = WsConnect::new(l2_rpc_url);
-        let l1_provider = ProviderBuilder::new().connect_ws(l1_el).await?;
-        let l2_provider = ProviderBuilder::new().connect_ws(l2_el).await?;
+        let l1_ws = RetryWsConnect::from_url(l1_rpc_url);
+        let l1_client = ClientBuilder::default().layer(DEFAULT_RETRY_LAYER).pubsub(l1_ws).await?;
+        let l1_provider = ProviderBuilder::new().connect_client(l1_client);
+
+        let l2_ws = RetryWsConnect::from_url(l2_rpc_url);
+        let l2_client = ClientBuilder::default().layer(DEFAULT_RETRY_LAYER).pubsub(l2_ws).await?;
+        let l2_provider = ProviderBuilder::new().connect_client(l2_client);
 
         let taiko_inbox = TaikoInbox::new_readonly(inbox_address, l1_provider.clone());
         let preconf_whitelist =
