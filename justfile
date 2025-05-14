@@ -28,3 +28,29 @@ lint:
 # format the code using the nightly rustfmt (as we use some nightly lints)
 fmt:
     cargo +nightly fmt --all
+
+
+deploy-remote-hekla:
+    @echo "Deploying Taikoscope on remotesmol"
+
+    # Check if "masaya.env" exists. if not, exit with error
+    test -f masaya.env || (echo "No masaya.env file found. Exiting." && exit 1)
+
+    # Copy the project to remotesmol
+    rsync -av --exclude target --exclude .git . shared@remotesmol:/home/shared/hekla/taikoscope
+
+    # Build the docker image on remotesmol
+    @echo "Building Taikoscope on remotesmol (path: /home/shared/hekla/taikoscope)"
+    ssh shared@remotesmol "cd ~/hekla/taikoscope && docker buildx build --load -t taikoscope-hekla ."
+
+    # Stop existing container if running
+    ssh shared@remotesmol "docker stop taikoscope-hekla || true"
+    ssh shared@remotesmol "docker rm taikoscope-hekla || true"
+
+    # Start new container with environment variables
+    ssh shared@remotesmol "docker run -d \
+        --name taikoscope-hekla \
+        --restart unless-stopped \
+        --env-file ~/hekla/taikoscope/masaya.env \
+        -p 3000:3000 \
+        taikoscope-hekla"
