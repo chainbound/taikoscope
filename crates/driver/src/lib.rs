@@ -7,6 +7,7 @@ use tokio_stream::StreamExt;
 use tracing::info;
 
 use alloy_primitives::Address;
+use chainio::ITaikoInbox::BatchProposed;
 use clickhouse::ClickhouseClient;
 use config::Opts;
 use extractor::{Extractor, L1Header, L2Header, ReorgDetector};
@@ -104,11 +105,14 @@ impl Driver {
                         }
                     }
                 }
-                Some(batch) = batch_stream.next() => {
-                    if let Err(e) = self.clickhouse.insert_batch(&batch).await {
-                        tracing::error!(batch_last_block = ?batch.last_block_number(), err = %e, "Failed to insert batch");
-                    } else {
-                        info!("Inserted batch: {:?}", batch.last_block_number());
+                maybe_batch = batch_stream.next() => {
+                    match maybe_batch {
+                        Some(batch) => {
+                            self.handle_batch_proposed(batch).await;
+                        }
+                        None => {
+                            tracing::warn!("Batch proposed stream ended. The driver will continue with other active streams if any.");
+                        }
                     }
                 }
                 Some(fi) = forced_stream.next() => {
@@ -209,6 +213,14 @@ impl Driver {
             tracing::error!(block_number = header.number, err = %e, "Failed to insert L2 header");
         } else {
             info!("Inserted L2 header: {}", header.number);
+        }
+    }
+
+    async fn handle_batch_proposed(&self, batch: BatchProposed) {
+        if let Err(e) = self.clickhouse.insert_batch(&batch).await {
+            tracing::error!(batch_last_block = ?batch.last_block_number(), err = %e, "Failed to insert batch");
+        } else {
+            info!("Inserted batch: {:?}", batch.last_block_number());
         }
     }
 }

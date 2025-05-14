@@ -1569,6 +1569,7 @@ name = "driver"
 version = "0.1.0"
 dependencies = [
  "alloy-primitives",
+ "chainio",
  "chrono",
  "clap",
  "clickhouse 0.1.0",

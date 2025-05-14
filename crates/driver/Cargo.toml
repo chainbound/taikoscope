@@ -8,9 +8,11 @@ repository.workspace = true
 
 [dependencies]
 config = { path = "../config" }
-extractor = { path = "../extractor" }
+chainio = { path = "../chainio" }
 clickhouse = { path = "../clickhouse" }
+extractor = { path = "../extractor" }
 incident = { path = "../incident" }
+
 chrono.workspace = true
 alloy-primitives.workspace = true
 clap.workspace = true
