@@ -138,7 +138,7 @@ impl TryFrom<&chainio::taiko::wrapper::ITaikoWrapper::ForcedInclusionProcessed>
         event: &chainio::taiko::wrapper::ITaikoWrapper::ForcedInclusionProcessed,
     ) -> Result<Self, Self::Error> {
         let mut hash_bytes = [0u8; 32];
-        hash_bytes.copy_from_slice(event.forcedInclusion.blobHash.as_slice());
+        hash_bytes.copy_from_slice(event.blobHash.as_slice());
 
         Ok(Self { blob_hash: hash_bytes })
     }

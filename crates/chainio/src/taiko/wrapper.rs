@@ -43,15 +43,13 @@ sol! {
     #[sol(rpc)]
     #[derive(Debug)]
     interface ITaikoWrapper {
-        struct ForcedInclusion {
-            bytes32 blobHash;
-            uint64 feeInGwei;
-            uint64 createdAtBatchId;
-            uint32 blobByteOffset;
-            uint32 blobByteSize;
-            uint64 blobCreatedIn;
-        }
-
-        event ForcedInclusionProcessed(ForcedInclusion forcedInclusion);
+        event ForcedInclusionProcessed(
+            bytes32 blobHash,
+            uint64 feeInGwei,
+            uint64 createdAtBatchId,
+            uint32 blobByteOffset,
+            uint32 blobByteSize,
+            uint64 blobCreatedIn
+        );
     }
 }

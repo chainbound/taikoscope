@@ -289,9 +289,9 @@ impl Driver {
 
     async fn handle_forced_inclusion(&self, fi: ForcedInclusionProcessed) {
         if let Err(e) = self.clickhouse.insert_forced_inclusion(&fi).await {
-            tracing::error!(blob_hash = ?fi.forcedInclusion.blobHash, err = %e, "Failed to insert forced inclusion");
+            tracing::error!(blob_hash = ?fi.blobHash, err = %e, "Failed to insert forced inclusion");
         } else {
-            info!("Inserted forced inclusion processed: {:?}", fi.forcedInclusion.blobHash);
+            info!("Inserted forced inclusion processed: {:?}", fi.blobHash);
         }
     }
 }
