@@ -55,7 +55,7 @@ deploy-remote-hekla:
         --name taikoscope-hekla \
         --restart unless-stopped \
         --env-file ~/hekla/taikoscope/masaya.env \
-        -p 3000:3000 \
+        -p 48100:3000 \
         taikoscope-hekla"
 
 # Check the status of the service
