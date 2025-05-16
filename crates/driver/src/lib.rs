@@ -39,27 +39,27 @@ impl Driver {
     pub async fn new(opts: Opts) -> Result<Self> {
         // init db client
         let clickhouse = ClickhouseClient::new(
-            opts.clickhouse_url.clone(),
-            opts.clickhouse_db.clone(),
-            opts.clickhouse_username.clone(),
-            opts.clickhouse_password.clone(),
+            opts.clickhouse.url.clone(),
+            opts.clickhouse.db.clone(),
+            opts.clickhouse.username.clone(),
+            opts.clickhouse.password.clone(),
         )?;
         clickhouse.init_db(opts.reset_db).await?;
 
         // init extractor
         let extractor = Extractor::new(
-            opts.l1_rpc_url.clone(),
-            opts.l2_rpc_url.clone(),
-            opts.inbox_address,
-            opts.preconf_whitelist_address,
-            opts.taiko_wrapper_address,
+            opts.rpc.l1_url.clone(),
+            opts.rpc.l2_url.clone(),
+            opts.taiko_addresses.inbox_address,
+            opts.taiko_addresses.preconf_whitelist_address,
+            opts.taiko_addresses.taiko_wrapper_address,
         )
         .await?;
 
         // init incident client and component ID
-        let instatus_component_id = opts.instatus_component_id.clone();
+        let instatus_component_id = opts.instatus.component_id.clone();
         let incident_client =
-            IncidentClient::new(opts.instatus_api_key.clone(), opts.instatus_page_id.clone());
+            IncidentClient::new(opts.instatus.api_key.clone(), opts.instatus.page_id.clone());
 
         Ok(Self {
             clickhouse,
@@ -67,9 +67,9 @@ impl Driver {
             reorg: ReorgDetector::new(),
             incident_client,
             instatus_component_id,
-            instatus_monitor_poll_interval_secs: opts.instatus_monitor_poll_interval_secs,
-            instatus_monitor_threshold_secs: opts.instatus_monitor_threshold_secs,
-            instatus_monitor_healthy_needed_count: opts.instatus_monitor_healthy_needed_count,
+            instatus_monitor_poll_interval_secs: opts.instatus.monitor_poll_interval_secs,
+            instatus_monitor_threshold_secs: opts.instatus.monitor_threshold_secs,
+            instatus_monitor_healthy_needed_count: opts.instatus.monitor_healthy_needed_count,
         })
     }
 
