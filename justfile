@@ -37,13 +37,13 @@ deploy-remote-hekla:
     test -f masaya.env || (echo "No masaya.env file found. Exiting." && exit 1)
 
     # Ensure remote directory exists
-    ssh taikoscope "mkdir -p /home/shared/hekla/taikoscope"
+    ssh taikoscope "mkdir -p ~/hekla/taikoscope"
 
     # Copy the project via SSH alias 'taikoscope'
-    rsync -av --exclude target --exclude .git . taikoscope:/home/shared/hekla/taikoscope
+    rsync -av --exclude target --exclude .git . taikoscope:~/hekla/taikoscope
 
     # Build the docker image via SSH alias 'taikoscope'
-    @echo "Building Taikoscope on taikoscope (path: /home/shared/hekla/taikoscope)"
+    @echo "Building Taikoscope on taikoscope (path: ~/hekla/taikoscope)"
     ssh taikoscope "cd ~/hekla/taikoscope && docker buildx build --load -t taikoscope-hekla ."
 
     # Stop existing container if running
