@@ -29,29 +29,29 @@ lint:
 fmt:
     cargo +nightly fmt --all
 
-# deploy Taikoscope to remotesmol
+# deploy Taikoscope via SSH alias 'taiko'
 deploy-remote-hekla:
-    @echo "Deploying Taikoscope on remotesmol"
+    @echo "Deploying Taikoscope via SSH alias 'taiko'"
 
     # Check if "masaya.env" exists. if not, exit with error
     test -f masaya.env || (echo "No masaya.env file found. Exiting." && exit 1)
 
     # Ensure remote directory exists
-    ssh shared@remotesmol "mkdir -p /home/shared/hekla/taikoscope"
+    ssh taiko "mkdir -p /home/shared/hekla/taikoscope"
 
-    # Copy the project to remotesmol
-    rsync -av --exclude target --exclude .git . shared@remotesmol:/home/shared/hekla/taikoscope
+    # Copy the project via SSH alias 'taiko'
+    rsync -av --exclude target --exclude .git . taiko:/home/shared/hekla/taikoscope
 
-    # Build the docker image on remotesmol
-    @echo "Building Taikoscope on remotesmol (path: /home/shared/hekla/taikoscope)"
-    ssh shared@remotesmol "cd ~/hekla/taikoscope && docker buildx build --load -t taikoscope-hekla ."
+    # Build the docker image via SSH alias 'taiko'
+    @echo "Building Taikoscope on taiko (path: /home/shared/hekla/taikoscope)"
+    ssh taiko "cd ~/hekla/taikoscope && docker buildx build --load -t taikoscope-hekla ."
 
     # Stop existing container if running
-    ssh shared@remotesmol "docker stop taikoscope-hekla || true"
-    ssh shared@remotesmol "docker rm taikoscope-hekla || true"
+    ssh taiko "docker stop taikoscope-hekla || true"
+    ssh taiko "docker rm taikoscope-hekla || true"
 
     # Start new container with environment variables
-    ssh shared@remotesmol "docker run -d \
+    ssh taiko "docker run -d \
         --name taikoscope-hekla \
         --restart unless-stopped \
         --env-file ~/hekla/taikoscope/masaya.env \
@@ -60,11 +60,11 @@ deploy-remote-hekla:
 
 # Check the status of the service
 status-remote-hekla:
-    ssh shared@remotesmol "docker ps -f name=taikoscope-hekla"
+    ssh taiko "docker ps -f name=taikoscope-hekla"
 
 # View the logs of the service
 logs-remote-hekla:
-    ssh shared@remotesmol "docker logs -f taikoscope-hekla"
+    ssh taiko "docker logs -f taikoscope-hekla"
 
 # Deploy and tail logs
 deploy-logs-remote-hekla:
@@ -73,5 +73,5 @@ deploy-logs-remote-hekla:
 
 # Stop the service
 stop-remote-hekla:
-    ssh shared@remotesmol "docker stop taikoscope-hekla"
-    ssh shared@remotesmol "docker rm taikoscope-hekla"
+    ssh taiko "docker stop taikoscope-hekla"
+    ssh taiko "docker rm taikoscope-hekla"
