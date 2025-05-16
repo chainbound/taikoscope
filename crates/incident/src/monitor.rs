@@ -165,16 +165,28 @@ impl InstatusMonitor {
     /// Handles a new L2 head event.
     async fn handle(&mut self, last: DateTime<Utc>) -> Result<()> {
         let age = Utc::now().signed_duration_since(last).to_std()?;
-        match (&self.active, age > self.threshold) {
+        let is_healthy = !age.gt(&self.threshold);
+
+        debug!(
+            active_incident = ?self.active,
+            age_seconds = ?age.as_secs(),
+            threshold_seconds = ?self.threshold.as_secs(),
+            is_healthy = is_healthy,
+            healthy_seen = self.healthy_seen,
+            healthy_needed = self.healthy_needed,
+            "L2 head event status"
+        );
+
+        match (&self.active, is_healthy) {
             // outage begins
-            (None, true) => {
+            (None, false) => {
                 self.active = Some(self.open(last).await?);
                 self.healthy_seen = 0;
             }
             // still down
-            (Some(_), true) => self.healthy_seen = 0,
+            (Some(_), false) => self.healthy_seen = 0,
             // up again
-            (Some(id), false) => {
+            (Some(id), true) => {
                 self.healthy_seen += 1;
                 if self.healthy_seen >= self.healthy_needed {
                     self.close(id).await?;
