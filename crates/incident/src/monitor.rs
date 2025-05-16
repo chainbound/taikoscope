@@ -194,7 +194,7 @@ impl InstatusMonitor {
 
         let body = NewIncident {
             name: "No L2 head events - Possible Outage".into(),
-            message: format!("No L2 head event for {} s", self.threshold.as_secs()),
+            message: format!("No L2 head event for {}s", self.threshold.as_secs()),
             status: IncidentState::Investigating,
             components: vec![self.component_id.clone()],
             statuses: vec![ComponentStatus::major_outage(&self.component_id)],
