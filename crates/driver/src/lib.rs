@@ -29,6 +29,9 @@ pub struct Driver {
     reorg: ReorgDetector,
     incident_client: IncidentClient,
     instatus_component_id: String,
+    instatus_monitor_poll_interval_secs: u64,
+    instatus_monitor_threshold_secs: u64,
+    instatus_monitor_healthy_needed_count: u8,
 }
 
 impl Driver {
@@ -64,6 +67,9 @@ impl Driver {
             reorg: ReorgDetector::new(),
             incident_client,
             instatus_component_id,
+            instatus_monitor_poll_interval_secs: opts.instatus_monitor_poll_interval_secs,
+            instatus_monitor_threshold_secs: opts.instatus_monitor_threshold_secs,
+            instatus_monitor_healthy_needed_count: opts.instatus_monitor_healthy_needed_count,
         })
     }
 
@@ -129,10 +135,10 @@ impl Driver {
             self.clickhouse.clone(),
             self.incident_client.clone(),
             self.instatus_component_id.clone(),
-            Duration::from_secs(30),
-            Duration::from_secs(30),
+            Duration::from_secs(self.instatus_monitor_poll_interval_secs),
+            Duration::from_secs(self.instatus_monitor_threshold_secs),
             None,
-            2,
+            self.instatus_monitor_healthy_needed_count,
         )
         .spawn();
 

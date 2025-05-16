@@ -45,6 +45,15 @@ pub struct Opts {
     /// Instatus component ID
     #[clap(long, env = "INSTATUS_COMPONENT_ID")]
     pub instatus_component_id: String,
+    /// Instatus monitor poll interval in seconds
+    #[clap(long, env = "INSTATUS_MONITOR_POLL_INTERVAL_SECS", default_value = "30")]
+    pub instatus_monitor_poll_interval_secs: u64,
+    /// Instatus monitor threshold in seconds for detecting an outage
+    #[clap(long, env = "INSTATUS_MONITOR_THRESHOLD_SECS", default_value = "30")]
+    pub instatus_monitor_threshold_secs: u64,
+    /// Instatus monitor healthy needed count to resolve an incident
+    #[clap(long, env = "INSTATUS_MONITOR_HEALTHY_NEEDED_COUNT", default_value = "2")]
+    pub instatus_monitor_healthy_needed_count: u8,
 }
 
 #[cfg(test)]
