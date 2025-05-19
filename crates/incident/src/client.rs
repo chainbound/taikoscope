@@ -258,4 +258,94 @@ mod tests {
         assert_eq!(id, Some("inc2".into()));
         mock.assert_async().await;
     }
+
+    #[tokio::test]
+    async fn open_incident_returns_none_when_no_open_incidents() {
+        let mut server = Server::new_async().await;
+
+        let mock = server
+            .mock("GET", "/v1/page1/incidents")
+            .match_query(Matcher::Any)
+            .with_status(200)
+            .with_body("[]")
+            .create_async()
+            .await;
+
+        let client =
+            Client::with_base_url("testkey".into(), "page1".into(), server.url().parse().unwrap());
+        let id = client.open_incident("comp1").await.unwrap();
+        assert_eq!(id, None);
+        mock.assert_async().await;
+    }
+
+    #[tokio::test]
+    async fn create_incident_returns_err_on_http_error() {
+        let mut server = Server::new_async().await;
+
+        let mock = server
+            .mock("POST", "/v1/page1/incidents")
+            .with_status(400)
+            .with_body("bad request")
+            .create_async()
+            .await;
+
+        let client =
+            Client::with_base_url("testkey".into(), "page1".into(), server.url().parse().unwrap());
+        let payload = NewIncident {
+            name: "Test".into(),
+            message: "Testing".into(),
+            status: IncidentState::Investigating,
+            components: Vec::new(),
+            statuses: Vec::new(),
+            notify: false,
+            started: None,
+        };
+        let err = client.create_incident(&payload).await.unwrap_err();
+        assert!(err.to_string().contains("400"));
+        mock.assert_async().await;
+    }
+
+    #[tokio::test]
+    async fn resolve_incident_returns_err_on_http_error() {
+        let mut server = Server::new_async().await;
+
+        let mock = server
+            .mock("PUT", "/v1/page1/incidents/incident123")
+            .with_status(500)
+            .with_body("server error")
+            .create_async()
+            .await;
+
+        let client =
+            Client::with_base_url("testkey".into(), "page1".into(), server.url().parse().unwrap());
+        let payload = ResolveIncident {
+            status: IncidentState::Resolved,
+            components: vec!["comp1".into()],
+            statuses: vec![ComponentStatus::operational("comp1")],
+            notify: true,
+            started: None,
+        };
+        let err = client.resolve_incident("incident123", &payload).await.unwrap_err();
+        assert!(err.to_string().contains("500"));
+        mock.assert_async().await;
+    }
+
+    #[tokio::test]
+    async fn open_incident_returns_err_on_http_error() {
+        let mut server = Server::new_async().await;
+
+        let mock = server
+            .mock("GET", "/v1/page1/incidents")
+            .match_query(Matcher::Any)
+            .with_status(500)
+            .with_body("server error")
+            .create_async()
+            .await;
+
+        let client =
+            Client::with_base_url("testkey".into(), "page1".into(), server.url().parse().unwrap());
+        let err = client.open_incident("comp1").await.unwrap_err();
+        assert!(err.to_string().contains("500"));
+        mock.assert_async().await;
+    }
 }
