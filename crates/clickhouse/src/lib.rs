@@ -477,6 +477,37 @@ impl ClickhouseClient {
 
         Ok(ts_opt)
     }
+
+    /// Get timestamp of the latest BatchProposed event insertion in UTC.
+    pub async fn get_last_batch_time(&self) -> Result<Option<DateTime<Utc>>> {
+        let client = self.base.clone().with_database(&self.db_name);
+        let query = format!(
+            "SELECT toUInt64(max(inserted_at)) AS block_ts FROM {}.batches",
+            &self.db_name
+        );
+
+        let rows = client
+            .query(&query)
+            .fetch_all::<MaxTs>()
+            .await
+            .context("fetching max(inserted_at) failed")?;
+
+        let row = match rows.into_iter().next() {
+            Some(r) => r,
+            None => return Ok(None),
+        };
+
+        if row.block_ts == 0 {
+            return Ok(None);
+        }
+
+        let ts_opt = match Utc.timestamp_opt(row.block_ts as i64, 0) {
+            LocalResult::Single(dt) => Some(dt),
+            _ => None,
+        };
+
+        Ok(ts_opt)
+    }
 }
 
 #[cfg(test)]

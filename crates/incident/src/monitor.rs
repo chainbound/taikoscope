@@ -33,10 +33,10 @@ pub enum ComponentHealth {
     MajorOutage,
 }
 
-/// Monitors `ClickHouse` L1 head events and manages Instatus incidents.
-/// Polls `ClickHouse` every `interval` seconds; if no L1 head event for `threshold` seconds
+/// Monitors `ClickHouse` BatchProposed events and manages Instatus incidents.
+/// Polls `ClickHouse` every `interval` seconds; if no batch event for `threshold` seconds
 /// and a recent L2 head event within `threshold` seconds is available, it creates an incident;
-/// resolves when L1 events resume.
+/// resolves when batch events resume.
 #[derive(Debug)]
 pub struct InstatusL1Monitor {
     clickhouse: ClickhouseClient,
@@ -76,7 +76,7 @@ impl InstatusL1Monitor {
     pub fn spawn(self) -> JoinHandle<()> {
         tokio::spawn(async move {
             if let Err(e) = self.run().await {
-                error!(%e, "L1 head monitor exited unexpectedly");
+                error!(%e, "batch monitor exited unexpectedly");
             }
         })
     }
@@ -86,63 +86,63 @@ impl InstatusL1Monitor {
         match self.client.open_incident(&self.component_id).await? {
             Some(id) => {
                 info!(incident_id = %id, component_id = %self.component_id,
-                    "Found open L1 incident at startup, monitoring for resolution");
+                    "Found open batch incident at startup, monitoring for resolution");
                 self.active = Some(id.clone());
-                if let (Ok(Some(l1_ts)), Ok(Some(l2_ts))) = (
-                    self.clickhouse.get_last_l1_head_time().await,
+                if let (Ok(Some(batch_ts)), Ok(Some(l2_ts))) = (
+                    self.clickhouse.get_last_batch_time().await,
                     self.clickhouse.get_last_l2_head_time().await,
                 ) {
-                    if let Err(e) = self.handle(l1_ts, l2_ts).await {
-                        error!(%e, "Failed initial health check for existing L1 incident");
+                    if let Err(e) = self.handle(batch_ts, l2_ts).await {
+                        error!(%e, "Failed initial health check for existing batch incident");
                     }
                 }
             }
-            None => info!(component_id = %self.component_id, "No open L1 incidents at startup"),
+            None => info!(component_id = %self.component_id, "No open batch incidents at startup"),
         }
 
         let mut interval = tokio::time::interval(self.interval);
         loop {
             interval.tick().await;
-            let l1_res = self.clickhouse.get_last_l1_head_time().await;
+            let batch_res = self.clickhouse.get_last_batch_time().await;
             let l2_res = self.clickhouse.get_last_l2_head_time().await;
-            match (l1_res, l2_res) {
-                (Ok(Some(l1_ts)), Ok(Some(l2_ts))) => {
-                    if let Err(e) = self.handle(l1_ts, l2_ts).await {
-                        error!(%e, "handling new L1 head status");
+            match (batch_res, l2_res) {
+                (Ok(Some(batch_ts)), Ok(Some(l2_ts))) => {
+                    if let Err(e) = self.handle(batch_ts, l2_ts).await {
+                        error!(%e, "handling new batch event status");
                     }
                 }
                 (Ok(None), Ok(Some(_))) => {
-                    warn!("no L1 head timestamp available this tick for L1 monitor")
+                    warn!("no batch event timestamp available this tick for batch monitor")
                 }
-                (_, Ok(None)) => warn!("no L2 head timestamp available this tick for L1 monitor"),
-                (Err(e), _) => error!(%e, "failed to query last L1 head time"),
-                (_, Err(e)) => error!(%e, "failed to query last L2 head time for L1 monitor"),
+                (_, Ok(None)) => warn!("no L2 head timestamp available this tick for batch monitor"),
+                (Err(e), _) => error!(%e, "failed to query last batch time"),
+                (_, Err(e)) => error!(%e, "failed to query last L2 head time for batch monitor"),
             }
         }
     }
 
-    async fn handle(&mut self, last_l1: DateTime<Utc>, last_l2: DateTime<Utc>) -> Result<()> {
-        let age_l1 = Utc::now().signed_duration_since(last_l1).to_std()?;
+    async fn handle(&mut self, last_batch: DateTime<Utc>, last_l2: DateTime<Utc>) -> Result<()> {
+        let age_batch = Utc::now().signed_duration_since(last_batch).to_std()?;
         let age_l2 = Utc::now().signed_duration_since(last_l2).to_std()?;
-        let l1_healthy = !age_l1.gt(&self.threshold);
+        let batch_healthy = !age_batch.gt(&self.threshold);
         let l2_healthy = !age_l2.gt(&self.threshold);
 
         debug!(
             active_incident = ?self.active,
-            l1_age_seconds = age_l1.as_secs(),
+            batch_age_seconds = age_batch.as_secs(),
             l2_age_seconds = age_l2.as_secs(),
             threshold_seconds = self.threshold.as_secs(),
-            l1_healthy,
+            batch_healthy,
             l2_healthy,
             healthy_seen = self.healthy_seen,
             healthy_needed = self.healthy_needed,
-            "L1 head event status"
+            "Batch event status"
         );
 
-        match (&self.active, l1_healthy, l2_healthy) {
-            // L1 outage while L2 healthy: open incident
+        match (&self.active, batch_healthy, l2_healthy) {
+            // Batch outage while L2 healthy: open incident
             (None, false, true) => {
-                self.active = Some(self.open(last_l1).await?);
+                self.active = Some(self.open(last_batch).await?);
                 self.healthy_seen = 0;
             }
             // still down
@@ -161,11 +161,11 @@ impl InstatusL1Monitor {
         Ok(())
     }
 
-    async fn open(&self, last_l1: DateTime<Utc>) -> Result<String> {
-        let started = (last_l1 + ChronoDuration::seconds(2)).to_rfc3339();
+    async fn open(&self, last_batch: DateTime<Utc>) -> Result<String> {
+        let started = (last_batch + ChronoDuration::seconds(2)).to_rfc3339();
         let body = NewIncident {
-            name: "No L1 head events - Possible Outage".into(),
-            message: format!("No L1 head event for {}s", self.threshold.as_secs()),
+            name: "No BatchProposed events - Possible Outage".into(),
+            message: format!("No batch event for {}s", self.threshold.as_secs()),
             status: IncidentState::Investigating,
             components: vec![self.component_id.clone()],
             statuses: vec![ComponentStatus::major_outage(&self.component_id)],
@@ -182,7 +182,7 @@ impl InstatusL1Monitor {
             statuses = ?body.statuses,
             notify = %body.notify,
             started = ?body.started,
-            "Created L1 incident"
+            "Created batch incident"
         );
         Ok(id)
     }
@@ -195,14 +195,14 @@ impl InstatusL1Monitor {
             notify: true,
             started: Some(Utc::now().to_rfc3339()),
         };
-        debug!(%id, "Closing L1 incident with body: {:?}", body);
+        debug!(%id, "Closing batch incident with body: {:?}", body);
         match self.client.resolve_incident(id, &body).await {
             Ok(_) => {
-                info!(%id, "Successfully resolved L1 incident");
+                info!(%id, "Successfully resolved batch incident");
                 Ok(())
             }
             Err(e) => {
-                error!(%id, error = %e, "Failed to resolve L1 incident");
+                error!(%id, error = %e, "Failed to resolve batch incident");
                 Err(e)
             }
         }

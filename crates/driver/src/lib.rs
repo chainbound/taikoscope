@@ -130,11 +130,11 @@ impl Driver {
         let mut batch_stream = self.subscribe_batch().await;
         let mut forced_stream = self.subscribe_forced().await;
 
-        // spawn Instatus L1 head monitor
+        // spawn Instatus batch monitor
         InstatusL1Monitor::new(
             self.clickhouse.clone(),
             self.incident_client.clone(),
-            "cmakrk571002wpw1kxhvcggp0".to_string(),
+            self.instatus_component_id.clone(),
             Duration::from_secs(self.instatus_monitor_poll_interval_secs),
             Duration::from_secs(self.instatus_monitor_threshold_secs),
             None,
