@@ -28,7 +28,8 @@ pub struct Driver {
     extractor: Extractor,
     reorg: ReorgDetector,
     incident_client: IncidentClient,
-    instatus_component_id: String,
+    instatus_batch_component_id: String,
+    instatus_l2_component_id: String,
     instatus_monitor_poll_interval_secs: u64,
     instatus_monitor_threshold_secs: u64,
     instatus_monitor_healthy_needed_count: u8,
@@ -56,8 +57,9 @@ impl Driver {
         )
         .await?;
 
-        // init incident client and component ID
-        let instatus_component_id = opts.instatus.component_id.clone();
+        // init incident client and component IDs
+        let instatus_batch_component_id = opts.instatus.batch_component_id.clone();
+        let instatus_l2_component_id = opts.instatus.l2_component_id.clone();
         let incident_client =
             IncidentClient::new(opts.instatus.api_key.clone(), opts.instatus.page_id.clone());
 
@@ -66,7 +68,8 @@ impl Driver {
             extractor,
             reorg: ReorgDetector::new(),
             incident_client,
-            instatus_component_id,
+            instatus_batch_component_id,
+            instatus_l2_component_id,
             instatus_monitor_poll_interval_secs: opts.instatus.monitor_poll_interval_secs,
             instatus_monitor_threshold_secs: opts.instatus.monitor_threshold_secs,
             instatus_monitor_healthy_needed_count: opts.instatus.monitor_healthy_needed_count,
@@ -134,7 +137,7 @@ impl Driver {
         InstatusL1Monitor::new(
             self.clickhouse.clone(),
             self.incident_client.clone(),
-            self.instatus_component_id.clone(),
+            self.instatus_batch_component_id.clone(),
             Duration::from_secs(self.instatus_monitor_poll_interval_secs),
             Duration::from_secs(self.instatus_monitor_threshold_secs),
             None,
@@ -146,7 +149,7 @@ impl Driver {
         InstatusMonitor::new(
             self.clickhouse.clone(),
             self.incident_client.clone(),
-            self.instatus_component_id.clone(),
+            self.instatus_l2_component_id.clone(),
             Duration::from_secs(self.instatus_monitor_poll_interval_secs),
             Duration::from_secs(self.instatus_monitor_threshold_secs),
             None,

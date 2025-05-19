@@ -478,13 +478,11 @@ impl ClickhouseClient {
         Ok(ts_opt)
     }
 
-    /// Get timestamp of the latest BatchProposed event insertion in UTC.
+    /// Get timestamp of the latest `BatchProposed` event insertion in UTC.
     pub async fn get_last_batch_time(&self) -> Result<Option<DateTime<Utc>>> {
         let client = self.base.clone().with_database(&self.db_name);
-        let query = format!(
-            "SELECT toUInt64(max(inserted_at)) AS block_ts FROM {}.batches",
-            &self.db_name
-        );
+        let query =
+            format!("SELECT toUInt64(max(inserted_at)) AS block_ts FROM {}.batches", &self.db_name);
 
         let rows = client
             .query(&query)

@@ -54,9 +54,15 @@ pub struct InstatusOpts {
     /// Instatus page ID
     #[clap(long, env = "INSTATUS_PAGE_ID")]
     pub page_id: String,
-    /// Instatus component ID
+    /// Instatus component ID for L1 head monitor
     #[clap(long, env = "INSTATUS_COMPONENT_ID")]
     pub component_id: String,
+    /// Instatus component ID for batch proposals monitor
+    #[clap(long, env = "INSTATUS_BATCH_COMPONENT_ID")]
+    pub batch_component_id: String,
+    /// Instatus component ID for L2 head monitor
+    #[clap(long, env = "INSTATUS_L2_COMPONENT_ID")]
+    pub l2_component_id: String,
     /// Instatus monitor poll interval in seconds
     #[clap(long, env = "INSTATUS_MONITOR_POLL_INTERVAL_SECS", default_value = "30")]
     pub monitor_poll_interval_secs: u64,

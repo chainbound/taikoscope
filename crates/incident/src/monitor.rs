@@ -33,7 +33,7 @@ pub enum ComponentHealth {
     MajorOutage,
 }
 
-/// Monitors `ClickHouse` BatchProposed events and manages Instatus incidents.
+/// Monitors `ClickHouse` `BatchProposed` events and manages Instatus incidents.
 /// Polls `ClickHouse` every `interval` seconds; if no batch event for `threshold` seconds
 /// and a recent L2 head event within `threshold` seconds is available, it creates an incident;
 /// resolves when batch events resume.
@@ -114,7 +114,9 @@ impl InstatusL1Monitor {
                 (Ok(None), Ok(Some(_))) => {
                     warn!("no batch event timestamp available this tick for batch monitor")
                 }
-                (_, Ok(None)) => warn!("no L2 head timestamp available this tick for batch monitor"),
+                (_, Ok(None)) => {
+                    warn!("no L2 head timestamp available this tick for batch monitor")
+                }
                 (Err(e), _) => error!(%e, "failed to query last batch time"),
                 (_, Err(e)) => error!(%e, "failed to query last L2 head time for batch monitor"),
             }
