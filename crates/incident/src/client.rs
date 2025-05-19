@@ -85,13 +85,13 @@ impl Client {
     /// Return open incident ID for `component_id`, if any.
     pub async fn open_incident(&self, component_id: &str) -> Result<Option<String>> {
         // Query any incidents that aren't RESOLVED (to catch MONITORING or IDENTIFIED too)
-        let url = self
-            .base_url
-            .join(&format!(
-                "v1/{}/incidents?status[]=INVESTIGATING&status[]=IDENTIFIED&status[]=MONITORING",
-                self.page_id
-            ))
-            .unwrap();
+        let mut url = self.base_url.join(&format!("v1/{}/incidents", self.page_id))?;
+        {
+            let mut qp = url.query_pairs_mut();
+            for st in &["INVESTIGATING", "IDENTIFIED", "MONITORING"] {
+                qp.append_pair("status[]", st);
+            }
+        }
 
         tracing::debug!("Querying incidents with URL: {}", url);
 

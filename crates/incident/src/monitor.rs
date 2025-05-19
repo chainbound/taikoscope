@@ -148,8 +148,9 @@ impl InstatusMonitor {
                 // Clone the id for use in log statements since the original will be moved
                 let incident_id = id.clone();
                 self.active = Some(id);
-                
-                // Immediately check if the incident should be closed by checking latest L2 head time
+
+                // Immediately check if the incident should be closed by checking latest L2 head
+                // time
                 if let Ok(Some(ts)) = self.clickhouse.get_last_l2_head_time().await {
                     info!(
                         incident_id = %incident_id,
