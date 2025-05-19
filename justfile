@@ -32,6 +32,7 @@ fmt:
 # deploy Taikoscope via SSH alias 'taikoscope'
 deploy-remote-hekla:
     @echo "Deploying Taikoscope via SSH alias 'taikoscope'"
+    @just test || (echo "Tests failed, aborting deployment" && exit 1)
 
     # Check if "masaya.env" exists. if not, exit with error
     test -f masaya.env || (echo "No masaya.env file found. Exiting." && exit 1)
