@@ -1,7 +1,7 @@
 //! Taikoscope Extractor
 use chainio::{
     self, DefaultProvider,
-    ITaikoInbox::BatchProposed,
+    ITaikoInbox::{BatchProposed, BatchesProved},
     taiko::{
         preconf_whitelist::TaikoPreconfWhitelist,
         wrapper::{ITaikoWrapper::ForcedInclusionProcessed, TaikoWrapper},
@@ -73,6 +73,8 @@ pub type L1HeaderStream = Pin<Box<dyn Stream<Item = L1Header> + Send>>;
 pub type L2HeaderStream = Pin<Box<dyn Stream<Item = L2Header> + Send>>;
 /// Stream of batch proposed events
 pub type BatchProposedStream = Pin<Box<dyn Stream<Item = BatchProposed> + Send>>;
+/// Stream of batches proved events
+pub type BatchesProvedStream = Pin<Box<dyn Stream<Item = (chainio::ITaikoInbox::BatchesProved, u64)> + Send>>;
 /// Stream of forced inclusion processed events
 pub type ForcedInclusionStream = Pin<Box<dyn Stream<Item = ForcedInclusionProcessed> + Send>>;
 
@@ -235,6 +237,61 @@ impl Extractor {
                     }
                 }
                 warn!("BatchProposed log stream ended. Attempting to resubscribe...");
+            }
+        });
+
+        Ok(Box::pin(UnboundedReceiverStream::new(rx)))
+    }
+
+    /// Subscribes to the `TaikoInbox` `BatchesProved` event and returns a stream of decoded events
+    /// along with the block number. This stream will attempt to automatically resubscribe and continue
+    /// yielding events.
+    pub async fn get_batches_proved_stream(&self) -> Result<BatchesProvedStream> {
+        let (tx, rx) = mpsc::unbounded_channel();
+        let provider = self.l1_provider.clone();
+        let taiko_inbox = self.taiko_inbox.clone(); // Clone for use in the spawned task
+
+        tokio::spawn(async move {
+            loop {
+                info!("Attempting to subscribe to TaikoInbox BatchesProved events...");
+                let filter = taiko_inbox.batches_proved_filter();
+                let sub_result = provider.subscribe_logs(&filter).await;
+
+                let mut log_stream = match sub_result {
+                    Ok(sub) => {
+                        info!("Successfully subscribed to TaikoInbox BatchesProved events.");
+                        sub.into_stream()
+                    }
+                    Err(e) => {
+                        error!(
+                            "Failed to subscribe to BatchesProved logs: {}. Retrying in 5s...",
+                            e
+                        );
+                        sleep(Duration::from_secs(5)).await;
+                        continue;
+                    }
+                };
+
+                while let Some(log) = log_stream.next().await {
+                    match log.log_decode::<BatchesProved>() {
+                        Ok(decoded) => {
+                            // Include the block number in the tuple
+                            let l1_block_number = log.block_number.unwrap_or(0);
+                            if tx.send((decoded.data().clone(), l1_block_number)).is_err() {
+                                error!(
+                                    "BatchesProved receiver dropped. Stopping BatchesProved event task."
+                                );
+                                return; // Exit task if receiver is gone
+                            }
+                        }
+                        Err(err) => {
+                            warn!("Failed to decode BatchesProved log: {}", err);
+                            // Optionally, decide if this is a critical error or can be skipped.
+                            // For now, we just log and continue.
+                        }
+                    }
+                }
+                warn!("BatchesProved log stream ended. Attempting to resubscribe...");
             }
         });
 

@@ -93,6 +93,23 @@ pub struct BatchRow {
     pub blob_total_bytes: u32,
 }
 
+/// Proved batch row
+#[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ProvedBatchRow {
+    /// L1 block number
+    pub l1_block_number: u64,
+    /// Batch ID
+    pub batch_id: u64,
+    /// Verifier address
+    pub verifier_addr: [u8; 20],
+    /// Parent hash
+    pub parent_hash: [u8; 32],
+    /// Block hash
+    pub block_hash: [u8; 32],
+    /// State root
+    pub state_root: [u8; 32],
+}
+
 /// L2 reorg row
 #[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq)]
 pub struct L2ReorgRow {
@@ -118,6 +135,33 @@ impl TryFrom<&ITaikoInbox::BatchProposed> for BatchRow {
             proposer_addr,
             blob_count,
             blob_total_bytes: batch.info.blobByteSize,
+        })
+    }
+}
+
+impl TryFrom<(&ITaikoInbox::BatchesProved, u64)> for ProvedBatchRow {
+    type Error = eyre::Error;
+
+    fn try_from(input: (&ITaikoInbox::BatchesProved, u64)) -> Result<Self, Self::Error> {
+        let (proved, l1_block_number) = input;
+        
+        if proved.batchIds.is_empty() || proved.transitions.is_empty() {
+            return Err(eyre::eyre!("Empty batch IDs or transitions"));
+        }
+        
+        // For the example, we're just taking the first transition, but you might want to handle
+        // all transitions in a real implementation
+        let batch_id = proved.batchIds[0];
+        let transition = &proved.transitions[0];
+        let verifier_addr = proved.verifier.into_array();
+        
+        Ok(Self {
+            l1_block_number,
+            batch_id,
+            verifier_addr,
+            parent_hash: *transition.parentHash.as_ref(),
+            block_hash: *transition.blockHash.as_ref(),
+            state_root: *transition.stateRoot.as_ref(),
         })
     }
 }
@@ -278,6 +322,25 @@ impl ClickhouseClient {
             .execute()
             .await
             .wrap_err("Failed to create batches table")?;
+            
+        // Create proved batches table
+        self.base
+            .query(&format!(
+                "CREATE TABLE IF NOT EXISTS {}.proved_batches (
+                    l1_block_number UInt64,
+                    batch_id UInt64,
+                    verifier_addr FixedString(20),
+                    parent_hash FixedString(32),
+                    block_hash FixedString(32),
+                    state_root FixedString(32),
+                    inserted_at DateTime64(3) DEFAULT now64()
+                ) ENGINE = MergeTree()
+                ORDER BY (l1_block_number, batch_id)",
+                self.db_name
+            ))
+            .execute()
+            .await
+            .wrap_err("Failed to create proved batches table")?;
 
         // Create reorgs table
         self.base
@@ -384,6 +447,36 @@ impl ClickhouseClient {
         insert.write(&batch_row).await?;
         insert.end().await?;
 
+        Ok(())
+    }
+    
+    /// Insert a proved batch into `ClickHouse`
+    pub async fn insert_proved_batch(&self, proved: &chainio::ITaikoInbox::BatchesProved, l1_block_number: u64) -> Result<()> {
+        let client = self.base.clone().with_database(&self.db_name);
+        
+        // For each batch ID and transition pair, create and insert a ProvedBatchRow
+        for (i, batch_id) in proved.batchIds.iter().enumerate() {
+            // Skip if we don't have a corresponding transition
+            if i >= proved.transitions.len() {
+                continue;
+            }
+            
+            // Create a new proved batch with just one batch ID and transition
+            let single_proved = chainio::ITaikoInbox::BatchesProved {
+                verifier: proved.verifier,
+                batchIds: vec![*batch_id],
+                transitions: vec![proved.transitions[i].clone()],
+            };
+            
+            // Convert to row
+            let proved_row = ProvedBatchRow::try_from((&single_proved, l1_block_number))?;
+            
+            // Insert into ClickHouse
+            let mut insert = client.insert("proved_batches")?;
+            insert.write(&proved_row).await?;
+            insert.end().await?;
+        }
+        
         Ok(())
     }
 

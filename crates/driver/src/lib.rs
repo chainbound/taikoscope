@@ -8,12 +8,12 @@ use tracing::info;
 
 use alloy_primitives::Address;
 use chainio::{
-    ITaikoInbox::BatchProposed, taiko::wrapper::ITaikoWrapper::ForcedInclusionProcessed,
+    ITaikoInbox::{BatchProposed, BatchesProved}, taiko::wrapper::ITaikoWrapper::ForcedInclusionProcessed,
 };
 use clickhouse::ClickhouseClient;
 use config::Opts;
 use extractor::{
-    BatchProposedStream, Extractor, ForcedInclusionStream, L1Header, L1HeaderStream, L2Header,
+    BatchProposedStream, BatchesProvedStream, Extractor, ForcedInclusionStream, L1Header, L1HeaderStream, L2Header,
     L2HeaderStream, ReorgDetector,
 };
 use incident::{InstatusL1Monitor, InstatusMonitor, client::Client as IncidentClient};
@@ -123,6 +123,18 @@ impl Driver {
             }
         }
     }
+    
+    async fn subscribe_proved(&self) -> BatchesProvedStream {
+        loop {
+            match self.extractor.get_batches_proved_stream().await {
+                Ok(s) => return s,
+                Err(e) => {
+                    tracing::error!("BatchesProved subscribe failed: {}. Retrying in 5s…", e);
+                    tokio::time::sleep(Duration::from_secs(5)).await;
+                }
+            }
+        }
+    }
 
     /// Consume the driver and drive the infinite processing loop.
     pub async fn start(mut self) -> Result<()> {
@@ -132,6 +144,7 @@ impl Driver {
         let mut l2_stream = self.subscribe_l2().await;
         let mut batch_stream = self.subscribe_batch().await;
         let mut forced_stream = self.subscribe_forced().await;
+        let mut proved_stream = self.subscribe_proved().await;
 
         // spawn Instatus batch monitor
         InstatusL1Monitor::new(
@@ -200,6 +213,17 @@ impl Driver {
                         None => {
                             tracing::warn!("Forced inclusion stream ended; re-subscribing…");
                             forced_stream = self.subscribe_forced().await;
+                        }
+                    }
+                }
+                maybe_proved = proved_stream.next() => {
+                    match maybe_proved {
+                        Some(proved) => {
+                            self.handle_batches_proved(proved).await;
+                        }
+                        None => {
+                            tracing::warn!("Batches proved stream ended; re-subscribing…");
+                            proved_stream = self.subscribe_proved().await;
                         }
                     }
                 }
@@ -313,6 +337,15 @@ impl Driver {
             tracing::error!(blob_hash = ?fi.blobHash, err = %e, "Failed to insert forced inclusion");
         } else {
             info!("Inserted forced inclusion processed: {:?}", fi.blobHash);
+        }
+    }
+    
+    async fn handle_batches_proved(&self, proved_data: (BatchesProved, u64)) {
+        let (proved, l1_block_number) = proved_data;
+        if let Err(e) = self.clickhouse.insert_proved_batch(&proved, l1_block_number).await {
+            tracing::error!(batch_ids = ?proved.batch_ids_proved(), err = %e, "Failed to insert proved batch");
+        } else {
+            info!("Inserted proved batch: batch_ids={:?}", proved.batch_ids_proved());
         }
     }
 }
