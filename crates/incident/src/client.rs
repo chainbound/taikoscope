@@ -87,10 +87,9 @@ impl Client {
         // Query any incidents that aren't RESOLVED (to catch MONITORING or IDENTIFIED too)
         let mut url = self.base_url.join(&format!("v1/{}/incidents", self.page_id))?;
         {
-            let mut qp = url.query_pairs_mut();
-            for st in &["INVESTIGATING", "IDENTIFIED", "MONITORING"] {
-                qp.append_pair("status[]", st);
-            }
+            let statuses = ["INVESTIGATING", "IDENTIFIED", "MONITORING"];
+            let value = statuses.join(",");
+            url.query_pairs_mut().append_pair("status", &value);
         }
 
         tracing::debug!("Querying incidents with URL: {}", url);
