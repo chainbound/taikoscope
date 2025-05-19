@@ -34,11 +34,7 @@ impl TaikoInbox {
     }
     /// Returns a log [`Filter`] based on the `BatchesVerified` event.
     pub fn batches_verified_filter(&self) -> Filter {
-        // Create a filter for the BatchesVerified(uint64 batchId, bytes32 blockHash) event
-        let signature = "BatchesVerified(uint64,bytes32)";
-        let signature_hash = alloy::primitives::keccak256(signature.as_bytes());
-
-        Filter::new().address(*self.0.address()).event_signature(signature_hash)
+        self.0.BatchesVerified_filter().filter
     }
 }
 
@@ -110,6 +106,8 @@ sol! {
         event BatchProposed(BatchInfo info, BatchMetadata meta, bytes txList);
         #[derive(Default)]
         event BatchesProved(address verifier, uint64[] batchIds, Transition[] transitions);
+        #[derive(Default)]
+        event BatchesVerified(uint64 batchId, bytes32 blockHash);
 
         #[derive(Copy, Default)]
         struct BaseFeeConfig {
