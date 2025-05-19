@@ -14,8 +14,8 @@ use chainio::{
 use clickhouse::ClickhouseClient;
 use config::Opts;
 use extractor::{
-    BatchProposedStream, BatchesProvedStream, Extractor, ForcedInclusionStream, L1Header,
-    L1HeaderStream, L2Header, L2HeaderStream, ReorgDetector,
+    BatchProposedStream, BatchesProvedStream, BatchesVerifiedStream, Extractor,
+    ForcedInclusionStream, L1Header, L1HeaderStream, L2Header, L2HeaderStream, ReorgDetector,
 };
 use incident::{InstatusL1Monitor, InstatusMonitor, client::Client as IncidentClient};
 
@@ -137,6 +137,18 @@ impl Driver {
         }
     }
 
+    async fn subscribe_verified(&self) -> BatchesVerifiedStream {
+        loop {
+            match self.extractor.get_batches_verified_stream().await {
+                Ok(s) => return s,
+                Err(e) => {
+                    tracing::error!("BatchesVerified subscribe failed: {}. Retrying in 5s…", e);
+                    tokio::time::sleep(Duration::from_secs(5)).await;
+                }
+            }
+        }
+    }
+
     /// Consume the driver and drive the infinite processing loop.
     pub async fn start(mut self) -> Result<()> {
         info!("Starting event loop...");
@@ -146,6 +158,7 @@ impl Driver {
         let mut batch_stream = self.subscribe_batch().await;
         let mut forced_stream = self.subscribe_forced().await;
         let mut proved_stream = self.subscribe_proved().await;
+        let mut verified_stream = self.subscribe_verified().await;
 
         // spawn Instatus batch monitor
         InstatusL1Monitor::new(
@@ -225,6 +238,17 @@ impl Driver {
                         None => {
                             tracing::warn!("Batches proved stream ended; re-subscribing…");
                             proved_stream = self.subscribe_proved().await;
+                        }
+                    }
+                }
+                maybe_verified = verified_stream.next() => {
+                    match maybe_verified {
+                        Some(verified) => {
+                            self.handle_batches_verified(verified).await;
+                        }
+                        None => {
+                            tracing::warn!("Batches verified stream ended; re-subscribing…");
+                            verified_stream = self.subscribe_verified().await;
                         }
                     }
                 }
@@ -347,6 +371,15 @@ impl Driver {
             tracing::error!(batch_ids = ?proved.batch_ids_proved(), err = %e, "Failed to insert proved batch");
         } else {
             info!("Inserted proved batch: batch_ids={:?}", proved.batch_ids_proved());
+        }
+    }
+
+    async fn handle_batches_verified(&self, verified_data: (chainio::BatchesVerified, u64)) {
+        let (verified, l1_block_number) = verified_data;
+        if let Err(e) = self.clickhouse.insert_verified_batch(&verified, l1_block_number).await {
+            tracing::error!(batch_id = ?verified.batch_id, err = %e, "Failed to insert verified batch");
+        } else {
+            info!("Inserted verified batch: batch_id={:?}", verified.batch_id);
         }
     }
 }

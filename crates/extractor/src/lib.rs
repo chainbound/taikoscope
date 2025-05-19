@@ -76,6 +76,9 @@ pub type BatchProposedStream = Pin<Box<dyn Stream<Item = BatchProposed> + Send>>
 /// Stream of batches proved events
 pub type BatchesProvedStream =
     Pin<Box<dyn Stream<Item = (chainio::ITaikoInbox::BatchesProved, u64)> + Send>>;
+/// Stream of batches verified events
+pub type BatchesVerifiedStream =
+    Pin<Box<dyn Stream<Item = (chainio::BatchesVerified, u64)> + Send>>;
 /// Stream of forced inclusion processed events
 pub type ForcedInclusionStream = Pin<Box<dyn Stream<Item = ForcedInclusionProcessed> + Send>>;
 
@@ -363,6 +366,82 @@ impl Extractor {
     pub async fn get_operator_for_next_epoch(&self) -> Result<Address> {
         let operator = self.preconf_whitelist.get_operator_for_next_epoch().await?;
         Ok(operator)
+    }
+
+    /// Subscribes to the `TaikoInbox` `BatchesVerified` event and returns a stream of decoded
+    /// events along with the block number. This stream will attempt to automatically
+    /// resubscribe and continue yielding events.
+    pub async fn get_batches_verified_stream(&self) -> Result<BatchesVerifiedStream> {
+        let (tx, rx) = mpsc::unbounded_channel();
+        let provider = self.l1_provider.clone();
+        let taiko_inbox = self.taiko_inbox.clone(); // Clone for use in the spawned task
+
+        tokio::spawn(async move {
+            loop {
+                info!("Attempting to subscribe to TaikoInbox BatchesVerified events...");
+                // TODO: Implement batches_verified_filter in chainio::TaikoInbox
+                let filter = taiko_inbox.batches_verified_filter();
+                let sub_result = provider.subscribe_logs(&filter).await;
+
+                let mut log_stream = match sub_result {
+                    Ok(sub) => {
+                        info!("Successfully subscribed to TaikoInbox BatchesVerified events.");
+                        sub.into_stream()
+                    }
+                    Err(e) => {
+                        error!(
+                            "Failed to subscribe to BatchesVerified logs: {}. Retrying in 5s...",
+                            e
+                        );
+                        sleep(Duration::from_secs(5)).await;
+                        continue;
+                    }
+                };
+
+                while let Some(log) = log_stream.next().await {
+                    // Extract the batch_id from the first topic or data field
+                    let batch_id = if log.topics().len() > 1 {
+                        // If it's indexed, it will be in the topics
+                        let topic_bytes = log.topics()[1].as_slice();
+                        if topic_bytes.len() >= 32 {
+                            u64::from_be_bytes(topic_bytes[24..32].try_into().unwrap_or([0u8; 8]))
+                        } else {
+                            0
+                        }
+                    } else {
+                        // If it's not indexed, check the data
+                        let data = log.data();
+                        if data.data.len() >= 8 {
+                            u64::from_be_bytes(data.data[0..8].try_into().unwrap_or([0u8; 8]))
+                        } else {
+                            0
+                        }
+                    };
+
+                    // Extract the block hash from data
+                    let mut block_hash = [0u8; 32];
+                    let data = log.data();
+                    let offset = if log.topics().len() > 1 { 0 } else { 8 }; // Adjust based on indexing
+                    if data.data.len() >= offset + 32 {
+                        block_hash.copy_from_slice(&data.data[offset..offset + 32]);
+                    }
+
+                    let verified = chainio::BatchesVerified { batch_id, block_hash };
+
+                    // Include the block number in the tuple
+                    let l1_block_number = log.block_number.unwrap_or(0);
+                    if tx.send((verified, l1_block_number)).is_err() {
+                        error!(
+                            "BatchesVerified receiver dropped. Stopping BatchesVerified event task."
+                        );
+                        return; // Exit task if receiver is gone
+                    }
+                }
+                warn!("BatchesVerified log stream ended. Attempting to resubscribe...");
+            }
+        });
+
+        Ok(Box::pin(UnboundedReceiverStream::new(rx)))
     }
 
     /// Get the operator candidates for the current epoch
