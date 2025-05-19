@@ -324,3 +324,24 @@ impl BatchesProved {
         &self.transitions
     }
 }
+
+/// Struct for handling `BatchesVerified` events
+#[derive(Debug, Default)]
+pub struct BatchesVerified {
+    /// Batch ID that was verified
+    pub batch_id: u64,
+    /// Block hash of the verified batch
+    pub block_hash: [u8; 32],
+}
+
+impl BatchesVerified {
+    /// Returns the batch ID that was verified
+    pub const fn batch_id(&self) -> u64 {
+        self.batch_id
+    }
+
+    /// Returns the block hash of the verified batch
+    pub const fn block_hash(&self) -> &[u8; 32] {
+        &self.block_hash
+    }
+}
