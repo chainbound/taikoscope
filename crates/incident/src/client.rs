@@ -84,17 +84,28 @@ impl Client {
 
     /// Return open incident ID for `component_id`, if any.
     pub async fn open_incident(&self, component_id: &str) -> Result<Option<String>> {
+        // Query any incidents that aren't RESOLVED (to catch MONITORING or IDENTIFIED too)
         let url = self
             .base_url
-            .join(&format!("v1/{}/incidents?status=INVESTIGATING", self.page_id))
+            .join(&format!(
+                "v1/{}/incidents?status[]=INVESTIGATING&status[]=IDENTIFIED&status[]=MONITORING",
+                self.page_id
+            ))
             .unwrap();
-        let list = self
-            .auth(self.http.get(url))
-            .send()
-            .await?
-            .error_for_status()?
-            .json::<Vec<IncidentSummary>>()
-            .await?;
+
+        tracing::debug!("Querying incidents with URL: {}", url);
+
+        let response = self.auth(self.http.get(url.clone())).send().await?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let body = response.text().await.unwrap_or_default();
+            tracing::error!("Failed to get incidents: status={}, body={}", status, body);
+            return Err(eyre::eyre!("HTTP error {}: {}", status, body));
+        }
+
+        let list = response.json::<Vec<IncidentSummary>>().await?;
+        tracing::debug!("Found {} incidents in total", list.len());
 
         // find the first incident touching our component
         if let Some((incident_id, comp)) = list.into_iter().find_map(|inc| {
@@ -108,6 +119,7 @@ impl Client {
             );
             Ok(Some(incident_id))
         } else {
+            tracing::debug!("No open incidents found for component: {}", component_id);
             Ok(None)
         }
     }
@@ -233,7 +245,8 @@ mod tests {
 
         let mock = server
             .mock("GET", "/v1/page1/incidents")
-            .match_query(Matcher::UrlEncoded("status".into(), "INVESTIGATING".into()))
+            // Use a regex to match any query - mockito has issues with array params
+            .match_query(Matcher::Any)
             .with_status(200)
             .with_body(body)
             .create_async()

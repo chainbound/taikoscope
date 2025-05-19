@@ -141,7 +141,32 @@ impl InstatusMonitor {
 
     /// Runs the monitor.
     async fn run(mut self) -> Result<()> {
-        self.active = self.client.open_incident(&self.component_id).await?;
+        // Check for open incidents
+        match self.client.open_incident(&self.component_id).await? {
+            Some(id) => {
+                info!(incident_id = %id, component_id = %self.component_id, "Found open incident at startup, will monitor for resolution");
+                // Clone the id for use in log statements since the original will be moved
+                let incident_id = id.clone();
+                self.active = Some(id);
+                
+                // Immediately check if the incident should be closed by checking latest L2 head time
+                if let Ok(Some(ts)) = self.clickhouse.get_last_l2_head_time().await {
+                    info!(
+                        incident_id = %incident_id,
+                        last_l2_timestamp = %ts,
+                        "Found L2 head event on startup, checking if incident can be closed"
+                    );
+                    if let Err(e) = self.handle(ts).await {
+                        error!(%e, "Failed initial health check for existing incident");
+                    }
+                }
+            }
+            None => {
+                info!(component_id = %self.component_id, "No open incidents found at startup");
+                self.active = None;
+            }
+        }
+
         let mut interval = tokio::time::interval(self.interval);
 
         loop {
