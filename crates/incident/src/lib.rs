@@ -5,4 +5,4 @@ pub mod client;
 pub mod monitor;
 
 // Re-export monitor for easy access
-pub use monitor::InstatusMonitor;
+pub use monitor::{InstatusL1Monitor, InstatusMonitor};

@@ -6,7 +6,7 @@ use chrono::{DateTime, LocalResult, TimeZone, Utc};
 use clickhouse::{Client, Row};
 use derive_more::Debug;
 pub use extractor::{L1Header, L2Header};
-use eyre::{Result, WrapErr};
+use eyre::{Context, Result};
 use serde::{Deserialize, Serialize};
 use tracing::info;
 use url::Url;
@@ -448,11 +448,41 @@ impl ClickhouseClient {
 
         Ok(ts_opt)
     }
+
+    /// Get timestamp of the latest L1 head event in UTC.
+    pub async fn get_last_l1_head_time(&self) -> Result<Option<DateTime<Utc>>> {
+        let client = self.base.clone().with_database(&self.db_name);
+        let query =
+            format!("SELECT max(block_ts) AS block_ts FROM {}.l1_head_events", &self.db_name);
+
+        let rows = client
+            .query(&query)
+            .fetch_all::<MaxTs>()
+            .await
+            .context("fetching max(block_ts) failed")?;
+
+        let row = match rows.into_iter().next() {
+            Some(r) => r,
+            None => return Ok(None),
+        };
+
+        if row.block_ts == 0 {
+            return Ok(None);
+        }
+
+        let ts_opt = match Utc.timestamp_opt(row.block_ts as i64, 0) {
+            LocalResult::Single(dt) => Some(dt),
+            _ => None,
+        };
+
+        Ok(ts_opt)
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use alloy::primitives::FixedBytes;
+    use chrono::{TimeZone, Utc};
     use clickhouse::{
         Row,
         test::{Mock, handlers},
@@ -555,5 +585,33 @@ mod tests {
         // Call the function under test
         let result = ch.get_last_l2_head_time().await.unwrap();
         assert_eq!(result, None);
+    }
+
+    #[tokio::test]
+    async fn test_get_last_l1_head_time_empty() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(Vec::<MaxRow>::new()));
+
+        let url = Url::parse(mock.url()).unwrap();
+        let ch = ClickhouseClient::new(url, "test-db".to_string(), "user".into(), "pass".into())
+            .unwrap();
+
+        let result = ch.get_last_l1_head_time().await.unwrap();
+        assert_eq!(result, None);
+    }
+
+    #[tokio::test]
+    async fn test_get_last_l1_head_time() {
+        let mock = Mock::new();
+        let expected_ts = 123456;
+        mock.add(handlers::provide(vec![MaxRow { block_ts: expected_ts }]));
+
+        let url = Url::parse(mock.url()).unwrap();
+        let ch = ClickhouseClient::new(url, "test-db".to_string(), "user".into(), "pass".into())
+            .unwrap();
+
+        let result = ch.get_last_l1_head_time().await.unwrap();
+        let expected = Utc.timestamp_opt(expected_ts as i64, 0).single().unwrap();
+        assert_eq!(result, Some(expected));
     }
 }

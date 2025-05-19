@@ -16,7 +16,7 @@ use extractor::{
     BatchProposedStream, Extractor, ForcedInclusionStream, L1Header, L1HeaderStream, L2Header,
     L2HeaderStream, ReorgDetector,
 };
-use incident::{InstatusMonitor, client::Client as IncidentClient};
+use incident::{InstatusL1Monitor, InstatusMonitor, client::Client as IncidentClient};
 
 /// An EPOCH is a series of 32 slots.
 pub const EPOCH_SLOTS: u64 = 32;
@@ -130,7 +130,19 @@ impl Driver {
         let mut batch_stream = self.subscribe_batch().await;
         let mut forced_stream = self.subscribe_forced().await;
 
-        // spawn Instatus monitor
+        // spawn Instatus L1 head monitor
+        InstatusL1Monitor::new(
+            self.clickhouse.clone(),
+            self.incident_client.clone(),
+            "cmakrk571002wpw1kxhvcggp0".to_string(),
+            Duration::from_secs(self.instatus_monitor_poll_interval_secs),
+            Duration::from_secs(self.instatus_monitor_threshold_secs),
+            None,
+            self.instatus_monitor_healthy_needed_count,
+        )
+        .spawn();
+
+        // spawn Instatus L2 head monitor
         InstatusMonitor::new(
             self.clickhouse.clone(),
             self.incident_client.clone(),
