@@ -1,7 +1,7 @@
 //! `ChainIO` is a library for interacting with on-chain contracts.
 pub mod taiko;
 
-use ITaikoInbox::{BatchProposed, ITaikoInboxInstance};
+use ITaikoInbox::{BatchProposed, BatchesProved, ITaikoInboxInstance, Transition};
 
 use alloy::{
     primitives::Address,
@@ -27,6 +27,10 @@ impl TaikoInbox {
     /// Returns a log [`Filter`] based on the `BatchProposed` event.
     pub fn batch_proposed_filter(&self) -> Filter {
         self.0.BatchProposed_filter().filter
+    }
+    /// Returns a log [`Filter`] based on the `BatchesProved` event.
+    pub fn batches_proved_filter(&self) -> Filter {
+        self.0.BatchesProved_filter().filter
     }
 }
 
@@ -96,6 +100,8 @@ sol! {
 
         #[derive(Default)]
         event BatchProposed(BatchInfo info, BatchMetadata meta, bytes txList);
+        #[derive(Default)]
+        event BatchesProved(address verifier, uint64[] batchIds, Transition[] transitions);
 
         #[derive(Copy, Default)]
         struct BaseFeeConfig {
@@ -147,6 +153,13 @@ sol! {
             address proposer;
             uint64 batchId;
             uint64 proposedAt; // Used by node/client
+        }
+
+        #[derive(Default)]
+        struct Transition {
+            bytes32 parentHash;
+            bytes32 blockHash;
+            bytes32 stateRoot;
         }
 
         #[derive(Default)]
@@ -297,5 +310,17 @@ impl BatchProposed {
     /// Returns the last block timestamp proposed in this batch.
     pub const fn last_block_timestamp(&self) -> u64 {
         self.info.lastBlockTimestamp
+    }
+}
+
+impl BatchesProved {
+    /// Returns the batch IDs proved in this event.
+    pub fn batch_ids_proved(&self) -> &[u64] {
+        &self.batchIds
+    }
+
+    /// Returns the transitions proved in this event.
+    pub fn transitions_proved(&self) -> &[Transition] {
+        &self.transitions
     }
 }
