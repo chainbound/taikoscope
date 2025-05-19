@@ -193,6 +193,27 @@ struct MaxTs {
     block_ts: u64,
 }
 
+/// Verified batch row
+#[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq)]
+pub struct VerifiedBatchRow {
+    /// L1 block number
+    pub l1_block_number: u64,
+    /// Batch ID
+    pub batch_id: u64,
+    /// Block hash
+    pub block_hash: [u8; 32],
+}
+
+impl TryFrom<(&chainio::BatchesVerified, u64)> for VerifiedBatchRow {
+    type Error = eyre::Error;
+
+    fn try_from(input: (&chainio::BatchesVerified, u64)) -> Result<Self, Self::Error> {
+        let (verified, l1_block_number) = input;
+
+        Ok(Self { l1_block_number, batch_id: verified.batch_id, block_hash: verified.block_hash })
+    }
+}
+
 /// Clickhouse client
 #[derive(Clone, Debug)]
 pub struct ClickhouseClient {
@@ -230,6 +251,7 @@ impl ClickhouseClient {
             "batches",
             "l2_reorgs",
             "forced_inclusion_processed",
+            "verified_batches",
         ];
 
         if reset {
@@ -370,6 +392,22 @@ impl ClickhouseClient {
             .execute()
             .await
             .wrap_err("Failed to create forced_inclusion_processed table")?;
+
+        // Create verified_batches table
+        self.base
+            .query(&format!(
+                "CREATE TABLE IF NOT EXISTS {}.verified_batches (
+                    l1_block_number UInt64,
+                    batch_id UInt64,
+                    block_hash FixedString(32),
+                    inserted_at DateTime64(3) DEFAULT now64()
+                ) ENGINE = MergeTree()
+                ORDER BY (l1_block_number, batch_id)",
+                self.db_name
+            ))
+            .execute()
+            .await
+            .wrap_err("Failed to create verified_batches table")?;
 
         Ok(())
     }
@@ -513,6 +551,25 @@ impl ClickhouseClient {
         Ok(())
     }
 
+    /// Insert verified batch into `ClickHouse`
+    pub async fn insert_verified_batch(
+        &self,
+        verified: &chainio::BatchesVerified,
+        l1_block_number: u64,
+    ) -> Result<()> {
+        let client = self.base.clone().with_database(&self.db_name);
+
+        // Convert to row
+        let verified_row = VerifiedBatchRow::try_from((verified, l1_block_number))?;
+
+        // Insert into ClickHouse
+        let mut insert = client.insert("verified_batches")?;
+        insert.write(&verified_row).await?;
+        insert.end().await?;
+
+        Ok(())
+    }
+
     /// Get timestamp of the latest L2 head event in UTC.
     pub async fn get_last_l2_head_time(&self) -> Result<Option<DateTime<Utc>>> {
         let client = self.base.clone().with_database(&self.db_name);
@@ -603,6 +660,37 @@ impl ClickhouseClient {
 
         Ok(ts_opt)
     }
+
+    /// Get timestamp of the latest `BatchesVerified` event insertion in UTC.
+    pub async fn get_last_verified_batch_time(&self) -> Result<Option<DateTime<Utc>>> {
+        let client = self.base.clone().with_database(&self.db_name);
+        let query = format!(
+            "SELECT toUInt64(max(inserted_at)) AS block_ts FROM {}.verified_batches",
+            &self.db_name
+        );
+
+        let rows = client
+            .query(&query)
+            .fetch_all::<MaxTs>()
+            .await
+            .context("fetching max(inserted_at) failed")?;
+
+        let row = match rows.into_iter().next() {
+            Some(r) => r,
+            None => return Ok(None),
+        };
+
+        if row.block_ts == 0 {
+            return Ok(None);
+        }
+
+        let ts_opt = match Utc.timestamp_opt(row.block_ts as i64, 0) {
+            LocalResult::Single(dt) => Some(dt),
+            _ => None,
+        };
+
+        Ok(ts_opt)
+    }
 }
 
 #[cfg(test)]
@@ -617,7 +705,7 @@ mod tests {
     use serde::Serialize;
     use url::Url;
 
-    use crate::{ClickhouseClient, L1HeadEvent, PreconfData};
+    use crate::{ClickhouseClient, L1HeadEvent, PreconfData, VerifiedBatchRow};
 
     #[derive(Serialize, Row)]
     struct MaxRow {
@@ -739,5 +827,41 @@ mod tests {
         let result = ch.get_last_l1_head_time().await.unwrap();
         let expected = Utc.timestamp_opt(expected_ts as i64, 0).single().unwrap();
         assert_eq!(result, Some(expected));
+    }
+
+    #[tokio::test]
+    async fn test_insert_verified_batch() {
+        // Spin up mock server
+        let mock = Mock::new();
+
+        // Attach recorder to mock server
+        let recorder = mock.add(handlers::record::<VerifiedBatchRow>());
+
+        // Point client to mock server and do inserts
+        let url = Url::parse(mock.url()).unwrap();
+        let client = ClickhouseClient::new(
+            url,
+            "test-db".to_string(),
+            "test_user".to_string(),
+            "test_pass".to_string(),
+        )
+        .unwrap();
+
+        let verified = chainio::BatchesVerified { batch_id: 42, block_hash: [1u8; 32] };
+        let l1_block_number = 12345;
+
+        client.insert_verified_batch(&verified, l1_block_number).await.unwrap();
+
+        // Collect and assert
+        let rows: Vec<VerifiedBatchRow> = recorder.collect().await;
+        assert_eq!(rows.len(), 1);
+        assert_eq!(
+            rows[0],
+            VerifiedBatchRow {
+                l1_block_number,
+                batch_id: verified.batch_id,
+                block_hash: verified.block_hash,
+            }
+        );
     }
 }
