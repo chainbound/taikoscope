@@ -39,7 +39,7 @@ impl Driver {
     pub async fn new(opts: Opts) -> Result<Self> {
         // init db client
         let clickhouse = ClickhouseClient::new(
-            opts.clickhouse.url.clone(),
+            opts.clickhouse.url,
             opts.clickhouse.db.clone(),
             opts.clickhouse.username.clone(),
             opts.clickhouse.password.clone(),
@@ -48,8 +48,8 @@ impl Driver {
 
         // init extractor
         let extractor = Extractor::new(
-            opts.rpc.l1_url.clone(),
-            opts.rpc.l2_url.clone(),
+            opts.rpc.l1_url,
+            opts.rpc.l2_url,
             opts.taiko_addresses.inbox_address,
             opts.taiko_addresses.preconf_whitelist_address,
             opts.taiko_addresses.taiko_wrapper_address,

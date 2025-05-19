@@ -95,7 +95,7 @@ impl Client {
 
         tracing::debug!("Querying incidents with URL: {}", url);
 
-        let response = self.auth(self.http.get(url.clone())).send().await?;
+        let response = self.auth(self.http.get(url)).send().await?;
 
         if !response.status().is_success() {
             let status = response.status();
