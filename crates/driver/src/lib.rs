@@ -8,13 +8,14 @@ use tracing::info;
 
 use alloy_primitives::Address;
 use chainio::{
-    ITaikoInbox::{BatchProposed, BatchesProved}, taiko::wrapper::ITaikoWrapper::ForcedInclusionProcessed,
+    ITaikoInbox::{BatchProposed, BatchesProved},
+    taiko::wrapper::ITaikoWrapper::ForcedInclusionProcessed,
 };
 use clickhouse::ClickhouseClient;
 use config::Opts;
 use extractor::{
-    BatchProposedStream, BatchesProvedStream, Extractor, ForcedInclusionStream, L1Header, L1HeaderStream, L2Header,
-    L2HeaderStream, ReorgDetector,
+    BatchProposedStream, BatchesProvedStream, Extractor, ForcedInclusionStream, L1Header,
+    L1HeaderStream, L2Header, L2HeaderStream, ReorgDetector,
 };
 use incident::{InstatusL1Monitor, InstatusMonitor, client::Client as IncidentClient};
 
@@ -123,7 +124,7 @@ impl Driver {
             }
         }
     }
-    
+
     async fn subscribe_proved(&self) -> BatchesProvedStream {
         loop {
             match self.extractor.get_batches_proved_stream().await {
@@ -339,7 +340,7 @@ impl Driver {
             info!("Inserted forced inclusion processed: {:?}", fi.blobHash);
         }
     }
-    
+
     async fn handle_batches_proved(&self, proved_data: (BatchesProved, u64)) {
         let (proved, l1_block_number) = proved_data;
         if let Err(e) = self.clickhouse.insert_proved_batch(&proved, l1_block_number).await {

@@ -144,17 +144,17 @@ impl TryFrom<(&ITaikoInbox::BatchesProved, u64)> for ProvedBatchRow {
 
     fn try_from(input: (&ITaikoInbox::BatchesProved, u64)) -> Result<Self, Self::Error> {
         let (proved, l1_block_number) = input;
-        
+
         if proved.batchIds.is_empty() || proved.transitions.is_empty() {
             return Err(eyre::eyre!("Empty batch IDs or transitions"));
         }
-        
+
         // For the example, we're just taking the first transition, but you might want to handle
         // all transitions in a real implementation
         let batch_id = proved.batchIds[0];
         let transition = &proved.transitions[0];
         let verifier_addr = proved.verifier.into_array();
-        
+
         Ok(Self {
             l1_block_number,
             batch_id,
@@ -322,7 +322,7 @@ impl ClickhouseClient {
             .execute()
             .await
             .wrap_err("Failed to create batches table")?;
-            
+
         // Create proved batches table
         self.base
             .query(&format!(
@@ -449,34 +449,38 @@ impl ClickhouseClient {
 
         Ok(())
     }
-    
+
     /// Insert a proved batch into `ClickHouse`
-    pub async fn insert_proved_batch(&self, proved: &chainio::ITaikoInbox::BatchesProved, l1_block_number: u64) -> Result<()> {
+    pub async fn insert_proved_batch(
+        &self,
+        proved: &chainio::ITaikoInbox::BatchesProved,
+        l1_block_number: u64,
+    ) -> Result<()> {
         let client = self.base.clone().with_database(&self.db_name);
-        
+
         // For each batch ID and transition pair, create and insert a ProvedBatchRow
         for (i, batch_id) in proved.batchIds.iter().enumerate() {
             // Skip if we don't have a corresponding transition
             if i >= proved.transitions.len() {
                 continue;
             }
-            
+
             // Create a new proved batch with just one batch ID and transition
             let single_proved = chainio::ITaikoInbox::BatchesProved {
                 verifier: proved.verifier,
                 batchIds: vec![*batch_id],
                 transitions: vec![proved.transitions[i].clone()],
             };
-            
+
             // Convert to row
             let proved_row = ProvedBatchRow::try_from((&single_proved, l1_block_number))?;
-            
+
             // Insert into ClickHouse
             let mut insert = client.insert("proved_batches")?;
             insert.write(&proved_row).await?;
             insert.end().await?;
         }
-        
+
         Ok(())
     }
 

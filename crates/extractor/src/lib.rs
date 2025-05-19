@@ -74,7 +74,8 @@ pub type L2HeaderStream = Pin<Box<dyn Stream<Item = L2Header> + Send>>;
 /// Stream of batch proposed events
 pub type BatchProposedStream = Pin<Box<dyn Stream<Item = BatchProposed> + Send>>;
 /// Stream of batches proved events
-pub type BatchesProvedStream = Pin<Box<dyn Stream<Item = (chainio::ITaikoInbox::BatchesProved, u64)> + Send>>;
+pub type BatchesProvedStream =
+    Pin<Box<dyn Stream<Item = (chainio::ITaikoInbox::BatchesProved, u64)> + Send>>;
 /// Stream of forced inclusion processed events
 pub type ForcedInclusionStream = Pin<Box<dyn Stream<Item = ForcedInclusionProcessed> + Send>>;
 
@@ -244,8 +245,8 @@ impl Extractor {
     }
 
     /// Subscribes to the `TaikoInbox` `BatchesProved` event and returns a stream of decoded events
-    /// along with the block number. This stream will attempt to automatically resubscribe and continue
-    /// yielding events.
+    /// along with the block number. This stream will attempt to automatically resubscribe and
+    /// continue yielding events.
     pub async fn get_batches_proved_stream(&self) -> Result<BatchesProvedStream> {
         let (tx, rx) = mpsc::unbounded_channel();
         let provider = self.l1_provider.clone();
