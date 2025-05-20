@@ -19,7 +19,7 @@ use extractor::{
 };
 use incident::{
     BatchProofTimeoutMonitor, InstatusL1Monitor, InstatusMonitor, Monitor,
-    client::Client as IncidentClient,
+    client::Client as IncidentClient, monitor::BatchVerifyTimeoutMonitor,
 };
 
 /// An EPOCH is a series of 32 slots.
@@ -33,6 +33,8 @@ pub struct Driver {
     reorg: ReorgDetector,
     incident_client: IncidentClient,
     instatus_batch_component_id: String,
+    instatus_batch_proof_timeout_component_id: String,
+    instatus_batch_verify_timeout_component_id: String,
     instatus_l2_component_id: String,
     instatus_monitor_poll_interval_secs: u64,
     instatus_monitor_threshold_secs: u64,
@@ -64,6 +66,10 @@ impl Driver {
 
         // init incident client and component IDs
         let instatus_batch_component_id = opts.instatus.batch_component_id.clone();
+        let instatus_batch_proof_timeout_component_id =
+            opts.instatus.batch_proof_timeout_component_id.clone();
+        let instatus_batch_verify_timeout_component_id =
+            opts.instatus.batch_verify_timeout_component_id.clone();
         let instatus_l2_component_id = opts.instatus.l2_component_id.clone();
         let incident_client =
             IncidentClient::new(opts.instatus.api_key.clone(), opts.instatus.page_id.clone());
@@ -74,6 +80,8 @@ impl Driver {
             reorg: ReorgDetector::new(),
             incident_client,
             instatus_batch_component_id,
+            instatus_batch_proof_timeout_component_id,
+            instatus_batch_verify_timeout_component_id,
             instatus_l2_component_id,
             instatus_monitor_poll_interval_secs: opts.instatus.monitor_poll_interval_secs,
             instatus_monitor_threshold_secs: opts.instatus.monitor_threshold_secs,
@@ -191,10 +199,21 @@ impl Driver {
         BatchProofTimeoutMonitor::new(
             self.clickhouse.clone(),
             self.incident_client.clone(),
-            self.instatus_batch_component_id.clone(),
+            self.instatus_batch_proof_timeout_component_id.clone(),
             Duration::from_secs(self.batch_proof_timeout_secs),
             Duration::from_secs(60), // Run every minute
-            self.instatus_monitor_healthy_needed_count,
+            1,
+        )
+        .spawn();
+
+        // spawn batch verify timeout monitor (checks if batches take >3h to verify)
+        BatchVerifyTimeoutMonitor::new(
+            self.clickhouse.clone(),
+            self.incident_client.clone(),
+            self.instatus_batch_verify_timeout_component_id.clone(),
+            Duration::from_secs(self.batch_proof_timeout_secs),
+            Duration::from_secs(60), // Run every minute
+            1,
         )
         .spawn();
 

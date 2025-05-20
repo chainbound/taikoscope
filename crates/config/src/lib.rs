@@ -57,6 +57,12 @@ pub struct InstatusOpts {
     /// Instatus component ID for batch proposals monitor
     #[clap(long, env = "INSTATUS_BATCH_COMPONENT_ID")]
     pub batch_component_id: String,
+    /// Instatus component ID for batch proof timeout monitor
+    #[clap(long, env = "INSTATUS_BATCH_PROOF_TIMEOUT_COMPONENT_ID")]
+    pub batch_proof_timeout_component_id: String,
+    /// Instatus component ID for batch verify timeout monitor
+    #[clap(long, env = "INSTATUS_BATCH_VERIFY_TIMEOUT_COMPONENT_ID")]
+    pub batch_verify_timeout_component_id: String,
     /// Instatus component ID for L2 head monitor
     #[clap(long, env = "INSTATUS_L2_COMPONENT_ID")]
     pub l2_component_id: String,
