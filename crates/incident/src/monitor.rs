@@ -530,10 +530,12 @@ impl BatchProofTimeoutMonitor {
             }
         }
 
-        // Check if any active incidents should be resolved
-        let mut resolved_keys = Vec::new();
-        for (key, incident_id) in &self.base.active_incidents {
-            let (_l1, batch_id) = *key;
+        // Take a snapshot of active incidents to avoid concurrent immutable/mutable borrows
+        let active_incidents_snapshot: Vec<((u64, u64), String)> =
+            self.base.active_incidents.iter().map(|(k, id)| (k.clone(), id.clone())).collect();
+
+        for (key, incident_id) in active_incidents_snapshot {
+            let (_l1, batch_id) = key;
             if batch_id == 0 {
                 continue;
             }
@@ -542,16 +544,17 @@ impl BatchProofTimeoutMonitor {
                 debug!(
                     batch_id = ?batch_id,
                     incident_id = %incident_id,
-                    "Batch is now proven, resolving incident"
+                    "Batch is now proven, checking if can resolve incident"
                 );
-                let payload = self.base.create_resolve_payload();
-                self.base.resolve_incident_with_payload(incident_id, &payload).await?;
-                resolved_keys.push(*key);
+                if self.base.mark_healthy(&key).await? {
+                    info!(
+                        batch_id = ?batch_id,
+                        "Batch has met healthy threshold, resolving incident"
+                    );
+                }
+            } else {
+                self.base.mark_unhealthy();
             }
-        }
-
-        for key in resolved_keys {
-            self.base.active_incidents.remove(&key);
         }
 
         // Special case for the catch-all incident (batch_id = 0)
@@ -720,28 +723,34 @@ impl BatchVerifyTimeoutMonitor {
             }
         }
 
-        // Check if any active incidents should be resolved
-        let mut resolved_batch_ids = Vec::new();
-        for (batch_id, incident_id) in &self.base.active_incidents {
-            if *batch_id == 0 {
-                // Skip the general incident key if used
+        // Take a snapshot of active incidents to avoid concurrent immutable/mutable borrows
+        let active_incidents_snapshot: Vec<(u64, String)> = self
+            .base
+            .active_incidents
+            .iter()
+            .map(|(id, incident)| (*id, incident.clone()))
+            .collect();
+
+        for (batch_id, incident_id) in active_incidents_snapshot {
+            if batch_id == 0 {
                 continue;
             }
-            let is_verified = self.is_batch_verified(*batch_id).await?;
+            let is_verified = self.is_batch_verified(batch_id).await?;
             if is_verified {
                 debug!(
                     batch_id = batch_id,
                     incident_id = %incident_id,
-                    "Batch is now verified, resolving incident"
+                    "Batch is now verified, checking if can resolve incident"
                 );
-                let payload = self.base.create_resolve_payload();
-                self.base.resolve_incident_with_payload(incident_id, &payload).await?;
-                resolved_batch_ids.push(*batch_id);
+                if self.base.mark_healthy(&batch_id).await? {
+                    info!(
+                        batch_id = batch_id,
+                        "Batch has met healthy threshold, resolving incident"
+                    );
+                }
+            } else {
+                self.base.mark_unhealthy();
             }
-        }
-
-        for batch_id in resolved_batch_ids {
-            self.base.active_incidents.remove(&batch_id);
         }
 
         // Handle the catch-all incident (batch_id = 0) if all specific batch incidents are cleared
