@@ -18,7 +18,8 @@ use extractor::{
     ForcedInclusionStream, L1Header, L1HeaderStream, L2Header, L2HeaderStream, ReorgDetector,
 };
 use incident::{
-    BatchProofTimeoutMonitor, InstatusL1Monitor, InstatusMonitor, client::Client as IncidentClient,
+    BatchProofTimeoutMonitor, InstatusL1Monitor, InstatusMonitor, Monitor,
+    client::Client as IncidentClient,
 };
 
 /// An EPOCH is a series of 32 slots.
@@ -169,9 +170,8 @@ impl Driver {
             self.clickhouse.clone(),
             self.incident_client.clone(),
             self.instatus_batch_component_id.clone(),
-            Duration::from_secs(self.instatus_monitor_poll_interval_secs),
             Duration::from_secs(self.instatus_monitor_threshold_secs),
-            None,
+            Duration::from_secs(self.instatus_monitor_poll_interval_secs),
             self.instatus_monitor_healthy_needed_count,
         )
         .spawn();
@@ -181,9 +181,8 @@ impl Driver {
             self.clickhouse.clone(),
             self.incident_client.clone(),
             self.instatus_l2_component_id.clone(),
-            Duration::from_secs(self.instatus_monitor_poll_interval_secs),
             Duration::from_secs(self.instatus_monitor_threshold_secs),
-            None,
+            Duration::from_secs(self.instatus_monitor_poll_interval_secs),
             self.instatus_monitor_healthy_needed_count,
         )
         .spawn();
