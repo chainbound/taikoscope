@@ -104,3 +104,14 @@ debug-log-remote-hekla:
     @just stop-remote-hekla
     @just start-remote-hekla
     @echo "Log level set to debug and service restarted."
+
+# Set log level to info on remote server and restart the service
+info-remote-hekla:
+    @echo "Setting log level to info on remote server..."
+    # Modify the environment file to set RUST_LOG=info
+    ssh taikoscope "sed -i '/^RUST_LOG=/d' ~/hekla/taikoscope/masaya.env && \
+        echo 'RUST_LOG=info' >> ~/hekla/taikoscope/masaya.env"
+    # Restart the container to apply changes
+    @just stop-remote-hekla
+    @just start-remote-hekla
+    @echo "Log level set to info and service restarted."
