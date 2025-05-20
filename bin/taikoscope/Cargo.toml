@@ -12,6 +12,7 @@ config = { path = "../../crates/config" }
 driver = { path = "../../crates/driver" }
 extractor = { path = "../../crates/extractor" }
 clickhouse = { path = "../../crates/clickhouse" }
+primitives = { path = "../../crates/primitives" }
 
 alloy-primitives.workspace = true
 clap.workspace = true

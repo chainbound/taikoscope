@@ -23,6 +23,7 @@ clickhouse = { version = "0.13.2", features = ["native-tls", "test-util"] }
 derive_more = { version = "1.0.0", features = ["debug", "deref"] }
 dotenvy = "0.15.7"
 eyre = "0.6.12"
+futures = "0.3"
 mockito = "1.7.0"
 reqwest = { version = "0.12", features = ["json"] }
 serde = { version = "1.0.219", features = ["derive"] }

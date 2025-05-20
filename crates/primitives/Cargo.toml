@@ -9,8 +9,15 @@ repository.workspace = true
 [dependencies]
 alloy.workspace = true
 alloy-json-rpc.workspace = true
+futures.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+tokio = { workspace = true, features = [
+    "macros",
+    "rt-multi-thread",
+    "sync",
+    "signal",
+] }
 tokio-retry.workspace = true
 tracing.workspace = true
 

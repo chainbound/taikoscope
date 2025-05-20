@@ -5,6 +5,7 @@ use driver::Driver;
 use clap::Parser;
 use config::Opts;
 use dotenvy::dotenv;
+use primitives::shutdown::{ShutdownSignal, run_until_shutdown};
 use tracing::info;
 use tracing_subscriber::filter::EnvFilter;
 
@@ -30,5 +31,12 @@ async fn main() -> eyre::Result<()> {
 
     info!("🔭 Taikoscope engine starting...");
 
-    Driver::new(opts).await?.start().await
+    let shutdown_signal = ShutdownSignal::new();
+    let on_shutdown = || {
+        info!("👋 Taikoscope engine shutting down...");
+    };
+
+    let run_driver = async { Driver::new(opts).await?.start().await };
+
+    run_until_shutdown(run_driver, shutdown_signal, on_shutdown).await
 }
