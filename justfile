@@ -72,6 +72,22 @@ deploy-logs-remote-hekla:
     @just deploy-remote-hekla
     @just logs-remote-hekla
 
+# Start the remote Hekla service (runs a new container from the existing image)
+start-remote-hekla:
+    @echo "Starting Taikoscope Hekla service on remote..."
+    # The image 'taikoscope-hekla' is assumed to exist on the remote.
+    # First, ensure any container with the name 'taikoscope-hekla' is stopped and removed.
+    ssh taikoscope "docker stop taikoscope-hekla || true"
+    ssh taikoscope "docker rm taikoscope-hekla || true"
+    # Then, run a new container.
+    ssh taikoscope "docker run -d \
+        --name taikoscope-hekla \
+        --restart unless-stopped \
+        --env-file ~/hekla/taikoscope/masaya.env \
+        -p 48100:3000 \
+        taikoscope-hekla"
+    @echo "Taikoscope Hekla service started."
+
 # Stop and remove the remote Hekla service
 stop-remote-hekla:
     ssh taikoscope "docker stop taikoscope-hekla || true"
