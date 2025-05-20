@@ -72,7 +72,7 @@ deploy-logs-remote-hekla:
     @just deploy-remote-hekla
     @just logs-remote-hekla
 
-# Stop the service
+# Stop and remove the remote Hekla service
 stop-remote-hekla:
-    ssh taikoscope "docker stop taikoscope-hekla"
-    ssh taikoscope "docker rm taikoscope-hekla"
+    ssh taikoscope "docker stop taikoscope-hekla || true"
+    ssh taikoscope "docker rm taikoscope-hekla || true"
