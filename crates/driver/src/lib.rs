@@ -17,7 +17,9 @@ use extractor::{
     BatchProposedStream, BatchesProvedStream, BatchesVerifiedStream, Extractor,
     ForcedInclusionStream, L1Header, L1HeaderStream, L2Header, L2HeaderStream, ReorgDetector,
 };
-use incident::{InstatusL1Monitor, InstatusMonitor, client::Client as IncidentClient};
+use incident::{
+    BatchProofTimeoutMonitor, InstatusL1Monitor, InstatusMonitor, client::Client as IncidentClient,
+};
 
 /// An EPOCH is a series of 32 slots.
 pub const EPOCH_SLOTS: u64 = 32;
@@ -34,6 +36,7 @@ pub struct Driver {
     instatus_monitor_poll_interval_secs: u64,
     instatus_monitor_threshold_secs: u64,
     instatus_monitor_healthy_needed_count: u8,
+    batch_proof_timeout_secs: u64,
 }
 
 impl Driver {
@@ -74,6 +77,7 @@ impl Driver {
             instatus_monitor_poll_interval_secs: opts.instatus.monitor_poll_interval_secs,
             instatus_monitor_threshold_secs: opts.instatus.monitor_threshold_secs,
             instatus_monitor_healthy_needed_count: opts.instatus.monitor_healthy_needed_count,
+            batch_proof_timeout_secs: 3 * 60 * 60, // 3 hours in seconds
         })
     }
 
@@ -180,6 +184,17 @@ impl Driver {
             Duration::from_secs(self.instatus_monitor_poll_interval_secs),
             Duration::from_secs(self.instatus_monitor_threshold_secs),
             None,
+            self.instatus_monitor_healthy_needed_count,
+        )
+        .spawn();
+
+        // spawn batch proof timeout monitor (checks if batches take >3h to prove)
+        BatchProofTimeoutMonitor::new(
+            self.clickhouse.clone(),
+            self.incident_client.clone(),
+            self.instatus_batch_component_id.clone(),
+            Duration::from_secs(self.batch_proof_timeout_secs),
+            Duration::from_secs(60), // Run every minute
             self.instatus_monitor_healthy_needed_count,
         )
         .spawn();

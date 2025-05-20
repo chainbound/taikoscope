@@ -66,6 +66,10 @@ pub struct InstatusOpts {
     /// Instatus monitor threshold in seconds for detecting an outage
     #[clap(long, env = "INSTATUS_MONITOR_THRESHOLD_SECS", default_value = "96")]
     pub monitor_threshold_secs: u64,
+
+    /// Batch proof timeout threshold in seconds (default 3 hours)
+    #[clap(long, env = "BATCH_PROOF_TIMEOUT_SECS", default_value = "10800")]
+    pub batch_proof_timeout_secs: u64,
     /// Instatus monitor healthy needed count to resolve an incident
     #[clap(long, env = "INSTATUS_MONITOR_HEALTHY_NEEDED_COUNT", default_value = "2")]
     pub monitor_healthy_needed_count: u8,
