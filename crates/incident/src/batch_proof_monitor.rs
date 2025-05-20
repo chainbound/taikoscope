@@ -79,29 +79,17 @@ impl BatchProofTimeoutMonitor {
 
     /// Check for batches that have not been proven within the timeout period
     async fn check_unproven_batches(&mut self) -> Result<()> {
-        // Efficient query to find batches posted but not proven
-        // Join batches with proved_batches, find ones with insertion_time > 3 hours ago
-        // that don't have a corresponding entry in proved_batches
-        // Find batches that were proposed more than the timeout period ago
-        let timeout_hours = self.proof_timeout.as_secs() / 3600; // convert seconds to hours
-        let cutoff_time = Utc::now() - ChronoDuration::hours(timeout_hours as i64);
-
-        // Execute queries to get unproven batches
-        // We'll do this in two steps: 1) get all batches from before our cutoff time, 2) check
-        // which ones haven't been proven yet
-        let unproven_batches = self.find_unproven_batches(cutoff_time).await?;
+        let cutoff_time = Utc::now() - ChronoDuration::from_std(self.proof_timeout)?;
+        let unproven_batches = self.clickhouse.get_unproved_batches_older_than(cutoff_time).await?;
 
         debug!(
-            "Found {} unproven batches older than {} hours",
+            "Found {} unproven batches older than {:?}",
             unproven_batches.len(),
-            timeout_hours
+            self.proof_timeout
         );
 
-        // Process each unproven batch
-        for (batch_id, posted_at, age_ms) in &unproven_batches {
-            let age_hours = *age_ms / (1000 * 60 * 60); // Convert ms to hours
-
-            // Check if we already have an incident for this batch
+        for (_l1_block_number, batch_id, posted_at) in &unproven_batches {
+            let age_hours = Utc::now().signed_duration_since(*posted_at).num_hours();
             if !self.active_incidents.contains_key(batch_id) {
                 debug!(
                     batch_id = batch_id,
@@ -109,114 +97,39 @@ impl BatchProofTimeoutMonitor {
                     age_hours = age_hours,
                     "Found unproven batch exceeding timeout"
                 );
-
-                let incident_id = self.open_incident(*batch_id, *posted_at, age_hours).await?;
+                let incident_id =
+                    self.open_incident(*batch_id, *posted_at, age_hours as u64).await?;
                 self.active_incidents.insert(*batch_id, incident_id);
             }
         }
 
         // Now check if any active incidents should be resolved
-        // (batches were proven after we opened an incident)
         let mut resolved_batch_ids = Vec::new();
-
         for (batch_id, incident_id) in &self.active_incidents {
-            // Skip the "unknown batch" incident (id 0) for now
             if *batch_id == 0 {
                 continue;
             }
-
-            // Check if the batch is now proven
             let is_proven = self.is_batch_proven(*batch_id).await?;
-
             if is_proven {
                 debug!(
                     batch_id = batch_id,
                     incident_id = %incident_id,
                     "Batch is now proven, resolving incident"
                 );
-
                 self.resolve_incident(incident_id).await?;
                 resolved_batch_ids.push(*batch_id);
             }
         }
-
-        // Remove resolved incidents from our tracking
         for batch_id in resolved_batch_ids {
             self.active_incidents.remove(&batch_id);
         }
-
-        // If we have no more active batch-specific incidents but still have
-        // the unknown batch incident (id 0), resolve it too
         if self.active_incidents.len() == 1 && self.active_incidents.contains_key(&0) {
             if let Some(incident_id) = self.active_incidents.get(&0) {
                 self.resolve_incident(incident_id).await?;
                 self.active_incidents.remove(&0);
             }
         }
-
         Ok(())
-    }
-
-    /// Find batches that have been posted but not yet proven, and are older than the cutoff time
-    async fn find_unproven_batches(
-        &self,
-        cutoff_time: DateTime<Utc>,
-    ) -> Result<Vec<(u64, DateTime<Utc>, u64)>> {
-        // Get all batches posted before the cutoff time
-        let mut unproven_batches = Vec::new();
-
-        // Get all batches from the database
-        let all_batches = self.get_all_batches().await?;
-
-        // Get all batch_ids that have been proven
-        let proved_batch_ids = self.get_proved_batch_ids().await?;
-
-        // Find batches that haven't been proven yet and are older than the cutoff
-        for (batch_id, posted_at) in all_batches {
-            if posted_at < cutoff_time && !proved_batch_ids.contains(&batch_id) {
-                let age_ms = Utc::now().signed_duration_since(posted_at).num_milliseconds() as u64;
-                unproven_batches.push((batch_id, posted_at, age_ms));
-            }
-        }
-
-        Ok(unproven_batches)
-    }
-
-    /// Get all batches and their posted timestamps
-    async fn get_all_batches(&self) -> Result<Vec<(u64, DateTime<Utc>)>> {
-        // Create a simple query that gets all batch_ids and their insertion timestamps
-        // TODO: Implement a proper query to ClickHouse
-        // This is a temporary implementation for demonstration/testing
-
-        // For example:
-        // 1. Create a query to get all batches with their timestamps
-        // 2. Execute the query using the ClickhouseClient
-        // 3. Parse the results
-
-        // Dummy implementation - replace with actual ClickHouse query
-        let batches = vec![
-            (1, Utc::now() - ChronoDuration::hours(4)), // 4 hours old batch
-            (2, Utc::now() - ChronoDuration::hours(5)), // 5 hours old batch
-        ];
-
-        Ok(batches)
-    }
-
-    /// Get all batch IDs that have been proven
-    async fn get_proved_batch_ids(&self) -> Result<Vec<u64>> {
-        // Create a simple query that gets all proved batch_ids
-        // TODO: Implement a proper query to ClickHouse
-        // This is a temporary implementation for demonstration/testing
-
-        // For example:
-        // 1. Create a query to get all batch_ids from the proved_batches table
-        // 2. Execute the query using the ClickhouseClient
-        // 3. Parse the results
-
-        // Dummy implementation - replace with actual ClickHouse query
-        let proved_batches = vec![1]; // Batch 1 is proven
-
-        Ok(proved_batches)
     }
 
     /// Check if a specific batch has been proven
@@ -286,5 +199,10 @@ impl BatchProofTimeoutMonitor {
                 Err(e)
             }
         }
+    }
+
+    /// Get all batch IDs that have been proven
+    async fn get_proved_batch_ids(&self) -> Result<Vec<u64>> {
+        self.clickhouse.get_proved_batch_ids().await
     }
 }

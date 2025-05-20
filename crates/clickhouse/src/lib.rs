@@ -723,6 +723,18 @@ impl ClickhouseClient {
             })
             .collect())
     }
+
+    /// Get all proved batch IDs from the `proved_batches` table.
+    pub async fn get_proved_batch_ids(&self) -> Result<Vec<u64>> {
+        #[derive(Row, Deserialize)]
+        struct ProvedBatchIdRow {
+            batch_id: u64,
+        }
+        let client = self.base.clone().with_database(&self.db_name);
+        let query = format!("SELECT batch_id FROM {}.proved_batches", self.db_name);
+        let rows = client.query(&query).fetch_all::<ProvedBatchIdRow>().await?;
+        Ok(rows.into_iter().map(|r| r.batch_id).collect())
+    }
 }
 
 #[cfg(test)]
