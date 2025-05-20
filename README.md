@@ -8,6 +8,9 @@ Taikoscope is a unified dashboard developed by Chainbound to provide real-time, 
 - Rust
 - Anvil
 - [just](https://github.com/casey/just)
+- L1 RPC
+- L2 RPC
+- ClickHouse instance (local or remote)
 
 ## Deploy
 
