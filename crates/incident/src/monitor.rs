@@ -532,10 +532,10 @@ impl BatchProofTimeoutMonitor {
 
         // Take a snapshot of active incidents to avoid concurrent immutable/mutable borrows
         let active_incidents_snapshot: Vec<((u64, u64), String)> =
-            self.base.active_incidents.iter().map(|(k, id)| (k.clone(), id.clone())).collect();
+            self.base.active_incidents.iter().map(|(k, id)| (*k, id.clone())).collect();
 
         for (key, incident_id) in active_incidents_snapshot {
-            let (_l1, batch_id) = key;
+            let (_, batch_id) = key;
             if batch_id == 0 {
                 continue;
             }
@@ -544,14 +544,11 @@ impl BatchProofTimeoutMonitor {
                 debug!(
                     batch_id = ?batch_id,
                     incident_id = %incident_id,
-                    "Batch is now proven, checking if can resolve incident"
+                    "Batch is now proven, resolving incident immediately"
                 );
-                if self.base.mark_healthy(&key).await? {
-                    info!(
-                        batch_id = ?batch_id,
-                        "Batch has met healthy threshold, resolving incident"
-                    );
-                }
+                let payload = self.base.create_resolve_payload();
+                self.base.resolve_incident_with_payload(&incident_id, &payload).await?;
+                self.base.active_incidents.remove(&key);
             } else {
                 self.base.mark_unhealthy();
             }
@@ -740,14 +737,11 @@ impl BatchVerifyTimeoutMonitor {
                 debug!(
                     batch_id = batch_id,
                     incident_id = %incident_id,
-                    "Batch is now verified, checking if can resolve incident"
+                    "Batch is now verified, resolving incident immediately"
                 );
-                if self.base.mark_healthy(&batch_id).await? {
-                    info!(
-                        batch_id = batch_id,
-                        "Batch has met healthy threshold, resolving incident"
-                    );
-                }
+                let payload = self.base.create_resolve_payload();
+                self.base.resolve_incident_with_payload(&incident_id, &payload).await?;
+                self.base.active_incidents.remove(&batch_id);
             } else {
                 self.base.mark_unhealthy();
             }
