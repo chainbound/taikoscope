@@ -735,6 +735,38 @@ impl ClickhouseClient {
         let rows = client.query(&query).fetch_all::<ProvedBatchIdRow>().await?;
         Ok(rows.into_iter().map(|r| r.batch_id).collect())
     }
+
+    /// Get all batches that have not been verified and are older than the given cutoff time.
+    pub async fn get_unverified_batches_older_than(
+        &self,
+        cutoff: DateTime<Utc>,
+    ) -> Result<Vec<(u64, u64, DateTime<Utc>)>> {
+        let client = self.base.clone().with_database(&self.db_name);
+        let query = format!(
+            "SELECT b.l1_block_number, b.batch_id, toUnixTimestamp64Milli(b.inserted_at) as inserted_at \
+             FROM {db}.batches b \
+             LEFT JOIN {db}.verified_batches v \
+             ON b.l1_block_number = v.l1_block_number AND b.batch_id = v.batch_id \
+             WHERE v.batch_id IS NULL AND b.inserted_at < toDateTime64({}, 3) \
+             ORDER BY b.inserted_at ASC",
+            cutoff.timestamp_millis() as f64 / 1000.0,
+            db = self.db_name
+        );
+        let rows = client
+            .query(&query)
+            .fetch_all::<(u64, u64, u64)>()
+            .await
+            .context("fetching unverified batches failed")?;
+        Ok(rows
+            .into_iter()
+            .filter_map(|(l1_block_number, batch_id, inserted_at)| {
+                match chrono::Utc.timestamp_millis_opt(inserted_at as i64) {
+                    chrono::LocalResult::Single(dt) => Some((l1_block_number, batch_id, dt)),
+                    _ => None,
+                }
+            })
+            .collect())
+    }
 }
 
 #[cfg(test)]
@@ -754,6 +786,13 @@ mod tests {
     #[derive(Serialize, Row)]
     struct MaxRow {
         block_ts: u64,
+    }
+
+    #[derive(Serialize, Row)]
+    struct BatchInfo {
+        l1_block_number: u64,
+        batch_id: u64,
+        inserted_at: u64, // Representing toUnixTimestamp64Milli
     }
 
     #[tokio::test]
@@ -907,5 +946,39 @@ mod tests {
                 block_hash: verified.block_hash,
             }
         );
+    }
+
+    #[tokio::test]
+    async fn test_get_unverified_batches_older_than() {
+        let mock = Mock::new();
+        let now_utc = Utc::now();
+        let cutoff_time = now_utc - chrono::Duration::hours(1);
+        let expected_batch_id = 123;
+        let expected_l1_block = 456;
+        let inserted_ts_millis = (cutoff_time - chrono::Duration::minutes(10)).timestamp_millis();
+
+        // The mock handler will simply provide the data. Query correctness is implicitly
+        // assumed based on similarity to other tested query functions.
+        mock.add(handlers::provide(vec![BatchInfo {
+            l1_block_number: expected_l1_block,
+            batch_id: expected_batch_id,
+            inserted_at: inserted_ts_millis as u64,
+        }]));
+
+        let url = Url::parse(mock.url()).unwrap();
+        let client = ClickhouseClient::new(
+            url,
+            "test-db".to_string(),
+            "test_user".to_string(),
+            "test_pass".to_string(),
+        )
+        .unwrap();
+
+        let result = client.get_unverified_batches_older_than(cutoff_time).await.unwrap();
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].0, expected_l1_block);
+        assert_eq!(result[0].1, expected_batch_id);
+        assert_eq!(result[0].2.timestamp_millis(), inserted_ts_millis);
     }
 }
