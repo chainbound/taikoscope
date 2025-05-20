@@ -38,7 +38,6 @@ pub struct Driver {
     instatus_l2_component_id: String,
     instatus_monitor_poll_interval_secs: u64,
     instatus_monitor_threshold_secs: u64,
-    instatus_monitor_healthy_needed_count: u8,
     batch_proof_timeout_secs: u64,
 }
 
@@ -85,7 +84,6 @@ impl Driver {
             instatus_l2_component_id,
             instatus_monitor_poll_interval_secs: opts.instatus.monitor_poll_interval_secs,
             instatus_monitor_threshold_secs: opts.instatus.monitor_threshold_secs,
-            instatus_monitor_healthy_needed_count: opts.instatus.monitor_healthy_needed_count,
             batch_proof_timeout_secs: 3 * 60 * 60, // 3 hours in seconds
         })
     }
@@ -180,7 +178,6 @@ impl Driver {
             self.instatus_batch_component_id.clone(),
             Duration::from_secs(self.instatus_monitor_threshold_secs),
             Duration::from_secs(self.instatus_monitor_poll_interval_secs),
-            self.instatus_monitor_healthy_needed_count,
         )
         .spawn();
 
@@ -191,7 +188,6 @@ impl Driver {
             self.instatus_l2_component_id.clone(),
             Duration::from_secs(self.instatus_monitor_threshold_secs),
             Duration::from_secs(self.instatus_monitor_poll_interval_secs),
-            self.instatus_monitor_healthy_needed_count,
         )
         .spawn();
 
@@ -202,7 +198,6 @@ impl Driver {
             self.instatus_batch_proof_timeout_component_id.clone(),
             Duration::from_secs(self.batch_proof_timeout_secs),
             Duration::from_secs(60), // Run every minute
-            1,
         )
         .spawn();
 
@@ -213,7 +208,6 @@ impl Driver {
             self.instatus_batch_verify_timeout_component_id.clone(),
             Duration::from_secs(self.batch_proof_timeout_secs),
             Duration::from_secs(60), // Run every minute
-            1,
         )
         .spawn();
 

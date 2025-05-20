@@ -113,12 +113,8 @@ impl InstatusL1Monitor {
         component_id: String,
         threshold: Duration,
         interval: Duration,
-        healthy_needed: u8,
     ) -> Self {
-        Self {
-            base: BaseMonitor::new(clickhouse, client, component_id, interval, healthy_needed),
-            threshold,
-        }
+        Self { base: BaseMonitor::new(clickhouse, client, component_id, interval), threshold }
     }
 
     /// Handle the status of batch events
@@ -135,8 +131,6 @@ impl InstatusL1Monitor {
             threshold_seconds = self.threshold.as_secs(),
             batch_healthy,
             l2_healthy,
-            healthy_seen = self.base.healthy_seen,
-            healthy_needed = self.base.healthy_needed,
             "Batch event status"
         );
 
@@ -147,7 +141,6 @@ impl InstatusL1Monitor {
             (false, false, true) => {
                 let id = self.open(last_batch).await?;
                 self.base.active_incidents.insert((), id);
-                self.base.healthy_seen = 0;
             }
             // still down
             (true, false, _) => self.base.mark_unhealthy(),
@@ -283,12 +276,8 @@ impl InstatusMonitor {
         component_id: String,
         threshold: Duration,
         interval: Duration,
-        healthy_needed: u8,
     ) -> Self {
-        Self {
-            base: BaseMonitor::new(clickhouse, client, component_id, interval, healthy_needed),
-            threshold,
-        }
+        Self { base: BaseMonitor::new(clickhouse, client, component_id, interval), threshold }
     }
 
     /// Handles a new L2 head event.
@@ -301,8 +290,6 @@ impl InstatusMonitor {
             age_seconds = ?age.as_secs(),
             threshold_seconds = ?self.threshold.as_secs(),
             is_healthy = is_healthy,
-            healthy_seen = self.base.healthy_seen,
-            healthy_needed = self.base.healthy_needed,
             "L2 head event status"
         );
 
@@ -313,7 +300,6 @@ impl InstatusMonitor {
             (false, false) => {
                 let id = self.open(last).await?;
                 self.base.active_incidents.insert((), id);
-                self.base.healthy_seen = 0;
             }
             // still down
             (true, false) => self.base.mark_unhealthy(),
@@ -449,12 +435,8 @@ impl BatchProofTimeoutMonitor {
         component_id: String,
         proof_timeout: Duration,
         interval: Duration,
-        healthy_needed: u8,
     ) -> Self {
-        Self {
-            base: BaseMonitor::new(clickhouse, client, component_id, interval, healthy_needed),
-            proof_timeout,
-        }
+        Self { base: BaseMonitor::new(clickhouse, client, component_id, interval), proof_timeout }
     }
 
     /// Check if a specific batch has been proven
@@ -639,12 +621,8 @@ impl BatchVerifyTimeoutMonitor {
         component_id: String,
         verify_timeout: Duration,
         interval: Duration,
-        healthy_needed: u8,
     ) -> Self {
-        Self {
-            base: BaseMonitor::new(clickhouse, client, component_id, interval, healthy_needed),
-            verify_timeout,
-        }
+        Self { base: BaseMonitor::new(clickhouse, client, component_id, interval), verify_timeout }
     }
 
     /// Check if a specific batch has been verified
@@ -865,7 +843,6 @@ mod tests {
             "component_proof_timeout".to_string(),
             Duration::from_secs(3 * 60 * 60), // 3 hours
             Duration::from_secs(60),          // 1 minute interval
-            3,                                // 3 healthy checks needed
         );
     }
 
@@ -880,7 +857,6 @@ mod tests {
             "component_verify_timeout".to_string(),
             Duration::from_secs(60 * 60), // 1 hour
             Duration::from_secs(60),      // 1 minute interval
-            3,                            // 3 healthy checks needed
         );
     }
 }

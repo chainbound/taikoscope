@@ -70,10 +70,6 @@ pub struct BaseMonitor<K> {
     pub interval: std::time::Duration,
     /// Map of active incidents
     pub active_incidents: std::collections::HashMap<K, String>,
-    /// Number of consecutive healthy checks needed before resolving an incident
-    pub healthy_needed: u8,
-    /// Number of consecutive healthy checks seen
-    pub healthy_seen: u8,
 }
 
 impl<K: Clone + Debug + Eq + std::hash::Hash> BaseMonitor<K> {
@@ -83,7 +79,6 @@ impl<K: Clone + Debug + Eq + std::hash::Hash> BaseMonitor<K> {
         client: IncidentClient,
         component_id: String,
         interval: std::time::Duration,
-        healthy_needed: u8,
     ) -> Self {
         Self {
             clickhouse,
@@ -91,8 +86,6 @@ impl<K: Clone + Debug + Eq + std::hash::Hash> BaseMonitor<K> {
             component_id,
             interval,
             active_incidents: std::collections::HashMap::new(),
-            healthy_needed,
-            healthy_seen: 0,
         }
     }
 
@@ -188,22 +181,15 @@ impl<K: Clone + Debug + Eq + std::hash::Hash> BaseMonitor<K> {
     /// Helper method to mark an incident as healthy and potentially resolve it
     pub async fn mark_healthy(&mut self, key: &K) -> Result<bool> {
         if let Some(incident_id) = self.active_incidents.get(key) {
-            self.healthy_seen += 1;
-
-            if self.healthy_seen >= self.healthy_needed {
-                let payload = self.create_resolve_payload();
-                self.resolve_incident_with_payload(incident_id, &payload).await?;
-                self.active_incidents.remove(key);
-                self.healthy_seen = 0;
-                return Ok(true);
-            }
+            let payload = self.create_resolve_payload();
+            self.resolve_incident_with_payload(incident_id, &payload).await?;
+            self.active_incidents.remove(key);
+            return Ok(true);
         }
 
         Ok(false)
     }
 
-    /// Mark the monitor as unhealthy, resetting the healthy counter.
-    pub const fn mark_unhealthy(&mut self) {
-        self.healthy_seen = 0;
-    }
+    /// Mark the monitor as unhealthy, dropping the healthy counter behavior.
+    pub const fn mark_unhealthy(&mut self) {}
 }
