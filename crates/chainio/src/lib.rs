@@ -351,3 +351,27 @@ impl BatchesVerified {
         &self.block_hash
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use ITaikoInbox::{BatchInfo, BlockParams};
+
+    #[test]
+    fn test_block_numbers_proposed() {
+        let batch = BatchProposed {
+            info: BatchInfo {
+                lastBlockId: 3,
+                blocks: vec![BlockParams::default(); 3],
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+
+        let actual = batch.block_numbers_proposed();
+        let expected = vec![1, 2, 3];
+
+        assert_eq!(expected, actual, "expected {expected:?}, actual {actual:?}");
+    }
+}
