@@ -214,6 +214,15 @@ impl TryFrom<(&chainio::BatchesVerified, u64)> for VerifiedBatchRow {
     }
 }
 
+/// Slashing event row
+#[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq)]
+pub struct SlashingEventRow {
+    /// L1 block number where slashing occurred
+    pub l1_block_number: u64,
+    /// Address of the validator that was slashed
+    pub validator_addr: [u8; 20],
+}
+
 /// Clickhouse client
 #[derive(Clone, Debug)]
 pub struct ClickhouseClient {
@@ -252,6 +261,7 @@ impl ClickhouseClient {
             "l2_reorgs",
             "forced_inclusion_processed",
             "verified_batches",
+            "slashing_events",
         ];
 
         if reset {
@@ -408,6 +418,21 @@ impl ClickhouseClient {
             .execute()
             .await
             .wrap_err("Failed to create verified_batches table")?;
+
+        // Create slashing_events table
+        self.base
+            .query(&format!(
+                "CREATE TABLE IF NOT EXISTS {}.slashing_events (
+                    l1_block_number UInt64,
+                    validator_addr FixedString(20),
+                    inserted_at DateTime64(3) DEFAULT now64()
+                ) ENGINE = MergeTree()
+                ORDER BY (l1_block_number, validator_addr)",
+                self.db_name
+            ))
+            .execute()
+            .await
+            .wrap_err("Failed to create slashing_events table")?;
 
         Ok(())
     }
