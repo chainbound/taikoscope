@@ -700,10 +700,12 @@ impl ClickhouseClient {
         let client = self.base.clone().with_database(&self.db_name);
         let query = format!(
             "SELECT b.l1_block_number, b.batch_id, toUnixTimestamp64Milli(b.inserted_at) as inserted_at \
-             FROM {db}.batches b \
+             FROM (SELECT l1_block_number, batch_id, inserted_at \
+                   FROM {db}.batches \
+                   WHERE inserted_at < toDateTime64({}, 3)) AS b \
              LEFT JOIN {db}.proved_batches p \
-             ON b.l1_block_number = p.l1_block_number AND b.batch_id = p.batch_id \
-             WHERE p.batch_id IS NULL AND b.inserted_at < toDateTime64({}, 3) \
+               ON b.l1_block_number = p.l1_block_number AND b.batch_id = p.batch_id \
+             WHERE p.batch_id IS NULL \
              ORDER BY b.inserted_at ASC",
             cutoff.timestamp_millis() as f64 / 1000.0,
             db = self.db_name
@@ -744,10 +746,12 @@ impl ClickhouseClient {
         let client = self.base.clone().with_database(&self.db_name);
         let query = format!(
             "SELECT b.l1_block_number, b.batch_id, toUnixTimestamp64Milli(b.inserted_at) as inserted_at \
-             FROM {db}.batches b \
+             FROM (SELECT l1_block_number, batch_id, inserted_at \
+                   FROM {db}.batches \
+                   WHERE inserted_at < toDateTime64({}, 3)) AS b \
              LEFT JOIN {db}.verified_batches v \
-             ON b.l1_block_number = v.l1_block_number AND b.batch_id = v.batch_id \
-             WHERE v.batch_id IS NULL AND b.inserted_at < toDateTime64({}, 3) \
+               ON b.l1_block_number = v.l1_block_number AND b.batch_id = v.batch_id \
+             WHERE v.batch_id IS NULL \
              ORDER BY b.inserted_at ASC",
             cutoff.timestamp_millis() as f64 / 1000.0,
             db = self.db_name
