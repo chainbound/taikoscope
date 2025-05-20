@@ -2,6 +2,7 @@ use crate::{
     client::Client as IncidentClient,
     monitor::{ComponentStatus, IncidentState, NewIncident, ResolveIncident},
 };
+use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use clickhouse::ClickhouseClient;
 use eyre::Result;
@@ -9,51 +10,32 @@ use std::fmt::Debug;
 use tokio::task::JoinHandle;
 use tracing::{debug, error, info};
 
-/// A trait for monitoring components and creating/resolving incidents
-pub trait Monitor: Sized + Send + 'static {
-    /// The type of data used to identify incidents
+/// Monitor trait for different incident types
+#[async_trait]
+pub trait Monitor: Send + Sync {
+    /// Incident key type (e.g. u64 for batch ID, () for global)
     type IncidentKey: Clone + Debug + Eq + std::hash::Hash;
 
     /// Creates a new incident
-    fn create_incident(
-        &self,
-        key: &Self::IncidentKey,
-        data: &impl Debug,
-    ) -> impl std::future::Future<Output = Result<String>> + Send;
+    async fn create_incident(&self, key: &Self::IncidentKey) -> Result<String>;
 
-    /// Resolves an incident
-    fn resolve_incident(
-        &self,
-        incident_id: &str,
-    ) -> impl std::future::Future<Output = Result<()>> + Send;
+    /// Resolves an incident by its ID
+    async fn resolve_incident(&self, incident_id: &str) -> Result<()>;
 
-    /// Checks the health of monitored components
-    fn check_health(&mut self) -> impl std::future::Future<Output = Result<()>> + Send;
+    /// Checks the health of the monitored component
+    async fn check_health(&mut self) -> Result<()>;
 
     /// Initializes the monitor, checking for existing incidents
-    fn initialize(&mut self) -> impl std::future::Future<Output = Result<()>> + Send;
+    async fn initialize(&mut self) -> Result<()>;
 
     /// Runs the monitor in a loop
-    fn run(mut self) -> impl std::future::Future<Output = Result<()>> + Send {
-        async move {
-            // Initialize the monitor
-            self.initialize().await?;
-
-            // Create and run the monitoring interval
-            let interval_duration = self.get_interval();
-            let mut interval = tokio::time::interval(interval_duration);
-
-            loop {
-                interval.tick().await;
-                if let Err(e) = self.check_health().await {
-                    error!(error = %e, "monitoring check failed");
-                }
-            }
-        }
-    }
+    async fn run(self) -> Result<()>;
 
     /// Spawns the monitor on the Tokio runtime
-    fn spawn(self) -> JoinHandle<()> {
+    fn spawn(self) -> JoinHandle<()>
+    where
+        Self: Sized + 'static,
+    {
         let monitor_name = std::any::type_name::<Self>();
         tokio::spawn(async move {
             if let Err(e) = self.run().await {
@@ -62,7 +44,7 @@ pub trait Monitor: Sized + Send + 'static {
         })
     }
 
-    /// Gets the interval duration for the monitor
+    /// Gets the polling interval for the monitor
     fn get_interval(&self) -> std::time::Duration;
 
     /// Gets the component ID for the monitor
@@ -71,14 +53,14 @@ pub trait Monitor: Sized + Send + 'static {
     /// Gets the client for the monitor
     fn get_client(&self) -> &IncidentClient;
 
-    /// Gets a reference to the ClickHouse client
+    /// Gets a reference to the `ClickHouse` client
     fn get_clickhouse(&self) -> &ClickhouseClient;
 }
 
 /// A base implementation for common monitor functionality
 #[derive(Debug)]
 pub struct BaseMonitor<K> {
-    /// ClickHouse client for querying data
+    /// `ClickHouse` client for querying data
     pub clickhouse: ClickhouseClient,
     /// Incident client for creating and managing incidents
     pub client: IncidentClient,
@@ -220,8 +202,8 @@ impl<K: Clone + Debug + Eq + std::hash::Hash> BaseMonitor<K> {
         Ok(false)
     }
 
-    /// Helper method to mark an incident as unhealthy
-    pub fn mark_unhealthy(&mut self) {
+    /// Mark the monitor as unhealthy, resetting the healthy counter.
+    pub const fn mark_unhealthy(&mut self) {
         self.healthy_seen = 0;
     }
 }
