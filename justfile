@@ -114,3 +114,7 @@ info-log-remote-hekla:
     # Use the existing start-remote-hekla recipe which already handles stopping/removing
     @just start-remote-hekla
     @echo "Log level set to info and service restarted."
+
+# Search in logs for a specific term
+search-logs-remote-hekla term:
+    ssh taikoscope "docker logs taikoscope-hekla | grep -i \"{{term}}\""
