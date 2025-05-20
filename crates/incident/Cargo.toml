@@ -19,6 +19,7 @@ tracing.workspace = true
 
 [dev-dependencies]
 mockito.workspace = true
+url.workspace = true
 
 [lints]
 workspace = true

@@ -614,3 +614,171 @@ impl Monitor for BatchProofTimeoutMonitor {
         &self.base.clickhouse
     }
 }
+
+/// Monitors batches that take too long to be verified (> X hours after being posted).
+/// Creates incidents for batches that have been posted but not verified within the time threshold.
+#[derive(Debug)]
+pub struct BatchVerifyTimeoutMonitor {
+    /// Base monitor implementation
+    base: BaseMonitor<u64>,
+    /// Timeout threshold for batch verification
+    #[allow(dead_code)] // Will be used in subsequent steps
+    verify_timeout: Duration,
+}
+
+impl BatchVerifyTimeoutMonitor {
+    /// Creates a new `BatchVerifyTimeoutMonitor` with the given parameters.
+    pub fn new(
+        clickhouse: ClickhouseClient,
+        client: IncidentClient,
+        component_id: String,
+        verify_timeout: Duration,
+        interval: Duration,
+        healthy_needed: u8,
+    ) -> Self {
+        Self {
+            base: BaseMonitor::new(clickhouse, client, component_id, interval, healthy_needed),
+            verify_timeout,
+        }
+    }
+
+    // Placeholder for methods related to checking verification status
+    // async fn is_batch_verified(&self, batch_id: u64) -> Result<bool> {
+    // todo!()
+    // }
+
+    // Placeholder for methods related to getting verified batch IDs
+    // async fn get_verified_batch_ids(&self) -> Result<Vec<u64>> {
+    // todo!()
+    // }
+
+    // Placeholder for opening an incident
+    // async fn open_incident(
+    // &self,
+    // batch_id: u64,
+    // posted_at: DateTime<Utc>,
+    // age_hours: u64,
+    // ) -> Result<String> {
+    // todo!()
+    // }
+
+    // Placeholder for checking unverified batches
+    // async fn check_unverified_batches(&mut self) -> Result<()> {
+    // todo!()
+    // }
+}
+
+#[async_trait]
+impl Monitor for BatchVerifyTimeoutMonitor {
+    type IncidentKey = u64;
+
+    async fn create_incident(&self, _key: &Self::IncidentKey) -> Result<String> {
+        todo!()
+    }
+
+    async fn resolve_incident(&self, _incident_id: &str) -> Result<()> {
+        todo!()
+    }
+
+    async fn check_health(&mut self) -> Result<()> {
+        todo!()
+    }
+
+    async fn initialize(&mut self) -> Result<()> {
+        todo!()
+    }
+
+    async fn run(mut self) -> Result<()> {
+        self.initialize().await?;
+        let interval_duration = self.get_interval();
+        let mut interval = tokio::time::interval(interval_duration);
+        loop {
+            interval.tick().await;
+            if let Err(e) = self.check_health().await {
+                error!(error = %e, "monitoring check failed for BatchVerifyTimeoutMonitor");
+            }
+        }
+    }
+
+    fn get_interval(&self) -> Duration {
+        self.base.interval
+    }
+
+    fn get_component_id(&self) -> &str {
+        &self.base.component_id
+    }
+
+    fn get_client(&self) -> &IncidentClient {
+        &self.base.client
+    }
+
+    fn get_clickhouse(&self) -> &ClickhouseClient {
+        &self.base.clickhouse
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::client::Client as IncidentClient;
+    use clickhouse::ClickhouseClient as ClickhouseInternalClient;
+    use mockito::ServerGuard;
+    use std::time::Duration;
+    use url::Url;
+
+    // Helper to create a ClickhouseClient for tests
+    fn mock_clickhouse_client() -> (ClickhouseInternalClient, ServerGuard) {
+        let server = mockito::Server::new();
+        let url = Url::parse(&server.url()).unwrap();
+        let client = ClickhouseInternalClient::new(
+            url,
+            "test_db".to_string(),
+            "user".to_string(),
+            "pass".to_string(),
+        )
+        .unwrap();
+        (client, server)
+    }
+
+    // Helper to create an IncidentClient for tests
+    fn mock_incident_client() -> (IncidentClient, ServerGuard) {
+        let server = mockito::Server::new();
+        let url = Url::parse(&server.url()).unwrap();
+        let client = IncidentClient::with_base_url(
+            "test_api_key".to_string(),
+            "test_page_id".to_string(),
+            url,
+        );
+        (client, server)
+    }
+
+    #[test]
+    fn test_batch_proof_timeout_monitor_creation() {
+        let (ch_client, _ch_server) = mock_clickhouse_client();
+        let (incident_client, _incident_server) = mock_incident_client();
+
+        let _monitor = BatchProofTimeoutMonitor::new(
+            ch_client,
+            incident_client,
+            "component_proof_timeout".to_string(),
+            Duration::from_secs(3 * 60 * 60), // 3 hours
+            Duration::from_secs(60),          // 1 minute interval
+            3,                                // 3 healthy checks needed
+        );
+    }
+
+    #[test]
+    fn test_batch_verify_timeout_monitor_creation() {
+        let (ch_client, _ch_server) = mock_clickhouse_client();
+        let (incident_client, _incident_server) = mock_incident_client();
+
+        let _monitor = BatchVerifyTimeoutMonitor::new(
+            ch_client,
+            incident_client,
+            "component_verify_timeout".to_string(),
+            Duration::from_secs(60 * 60), // 1 hour
+            Duration::from_secs(60),      // 1 minute interval
+            3,                            // 3 healthy checks needed
+        );
+    }
+}
