@@ -436,7 +436,7 @@ impl Monitor for InstatusMonitor {
 #[derive(Debug)]
 pub struct BatchProofTimeoutMonitor {
     /// Base monitor implementation
-    base: BaseMonitor<u64>,
+    base: BaseMonitor<(u64, u64)>,
     /// Timeout threshold for batch proofs
     proof_timeout: Duration,
 }
@@ -514,9 +514,10 @@ impl BatchProofTimeoutMonitor {
         );
 
         // Create incidents for new unproven batches
-        for (_l1_block_number, batch_id, posted_at) in &unproven_batches {
+        for (l1_block_number, batch_id, posted_at) in &unproven_batches {
+            let key = (*l1_block_number, *batch_id);
             let age_hours = Utc::now().signed_duration_since(*posted_at).num_hours();
-            if !self.base.active_incidents.contains_key(batch_id) {
+            if !self.base.active_incidents.contains_key(&key) {
                 debug!(
                     batch_id = batch_id,
                     posted_at = %posted_at,
@@ -525,39 +526,43 @@ impl BatchProofTimeoutMonitor {
                 );
                 let incident_id =
                     self.open_incident(*batch_id, *posted_at, age_hours as u64).await?;
-                self.base.active_incidents.insert(*batch_id, incident_id);
+                self.base.active_incidents.insert(key, incident_id);
             }
         }
 
         // Check if any active incidents should be resolved
-        let mut resolved_batch_ids = Vec::new();
-        for (batch_id, incident_id) in &self.base.active_incidents {
-            if *batch_id == 0 {
+        let mut resolved_keys = Vec::new();
+        for (key, incident_id) in &self.base.active_incidents {
+            let (_l1, batch_id) = *key;
+            if batch_id == 0 {
                 continue;
             }
-            let is_proven = self.is_batch_proven(*batch_id).await?;
+            let is_proven = self.is_batch_proven(batch_id).await?;
             if is_proven {
                 debug!(
-                    batch_id = batch_id,
+                    batch_id = ?batch_id,
                     incident_id = %incident_id,
                     "Batch is now proven, resolving incident"
                 );
                 let payload = self.base.create_resolve_payload();
                 self.base.resolve_incident_with_payload(incident_id, &payload).await?;
-                resolved_batch_ids.push(*batch_id);
+                resolved_keys.push(*key);
             }
         }
 
-        for batch_id in resolved_batch_ids {
-            self.base.active_incidents.remove(&batch_id);
+        for key in resolved_keys {
+            self.base.active_incidents.remove(&key);
         }
 
         // Special case for the catch-all incident (batch_id = 0)
-        if self.base.active_incidents.len() == 1 && self.base.active_incidents.contains_key(&0) {
-            if let Some(incident_id) = self.base.active_incidents.get(&0) {
+        let catch_all_key = (0, 0);
+        if self.base.active_incidents.len() == 1 &&
+            self.base.active_incidents.contains_key(&catch_all_key)
+        {
+            if let Some(incident_id) = self.base.active_incidents.get(&catch_all_key) {
                 let payload = self.base.create_resolve_payload();
                 self.base.resolve_incident_with_payload(incident_id, &payload).await?;
-                self.base.active_incidents.remove(&0);
+                self.base.active_incidents.remove(&catch_all_key);
             }
         }
         Ok(())
@@ -566,10 +571,11 @@ impl BatchProofTimeoutMonitor {
 
 #[async_trait]
 impl Monitor for BatchProofTimeoutMonitor {
-    type IncidentKey = u64;
+    type IncidentKey = (u64, u64);
 
     async fn create_incident(&self, key: &Self::IncidentKey) -> Result<String> {
-        self.open_incident(*key, Utc::now(), 0).await
+        let (_, batch_id) = *key;
+        self.open_incident(batch_id, Utc::now(), 0).await
     }
 
     async fn resolve_incident(&self, incident_id: &str) -> Result<()> {
@@ -582,8 +588,8 @@ impl Monitor for BatchProofTimeoutMonitor {
     }
 
     async fn initialize(&mut self) -> Result<()> {
-        // Check for existing incidents
-        self.base.check_existing_incidents(0).await
+        // Check for existing incidents, using (0,0) as catch-all key
+        self.base.check_existing_incidents((0, 0)).await
     }
 
     async fn run(mut self) -> Result<()> {
