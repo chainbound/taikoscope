@@ -92,3 +92,15 @@ start-remote-hekla:
 stop-remote-hekla:
     ssh taikoscope "docker stop taikoscope-hekla || true"
     ssh taikoscope "docker rm taikoscope-hekla || true"
+
+# Change log level to debug on remote server
+debug-log-remote-hekla:
+    @echo "Setting log level to debug on remote server..."
+    # Update the env file to set RUST_LOG=debug
+    ssh taikoscope "grep -q '^RUST_LOG=' ~/hekla/taikoscope/masaya.env && \
+        sed -i 's/^RUST_LOG=.*/RUST_LOG=debug/' ~/hekla/taikoscope/masaya.env || \
+        echo 'RUST_LOG=debug' >> ~/hekla/taikoscope/masaya.env"
+    # Restart the container to apply changes
+    @just stop-remote-hekla
+    @just start-remote-hekla
+    @echo "Log level set to debug and service restarted."
