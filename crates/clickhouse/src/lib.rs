@@ -767,6 +767,18 @@ impl ClickhouseClient {
             })
             .collect())
     }
+
+    /// Get all verified batch IDs from the `verified_batches` table.
+    pub async fn get_verified_batch_ids(&self) -> Result<Vec<u64>> {
+        #[derive(Row, Deserialize)]
+        struct VerifiedBatchIdRow {
+            batch_id: u64,
+        }
+        let client = self.base.clone().with_database(&self.db_name);
+        let query = format!("SELECT batch_id FROM {}.verified_batches", self.db_name);
+        let rows = client.query(&query).fetch_all::<VerifiedBatchIdRow>().await?;
+        Ok(rows.into_iter().map(|r| r.batch_id).collect())
+    }
 }
 
 #[cfg(test)]
@@ -778,7 +790,7 @@ mod tests {
         test::{Mock, handlers},
     };
     use extractor::L1Header;
-    use serde::Serialize;
+    use serde::{Deserialize, Serialize};
     use url::Url;
 
     use crate::{ClickhouseClient, L1HeadEvent, PreconfData, VerifiedBatchRow};
@@ -793,6 +805,11 @@ mod tests {
         l1_block_number: u64,
         batch_id: u64,
         inserted_at: u64, // Representing toUnixTimestamp64Milli
+    }
+
+    #[derive(Serialize, Row, Deserialize, Debug, PartialEq)]
+    struct VerifiedBatchIdRowTest {
+        batch_id: u64,
     }
 
     #[tokio::test]
@@ -980,5 +997,29 @@ mod tests {
         assert_eq!(result[0].0, expected_l1_block);
         assert_eq!(result[0].1, expected_batch_id);
         assert_eq!(result[0].2.timestamp_millis(), inserted_ts_millis);
+    }
+
+    #[tokio::test]
+    async fn test_get_verified_batch_ids() {
+        let mock = Mock::new();
+        let expected_ids = vec![10, 20, 30];
+        let mock_rows = expected_ids
+            .iter()
+            .map(|id| VerifiedBatchIdRowTest { batch_id: *id })
+            .collect::<Vec<_>>();
+
+        mock.add(handlers::provide(mock_rows));
+
+        let url = Url::parse(mock.url()).unwrap();
+        let client = ClickhouseClient::new(
+            url,
+            "test-db".to_string(),
+            "test_user".to_string(),
+            "test_pass".to_string(),
+        )
+        .unwrap();
+
+        let result = client.get_verified_batch_ids().await.unwrap();
+        assert_eq!(result, expected_ids);
     }
 }

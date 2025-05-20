@@ -622,7 +622,6 @@ pub struct BatchVerifyTimeoutMonitor {
     /// Base monitor implementation
     base: BaseMonitor<u64>,
     /// Timeout threshold for batch verification
-    #[allow(dead_code)] // Will be used in subsequent steps
     verify_timeout: Duration,
 }
 
@@ -642,50 +641,144 @@ impl BatchVerifyTimeoutMonitor {
         }
     }
 
-    // Placeholder for methods related to checking verification status
-    // async fn is_batch_verified(&self, batch_id: u64) -> Result<bool> {
-    // todo!()
-    // }
+    /// Check if a specific batch has been verified
+    async fn is_batch_verified(&self, batch_id: u64) -> Result<bool> {
+        let verified_batch_ids = self.get_verified_batch_ids().await?;
+        Ok(verified_batch_ids.contains(&batch_id))
+    }
 
-    // Placeholder for methods related to getting verified batch IDs
-    // async fn get_verified_batch_ids(&self) -> Result<Vec<u64>> {
-    // todo!()
-    // }
+    /// Get all batch IDs that have been verified
+    async fn get_verified_batch_ids(&self) -> Result<Vec<u64>> {
+        self.base.clickhouse.get_verified_batch_ids().await
+    }
 
-    // Placeholder for opening an incident
-    // async fn open_incident(
-    // &self,
-    // batch_id: u64,
-    // posted_at: DateTime<Utc>,
-    // age_hours: u64,
-    // ) -> Result<String> {
-    // todo!()
-    // }
+    /// Creates an incident for an unverified batch
+    async fn open_incident(
+        &self,
+        batch_id: u64,
+        posted_at: DateTime<Utc>,
+        age_hours: u64, // Or use `Duration` directly from `verify_timeout`
+    ) -> Result<String> {
+        let incident_start_time = posted_at + ChronoDuration::from_std(self.verify_timeout)?;
 
-    // Placeholder for checking unverified batches
-    // async fn check_unverified_batches(&mut self) -> Result<()> {
-    // todo!()
-    // }
+        let body = self.base.create_incident_payload(
+            format!("Batch #{} Not Verified - Timeout", batch_id),
+            format!(
+                "Batch #{} has been waiting for verification for over {}h (threshold: {}h)",
+                batch_id,
+                age_hours, // This could be calculated more precisely or taken from verify_timeout
+                self.verify_timeout.as_secs() / 3600
+            ),
+            incident_start_time,
+        );
+
+        let id = self.base.create_incident_with_payload(&body).await?;
+
+        info!(
+            incident_id = %id,
+            batch_id = batch_id,
+            "Created batch verify timeout incident"
+        );
+
+        Ok(id)
+    }
+
+    /// Check for batches that have not been verified within the timeout period
+    async fn check_unverified_batches(&mut self) -> Result<()> {
+        let cutoff_time = Utc::now() - ChronoDuration::from_std(self.verify_timeout)?;
+        let unverified_batches =
+            self.base.clickhouse.get_unverified_batches_older_than(cutoff_time).await?;
+
+        debug!(
+            "Found {} unverified batches older than {:?}",
+            unverified_batches.len(),
+            self.verify_timeout
+        );
+
+        // Create incidents for new unverified batches
+        for (_l1_block_number, batch_id, posted_at) in &unverified_batches {
+            let age_duration = Utc::now().signed_duration_since(*posted_at);
+            if age_duration > ChronoDuration::from_std(self.verify_timeout)? &&
+                !self.base.active_incidents.contains_key(batch_id)
+            {
+                debug!(
+                    batch_id = batch_id,
+                    posted_at = %posted_at,
+                    age_hours = age_duration.num_hours(),
+                    "Found unverified batch exceeding timeout"
+                );
+                let incident_id = self
+                    .open_incident(*batch_id, *posted_at, age_duration.num_hours() as u64)
+                    .await?;
+                self.base.active_incidents.insert(*batch_id, incident_id);
+            }
+        }
+
+        // Check if any active incidents should be resolved
+        let mut resolved_batch_ids = Vec::new();
+        for (batch_id, incident_id) in &self.base.active_incidents {
+            if *batch_id == 0 {
+                // Skip the general incident key if used
+                continue;
+            }
+            let is_verified = self.is_batch_verified(*batch_id).await?;
+            if is_verified {
+                debug!(
+                    batch_id = batch_id,
+                    incident_id = %incident_id,
+                    "Batch is now verified, resolving incident"
+                );
+                let payload = self.base.create_resolve_payload();
+                self.base.resolve_incident_with_payload(incident_id, &payload).await?;
+                resolved_batch_ids.push(*batch_id);
+            }
+        }
+
+        for batch_id in resolved_batch_ids {
+            self.base.active_incidents.remove(&batch_id);
+        }
+
+        // Handle the catch-all incident (batch_id = 0) if all specific batch incidents are cleared
+        if self.base.active_incidents.len() == 1 &&
+            self.base.active_incidents.contains_key(&0) &&
+            unverified_batches.is_empty()
+        {
+            // Or a more robust check if all specific incidents were just resolved
+            if let Some(incident_id) = self.base.active_incidents.get(&0) {
+                info!(incident_id = %incident_id, "Resolving general batch verification timeout incident as all specific batches are clear or verified.");
+                let payload = self.base.create_resolve_payload();
+                self.base.resolve_incident_with_payload(incident_id, &payload).await?;
+                self.base.active_incidents.remove(&0);
+            }
+        }
+        Ok(())
+    }
 }
 
 #[async_trait]
 impl Monitor for BatchVerifyTimeoutMonitor {
     type IncidentKey = u64;
 
-    async fn create_incident(&self, _key: &Self::IncidentKey) -> Result<String> {
-        todo!()
+    async fn create_incident(&self, key: &Self::IncidentKey) -> Result<String> {
+        // For manual creation, we might not have a `posted_at` time easily,
+        // so we use Utc::now() and an age of 0, or adjust as needed.
+        self.open_incident(*key, Utc::now(), 0).await
     }
 
-    async fn resolve_incident(&self, _incident_id: &str) -> Result<()> {
-        todo!()
+    async fn resolve_incident(&self, incident_id: &str) -> Result<()> {
+        let payload = self.base.create_resolve_payload();
+        self.base.resolve_incident_with_payload(incident_id, &payload).await
     }
 
     async fn check_health(&mut self) -> Result<()> {
-        todo!()
+        self.check_unverified_batches().await
     }
 
     async fn initialize(&mut self) -> Result<()> {
-        todo!()
+        // Check for existing incidents. Using 0 as a generic key for component-wide issues.
+        self.base.check_existing_incidents(0).await
+        // Potentially add an initial health check if needed, similar to other monitors
+        // self.check_unverified_batches().await // Initial check
     }
 
     async fn run(mut self) -> Result<()> {
