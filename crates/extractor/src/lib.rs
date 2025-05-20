@@ -399,31 +399,18 @@ impl Extractor {
                 };
 
                 while let Some(log) = log_stream.next().await {
-                    // Extract the batch_id from the first topic or data field
-                    let batch_id = if log.topics().len() > 1 {
-                        // If it's indexed, it will be in the topics
-                        let topic_bytes = log.topics()[1].as_slice();
-                        if topic_bytes.len() >= 32 {
-                            u64::from_be_bytes(topic_bytes[24..32].try_into().unwrap_or([0u8; 8]))
-                        } else {
-                            0
-                        }
+                    // Extract batch_id from the correct position in the data
+                    // For non-indexed uint64, it's in the last 8 bytes of the first 32-byte chunk
+                    let batch_id = if log.data().data.len() >= 32 {
+                        u64::from_be_bytes(log.data().data[24..32].try_into().unwrap_or([0u8; 8]))
                     } else {
-                        // If it's not indexed, check the data
-                        let data = log.data();
-                        if data.data.len() >= 8 {
-                            u64::from_be_bytes(data.data[0..8].try_into().unwrap_or([0u8; 8]))
-                        } else {
-                            0
-                        }
+                        0
                     };
 
-                    // Extract the block hash from data
+                    // Extract the block hash - it's the entire second 32-byte chunk
                     let mut block_hash = [0u8; 32];
-                    let data = log.data();
-                    let offset = if log.topics().len() > 1 { 0 } else { 8 }; // Adjust based on indexing
-                    if data.data.len() >= offset + 32 {
-                        block_hash.copy_from_slice(&data.data[offset..offset + 32]);
+                    if log.data().data.len() >= 64 {
+                        block_hash.copy_from_slice(&log.data().data[32..64]);
                     }
 
                     let verified = chainio::BatchesVerified { batch_id, block_hash };
