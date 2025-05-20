@@ -475,9 +475,9 @@ impl BatchProofTimeoutMonitor {
         posted_at: DateTime<Utc>,
         age_hours: u64,
     ) -> Result<String> {
-        let _started = (posted_at +
-            chrono::Duration::hours(self.proof_timeout.as_secs() as i64 / 3600))
-        .to_rfc3339();
+        // Compute incident start time preserving full precision
+        let incident_start_time = posted_at + ChronoDuration::from_std(self.proof_timeout)?;
+        let _started = incident_start_time.to_rfc3339();
 
         let body = self.base.create_incident_payload(
             format!("Batch #{} Not Proven - Timeout", batch_id),
@@ -487,7 +487,7 @@ impl BatchProofTimeoutMonitor {
                 age_hours,
                 self.proof_timeout.as_secs() / 3600
             ),
-            posted_at + ChronoDuration::hours(self.proof_timeout.as_secs() as i64 / 3600),
+            incident_start_time,
         );
 
         let id = self.base.create_incident_with_payload(&body).await?;
