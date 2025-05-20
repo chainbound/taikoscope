@@ -242,7 +242,7 @@ impl ClickhouseClient {
             .with_user(username)
             .with_password(password);
 
-        Ok(Self { base: client, db_name: "taikoscope".into() })
+        Ok(Self { base: client, db_name })
     }
 
     /// Create database and optionally drop existing tables if reset is true
