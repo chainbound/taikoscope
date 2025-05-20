@@ -715,9 +715,11 @@ impl ClickhouseClient {
             .context("fetching unproved batches failed")?;
         Ok(rows
             .into_iter()
-            .map(|(l1_block_number, batch_id, inserted_at)| {
-                let dt = chrono::Utc.timestamp_millis(inserted_at as i64);
-                (l1_block_number, batch_id, dt)
+            .filter_map(|(l1_block_number, batch_id, inserted_at)| {
+                match chrono::Utc.timestamp_millis_opt(inserted_at as i64) {
+                    chrono::LocalResult::Single(dt) => Some((l1_block_number, batch_id, dt)),
+                    _ => None,
+                }
             })
             .collect())
     }
