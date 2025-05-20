@@ -691,6 +691,36 @@ impl ClickhouseClient {
 
         Ok(ts_opt)
     }
+
+    /// Get all batches that have not been proven and are older than the given cutoff time.
+    pub async fn get_unproved_batches_older_than(
+        &self,
+        cutoff: DateTime<Utc>,
+    ) -> Result<Vec<(u64, u64, DateTime<Utc>)>> {
+        let client = self.base.clone().with_database(&self.db_name);
+        let query = format!(
+            "SELECT b.l1_block_number, b.batch_id, toUnixTimestamp64Milli(b.inserted_at) as inserted_at \
+             FROM {db}.batches b \
+             LEFT JOIN {db}.proved_batches p \
+             ON b.l1_block_number = p.l1_block_number AND b.batch_id = p.batch_id \
+             WHERE p.batch_id IS NULL AND b.inserted_at < toDateTime64({}, 3) \
+             ORDER BY b.inserted_at ASC",
+            cutoff.timestamp_millis() as f64 / 1000.0,
+            db = self.db_name
+        );
+        let rows = client
+            .query(&query)
+            .fetch_all::<(u64, u64, u64)>()
+            .await
+            .context("fetching unproved batches failed")?;
+        Ok(rows
+            .into_iter()
+            .map(|(l1_block_number, batch_id, inserted_at)| {
+                let dt = chrono::Utc.timestamp_millis(inserted_at as i64);
+                (l1_block_number, batch_id, dt)
+            })
+            .collect())
+    }
 }
 
 #[cfg(test)]
