@@ -93,25 +93,24 @@ stop-remote-hekla:
     ssh taikoscope "docker stop taikoscope-hekla || true"
     ssh taikoscope "docker rm taikoscope-hekla || true"
 
-# Change log level to debug on remote server
+# Set log level to debug on remote server and restart the service
 debug-log-remote-hekla:
     @echo "Setting log level to debug on remote server..."
     # Update the env file to set RUST_LOG=debug
     ssh taikoscope "grep -q '^RUST_LOG=' ~/hekla/taikoscope/masaya.env && \
         sed -i 's/^RUST_LOG=.*/RUST_LOG=debug/' ~/hekla/taikoscope/masaya.env || \
         echo 'RUST_LOG=debug' >> ~/hekla/taikoscope/masaya.env"
-    # Restart the container to apply changes
-    @just stop-remote-hekla
+    # Use the existing start-remote-hekla recipe which already handles stopping/removing
     @just start-remote-hekla
     @echo "Log level set to debug and service restarted."
 
 # Set log level to info on remote server and restart the service
-info-remote-hekla:
+info-log-remote-hekla:
     @echo "Setting log level to info on remote server..."
-    # Modify the environment file to set RUST_LOG=info
-    ssh taikoscope "sed -i '/^RUST_LOG=/d' ~/hekla/taikoscope/masaya.env && \
+    # Update the env file to set RUST_LOG=info
+    ssh taikoscope "grep -q '^RUST_LOG=' ~/hekla/taikoscope/masaya.env && \
+        sed -i 's/^RUST_LOG=.*/RUST_LOG=info/' ~/hekla/taikoscope/masaya.env || \
         echo 'RUST_LOG=info' >> ~/hekla/taikoscope/masaya.env"
-    # Restart the container to apply changes
-    @just stop-remote-hekla
+    # Use the existing start-remote-hekla recipe which already handles stopping/removing
     @just start-remote-hekla
     @echo "Log level set to info and service restarted."
