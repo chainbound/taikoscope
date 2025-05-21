@@ -105,10 +105,85 @@ pub struct Opts {
 #[cfg(test)]
 mod tests {
     use super::Opts;
+    use clap::Parser;
 
     #[test]
     fn test_verify_cli() {
         use clap::CommandFactory;
         Opts::command().debug_assert()
+    }
+
+    fn base_args() -> Vec<&'static str> {
+        vec![
+            "prog",
+            "--url",
+            "http://localhost:8123",
+            "--db",
+            "test-db",
+            "--username",
+            "user",
+            "--password",
+            "pass",
+            "--l1-url",
+            "http://l1",
+            "--l2-url",
+            "http://l2",
+            "--inbox-address",
+            "0x0000000000000000000000000000000000000001",
+            "--preconf-whitelist-address",
+            "0x0000000000000000000000000000000000000002",
+            "--taiko-wrapper-address",
+            "0x0000000000000000000000000000000000000003",
+            "--api-key",
+            "key",
+            "--page-id",
+            "page",
+            "--batch-component-id",
+            "batch",
+            "--batch-proof-timeout-component-id",
+            "proof",
+            "--batch-verify-timeout-component-id",
+            "verify",
+            "--l2-component-id",
+            "l2",
+        ]
+    }
+
+    #[test]
+    fn test_default_values() {
+        let args = base_args();
+        let opts = Opts::try_parse_from(args).expect("failed to parse opts");
+
+        assert_eq!(opts.instatus.monitor_poll_interval_secs, 30);
+        assert_eq!(opts.instatus.monitor_threshold_secs, 96);
+        assert_eq!(opts.instatus.batch_proof_timeout_secs, 10800);
+        assert!(!opts.reset_db);
+    }
+
+    #[test]
+    fn test_env_overrides() {
+        use std::env;
+
+        unsafe {
+            env::set_var("INSTATUS_MONITOR_POLL_INTERVAL_SECS", "42");
+            env::set_var("INSTATUS_MONITOR_THRESHOLD_SECS", "33");
+            env::set_var("BATCH_PROOF_TIMEOUT_SECS", "99");
+        }
+
+        let mut args = base_args();
+        args.push("--reset-db");
+
+        let opts = Opts::try_parse_from(&args).expect("failed to parse opts");
+
+        assert_eq!(opts.instatus.monitor_poll_interval_secs, 42);
+        assert_eq!(opts.instatus.monitor_threshold_secs, 33);
+        assert_eq!(opts.instatus.batch_proof_timeout_secs, 99);
+        assert!(opts.reset_db);
+
+        unsafe {
+            env::remove_var("INSTATUS_MONITOR_POLL_INTERVAL_SECS");
+            env::remove_var("INSTATUS_MONITOR_THRESHOLD_SECS");
+            env::remove_var("BATCH_PROOF_TIMEOUT_SECS");
+        }
     }
 }
