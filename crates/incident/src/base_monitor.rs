@@ -120,7 +120,8 @@ impl<K: Clone + Debug + Eq + std::hash::Hash> BaseMonitor<K> {
 
     /// Helper to create an incident
     pub async fn create_incident_with_payload(&self, payload: &NewIncident) -> Result<String> {
-        let id = self.client.create_incident(payload).await?;
+        let id =
+            crate::retry::retry_op(|| async { self.client.create_incident(payload).await }).await?;
 
         info!(
             incident_id = %id,
@@ -142,7 +143,9 @@ impl<K: Clone + Debug + Eq + std::hash::Hash> BaseMonitor<K> {
     ) -> Result<()> {
         debug!(%id, "Closing incident");
 
-        match self.client.resolve_incident(id, payload).await {
+        match crate::retry::retry_op(|| async { self.client.resolve_incident(id, payload).await })
+            .await
+        {
             Ok(_) => {
                 info!(%id, "Successfully resolved incident");
                 Ok(())
@@ -156,7 +159,11 @@ impl<K: Clone + Debug + Eq + std::hash::Hash> BaseMonitor<K> {
 
     /// Helper method to check for existing open incidents for this component
     pub async fn check_existing_incidents(&mut self, default_key: K) -> Result<()> {
-        match self.client.open_incident(&self.component_id).await? {
+        match crate::retry::retry_op(|| async {
+            self.client.open_incident(&self.component_id).await
+        })
+        .await?
+        {
             Some(id) => {
                 info!(
                     incident_id = %id,
@@ -353,6 +360,7 @@ mod tests {
             .match_header("content-type", "application/json")
             .with_status(500)
             .with_body("err")
+            .expect_at_least(1)
             .create_async()
             .await;
 
