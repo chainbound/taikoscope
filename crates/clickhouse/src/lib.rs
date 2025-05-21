@@ -271,7 +271,7 @@ impl ClickhouseClient {
                     .execute()
                     .await?;
             }
-            info!("Database reset complete for: {}", self.db_name);
+            info!(db_name = %self.db_name, "Database reset complete");
         }
 
         // Init schema

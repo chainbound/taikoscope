@@ -128,7 +128,7 @@ impl Extractor {
                         sub.into_stream()
                     }
                     Err(e) => {
-                        error!("Failed to subscribe to L1 blocks: {}. Retrying in 5s...", e);
+                        error!(error = %e, "Failed to subscribe to L1 blocks, retrying in 5s");
                         sleep(Duration::from_secs(5)).await;
                         continue;
                     }
@@ -172,7 +172,7 @@ impl Extractor {
                         sub.into_stream()
                     }
                     Err(e) => {
-                        error!("Failed to subscribe to L2 blocks: {}. Retrying in 5s...", e);
+                        error!(error = %e, "Failed to subscribe to L2 blocks, retrying in 5s");
                         sleep(Duration::from_secs(5)).await;
                         continue;
                     }
@@ -219,10 +219,7 @@ impl Extractor {
                         sub.into_stream()
                     }
                     Err(e) => {
-                        error!(
-                            "Failed to subscribe to BatchProposed logs: {}. Retrying in 5s...",
-                            e
-                        );
+                        error!(error = %e, "Failed to subscribe to BatchProposed logs, retrying in 5s");
                         sleep(Duration::from_secs(5)).await;
                         continue;
                     }
@@ -239,7 +236,7 @@ impl Extractor {
                             }
                         }
                         Err(err) => {
-                            warn!("Failed to decode BatchProposed log: {}", err);
+                            warn!(error = %err, "Failed to decode BatchProposed log");
                             // Optionally, decide if this is a critical error or can be skipped.
                             // For now, we just log and continue.
                         }
@@ -272,10 +269,7 @@ impl Extractor {
                         sub.into_stream()
                     }
                     Err(e) => {
-                        error!(
-                            "Failed to subscribe to BatchesProved logs: {}. Retrying in 5s...",
-                            e
-                        );
+                        error!(error = %e, "Failed to subscribe to BatchesProved logs, retrying in 5s");
                         sleep(Duration::from_secs(5)).await;
                         continue;
                     }
@@ -294,7 +288,7 @@ impl Extractor {
                             }
                         }
                         Err(err) => {
-                            warn!("Failed to decode BatchesProved log: {}", err);
+                            warn!(error = %err, "Failed to decode BatchesProved log");
                             // Optionally, decide if this is a critical error or can be skipped.
                             // For now, we just log and continue.
                         }
@@ -329,10 +323,7 @@ impl Extractor {
                         sub.into_stream()
                     }
                     Err(e) => {
-                        error!(
-                            "Failed to subscribe to ForcedInclusionProcessed logs: {}. Retrying in 5s...",
-                            e
-                        );
+                        error!(error = %e, "Failed to subscribe to ForcedInclusionProcessed logs, retrying in 5s");
                         sleep(Duration::from_secs(5)).await;
                         continue;
                     }
@@ -349,7 +340,7 @@ impl Extractor {
                             }
                         }
                         Err(err) => {
-                            warn!("Failed to decode ForcedInclusionProcessed log: {}", err);
+                            warn!(error = %err, "Failed to decode ForcedInclusionProcessed log");
                             // Optionally, decide if this is a critical error or can be skipped.
                         }
                     }
@@ -394,10 +385,7 @@ impl Extractor {
                         sub.into_stream()
                     }
                     Err(e) => {
-                        error!(
-                            "Failed to subscribe to BatchesVerified logs: {}. Retrying in 5s...",
-                            e
-                        );
+                        error!(error = %e, "Failed to subscribe to BatchesVerified logs, retrying in 5s");
                         sleep(Duration::from_secs(5)).await;
                         continue;
                     }

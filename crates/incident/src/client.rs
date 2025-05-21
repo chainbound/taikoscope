@@ -71,14 +71,11 @@ impl Client {
                 Ok(text) => text,
                 Err(_) => "Could not read response body".into(),
             };
-            error!(
-                "Failed to resolve incident: status={}, url={}, body={}",
-                status, url, response_text
-            );
+            error!(status = %status, url = %url, body = %response_text, "Failed to resolve incident");
             return Err(eyre::eyre!("HTTP error {}: {}", status, response_text));
         }
 
-        debug!("Successfully resolved incident id={}", id);
+        debug!(incident_id = %id, "Successfully resolved incident");
         Ok(())
     }
 
@@ -92,19 +89,19 @@ impl Client {
             url.query_pairs_mut().append_pair("status", &value);
         }
 
-        tracing::debug!("Querying incidents with URL: {}", url);
+        tracing::debug!(url = %url, "Querying incidents");
 
         let response = self.auth(self.http.get(url)).send().await?;
 
         if !response.status().is_success() {
             let status = response.status();
             let body = response.text().await.unwrap_or_default();
-            tracing::error!("Failed to get incidents: status={}, body={}", status, body);
+            tracing::error!(status = %status, body = %body, "Failed to get incidents");
             return Err(eyre::eyre!("HTTP error {}: {}", status, body));
         }
 
         let list = response.json::<Vec<IncidentSummary>>().await?;
-        tracing::debug!("Found {} incidents in total", list.len());
+        tracing::debug!(count = list.len(), "Found incidents in total");
 
         // find the first incident touching our component
         if let Some((incident_id, comp)) = list.into_iter().find_map(|inc| {
@@ -118,7 +115,7 @@ impl Client {
             );
             Ok(Some(incident_id))
         } else {
-            tracing::debug!("No open incidents found for component: {}", component_id);
+            tracing::debug!(component_id = %component_id, "No open incidents found for component");
             Ok(None)
         }
     }

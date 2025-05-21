@@ -93,7 +93,7 @@ impl Driver {
             match self.extractor.get_l1_header_stream().await {
                 Ok(s) => return s,
                 Err(e) => {
-                    tracing::error!("L1 subscribe failed: {}. Retrying in 5s…", e);
+                    tracing::error!(error = %e, "L1 subscribe failed, retrying in 5s");
                     tokio::time::sleep(Duration::from_secs(5)).await;
                 }
             }
@@ -105,7 +105,7 @@ impl Driver {
             match self.extractor.get_l2_header_stream().await {
                 Ok(s) => return s,
                 Err(e) => {
-                    tracing::error!("L2 subscribe failed: {}. Retrying in 5s…", e);
+                    tracing::error!(error = %e, "L2 subscribe failed, retrying in 5s");
                     tokio::time::sleep(Duration::from_secs(5)).await;
                 }
             }
@@ -117,7 +117,7 @@ impl Driver {
             match self.extractor.get_batch_proposed_stream().await {
                 Ok(s) => return s,
                 Err(e) => {
-                    tracing::error!("BatchProposed subscribe failed: {}. Retrying in 5s…", e);
+                    tracing::error!(error = %e, "BatchProposed subscribe failed, retrying in 5s");
                     tokio::time::sleep(Duration::from_secs(5)).await;
                 }
             }
@@ -129,7 +129,7 @@ impl Driver {
             match self.extractor.get_forced_inclusion_stream().await {
                 Ok(s) => return s,
                 Err(e) => {
-                    tracing::error!("ForcedInclusion subscribe failed: {}. Retrying in 5s…", e);
+                    tracing::error!(error = %e, "ForcedInclusion subscribe failed, retrying in 5s");
                     tokio::time::sleep(Duration::from_secs(5)).await;
                 }
             }
@@ -141,7 +141,7 @@ impl Driver {
             match self.extractor.get_batches_proved_stream().await {
                 Ok(s) => return s,
                 Err(e) => {
-                    tracing::error!("BatchesProved subscribe failed: {}. Retrying in 5s…", e);
+                    tracing::error!(error = %e, "BatchesProved subscribe failed, retrying in 5s");
                     tokio::time::sleep(Duration::from_secs(5)).await;
                 }
             }
@@ -153,7 +153,7 @@ impl Driver {
             match self.extractor.get_batches_verified_stream().await {
                 Ok(s) => return s,
                 Err(e) => {
-                    tracing::error!("BatchesVerified subscribe failed: {}. Retrying in 5s…", e);
+                    tracing::error!(error = %e, "BatchesVerified subscribe failed, retrying in 5s");
                     tokio::time::sleep(Duration::from_secs(5)).await;
                 }
             }
@@ -162,7 +162,7 @@ impl Driver {
 
     /// Consume the driver and drive the infinite processing loop.
     pub async fn start(mut self) -> Result<()> {
-        info!("Starting event loop...");
+        info!("Starting event loop");
 
         let mut l1_stream = self.subscribe_l1().await;
         let mut l2_stream = self.subscribe_l2().await;
@@ -283,7 +283,7 @@ impl Driver {
                     // This branch should ideally not be reached if streams always re-subscribe.
                     // If it is, it implies all streams terminated simultaneously and failed to re-subscribe,
                     // which would be an unexpected state.
-                    tracing::error!("All event streams ended and failed to re-subscribe. This should not happen. Shutting down driver loop.");
+                    tracing::error!("All event streams ended and failed to re-subscribe. Shutting down driver loop");
                     break;
                 }
             }
@@ -295,7 +295,7 @@ impl Driver {
         if let Err(e) = self.clickhouse.insert_l1_header(&header).await {
             tracing::error!(header_number = header.number, err = %e, "Failed to insert L1 header");
         } else {
-            info!("Inserted L1 header: {:?}", header.number);
+            info!(header_number = header.number, "Inserted L1 header");
         }
 
         // TODO: uncomment this when this is deployed
@@ -347,12 +347,12 @@ impl Driver {
             {
                 tracing::error!(slot = header.slot, err = %e, "Failed to insert preconf data");
             } else {
-                info!("Inserted preconf data for slot: {:?}", header.slot);
+                info!(slot = header.slot, "Inserted preconf data for slot");
             }
         } else {
             info!(
-                "Skipping preconf data insertion for slot {:?} due to errors fetching operator data.",
-                header.slot
+                slot = header.slot,
+                "Skipping preconf data insertion due to errors fetching operator data"
             );
         }
     }
@@ -367,7 +367,7 @@ impl Driver {
             if let Err(e) = self.clickhouse.insert_l2_reorg(header.number, depth).await {
                 tracing::error!(block_number = header.number, depth = depth, err = %e, "Failed to insert L2 reorg");
             } else {
-                info!("Inserted L2 reorg: new head {}, depth {}", header.number, depth);
+                info!(new_head = header.number, depth, "Inserted L2 reorg");
             }
         } else {
             match self.extractor.get_l2_block_stats(header.number, header.base_fee_per_gas).await {
@@ -385,7 +385,7 @@ impl Driver {
                     if let Err(e) = self.clickhouse.insert_l2_header(&event).await {
                         tracing::error!(block_number = header.number, err = %e, "Failed to insert L2 header");
                     } else {
-                        info!("Inserted L2 header: {}", header.number);
+                        info!(l2_header = header.number, "Inserted L2 header");
                     }
                 }
                 Err(e) => {
@@ -399,7 +399,7 @@ impl Driver {
         if let Err(e) = self.clickhouse.insert_batch(&batch).await {
             tracing::error!(batch_last_block = ?batch.last_block_number(), err = %e, "Failed to insert batch");
         } else {
-            info!("Inserted batch: {:?}", batch.last_block_number());
+            info!(last_block_number = ?batch.last_block_number(), "Inserted batch");
         }
     }
 
@@ -407,7 +407,7 @@ impl Driver {
         if let Err(e) = self.clickhouse.insert_forced_inclusion(&fi).await {
             tracing::error!(blob_hash = ?fi.blobHash, err = %e, "Failed to insert forced inclusion");
         } else {
-            info!("Inserted forced inclusion processed: {:?}", fi.blobHash);
+            info!(blob_hash = ?fi.blobHash, "Inserted forced inclusion processed");
         }
     }
 
@@ -416,7 +416,7 @@ impl Driver {
         if let Err(e) = self.clickhouse.insert_proved_batch(&proved, l1_block_number).await {
             tracing::error!(batch_ids = ?proved.batch_ids_proved(), err = %e, "Failed to insert proved batch");
         } else {
-            info!("Inserted proved batch: batch_ids={:?}", proved.batch_ids_proved());
+            info!(batch_ids = ?proved.batch_ids_proved(), "Inserted proved batch");
         }
     }
 
@@ -425,7 +425,7 @@ impl Driver {
         if let Err(e) = self.clickhouse.insert_verified_batch(&verified, l1_block_number).await {
             tracing::error!(batch_id = ?verified.batch_id, err = %e, "Failed to insert verified batch");
         } else {
-            info!("Inserted verified batch: batch_id={:?}", verified.batch_id);
+            info!(batch_id = ?verified.batch_id, "Inserted verified batch");
         }
     }
 }
