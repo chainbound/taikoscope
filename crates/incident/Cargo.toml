@@ -7,9 +7,10 @@ exclude.workspace = true
 repository.workspace = true
 
 [dependencies]
+clickhouse = { path = "../clickhouse" }
+
 async-trait = "0.1"
 chrono.workspace = true
-clickhouse = { path = "../clickhouse" }
 eyre.workspace = true
 reqwest.workspace = true
 serde.workspace = true
