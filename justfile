@@ -1,6 +1,13 @@
 set shell := ["bash", "-cu"]
 set dotenv-load := true
 
+# common configuration
+container := "taikoscope-hekla"
+ssh_alias := "taikoscope"
+remote_dir := "~/hekla/taikoscope"
+env_file := "{{remote_dir}}/masaya.env"
+port := "48100:3000"
+
 # display a help message about available commands
 default:
     @just --list --unsorted
@@ -29,43 +36,45 @@ lint:
 fmt:
     cargo +nightly fmt --all
 
-# deploy Taikoscope via SSH alias 'taikoscope'
-deploy-remote-hekla:
-    @echo "Deploying Taikoscope via SSH alias 'taikoscope'"
-    @just test || (echo "Tests failed, aborting deployment" && exit 1)
+# internal helpers
+stop-container:
+    ssh {{ssh_alias}} "docker stop {{container}} || true"
+    ssh {{ssh_alias}} "docker rm {{container}} || true"
 
-    # Check if "masaya.env" exists. if not, exit with error
-    test -f masaya.env || (echo "No masaya.env file found. Exiting." && exit 1)
-
-    # Ensure remote directory exists
-    ssh taikoscope "mkdir -p ~/hekla/taikoscope"
-
-    # Copy the project via SSH alias 'taikoscope'
-    rsync -av --exclude target --exclude .git . taikoscope:~/hekla/taikoscope
-
-    # Build the docker image via SSH alias 'taikoscope'
-    @echo "Building Taikoscope on taikoscope (path: ~/hekla/taikoscope)"
-    ssh taikoscope "cd ~/hekla/taikoscope && docker buildx build --load -t taikoscope-hekla ."
-
-    # Stop existing container if running
-    ssh taikoscope "docker stop taikoscope-hekla || true"
-    ssh taikoscope "docker rm taikoscope-hekla || true"
-
-    # Start new container with environment variables
-    ssh taikoscope "docker run -d \
-        --name taikoscope-hekla \
+run-container:
+    ssh {{ssh_alias}} "docker run -d \
+        --name {{container}} \
         --restart unless-stopped \
-        --env-file ~/hekla/taikoscope/masaya.env \
-        -p 48100:3000 \
-        taikoscope-hekla"
+        --env-file {{env_file}} \
+        -p {{port}} \
+        {{container}}"
+
+set-log-level level:
+    @echo "Setting log level to {{level}} on remote server..."
+    ssh {{ssh_alias}} "grep -q '^RUST_LOG=' {{env_file}} && \
+        sed -i 's/^RUST_LOG=.*/RUST_LOG={{level}}/' {{env_file}} || \
+        echo 'RUST_LOG={{level}}' >> {{env_file}}"
+    @just start-remote-hekla
+    @echo "Log level set to {{level}} and service restarted."
+
+# deploy Taikoscope via SSH alias '{{ssh_alias}}'
+deploy-remote-hekla:
+    @echo "Deploying Taikoscope via SSH alias '{{ssh_alias}}'"
+    @just test || (echo "Tests failed, aborting deployment" && exit 1)
+    test -f masaya.env || (echo "No masaya.env file found. Exiting." && exit 1)
+    ssh {{ssh_alias}} "mkdir -p {{remote_dir}}"
+    rsync -av --exclude target --exclude .git . {{ssh_alias}}:{{remote_dir}}
+    @echo "Building Taikoscope on {{ssh_alias}} (path: {{remote_dir}})"
+    ssh {{ssh_alias}} "cd {{remote_dir}} && docker buildx build --load -t {{container}} ."
+    @just start-remote-hekla
 
 # Check the status of the service
 status-remote-hekla:
-    ssh taikoscope "docker ps -f name=taikoscope-hekla"
+    ssh {{ssh_alias}} "docker ps -f name={{container}}"
 
 # View the logs of the service
 logs-remote-hekla:
-    ssh taikoscope "docker logs -f taikoscope-hekla"
+    ssh {{ssh_alias}} "docker logs -f {{container}}"
 
 # Deploy and tail logs
 deploy-logs-remote-hekla:
@@ -75,46 +84,22 @@ deploy-logs-remote-hekla:
 # Start the remote Hekla service (runs a new container from the existing image)
 start-remote-hekla:
     @echo "Starting Taikoscope Hekla service on remote..."
-    # The image 'taikoscope-hekla' is assumed to exist on the remote.
-    # First, ensure any container with the name 'taikoscope-hekla' is stopped and removed.
-    ssh taikoscope "docker stop taikoscope-hekla || true"
-    ssh taikoscope "docker rm taikoscope-hekla || true"
-    # Then, run a new container.
-    ssh taikoscope "docker run -d \
-        --name taikoscope-hekla \
-        --restart unless-stopped \
-        --env-file ~/hekla/taikoscope/masaya.env \
-        -p 48100:3000 \
-        taikoscope-hekla"
+    @just stop-container
+    @just run-container
     @echo "Taikoscope Hekla service started."
 
 # Stop and remove the remote Hekla service
 stop-remote-hekla:
-    ssh taikoscope "docker stop taikoscope-hekla || true"
-    ssh taikoscope "docker rm taikoscope-hekla || true"
+    @just stop-container
 
 # Set log level to debug on remote server and restart the service
 debug-log-remote-hekla:
-    @echo "Setting log level to debug on remote server..."
-    # Update the env file to set RUST_LOG=debug
-    ssh taikoscope "grep -q '^RUST_LOG=' ~/hekla/taikoscope/masaya.env && \
-        sed -i 's/^RUST_LOG=.*/RUST_LOG=debug/' ~/hekla/taikoscope/masaya.env || \
-        echo 'RUST_LOG=debug' >> ~/hekla/taikoscope/masaya.env"
-    # Use the existing start-remote-hekla recipe which already handles stopping/removing
-    @just start-remote-hekla
-    @echo "Log level set to debug and service restarted."
+    @just set-log-level debug
 
 # Set log level to info on remote server and restart the service
 info-log-remote-hekla:
-    @echo "Setting log level to info on remote server..."
-    # Update the env file to set RUST_LOG=info
-    ssh taikoscope "grep -q '^RUST_LOG=' ~/hekla/taikoscope/masaya.env && \
-        sed -i 's/^RUST_LOG=.*/RUST_LOG=info/' ~/hekla/taikoscope/masaya.env || \
-        echo 'RUST_LOG=info' >> ~/hekla/taikoscope/masaya.env"
-    # Use the existing start-remote-hekla recipe which already handles stopping/removing
-    @just start-remote-hekla
-    @echo "Log level set to info and service restarted."
+    @just set-log-level info
 
 # Search in logs for a specific term
 search-logs-remote-hekla term:
-    ssh taikoscope "docker logs taikoscope-hekla | grep -i \"{{term}}\""
+    ssh {{ssh_alias}} "docker logs {{container}} | grep -i \"{{term}}\""
