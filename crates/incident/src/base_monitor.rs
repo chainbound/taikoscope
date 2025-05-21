@@ -193,3 +193,286 @@ impl<K: Clone + Debug + Eq + std::hash::Hash> BaseMonitor<K> {
     /// Mark the monitor as unhealthy, dropping the healthy counter behavior.
     pub const fn mark_unhealthy(&mut self) {}
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::client::Client as IncidentClient;
+    use chrono::Utc;
+    use clickhouse::ClickhouseClient as ClickhouseInternalClient;
+    use mockito::{Matcher, Server, ServerGuard};
+    use std::time::Duration;
+    use url::Url;
+
+    fn mock_clickhouse_client() -> (ClickhouseInternalClient, ServerGuard) {
+        let server = mockito::Server::new();
+        let url = Url::parse(&server.url()).unwrap();
+        let client = ClickhouseInternalClient::new(
+            url,
+            "test_db".to_string(),
+            "user".to_string(),
+            "pass".to_string(),
+        )
+        .unwrap();
+        (client, server)
+    }
+
+    fn mock_incident_client() -> (IncidentClient, ServerGuard) {
+        let server = mockito::Server::new();
+        let url = Url::parse(&server.url()).unwrap();
+        let client = IncidentClient::with_base_url("testkey".to_string(), "page1".to_string(), url);
+        (client, server)
+    }
+
+    async fn mock_clickhouse_client_async() -> (ClickhouseInternalClient, ServerGuard) {
+        let server = Server::new_async().await;
+        let url = Url::parse(&server.url()).unwrap();
+        let client = ClickhouseInternalClient::new(
+            url,
+            "test_db".to_string(),
+            "user".to_string(),
+            "pass".to_string(),
+        )
+        .unwrap();
+        (client, server)
+    }
+
+    async fn mock_incident_client_async() -> (IncidentClient, ServerGuard) {
+        let server = Server::new_async().await;
+        let url = Url::parse(&server.url()).unwrap();
+        let client = IncidentClient::with_base_url("testkey".to_string(), "page1".to_string(), url);
+        (client, server)
+    }
+
+    #[test]
+    fn create_incident_payload_builds_expected() {
+        let (ch_client, _ch_server) = mock_clickhouse_client();
+        let (incident_client, _inc_server) = mock_incident_client();
+        let monitor = BaseMonitor::<u64>::new(
+            ch_client,
+            incident_client,
+            "comp1".to_string(),
+            Duration::from_secs(1),
+        );
+        let started = Utc::now();
+        let payload = monitor.create_incident_payload("name".into(), "msg".into(), started);
+        assert_eq!(payload.name, "name");
+        assert_eq!(payload.message, "msg");
+        assert_eq!(payload.status, IncidentState::Investigating);
+        assert_eq!(payload.components, vec!["comp1".to_string()]);
+        assert_eq!(payload.statuses, vec![ComponentStatus::major_outage("comp1")]);
+        assert!(payload.notify);
+        let expected = started.to_rfc3339();
+        assert_eq!(payload.started.as_deref(), Some(expected.as_str()));
+    }
+
+    #[test]
+    fn create_resolve_payload_builds_expected() {
+        let (ch_client, _ch_server) = mock_clickhouse_client();
+        let (incident_client, _inc_server) = mock_incident_client();
+        let monitor = BaseMonitor::<u64>::new(
+            ch_client,
+            incident_client,
+            "comp1".to_string(),
+            Duration::from_secs(1),
+        );
+        let payload = monitor.create_resolve_payload();
+        assert_eq!(payload.status, IncidentState::Resolved);
+        assert_eq!(payload.components, vec!["comp1".to_string()]);
+        assert_eq!(payload.statuses, vec![ComponentStatus::operational("comp1")]);
+        assert!(payload.notify);
+        assert!(payload.started.is_some());
+    }
+
+    #[tokio::test]
+    async fn create_incident_with_payload_hits_endpoint() {
+        let (ch_client, _ch_server) = mock_clickhouse_client_async().await;
+        let mut server = Server::new_async().await;
+        let mock = server
+            .mock("POST", "/v1/page1/incidents")
+            .match_header("authorization", "Bearer testkey")
+            .match_header("content-type", "application/json")
+            .with_status(200)
+            .with_body(r#"{"id":"inc123"}"#)
+            .create_async()
+            .await;
+
+        let incident_client = IncidentClient::with_base_url(
+            "testkey".into(),
+            "page1".into(),
+            server.url().parse().unwrap(),
+        );
+        let monitor = BaseMonitor::<u64>::new(
+            ch_client,
+            incident_client,
+            "comp1".to_string(),
+            Duration::from_secs(1),
+        );
+        let payload = monitor.create_incident_payload("n".into(), "m".into(), Utc::now());
+        let id = monitor.create_incident_with_payload(&payload).await.unwrap();
+        assert_eq!(id, "inc123");
+        mock.assert_async().await;
+    }
+
+    #[tokio::test]
+    async fn resolve_incident_with_payload_success() {
+        let (ch_client, _ch_server) = mock_clickhouse_client_async().await;
+        let mut server = Server::new_async().await;
+        let mock = server
+            .mock("PUT", "/v1/page1/incidents/inc123")
+            .match_header("authorization", "Bearer testkey")
+            .match_header("content-type", "application/json")
+            .with_status(200)
+            .with_body("{}")
+            .create_async()
+            .await;
+
+        let incident_client = IncidentClient::with_base_url(
+            "testkey".into(),
+            "page1".into(),
+            server.url().parse().unwrap(),
+        );
+        let monitor = BaseMonitor::<u64>::new(
+            ch_client,
+            incident_client,
+            "comp1".to_string(),
+            Duration::from_secs(1),
+        );
+        let payload = monitor.create_resolve_payload();
+        monitor.resolve_incident_with_payload("inc123", &payload).await.unwrap();
+        mock.assert_async().await;
+    }
+
+    #[tokio::test]
+    async fn resolve_incident_with_payload_error() {
+        let (ch_client, _ch_server) = mock_clickhouse_client_async().await;
+        let mut server = Server::new_async().await;
+        let mock = server
+            .mock("PUT", "/v1/page1/incidents/inc123")
+            .match_header("authorization", "Bearer testkey")
+            .match_header("content-type", "application/json")
+            .with_status(500)
+            .with_body("err")
+            .create_async()
+            .await;
+
+        let incident_client = IncidentClient::with_base_url(
+            "testkey".into(),
+            "page1".into(),
+            server.url().parse().unwrap(),
+        );
+        let monitor = BaseMonitor::<u64>::new(
+            ch_client,
+            incident_client,
+            "comp1".to_string(),
+            Duration::from_secs(1),
+        );
+        let payload = monitor.create_resolve_payload();
+        let err = monitor.resolve_incident_with_payload("inc123", &payload).await.unwrap_err();
+        assert!(err.to_string().contains("500"));
+        mock.assert_async().await;
+    }
+
+    #[tokio::test]
+    async fn check_existing_incidents_inserts_on_match() {
+        let (ch_client, _ch_server) = mock_clickhouse_client_async().await;
+        let mut server = Server::new_async().await;
+        let body = serde_json::json!([
+            {"id":"inc1","components":[{"id":"comp1","status":"MAJOROUTAGE","name":"C"}]}
+        ])
+        .to_string();
+        let mock = server
+            .mock("GET", "/v1/page1/incidents")
+            .match_query(Matcher::Any)
+            .with_status(200)
+            .with_body(body)
+            .create_async()
+            .await;
+
+        let incident_client = IncidentClient::with_base_url(
+            "testkey".into(),
+            "page1".into(),
+            server.url().parse().unwrap(),
+        );
+        let mut monitor = BaseMonitor::new(
+            ch_client,
+            incident_client,
+            "comp1".to_string(),
+            Duration::from_secs(1),
+        );
+        monitor.check_existing_incidents(5u64).await.unwrap();
+        assert_eq!(monitor.active_incidents.get(&5u64), Some(&"inc1".to_string()));
+        mock.assert_async().await;
+    }
+
+    #[tokio::test]
+    async fn check_existing_incidents_none() {
+        let (ch_client, _ch_server) = mock_clickhouse_client_async().await;
+        let mut server = Server::new_async().await;
+        let mock = server
+            .mock("GET", "/v1/page1/incidents")
+            .match_query(Matcher::Any)
+            .with_status(200)
+            .with_body("[]")
+            .create_async()
+            .await;
+
+        let incident_client = IncidentClient::with_base_url(
+            "testkey".into(),
+            "page1".into(),
+            server.url().parse().unwrap(),
+        );
+        let mut monitor = BaseMonitor::<u64>::new(
+            ch_client,
+            incident_client,
+            "comp1".to_string(),
+            Duration::from_secs(1),
+        );
+        monitor.check_existing_incidents(42u64).await.unwrap();
+        assert!(monitor.active_incidents.is_empty());
+        mock.assert_async().await;
+    }
+
+    #[tokio::test]
+    async fn mark_healthy_resolves_and_removes() {
+        let (ch_client, _ch_server) = mock_clickhouse_client_async().await;
+        let mut server = Server::new_async().await;
+        let mock = server
+            .mock("PUT", "/v1/page1/incidents/inc123")
+            .match_header("authorization", "Bearer testkey")
+            .match_header("content-type", "application/json")
+            .with_status(200)
+            .with_body("{}")
+            .create_async()
+            .await;
+
+        let incident_client = IncidentClient::with_base_url(
+            "testkey".into(),
+            "page1".into(),
+            server.url().parse().unwrap(),
+        );
+        let mut monitor = BaseMonitor::new(
+            ch_client,
+            incident_client,
+            "comp1".to_string(),
+            Duration::from_secs(1),
+        );
+        monitor.active_incidents.insert(1u64, "inc123".to_string());
+        assert!(monitor.mark_healthy(&1u64).await.unwrap());
+        assert!(monitor.active_incidents.is_empty());
+        mock.assert_async().await;
+    }
+
+    #[tokio::test]
+    async fn mark_healthy_returns_false_when_absent() {
+        let (ch_client, _ch_server) = mock_clickhouse_client_async().await;
+        let (incident_client, _guard) = mock_incident_client_async().await;
+        let mut monitor = BaseMonitor::<u64>::new(
+            ch_client,
+            incident_client,
+            "comp1".to_string(),
+            Duration::from_secs(1),
+        );
+        assert!(!monitor.mark_healthy(&1u64).await.unwrap());
+    }
+}
