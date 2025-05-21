@@ -11,7 +11,7 @@ use alloy::{
 };
 use alloy_json_rpc::ErrorPayload;
 use serde::Deserialize;
-use tokio_retry::{Retry, strategy::ExponentialBackoff};
+use tokio_retry::{Retry, RetryIf, strategy::ExponentialBackoff};
 use tracing::warn;
 
 /// The default maximum number of retries for a transport error.
@@ -158,4 +158,21 @@ impl RetryPolicy for RateLimitConnRefusedRetryPolicy {
 #[inline]
 pub fn is_connection_refused<S: ToString>(e: S) -> bool {
     e.to_string().to_lowercase().contains("connection refused")
+}
+
+/// Retry the provided async operation using [`ExponentialBackoff`].
+///
+/// Retries are attempted as long as the provided `condition` returns `true` for
+/// the error produced by the operation. The backoff uses the same
+/// `DEFAULT_MAX_RETRIES` and `DEFAULT_INITIAL_BACKOFF_MS` constants as the
+/// websocket retry layer.
+pub async fn retry_with_backoff_if<F, Fut, T, E, C>(op: F, condition: C) -> Result<T, E>
+where
+    F: FnMut() -> Fut,
+    Fut: std::future::Future<Output = Result<T, E>>,
+    C: Fn(&E) -> bool,
+{
+    let strategy = ExponentialBackoff::from_millis(DEFAULT_INITIAL_BACKOFF_MS)
+        .take(DEFAULT_MAX_RETRIES as usize);
+    RetryIf::spawn(strategy, op, condition).await
 }

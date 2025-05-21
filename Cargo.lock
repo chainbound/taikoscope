@@ -2308,6 +2308,7 @@ dependencies = [
  "clickhouse 0.1.0",
  "eyre",
  "mockito",
+ "primitives",
  "reqwest",
  "serde",
  "serde_json",
