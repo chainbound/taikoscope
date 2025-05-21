@@ -9,7 +9,7 @@ repository.workspace = true
 [dependencies]
 clickhouse = { path = "../clickhouse" }
 
-async-trait = "0.1"
+async-trait.workspace = true
 chrono.workspace = true
 eyre.workspace = true
 reqwest.workspace = true
