@@ -802,7 +802,7 @@ mod tests {
     use super::*;
     use crate::client::Client as IncidentClient;
     use clickhouse::ClickhouseClient as ClickhouseInternalClient;
-    use mockito::ServerGuard;
+    use mockito::{Server, ServerGuard};
     use std::time::Duration;
     use url::Url;
 
@@ -832,6 +832,19 @@ mod tests {
         (client, server)
     }
 
+    async fn mock_clickhouse_client_async() -> (ClickhouseInternalClient, ServerGuard) {
+        let server = Server::new_async().await;
+        let url = Url::parse(&server.url()).unwrap();
+        let client = ClickhouseInternalClient::new(
+            url,
+            "test_db".to_string(),
+            "user".to_string(),
+            "pass".to_string(),
+        )
+        .unwrap();
+        (client, server)
+    }
+
     #[test]
     fn test_batch_proof_timeout_monitor_creation() {
         let (ch_client, _ch_server) = mock_clickhouse_client();
@@ -858,5 +871,97 @@ mod tests {
             Duration::from_secs(60 * 60), // 1 hour
             Duration::from_secs(60),      // 1 minute interval
         );
+    }
+
+    #[tokio::test]
+    async fn instatus_monitor_create_and_resolve_incident() {
+        let (ch_client, _ch_server) = mock_clickhouse_client_async().await;
+        let mut server = Server::new_async().await;
+
+        let post_mock = server
+            .mock("POST", "/v1/test_page_id/incidents")
+            .match_header("authorization", "Bearer test_api_key")
+            .match_header("content-type", "application/json")
+            .with_status(200)
+            .with_body(r#"{"id":"inc1"}"#)
+            .create_async()
+            .await;
+
+        let put_mock = server
+            .mock("PUT", "/v1/test_page_id/incidents/inc1")
+            .match_header("authorization", "Bearer test_api_key")
+            .match_header("content-type", "application/json")
+            .with_status(200)
+            .with_body("{}")
+            .create_async()
+            .await;
+
+        let incident_client = IncidentClient::with_base_url(
+            "test_api_key".into(),
+            "test_page_id".into(),
+            server.url().parse().unwrap(),
+        );
+
+        let monitor = InstatusMonitor::new(
+            ch_client,
+            incident_client,
+            "comp1".to_string(),
+            Duration::from_secs(60),
+            Duration::from_secs(1),
+        );
+
+        let id = monitor.create_incident(&()).await.unwrap();
+        assert_eq!(id, "inc1");
+
+        monitor.resolve_incident(&id).await.unwrap();
+
+        post_mock.assert_async().await;
+        put_mock.assert_async().await;
+    }
+
+    #[tokio::test]
+    async fn instatus_l1_monitor_create_and_resolve_incident() {
+        let (ch_client, _ch_server) = mock_clickhouse_client_async().await;
+        let mut server = Server::new_async().await;
+
+        let post_mock = server
+            .mock("POST", "/v1/test_page_id/incidents")
+            .match_header("authorization", "Bearer test_api_key")
+            .match_header("content-type", "application/json")
+            .with_status(200)
+            .with_body(r#"{"id":"inc1"}"#)
+            .create_async()
+            .await;
+
+        let put_mock = server
+            .mock("PUT", "/v1/test_page_id/incidents/inc1")
+            .match_header("authorization", "Bearer test_api_key")
+            .match_header("content-type", "application/json")
+            .with_status(200)
+            .with_body("{}")
+            .create_async()
+            .await;
+
+        let incident_client = IncidentClient::with_base_url(
+            "test_api_key".into(),
+            "test_page_id".into(),
+            server.url().parse().unwrap(),
+        );
+
+        let monitor = InstatusL1Monitor::new(
+            ch_client,
+            incident_client,
+            "comp1".to_string(),
+            Duration::from_secs(60),
+            Duration::from_secs(1),
+        );
+
+        let id = monitor.create_incident(&()).await.unwrap();
+        assert_eq!(id, "inc1");
+
+        monitor.resolve_incident(&id).await.unwrap();
+
+        post_mock.assert_async().await;
+        put_mock.assert_async().await;
     }
 }
