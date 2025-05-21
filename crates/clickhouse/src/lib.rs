@@ -822,7 +822,10 @@ mod tests {
     use serde::{Deserialize, Serialize};
     use url::Url;
 
-    use crate::{ClickhouseClient, L1HeadEvent, PreconfData, VerifiedBatchRow};
+    use crate::{
+        BatchRow, ClickhouseClient, ForcedInclusionProcessedRow, L1HeadEvent, L2HeadEvent,
+        L2Header, L2ReorgRow, PreconfData, ProvedBatchRow, VerifiedBatchRow,
+    };
 
     #[derive(Serialize, Row)]
     struct MaxRow {
@@ -1167,10 +1170,7 @@ mod tests {
         };
 
         let l1_block_number = 100u64;
-        client
-            .insert_proved_batch(&proved, l1_block_number)
-            .await
-            .unwrap();
+        client.insert_proved_batch(&proved, l1_block_number).await.unwrap();
 
         let rows: Vec<ProvedBatchRow> = recorder.collect().await;
         assert_eq!(rows.len(), 1);
@@ -1203,7 +1203,11 @@ mod tests {
 
         let event = chainio::taiko::wrapper::ITaikoWrapper::ForcedInclusionProcessed {
             blobHash: FixedBytes::from_slice(&[9u8; 32]),
-            ..Default::default()
+            feeInGwei: 0,
+            createdAtBatchId: 0,
+            blobByteOffset: 0,
+            blobByteSize: 0,
+            blobCreatedIn: 0,
         };
 
         client.insert_forced_inclusion(&event).await.unwrap();
