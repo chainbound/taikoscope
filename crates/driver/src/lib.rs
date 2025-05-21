@@ -1,8 +1,11 @@
 //! Taikoscope Driver
 
+mod event;
+
 use std::time::Duration;
 
 use eyre::Result;
+use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender, unbounded_channel};
 use tokio_stream::StreamExt;
 use tracing::info;
 
@@ -21,6 +24,9 @@ use incident::{
     BatchProofTimeoutMonitor, InstatusL1Monitor, InstatusMonitor, Monitor,
     client::Client as IncidentClient, monitor::BatchVerifyTimeoutMonitor,
 };
+use primitives::shutdown::{ShutdownSignal, run_until_shutdown};
+
+use crate::event::DriverEvent;
 
 /// An EPOCH is a series of 32 slots.
 pub const EPOCH_SLOTS: u64 = 32;
@@ -160,16 +166,192 @@ impl Driver {
         }
     }
 
+    fn spawn_l1_task(&self, tx: UnboundedSender<DriverEvent>) {
+        let extractor = self.extractor.clone();
+        tokio::spawn(async move {
+            loop {
+                let mut stream = loop {
+                    match extractor.get_l1_header_stream().await {
+                        Ok(s) => break s,
+                        Err(e) => {
+                            tracing::error!("L1 subscribe failed: {}. Retrying in 5s…", e);
+                            tokio::time::sleep(Duration::from_secs(5)).await;
+                        }
+                    }
+                };
+
+                while let Some(header) = stream.next().await {
+                    if tx.send(DriverEvent::L1Header(header)).is_err() {
+                        tracing::error!("Driver event receiver dropped. Stopping L1 listener.");
+                        return;
+                    }
+                }
+
+                tracing::warn!("L1 header stream ended. Re-subscribing...");
+            }
+        });
+    }
+
+    fn spawn_l2_task(&self, tx: UnboundedSender<DriverEvent>) {
+        let extractor = self.extractor.clone();
+        tokio::spawn(async move {
+            loop {
+                let mut stream = loop {
+                    match extractor.get_l2_header_stream().await {
+                        Ok(s) => break s,
+                        Err(e) => {
+                            tracing::error!("L2 subscribe failed: {}. Retrying in 5s…", e);
+                            tokio::time::sleep(Duration::from_secs(5)).await;
+                        }
+                    }
+                };
+
+                while let Some(header) = stream.next().await {
+                    if tx.send(DriverEvent::L2Header(header)).is_err() {
+                        tracing::error!("Driver event receiver dropped. Stopping L2 listener.");
+                        return;
+                    }
+                }
+
+                tracing::warn!("L2 header stream ended. Re-subscribing...");
+            }
+        });
+    }
+
+    fn spawn_batch_task(&self, tx: UnboundedSender<DriverEvent>) {
+        let extractor = self.extractor.clone();
+        tokio::spawn(async move {
+            loop {
+                let mut stream = loop {
+                    match extractor.get_batch_proposed_stream().await {
+                        Ok(s) => break s,
+                        Err(e) => {
+                            tracing::error!(
+                                "BatchProposed subscribe failed: {}. Retrying in 5s…",
+                                e
+                            );
+                            tokio::time::sleep(Duration::from_secs(5)).await;
+                        }
+                    }
+                };
+
+                while let Some(batch) = stream.next().await {
+                    if tx.send(DriverEvent::BatchProposed(batch)).is_err() {
+                        tracing::error!("Driver event receiver dropped. Stopping Batch listener.");
+                        return;
+                    }
+                }
+
+                tracing::warn!("Batch proposed stream ended. Re-subscribing...");
+            }
+        });
+    }
+
+    fn spawn_forced_task(&self, tx: UnboundedSender<DriverEvent>) {
+        let extractor = self.extractor.clone();
+        tokio::spawn(async move {
+            loop {
+                let mut stream = loop {
+                    match extractor.get_forced_inclusion_stream().await {
+                        Ok(s) => break s,
+                        Err(e) => {
+                            tracing::error!(
+                                "ForcedInclusion subscribe failed: {}. Retrying in 5s…",
+                                e
+                            );
+                            tokio::time::sleep(Duration::from_secs(5)).await;
+                        }
+                    }
+                };
+
+                while let Some(event) = stream.next().await {
+                    if tx.send(DriverEvent::ForcedInclusion(event)).is_err() {
+                        tracing::error!(
+                            "Driver event receiver dropped. Stopping ForcedInclusion listener."
+                        );
+                        return;
+                    }
+                }
+
+                tracing::warn!("Forced inclusion stream ended. Re-subscribing...");
+            }
+        });
+    }
+
+    fn spawn_proved_task(&self, tx: UnboundedSender<DriverEvent>) {
+        let extractor = self.extractor.clone();
+        tokio::spawn(async move {
+            loop {
+                let mut stream = loop {
+                    match extractor.get_batches_proved_stream().await {
+                        Ok(s) => break s,
+                        Err(e) => {
+                            tracing::error!(
+                                "BatchesProved subscribe failed: {}. Retrying in 5s…",
+                                e
+                            );
+                            tokio::time::sleep(Duration::from_secs(5)).await;
+                        }
+                    }
+                };
+
+                while let Some(proved) = stream.next().await {
+                    if tx.send(DriverEvent::BatchesProved(proved)).is_err() {
+                        tracing::error!(
+                            "Driver event receiver dropped. Stopping BatchesProved listener."
+                        );
+                        return;
+                    }
+                }
+
+                tracing::warn!("Batches proved stream ended. Re-subscribing...");
+            }
+        });
+    }
+
+    fn spawn_verified_task(&self, tx: UnboundedSender<DriverEvent>) {
+        let extractor = self.extractor.clone();
+        tokio::spawn(async move {
+            loop {
+                let mut stream = loop {
+                    match extractor.get_batches_verified_stream().await {
+                        Ok(s) => break s,
+                        Err(e) => {
+                            tracing::error!(
+                                "BatchesVerified subscribe failed: {}. Retrying in 5s…",
+                                e
+                            );
+                            tokio::time::sleep(Duration::from_secs(5)).await;
+                        }
+                    }
+                };
+
+                while let Some(verified) = stream.next().await {
+                    if tx.send(DriverEvent::BatchesVerified(verified)).is_err() {
+                        tracing::error!(
+                            "Driver event receiver dropped. Stopping BatchesVerified listener."
+                        );
+                        return;
+                    }
+                }
+
+                tracing::warn!("Batches verified stream ended. Re-subscribing...");
+            }
+        });
+    }
+
     /// Consume the driver and drive the infinite processing loop.
     pub async fn start(mut self) -> Result<()> {
         info!("Starting event loop...");
 
-        let mut l1_stream = self.subscribe_l1().await;
-        let mut l2_stream = self.subscribe_l2().await;
-        let mut batch_stream = self.subscribe_batch().await;
-        let mut forced_stream = self.subscribe_forced().await;
-        let mut proved_stream = self.subscribe_proved().await;
-        let mut verified_stream = self.subscribe_verified().await;
+        let (tx, rx) = unbounded_channel();
+
+        self.spawn_l1_task(tx.clone());
+        self.spawn_l2_task(tx.clone());
+        self.spawn_batch_task(tx.clone());
+        self.spawn_forced_task(tx.clone());
+        self.spawn_proved_task(tx.clone());
+        self.spawn_verified_task(tx);
 
         // spawn Instatus batch monitor
         InstatusL1Monitor::new(
@@ -211,84 +393,9 @@ impl Driver {
         )
         .spawn();
 
-        loop {
-            tokio::select! {
-                maybe_l1_header = l1_stream.next() => {
-                    match maybe_l1_header {
-                        Some(header) => {
-                            self.handle_l1_header(header).await;
-                        }
-                        None => {
-                            tracing::warn!("L1 header stream ended; re-subscribing…");
-                            l1_stream = self.subscribe_l1().await;
-                        }
-                    }
-                }
-                maybe_l2_header = l2_stream.next() => {
-                    match maybe_l2_header {
-                        Some(header) => {
-                            self.handle_l2_header(header).await;
-                        }
-                        None => {
-                            tracing::warn!("L2 header stream ended; re-subscribing…");
-                            l2_stream = self.subscribe_l2().await;
-                        }
-                    }
-                }
-                maybe_batch = batch_stream.next() => {
-                    match maybe_batch {
-                        Some(batch) => {
-                            self.handle_batch_proposed(batch).await;
-                        }
-                        None => {
-                            tracing::warn!("Batch proposed stream ended; re-subscribing…");
-                            batch_stream = self.subscribe_batch().await;
-                        }
-                    }
-                }
-                maybe_fi = forced_stream.next() => {
-                    match maybe_fi {
-                        Some(fi) => {
-                            self.handle_forced_inclusion(fi).await;
-                        }
-                        None => {
-                            tracing::warn!("Forced inclusion stream ended; re-subscribing…");
-                            forced_stream = self.subscribe_forced().await;
-                        }
-                    }
-                }
-                maybe_proved = proved_stream.next() => {
-                    match maybe_proved {
-                        Some(proved) => {
-                            self.handle_batches_proved(proved).await;
-                        }
-                        None => {
-                            tracing::warn!("Batches proved stream ended; re-subscribing…");
-                            proved_stream = self.subscribe_proved().await;
-                        }
-                    }
-                }
-                maybe_verified = verified_stream.next() => {
-                    match maybe_verified {
-                        Some(verified) => {
-                            self.handle_batches_verified(verified).await;
-                        }
-                        None => {
-                            tracing::warn!("Batches verified stream ended; re-subscribing…");
-                            verified_stream = self.subscribe_verified().await;
-                        }
-                    }
-                }
-                else => {
-                    // This branch should ideally not be reached if streams always re-subscribe.
-                    // If it is, it implies all streams terminated simultaneously and failed to re-subscribe,
-                    // which would be an unexpected state.
-                    tracing::error!("All event streams ended and failed to re-subscribe. This should not happen. Shutting down driver loop.");
-                    break;
-                }
-            }
-        }
-        Ok(())
+        let shutdown = ShutdownSignal::new();
+        run_until_shutdown(self.event_loop(rx), shutdown, || info!("Shutdown signal received"))
+            .await
     }
 
     async fn handle_l1_header(&self, header: L1Header) {
@@ -408,5 +515,19 @@ impl Driver {
         } else {
             info!("Inserted verified batch: batch_id={:?}", verified.batch_id);
         }
+    }
+
+    async fn event_loop(&mut self, mut rx: UnboundedReceiver<DriverEvent>) -> Result<()> {
+        while let Some(event) = rx.recv().await {
+            match event {
+                DriverEvent::L1Header(h) => self.handle_l1_header(h).await,
+                DriverEvent::L2Header(h) => self.handle_l2_header(h).await,
+                DriverEvent::BatchProposed(b) => self.handle_batch_proposed(b).await,
+                DriverEvent::ForcedInclusion(fi) => self.handle_forced_inclusion(fi).await,
+                DriverEvent::BatchesProved(p) => self.handle_batches_proved(p).await,
+                DriverEvent::BatchesVerified(v) => self.handle_batches_verified(v).await,
+            }
+        }
+        Ok(())
     }
 }

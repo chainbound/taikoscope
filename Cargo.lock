@@ -1557,6 +1557,7 @@ dependencies = [
  "extractor",
  "eyre",
  "incident",
+ "primitives",
  "tokio",
  "tokio-stream",
  "tracing",

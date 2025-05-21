@@ -26,7 +26,7 @@ use tracing::{error, info, warn};
 use url::Url;
 
 /// Extractor client
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Extractor {
     #[debug(skip)]
     l1_provider: DefaultProvider,

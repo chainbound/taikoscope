@@ -12,6 +12,7 @@ chainio = { path = "../chainio" }
 clickhouse = { path = "../clickhouse" }
 extractor = { path = "../extractor" }
 incident = { path = "../incident" }
+primitives = { path = "../primitives" }
 
 chrono.workspace = true
 alloy-primitives.workspace = true
