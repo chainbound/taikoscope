@@ -486,14 +486,11 @@ impl ClickhouseClient {
         Ok(())
     }
 
-    /// Insert L2 header into `ClickHouse`
-    pub async fn insert_l2_header(&self, header: &L2Header) -> Result<()> {
+    /// Insert aggregated L2 block stats into `ClickHouse`
+    pub async fn insert_l2_header(&self, event: &L2HeadEvent) -> Result<()> {
         let client = self.base.clone().with_database(&self.db_name);
-
-        let row = L2HeadEvent::try_from(header)?;
-
         let mut insert = client.insert("l2_head_events")?;
-        insert.write(&row).await?;
+        insert.write(event).await?;
         insert.end().await?;
 
         Ok(())
@@ -824,7 +821,7 @@ mod tests {
 
     use crate::{
         BatchRow, ClickhouseClient, ForcedInclusionProcessedRow, L1HeadEvent, L2HeadEvent,
-        L2Header, L2ReorgRow, PreconfData, ProvedBatchRow, VerifiedBatchRow,
+        L2ReorgRow, PreconfData, ProvedBatchRow, VerifiedBatchRow,
     };
 
     #[derive(Serialize, Row)]
@@ -1069,31 +1066,21 @@ mod tests {
         )
         .unwrap();
 
-        let header = L2Header {
-            number: 5,
-            hash: FixedBytes::from_slice(&[1u8; 32]),
-            parent_hash: FixedBytes::from_slice(&[2u8; 32]),
-            timestamp: 11,
-            gas_used: 42,
-            beneficiary: [0x11u8; 20].into(),
+        let event = L2HeadEvent {
+            l2_block_number: 5,
+            block_hash: [1u8; 32],
+            block_ts: 11,
+            sum_gas_used: 42,
+            sum_tx: 3,
+            sum_priority_fee: 100,
+            sequencer: [0x11u8; 20],
         };
 
-        client.insert_l2_header(&header).await.unwrap();
+        client.insert_l2_header(&event).await.unwrap();
 
         let rows: Vec<L2HeadEvent> = recorder.collect().await;
         assert_eq!(rows.len(), 1);
-        assert_eq!(
-            rows[0],
-            L2HeadEvent {
-                l2_block_number: header.number,
-                block_hash: *header.hash,
-                block_ts: header.timestamp,
-                sum_gas_used: header.gas_used as u128,
-                sum_tx: 0,
-                sum_priority_fee: 0,
-                sequencer: header.beneficiary.into_array(),
-            }
-        );
+        assert_eq!(rows[0], event);
     }
 
     #[tokio::test]

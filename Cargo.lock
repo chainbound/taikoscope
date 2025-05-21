@@ -1642,8 +1642,11 @@ name = "extractor"
 version = "0.1.0"
 dependencies = [
  "alloy",
+ "alloy-consensus",
  "alloy-json-rpc",
+ "alloy-network-primitives",
  "alloy-rpc-client",
+ "alloy-rpc-types-eth",
  "chainio",
  "derive_more 1.0.0",
  "eyre",
