@@ -822,7 +822,10 @@ mod tests {
     use serde::{Deserialize, Serialize};
     use url::Url;
 
-    use crate::{ClickhouseClient, L1HeadEvent, PreconfData, VerifiedBatchRow};
+    use crate::{
+        BatchRow, ClickhouseClient, ForcedInclusionProcessedRow, L1HeadEvent, L2HeadEvent,
+        L2Header, L2ReorgRow, PreconfData, ProvedBatchRow, VerifiedBatchRow,
+    };
 
     #[derive(Serialize, Row)]
     struct MaxRow {
@@ -1049,6 +1052,295 @@ mod tests {
         .unwrap();
 
         let result = client.get_verified_batch_ids().await.unwrap();
+        assert_eq!(result, expected_ids);
+    }
+
+    #[tokio::test]
+    async fn test_insert_l2_header() {
+        let mock = Mock::new();
+        let recorder = mock.add(handlers::record::<L2HeadEvent>());
+
+        let url = Url::parse(mock.url()).unwrap();
+        let client = ClickhouseClient::new(
+            url,
+            "test-db".to_string(),
+            "test_user".to_string(),
+            "test_pass".to_string(),
+        )
+        .unwrap();
+
+        let header = L2Header {
+            number: 5,
+            hash: FixedBytes::from_slice(&[1u8; 32]),
+            parent_hash: FixedBytes::from_slice(&[2u8; 32]),
+            timestamp: 11,
+            gas_used: 42,
+            beneficiary: [0x11u8; 20].into(),
+        };
+
+        client.insert_l2_header(&header).await.unwrap();
+
+        let rows: Vec<L2HeadEvent> = recorder.collect().await;
+        assert_eq!(rows.len(), 1);
+        assert_eq!(
+            rows[0],
+            L2HeadEvent {
+                l2_block_number: header.number,
+                block_hash: *header.hash,
+                block_ts: header.timestamp,
+                sum_gas_used: header.gas_used as u128,
+                sum_tx: 0,
+                sum_priority_fee: 0,
+                sequencer: header.beneficiary.into_array(),
+            }
+        );
+    }
+
+    #[tokio::test]
+    async fn test_insert_batch() {
+        let mock = Mock::new();
+        let recorder = mock.add(handlers::record::<BatchRow>());
+
+        let url = Url::parse(mock.url()).unwrap();
+        let client = ClickhouseClient::new(
+            url,
+            "test-db".to_string(),
+            "test_user".to_string(),
+            "test_pass".to_string(),
+        )
+        .unwrap();
+
+        let batch = chainio::ITaikoInbox::BatchProposed {
+            info: chainio::ITaikoInbox::BatchInfo {
+                proposedIn: 10,
+                blocks: vec![Default::default(), Default::default()],
+                blobHashes: vec![Default::default(); 3],
+                blobByteSize: 100,
+                ..Default::default()
+            },
+            meta: chainio::ITaikoInbox::BatchMetadata {
+                proposer: [0x11u8; 20].into(),
+                batchId: 42,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+
+        client.insert_batch(&batch).await.unwrap();
+
+        let rows: Vec<BatchRow> = recorder.collect().await;
+        assert_eq!(rows.len(), 1);
+        assert_eq!(
+            rows[0],
+            BatchRow {
+                l1_block_number: 10,
+                batch_id: 42,
+                batch_size: 2,
+                proposer_addr: [0x11u8; 20],
+                blob_count: 3,
+                blob_total_bytes: 100,
+            }
+        );
+    }
+
+    #[tokio::test]
+    async fn test_insert_proved_batch() {
+        let mock = Mock::new();
+        let recorder = mock.add(handlers::record::<ProvedBatchRow>());
+
+        let url = Url::parse(mock.url()).unwrap();
+        let client = ClickhouseClient::new(
+            url,
+            "test-db".to_string(),
+            "test_user".to_string(),
+            "test_pass".to_string(),
+        )
+        .unwrap();
+
+        let transition = chainio::ITaikoInbox::Transition {
+            parentHash: FixedBytes::from_slice(&[1u8; 32]),
+            blockHash: FixedBytes::from_slice(&[2u8; 32]),
+            stateRoot: FixedBytes::from_slice(&[3u8; 32]),
+        };
+
+        let proved = chainio::ITaikoInbox::BatchesProved {
+            verifier: [0x22u8; 20].into(),
+            batchIds: vec![7],
+            transitions: vec![transition],
+        };
+
+        let l1_block_number = 100u64;
+        client.insert_proved_batch(&proved, l1_block_number).await.unwrap();
+
+        let rows: Vec<ProvedBatchRow> = recorder.collect().await;
+        assert_eq!(rows.len(), 1);
+        assert_eq!(
+            rows[0],
+            ProvedBatchRow {
+                l1_block_number,
+                batch_id: 7,
+                verifier_addr: [0x22u8; 20],
+                parent_hash: [1u8; 32],
+                block_hash: [2u8; 32],
+                state_root: [3u8; 32],
+            }
+        );
+    }
+
+    #[tokio::test]
+    async fn test_insert_forced_inclusion() {
+        let mock = Mock::new();
+        let recorder = mock.add(handlers::record::<ForcedInclusionProcessedRow>());
+
+        let url = Url::parse(mock.url()).unwrap();
+        let client = ClickhouseClient::new(
+            url,
+            "test-db".to_string(),
+            "test_user".to_string(),
+            "test_pass".to_string(),
+        )
+        .unwrap();
+
+        let event = chainio::taiko::wrapper::ITaikoWrapper::ForcedInclusionProcessed {
+            blobHash: FixedBytes::from_slice(&[9u8; 32]),
+            feeInGwei: 0,
+            createdAtBatchId: 0,
+            blobByteOffset: 0,
+            blobByteSize: 0,
+            blobCreatedIn: 0,
+        };
+
+        client.insert_forced_inclusion(&event).await.unwrap();
+
+        let rows: Vec<ForcedInclusionProcessedRow> = recorder.collect().await;
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].blob_hash, [9u8; 32]);
+    }
+
+    #[tokio::test]
+    async fn test_insert_l2_reorg() {
+        let mock = Mock::new();
+        let recorder = mock.add(handlers::record::<L2ReorgRow>());
+
+        let url = Url::parse(mock.url()).unwrap();
+        let client = ClickhouseClient::new(
+            url,
+            "test-db".to_string(),
+            "test_user".to_string(),
+            "test_pass".to_string(),
+        )
+        .unwrap();
+
+        client.insert_l2_reorg(50u64, 3).await.unwrap();
+
+        let rows: Vec<L2ReorgRow> = recorder.collect().await;
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0], L2ReorgRow { l2_block_number: 50, depth: 3 });
+    }
+
+    #[tokio::test]
+    async fn test_get_last_l2_head_time() {
+        let mock = Mock::new();
+        let expected_ts = 42u64;
+        mock.add(handlers::provide(vec![MaxRow { block_ts: expected_ts }]));
+
+        let url = Url::parse(mock.url()).unwrap();
+        let ch = ClickhouseClient::new(url, "test-db".to_string(), "user".into(), "pass".into())
+            .unwrap();
+
+        let result = ch.get_last_l2_head_time().await.unwrap();
+        let expected = Utc.timestamp_opt(expected_ts as i64, 0).single().unwrap();
+        assert_eq!(result, Some(expected));
+    }
+
+    #[tokio::test]
+    async fn test_get_last_batch_time() {
+        let mock = Mock::new();
+        let expected_ts = 77u64;
+        mock.add(handlers::provide(vec![MaxRow { block_ts: expected_ts }]));
+
+        let url = Url::parse(mock.url()).unwrap();
+        let ch = ClickhouseClient::new(url, "test-db".to_string(), "user".into(), "pass".into())
+            .unwrap();
+
+        let result = ch.get_last_batch_time().await.unwrap();
+        let expected = Utc.timestamp_opt(expected_ts as i64, 0).single().unwrap();
+        assert_eq!(result, Some(expected));
+    }
+
+    #[tokio::test]
+    async fn test_get_last_verified_batch_time() {
+        let mock = Mock::new();
+        let expected_ts = 99u64;
+        mock.add(handlers::provide(vec![MaxRow { block_ts: expected_ts }]));
+
+        let url = Url::parse(mock.url()).unwrap();
+        let ch = ClickhouseClient::new(url, "test-db".to_string(), "user".into(), "pass".into())
+            .unwrap();
+
+        let result = ch.get_last_verified_batch_time().await.unwrap();
+        let expected = Utc.timestamp_opt(expected_ts as i64, 0).single().unwrap();
+        assert_eq!(result, Some(expected));
+    }
+
+    #[tokio::test]
+    async fn test_get_unproved_batches_older_than() {
+        let mock = Mock::new();
+        let now_utc = Utc::now();
+        let cutoff_time = now_utc - chrono::Duration::hours(2);
+        let expected_batch_id = 321;
+        let expected_l1_block = 654;
+        let inserted_ts_millis = (cutoff_time - chrono::Duration::minutes(30)).timestamp_millis();
+
+        mock.add(handlers::provide(vec![BatchInfo {
+            l1_block_number: expected_l1_block,
+            batch_id: expected_batch_id,
+            inserted_at: inserted_ts_millis as u64,
+        }]));
+
+        let url = Url::parse(mock.url()).unwrap();
+        let client = ClickhouseClient::new(
+            url,
+            "test-db".to_string(),
+            "test_user".to_string(),
+            "test_pass".to_string(),
+        )
+        .unwrap();
+
+        let result = client.get_unproved_batches_older_than(cutoff_time).await.unwrap();
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].0, expected_l1_block);
+        assert_eq!(result[0].1, expected_batch_id);
+        assert_eq!(result[0].2.timestamp_millis(), inserted_ts_millis);
+    }
+
+    #[derive(Serialize, Row, Deserialize, Debug, PartialEq)]
+    struct ProvedBatchIdRowTest {
+        batch_id: u64,
+    }
+
+    #[tokio::test]
+    async fn test_get_proved_batch_ids() {
+        let mock = Mock::new();
+        let expected_ids = vec![5, 6];
+        let mock_rows = expected_ids
+            .iter()
+            .map(|id| ProvedBatchIdRowTest { batch_id: *id })
+            .collect::<Vec<_>>();
+
+        mock.add(handlers::provide(mock_rows));
+
+        let url = Url::parse(mock.url()).unwrap();
+        let client = ClickhouseClient::new(
+            url,
+            "test-db".to_string(),
+            "test_user".to_string(),
+            "test_pass".to_string(),
+        )
+        .unwrap();
+
+        let result = client.get_proved_batch_ids().await.unwrap();
         assert_eq!(result, expected_ids);
     }
 }
