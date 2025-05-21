@@ -9,9 +9,6 @@ use primitives::shutdown::{ShutdownSignal, run_until_shutdown};
 use tracing::info;
 use tracing_subscriber::filter::EnvFilter;
 
-/// An EPOCH is a series of 32 slots.
-pub const EPOCH_SLOTS: u64 = 32;
-
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
     if let Ok(custom_env_file) = std::env::var("ENV_FILE") {
