@@ -5,7 +5,7 @@ set dotenv-load := true
 container := "taikoscope-hekla"
 ssh_alias := "taikoscope"
 remote_dir := "~/hekla/taikoscope"
-env_file := "{{remote_dir}}/masaya.env"
+env_file := remote_dir + "/masaya.env"
 port := "48100:3000"
 
 # display a help message about available commands
