@@ -14,6 +14,8 @@ use alloy::{
     primitives::{Address, BlockHash, BlockNumber},
     providers::{Provider, ProviderBuilder},
 };
+use alloy_consensus::BlockHeader;
+use alloy_network_primitives::ReceiptResponse;
 use alloy_rpc_client::ClientBuilder;
 use chainio::TaikoInbox;
 use derive_more::Debug;
@@ -65,6 +67,8 @@ pub struct L2Header {
     pub gas_used: u64,
     /// Beneficiary
     pub beneficiary: Address,
+    /// Base fee per gas
+    pub base_fee_per_gas: Option<u64>,
 }
 
 /// Stream of L1 headers
@@ -182,6 +186,7 @@ impl Extractor {
                         timestamp: block_data.timestamp,
                         gas_used: block_data.gas_used,
                         beneficiary: block_data.beneficiary,
+                        base_fee_per_gas: block_data.base_fee_per_gas(),
                     };
                     if tx.send(header).is_err() {
                         error!("L2 header receiver dropped. Stopping L2 header task.");
@@ -435,6 +440,33 @@ impl Extractor {
     pub async fn get_operator_candidates_for_current_epoch(&self) -> Result<Vec<Address>> {
         let candidates = self.preconf_whitelist.get_operator_candidates_for_current_epoch().await?;
         Ok(candidates)
+    }
+
+    /// Calculate aggregated statistics for an L2 block by fetching its receipts.
+    pub async fn get_l2_block_stats(
+        &self,
+        block_number: u64,
+        base_fee: Option<u64>,
+    ) -> Result<(u128, u32, u128)> {
+        use alloy_rpc_types_eth::{BlockId, BlockNumberOrTag};
+
+        let block = BlockId::Number(BlockNumberOrTag::Number(block_number));
+        let receipts_opt = self.l2_provider.get_block_receipts(block).await?;
+        let receipts = receipts_opt.ok_or_else(|| eyre::eyre!("missing receipts"))?;
+
+        let mut sum_gas_used: u128 = 0;
+        let mut sum_priority_fee: u128 = 0;
+        let base = base_fee.unwrap_or(0) as u128;
+        let tx_count = receipts.len() as u32;
+
+        for receipt in receipts {
+            let gas = receipt.gas_used() as u128;
+            sum_gas_used += gas;
+            let effective = receipt.effective_gas_price();
+            let priority_per_gas = effective.saturating_sub(base);
+            sum_priority_fee += priority_per_gas.saturating_mul(gas);
+        }
+        Ok((sum_gas_used, tx_count, sum_priority_fee))
     }
 }
 

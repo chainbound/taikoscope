@@ -369,10 +369,29 @@ impl Driver {
             } else {
                 info!("Inserted L2 reorg: new head {}, depth {}", header.number, depth);
             }
-        } else if let Err(e) = self.clickhouse.insert_l2_header(&header).await {
-            tracing::error!(block_number = header.number, err = %e, "Failed to insert L2 header");
         } else {
-            info!("Inserted L2 header: {}", header.number);
+            match self.extractor.get_l2_block_stats(header.number, header.base_fee_per_gas).await {
+                Ok((sum_gas_used, sum_tx, sum_priority_fee)) => {
+                    let event = clickhouse::L2HeadEvent {
+                        l2_block_number: header.number,
+                        block_hash: *header.hash,
+                        block_ts: header.timestamp,
+                        sum_gas_used,
+                        sum_tx,
+                        sum_priority_fee,
+                        sequencer: header.beneficiary.into_array(),
+                    };
+
+                    if let Err(e) = self.clickhouse.insert_l2_header(&event).await {
+                        tracing::error!(block_number = header.number, err = %e, "Failed to insert L2 header");
+                    } else {
+                        info!("Inserted L2 header: {}", header.number);
+                    }
+                }
+                Err(e) => {
+                    tracing::error!(block_number = header.number, err = %e, "Failed to fetch block stats");
+                }
+            }
         }
     }
 
