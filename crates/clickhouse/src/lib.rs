@@ -853,9 +853,9 @@ mod tests {
         let url = Url::parse(mock.url()).unwrap();
         let client = ClickhouseClient::new(
             url,
-            "test-db".to_string(),
-            "test_user".to_string(),
-            "test_pass".to_string(),
+            "test-db".to_owned(),
+            "test_user".to_owned(),
+            "test_pass".to_owned(),
         )
         .unwrap();
         let fake =
@@ -888,9 +888,9 @@ mod tests {
         let url = Url::parse(mock.url()).unwrap();
         let client = ClickhouseClient::new(
             url,
-            "test-db".to_string(),
-            "test_user".to_string(),
-            "test_pass".to_string(),
+            "test-db".to_owned(),
+            "test_user".to_owned(),
+            "test_pass".to_owned(),
         )
         .unwrap();
 
@@ -922,8 +922,8 @@ mod tests {
 
         // Initialize client
         let url = Url::parse(mock.url()).unwrap();
-        let ch = ClickhouseClient::new(url, "test-db".to_string(), "user".into(), "pass".into())
-            .unwrap();
+        let ch =
+            ClickhouseClient::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
 
         // Call the function under test
         let result = ch.get_last_l2_head_time().await.unwrap();
@@ -936,8 +936,8 @@ mod tests {
         mock.add(handlers::provide(Vec::<MaxRow>::new()));
 
         let url = Url::parse(mock.url()).unwrap();
-        let ch = ClickhouseClient::new(url, "test-db".to_string(), "user".into(), "pass".into())
-            .unwrap();
+        let ch =
+            ClickhouseClient::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
 
         let result = ch.get_last_l1_head_time().await.unwrap();
         assert_eq!(result, None);
@@ -950,8 +950,8 @@ mod tests {
         mock.add(handlers::provide(vec![MaxRow { block_ts: expected_ts }]));
 
         let url = Url::parse(mock.url()).unwrap();
-        let ch = ClickhouseClient::new(url, "test-db".to_string(), "user".into(), "pass".into())
-            .unwrap();
+        let ch =
+            ClickhouseClient::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
 
         let result = ch.get_last_l1_head_time().await.unwrap();
         let expected = Utc.timestamp_opt(expected_ts as i64, 0).single().unwrap();
@@ -970,9 +970,9 @@ mod tests {
         let url = Url::parse(mock.url()).unwrap();
         let client = ClickhouseClient::new(
             url,
-            "test-db".to_string(),
-            "test_user".to_string(),
-            "test_pass".to_string(),
+            "test-db".to_owned(),
+            "test_user".to_owned(),
+            "test_pass".to_owned(),
         )
         .unwrap();
 
@@ -1014,9 +1014,9 @@ mod tests {
         let url = Url::parse(mock.url()).unwrap();
         let client = ClickhouseClient::new(
             url,
-            "test-db".to_string(),
-            "test_user".to_string(),
-            "test_pass".to_string(),
+            "test-db".to_owned(),
+            "test_user".to_owned(),
+            "test_pass".to_owned(),
         )
         .unwrap();
 
@@ -1042,9 +1042,9 @@ mod tests {
         let url = Url::parse(mock.url()).unwrap();
         let client = ClickhouseClient::new(
             url,
-            "test-db".to_string(),
-            "test_user".to_string(),
-            "test_pass".to_string(),
+            "test-db".to_owned(),
+            "test_user".to_owned(),
+            "test_pass".to_owned(),
         )
         .unwrap();
 
@@ -1060,9 +1060,9 @@ mod tests {
         let url = Url::parse(mock.url()).unwrap();
         let client = ClickhouseClient::new(
             url,
-            "test-db".to_string(),
-            "test_user".to_string(),
-            "test_pass".to_string(),
+            "test-db".to_owned(),
+            "test_user".to_owned(),
+            "test_pass".to_owned(),
         )
         .unwrap();
 
@@ -1091,9 +1091,9 @@ mod tests {
         let url = Url::parse(mock.url()).unwrap();
         let client = ClickhouseClient::new(
             url,
-            "test-db".to_string(),
-            "test_user".to_string(),
-            "test_pass".to_string(),
+            "test-db".to_owned(),
+            "test_user".to_owned(),
+            "test_pass".to_owned(),
         )
         .unwrap();
 
@@ -1138,9 +1138,9 @@ mod tests {
         let url = Url::parse(mock.url()).unwrap();
         let client = ClickhouseClient::new(
             url,
-            "test-db".to_string(),
-            "test_user".to_string(),
-            "test_pass".to_string(),
+            "test-db".to_owned(),
+            "test_user".to_owned(),
+            "test_pass".to_owned(),
         )
         .unwrap();
 
@@ -1182,9 +1182,9 @@ mod tests {
         let url = Url::parse(mock.url()).unwrap();
         let client = ClickhouseClient::new(
             url,
-            "test-db".to_string(),
-            "test_user".to_string(),
-            "test_pass".to_string(),
+            "test-db".to_owned(),
+            "test_user".to_owned(),
+            "test_pass".to_owned(),
         )
         .unwrap();
 
@@ -1212,9 +1212,9 @@ mod tests {
         let url = Url::parse(mock.url()).unwrap();
         let client = ClickhouseClient::new(
             url,
-            "test-db".to_string(),
-            "test_user".to_string(),
-            "test_pass".to_string(),
+            "test-db".to_owned(),
+            "test_user".to_owned(),
+            "test_pass".to_owned(),
         )
         .unwrap();
 
@@ -1232,8 +1232,8 @@ mod tests {
         mock.add(handlers::provide(vec![MaxRow { block_ts: expected_ts }]));
 
         let url = Url::parse(mock.url()).unwrap();
-        let ch = ClickhouseClient::new(url, "test-db".to_string(), "user".into(), "pass".into())
-            .unwrap();
+        let ch =
+            ClickhouseClient::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
 
         let result = ch.get_last_l2_head_time().await.unwrap();
         let expected = Utc.timestamp_opt(expected_ts as i64, 0).single().unwrap();
@@ -1247,8 +1247,8 @@ mod tests {
         mock.add(handlers::provide(vec![MaxRow { block_ts: expected_ts }]));
 
         let url = Url::parse(mock.url()).unwrap();
-        let ch = ClickhouseClient::new(url, "test-db".to_string(), "user".into(), "pass".into())
-            .unwrap();
+        let ch =
+            ClickhouseClient::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
 
         let result = ch.get_last_batch_time().await.unwrap();
         let expected = Utc.timestamp_opt(expected_ts as i64, 0).single().unwrap();
@@ -1262,8 +1262,8 @@ mod tests {
         mock.add(handlers::provide(vec![MaxRow { block_ts: expected_ts }]));
 
         let url = Url::parse(mock.url()).unwrap();
-        let ch = ClickhouseClient::new(url, "test-db".to_string(), "user".into(), "pass".into())
-            .unwrap();
+        let ch =
+            ClickhouseClient::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
 
         let result = ch.get_last_verified_batch_time().await.unwrap();
         let expected = Utc.timestamp_opt(expected_ts as i64, 0).single().unwrap();
@@ -1288,9 +1288,9 @@ mod tests {
         let url = Url::parse(mock.url()).unwrap();
         let client = ClickhouseClient::new(
             url,
-            "test-db".to_string(),
-            "test_user".to_string(),
-            "test_pass".to_string(),
+            "test-db".to_owned(),
+            "test_user".to_owned(),
+            "test_pass".to_owned(),
         )
         .unwrap();
 
@@ -1321,9 +1321,9 @@ mod tests {
         let url = Url::parse(mock.url()).unwrap();
         let client = ClickhouseClient::new(
             url,
-            "test-db".to_string(),
-            "test_user".to_string(),
-            "test_pass".to_string(),
+            "test-db".to_owned(),
+            "test_user".to_owned(),
+            "test_pass".to_owned(),
         )
         .unwrap();
 
