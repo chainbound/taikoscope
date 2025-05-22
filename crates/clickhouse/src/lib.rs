@@ -238,11 +238,11 @@ impl ClickhouseClient {
     pub fn new(url: Url, db_name: String, username: String, password: String) -> Result<Self> {
         let client = Client::default()
             .with_url(url)
-            .with_database(db_name)
+            .with_database(db_name.clone())
             .with_user(username)
             .with_password(password);
 
-        Ok(Self { base: client, db_name: "taikoscope".into() })
+        Ok(Self { base: client, db_name })
     }
 
     /// Create database and optionally drop existing tables if reset is true
