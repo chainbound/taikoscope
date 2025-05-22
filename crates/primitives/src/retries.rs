@@ -176,3 +176,48 @@ where
         .take(DEFAULT_MAX_RETRIES as usize);
     RetryIf::spawn(strategy, op, condition).await
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::Duration;
+
+    #[test]
+    fn is_retryable_on_known_rate_limit_errors() {
+        let err = "{\"code\":-32007,\"message\":\"100/second request limit reached - reduce calls per second or upgrade your account at quicknode.com\"}";
+        let err = serde_json::from_str::<ErrorPayload>(err).unwrap();
+        assert!(RpcError::<TransportErrorKind>::ErrorResp(err).is_retryable());
+    }
+
+    #[test]
+    fn is_retryable_on_http_429() {
+        let err = r#"{"code":429,"event":-33200,"message":"Too Many Requests","details":"limit"}"#;
+        let err = serde_json::from_str::<ErrorPayload>(err).unwrap();
+        assert!(RpcError::<TransportErrorKind>::ErrorResp(err).is_retryable());
+    }
+
+    #[test]
+    fn backoff_hint_parses_integer_seconds() {
+        let json =
+            r#"{"code":429,"message":"Too Many Requests","data":{"rate":{"backoff_seconds":7}}}"#;
+        let payload = serde_json::from_str::<ErrorPayload>(json).unwrap();
+        let err = RpcError::<TransportErrorKind>::ErrorResp(payload);
+        assert_eq!(err.backoff_hint(), Some(Duration::from_secs(7)));
+    }
+
+    #[test]
+    fn backoff_hint_rounds_up_fractional_seconds() {
+        let json =
+            r#"{"code":429,"message":"Too Many Requests","data":{"rate":{"backoff_seconds":2.3}}}"#;
+        let payload = serde_json::from_str::<ErrorPayload>(json).unwrap();
+        let err = RpcError::<TransportErrorKind>::ErrorResp(payload);
+        assert_eq!(err.backoff_hint(), Some(Duration::from_secs(3)));
+    }
+
+    #[test]
+    fn connection_refused_detection_is_case_insensitive() {
+        assert!(is_connection_refused("Connection Refused"));
+        assert!(is_connection_refused("connection refused"));
+        assert!(!is_connection_refused("other error"));
+    }
+}
