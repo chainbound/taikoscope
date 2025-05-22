@@ -45,15 +45,15 @@ run-container:
     ssh {{ssh_alias}} "docker run -d \
         --name {{container}} \
         --restart unless-stopped \
-        --env-file {{env_file}} \
+        --env-file \{{env_file}} \
         -p {{port}} \
         {{container}}"
 
 set-log-level level:
     @echo "Setting log level to {{level}} on remote server..."
-    ssh {{ssh_alias}} "grep -q '^RUST_LOG=' {{env_file}} && \
-        sed -i 's/^RUST_LOG=.*/RUST_LOG={{level}}/' {{env_file}} || \
-        echo 'RUST_LOG={{level}}' >> {{env_file}}"
+    ssh {{ssh_alias}} "grep -q '^RUST_LOG=' \{{env_file}} && \
+        sed -i 's/^RUST_LOG=.*/RUST_LOG={{level}}/' \{{env_file}} || \
+        echo 'RUST_LOG={{level}}' >> \{{env_file}}"
     @just start-remote-hekla
     @echo "Log level set to {{level}} and service restarted."
 
