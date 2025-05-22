@@ -11,6 +11,109 @@ use serde::{Deserialize, Serialize};
 use tracing::info;
 use url::Url;
 
+// Constants for table definitions
+const TABLES: &[&str] = &[
+    "l1_head_events",
+    "preconf_data",
+    "l2_head_events",
+    "batches",
+    "proved_batches",
+    "l2_reorgs",
+    "forced_inclusion_processed",
+    "verified_batches",
+    "slashing_events",
+];
+
+/// Table schema definition
+struct TableSchema {
+    name: &'static str,
+    columns: &'static str,
+    order_by: &'static str,
+}
+
+const TABLE_SCHEMAS: &[TableSchema] = &[
+    TableSchema {
+        name: "l1_head_events",
+        columns: "l1_block_number UInt64,
+                 block_hash FixedString(32),
+                 slot UInt64,
+                 block_ts UInt64,
+                 inserted_at DateTime64(3) DEFAULT now64()",
+        order_by: "l1_block_number",
+    },
+    TableSchema {
+        name: "preconf_data",
+        columns: "slot UInt64,
+                 candidates Array(FixedString(20)),
+                 current_operator Nullable(FixedString(20)),
+                 next_operator Nullable(FixedString(20)),
+                 inserted_at DateTime64(3) DEFAULT now64()",
+        order_by: "slot",
+    },
+    TableSchema {
+        name: "l2_head_events",
+        columns: "l2_block_number UInt64,
+                 block_hash FixedString(32),
+                 block_ts UInt64,
+                 sum_gas_used UInt128,
+                 sum_tx UInt32,
+                 sum_priority_fee UInt128,
+                 sequencer FixedString(20),
+                 inserted_at DateTime64(3) DEFAULT now64()",
+        order_by: "l2_block_number",
+    },
+    TableSchema {
+        name: "batches",
+        columns: "l1_block_number UInt64,
+                 batch_id UInt64,
+                 batch_size UInt16,
+                 proposer_addr FixedString(20),
+                 blob_count UInt8,
+                 blob_total_bytes UInt32,
+                 inserted_at DateTime64(3) DEFAULT now64()",
+        order_by: "l1_block_number, batch_id",
+    },
+    TableSchema {
+        name: "proved_batches",
+        columns: "l1_block_number UInt64,
+                 batch_id UInt64,
+                 verifier_addr FixedString(20),
+                 parent_hash FixedString(32),
+                 block_hash FixedString(32),
+                 state_root FixedString(32),
+                 inserted_at DateTime64(3) DEFAULT now64()",
+        order_by: "l1_block_number, batch_id",
+    },
+    TableSchema {
+        name: "l2_reorgs",
+        columns: "l2_block_number UInt64,
+                 depth UInt16,
+                 inserted_at DateTime64(3) DEFAULT now64()",
+        order_by: "inserted_at",
+    },
+    TableSchema {
+        name: "forced_inclusion_processed",
+        columns: "blob_hash FixedString(32),
+                 inserted_at DateTime64(3) DEFAULT now64()",
+        order_by: "inserted_at",
+    },
+    TableSchema {
+        name: "verified_batches",
+        columns: "l1_block_number UInt64,
+                 batch_id UInt64,
+                 block_hash FixedString(32),
+                 inserted_at DateTime64(3) DEFAULT now64()",
+        order_by: "l1_block_number, batch_id",
+    },
+    TableSchema {
+        name: "slashing_events",
+        columns: "l1_block_number UInt64,
+                 validator_addr FixedString(20),
+                 inserted_at DateTime64(3) DEFAULT now64()",
+        order_by: "l1_block_number, validator_addr",
+    },
+];
+
 /// L1 head event
 #[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq)]
 pub struct L1HeadEvent {
@@ -246,6 +349,33 @@ impl ClickhouseClient {
     }
 
     /// Create database and optionally drop existing tables if reset is true
+    /// Create a table with the given schema
+    async fn create_table(&self, schema: &TableSchema) -> Result<()> {
+        let query = format!(
+            "CREATE TABLE IF NOT EXISTS {}.{} (
+                    {}
+                ) ENGINE = MergeTree()
+                ORDER BY ({})",
+            self.db_name, schema.name, schema.columns, schema.order_by
+        );
+
+        self.base
+            .query(&query)
+            .execute()
+            .await
+            .wrap_err_with(|| format!("Failed to create {} table", schema.name))
+    }
+
+    /// Drop a table if it exists
+    async fn drop_table(&self, table_name: &str) -> Result<()> {
+        self.base
+            .query(&format!("DROP TABLE IF EXISTS {}.{}", self.db_name, table_name))
+            .execute()
+            .await
+            .wrap_err_with(|| format!("Failed to drop {} table", table_name))
+    }
+
+    /// Create database and optionally drop existing tables if reset is true
     pub async fn init_db(&self, reset: bool) -> Result<()> {
         // Create database
         self.base
@@ -253,23 +383,9 @@ impl ClickhouseClient {
             .execute()
             .await?;
 
-        const TABLES: &[&str] = &[
-            "l1_head_events",
-            "preconf_data",
-            "l2_head_events",
-            "batches",
-            "l2_reorgs",
-            "forced_inclusion_processed",
-            "verified_batches",
-            "slashing_events",
-        ];
-
         if reset {
             for table in TABLES {
-                self.base
-                    .query(&format!("DROP TABLE IF EXISTS {}.{}", self.db_name, table))
-                    .execute()
-                    .await?;
+                self.drop_table(table).await?;
             }
             info!(db_name = %self.db_name, "Database reset complete");
         }
@@ -282,158 +398,9 @@ impl ClickhouseClient {
 
     /// Init database schema
     pub async fn init_schema(&self) -> Result<()> {
-        // Create l1_head_events table
-        self.base
-            .query(&format!(
-                "CREATE TABLE IF NOT EXISTS {}.l1_head_events (
-                    l1_block_number UInt64,
-                    block_hash FixedString(32),
-                    slot UInt64,
-                    block_ts UInt64,
-                    inserted_at DateTime64(3) DEFAULT now64()
-                ) ENGINE = MergeTree()
-                ORDER BY (l1_block_number)",
-                self.db_name
-            ))
-            .execute()
-            .await
-            .wrap_err("Failed to create l1_head_events table")?;
-
-        // Create preconf_data table
-        self.base
-            .query(&format!(
-                "CREATE TABLE IF NOT EXISTS {}.preconf_data (
-                    slot UInt64,
-                    candidates Array(FixedString(20)),
-                    current_operator Nullable(FixedString(20)),
-                    next_operator Nullable(FixedString(20)),
-                    inserted_at DateTime64(3) DEFAULT now64()
-                ) ENGINE = MergeTree()
-                ORDER BY (slot)",
-                self.db_name
-            ))
-            .execute()
-            .await
-            .wrap_err("Failed to create preconf_data table")?;
-
-        // Create l2_head_events table
-        self.base
-            .query(&format!(
-                "CREATE TABLE IF NOT EXISTS {}.l2_head_events (
-                    l2_block_number UInt64,
-                    block_hash FixedString(32),
-                    block_ts UInt64,
-                    sum_gas_used UInt128,
-                    sum_tx UInt32,
-                    sum_priority_fee UInt128,
-                    sequencer FixedString(20),
-                    inserted_at DateTime64(3) DEFAULT now64()
-                ) ENGINE = MergeTree()
-                ORDER BY (l2_block_number)",
-                self.db_name
-            ))
-            .execute()
-            .await
-            .wrap_err("Failed to create l2_head_events table")?;
-
-        // Create batches table
-        self.base
-            .query(&format!(
-                "CREATE TABLE IF NOT EXISTS {}.batches (
-                    l1_block_number UInt64,
-                    batch_id UInt64,
-                    batch_size UInt16,
-                    proposer_addr FixedString(20),
-                    blob_count UInt8,
-                    blob_total_bytes UInt32,
-                    inserted_at DateTime64(3) DEFAULT now64()
-                ) ENGINE = MergeTree()
-                ORDER BY (l1_block_number, batch_id)",
-                self.db_name
-            ))
-            .execute()
-            .await
-            .wrap_err("Failed to create batches table")?;
-
-        // Create proved batches table
-        self.base
-            .query(&format!(
-                "CREATE TABLE IF NOT EXISTS {}.proved_batches (
-                    l1_block_number UInt64,
-                    batch_id UInt64,
-                    verifier_addr FixedString(20),
-                    parent_hash FixedString(32),
-                    block_hash FixedString(32),
-                    state_root FixedString(32),
-                    inserted_at DateTime64(3) DEFAULT now64()
-                ) ENGINE = MergeTree()
-                ORDER BY (l1_block_number, batch_id)",
-                self.db_name
-            ))
-            .execute()
-            .await
-            .wrap_err("Failed to create proved batches table")?;
-
-        // Create reorgs table
-        self.base
-            .query(&format!(
-                "CREATE TABLE IF NOT EXISTS {}.l2_reorgs (
-                    l2_block_number UInt64,
-                    depth UInt16,
-                    inserted_at DateTime64(3) DEFAULT now64()
-                ) ENGINE = MergeTree()
-                ORDER BY inserted_at;",
-                self.db_name
-            ))
-            .execute()
-            .await
-            .wrap_err("Failed to create l2_reorgs table")?;
-
-        // Create forced_inclusion_processed table
-        self.base
-            .query(&format!(
-                "CREATE TABLE IF NOT EXISTS {}.forced_inclusion_processed (
-                    blob_hash FixedString(32),
-                    inserted_at DateTime64(3) DEFAULT now64()
-                ) ENGINE = MergeTree()
-                ORDER BY inserted_at;",
-                self.db_name
-            ))
-            .execute()
-            .await
-            .wrap_err("Failed to create forced_inclusion_processed table")?;
-
-        // Create verified_batches table
-        self.base
-            .query(&format!(
-                "CREATE TABLE IF NOT EXISTS {}.verified_batches (
-                    l1_block_number UInt64,
-                    batch_id UInt64,
-                    block_hash FixedString(32),
-                    inserted_at DateTime64(3) DEFAULT now64()
-                ) ENGINE = MergeTree()
-                ORDER BY (l1_block_number, batch_id)",
-                self.db_name
-            ))
-            .execute()
-            .await
-            .wrap_err("Failed to create verified_batches table")?;
-
-        // Create slashing_events table
-        self.base
-            .query(&format!(
-                "CREATE TABLE IF NOT EXISTS {}.slashing_events (
-                    l1_block_number UInt64,
-                    validator_addr FixedString(20),
-                    inserted_at DateTime64(3) DEFAULT now64()
-                ) ENGINE = MergeTree()
-                ORDER BY (l1_block_number, validator_addr)",
-                self.db_name
-            ))
-            .execute()
-            .await
-            .wrap_err("Failed to create slashing_events table")?;
-
+        for schema in TABLE_SCHEMAS {
+            self.create_table(schema).await?;
+        }
         Ok(())
     }
 
