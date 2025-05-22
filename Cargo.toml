@@ -129,5 +129,5 @@ zero_sized_map_values = "warn"
 # Explicitly listing should make it easier to fix in the future.
 future_not_send = "allow"
 non_send_fields_in_send_ty = "allow"
-redundant_pub_crate = "allow"
+redundant_pub_crate = "warn"
 significant_drop_tightening = "allow"
