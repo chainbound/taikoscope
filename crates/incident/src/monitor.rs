@@ -667,6 +667,83 @@ impl BatchVerifyTimeoutMonitor {
         Ok(id)
     }
 
+    /// Create incidents for any unverified batches that exceed the timeout
+    async fn add_new_unverified_incidents(
+        &mut self,
+        unverified_batches: &[(u64, u64, DateTime<Utc>)],
+    ) -> Result<()> {
+        for (_l1_block_number, batch_id, posted_at) in unverified_batches {
+            let age_duration = Utc::now().signed_duration_since(*posted_at);
+            if age_duration > ChronoDuration::from_std(self.verify_timeout)? &&
+                !self.base.active_incidents.contains_key(batch_id)
+            {
+                debug!(
+                    batch_id = batch_id,
+                    posted_at = %posted_at,
+                    age_hours = age_duration.num_hours(),
+                    "Found unverified batch exceeding timeout",
+                );
+                let incident_id = self
+                    .open_incident(*batch_id, *posted_at, age_duration.num_hours() as u64)
+                    .await?;
+                self.base.active_incidents.insert(*batch_id, incident_id);
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Resolve incidents for batches that have since been verified
+    async fn resolve_verified_incidents(&mut self) -> Result<()> {
+        let active_incidents_snapshot: Vec<(u64, String)> = self
+            .base
+            .active_incidents
+            .iter()
+            .map(|(id, incident)| (*id, incident.clone()))
+            .collect();
+
+        for (batch_id, incident_id) in active_incidents_snapshot {
+            if batch_id == 0 {
+                continue;
+            }
+
+            if self.is_batch_verified(batch_id).await? {
+                debug!(
+                    batch_id = batch_id,
+                    incident_id = %incident_id,
+                    "Batch is now verified, resolving incident immediately",
+                );
+                let payload = self.base.create_resolve_payload();
+                self.base.resolve_incident_with_payload(&incident_id, &payload).await?;
+                self.base.active_incidents.remove(&batch_id);
+            } else {
+                self.base.mark_unhealthy();
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Resolve the catch-all incident if no specific incidents remain
+    async fn resolve_catch_all_if_clear(&mut self, none_left: bool) -> Result<()> {
+        let catch_all_key = 0;
+        if self.base.active_incidents.len() == 1 &&
+            self.base.active_incidents.contains_key(&catch_all_key) &&
+            none_left
+        {
+            if let Some(incident_id) = self.base.active_incidents.get(&catch_all_key) {
+                info!(
+                    incident_id = %incident_id,
+                    "Resolving general batch verification timeout incident as all specific batches are clear or verified."
+                );
+                let payload = self.base.create_resolve_payload();
+                self.base.resolve_incident_with_payload(incident_id, &payload).await?;
+                self.base.active_incidents.remove(&catch_all_key);
+            }
+        }
+        Ok(())
+    }
+
     /// Check for batches that have not been verified within the timeout period
     async fn check_unverified_batches(&mut self) -> Result<()> {
         let cutoff_time = Utc::now() - ChronoDuration::from_std(self.verify_timeout)?;
@@ -679,65 +756,10 @@ impl BatchVerifyTimeoutMonitor {
             self.verify_timeout
         );
 
-        // Create incidents for new unverified batches
-        for (_l1_block_number, batch_id, posted_at) in &unverified_batches {
-            let age_duration = Utc::now().signed_duration_since(*posted_at);
-            if age_duration > ChronoDuration::from_std(self.verify_timeout)? &&
-                !self.base.active_incidents.contains_key(batch_id)
-            {
-                debug!(
-                    batch_id = batch_id,
-                    posted_at = %posted_at,
-                    age_hours = age_duration.num_hours(),
-                    "Found unverified batch exceeding timeout"
-                );
-                let incident_id = self
-                    .open_incident(*batch_id, *posted_at, age_duration.num_hours() as u64)
-                    .await?;
-                self.base.active_incidents.insert(*batch_id, incident_id);
-            }
-        }
+        self.add_new_unverified_incidents(&unverified_batches).await?;
+        self.resolve_verified_incidents().await?;
+        self.resolve_catch_all_if_clear(unverified_batches.is_empty()).await?;
 
-        // Take a snapshot of active incidents to avoid concurrent immutable/mutable borrows
-        let active_incidents_snapshot: Vec<(u64, String)> = self
-            .base
-            .active_incidents
-            .iter()
-            .map(|(id, incident)| (*id, incident.clone()))
-            .collect();
-
-        for (batch_id, incident_id) in active_incidents_snapshot {
-            if batch_id == 0 {
-                continue;
-            }
-            let is_verified = self.is_batch_verified(batch_id).await?;
-            if is_verified {
-                debug!(
-                    batch_id = batch_id,
-                    incident_id = %incident_id,
-                    "Batch is now verified, resolving incident immediately"
-                );
-                let payload = self.base.create_resolve_payload();
-                self.base.resolve_incident_with_payload(&incident_id, &payload).await?;
-                self.base.active_incidents.remove(&batch_id);
-            } else {
-                self.base.mark_unhealthy();
-            }
-        }
-
-        // Handle the catch-all incident (batch_id = 0) if all specific batch incidents are cleared
-        if self.base.active_incidents.len() == 1 &&
-            self.base.active_incidents.contains_key(&0) &&
-            unverified_batches.is_empty()
-        {
-            // Or a more robust check if all specific incidents were just resolved
-            if let Some(incident_id) = self.base.active_incidents.get(&0) {
-                info!(incident_id = %incident_id, "Resolving general batch verification timeout incident as all specific batches are clear or verified.");
-                let payload = self.base.create_resolve_payload();
-                self.base.resolve_incident_with_payload(incident_id, &payload).await?;
-                self.base.active_incidents.remove(&0);
-            }
-        }
         Ok(())
     }
 }
