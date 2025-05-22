@@ -986,4 +986,52 @@ mod tests {
         post_mock.assert_async().await;
         put_mock.assert_async().await;
     }
+
+    #[tokio::test]
+    async fn instatus_monitor_handle_opens_and_resolves_incident() {
+        let (ch_client, _ch_server) = mock_clickhouse_client_async().await;
+        let mut server = Server::new_async().await;
+
+        let post_mock = server
+            .mock("POST", "/v1/test_page_id/incidents")
+            .match_header("authorization", "Bearer test_api_key")
+            .match_header("content-type", "application/json")
+            .with_status(200)
+            .with_body(r#"{"id":"inc1"}"#)
+            .create_async()
+            .await;
+
+        let put_mock = server
+            .mock("PUT", "/v1/test_page_id/incidents/inc1")
+            .match_header("authorization", "Bearer test_api_key")
+            .match_header("content-type", "application/json")
+            .with_status(200)
+            .with_body("{}")
+            .create_async()
+            .await;
+
+        let incident_client = IncidentClient::with_base_url(
+            "test_api_key".into(),
+            "test_page_id".into(),
+            server.url().parse().unwrap(),
+        );
+
+        let mut monitor = InstatusMonitor::new(
+            ch_client,
+            incident_client,
+            "comp1".to_string(),
+            Duration::from_secs(60),
+            Duration::from_secs(1),
+        );
+
+        let outdated = Utc::now() - ChronoDuration::seconds(120);
+        monitor.handle(outdated).await.unwrap();
+        assert_eq!(monitor.base.active_incidents.get(&()), Some(&"inc1".to_string()));
+
+        monitor.handle(Utc::now()).await.unwrap();
+        assert!(monitor.base.active_incidents.is_empty());
+
+        post_mock.assert_async().await;
+        put_mock.assert_async().await;
+    }
 }
