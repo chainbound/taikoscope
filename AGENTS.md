@@ -19,3 +19,6 @@
 - Prefer `#[derive(Debug)]` on structs and enums
 - Use trace/debug/info/warn/error logs properly with `tracing` crate
 - Error handling: Prefer `?` operator with contextual error info
+
+## Git
+- Use Conventional Commits for commits
