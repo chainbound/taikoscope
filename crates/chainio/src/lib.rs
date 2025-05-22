@@ -374,4 +374,45 @@ mod tests {
 
         assert_eq!(expected, actual, "expected {expected:?}, actual {actual:?}");
     }
+
+    #[test]
+    fn block_numbers_empty_when_no_blocks() {
+        let batch = BatchProposed {
+            info: BatchInfo { lastBlockId: 0, blocks: Vec::new(), ..Default::default() },
+            ..Default::default()
+        };
+
+        let actual = batch.block_numbers_proposed();
+        assert!(actual.is_empty());
+    }
+
+    #[test]
+    fn block_numbers_when_fewer_blocks_than_last() {
+        let batch = BatchProposed {
+            info: BatchInfo {
+                lastBlockId: 5,
+                blocks: vec![BlockParams::default(); 2],
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+
+        let actual = batch.block_numbers_proposed();
+        assert_eq!(actual, vec![4, 5]);
+    }
+
+    #[test]
+    fn block_numbers_when_more_blocks_than_last() {
+        let batch = BatchProposed {
+            info: BatchInfo {
+                lastBlockId: 2,
+                blocks: vec![BlockParams::default(); 5],
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+
+        let actual = batch.block_numbers_proposed();
+        assert_eq!(actual, vec![1, 2]);
+    }
 }
