@@ -49,6 +49,16 @@ impl Client {
         rb.bearer_auth(&self.api_key)
     }
 
+    /// Build the incidents URL with open status filters.
+    pub(crate) fn incidents_url_with_statuses(&self) -> Result<Url> {
+        let mut url = self.base_url.join(&format!("v1/{}/incidents", self.page_id))?;
+        let statuses = ["INVESTIGATING", "IDENTIFIED", "MONITORING"];
+        for status in statuses {
+            url.query_pairs_mut().append_pair("status[]", status);
+        }
+        Ok(url)
+    }
+
     /// Create a new incident on Instatus.
     pub async fn create_incident(&self, body: &NewIncident) -> Result<String> {
         #[derive(Deserialize)]
@@ -82,12 +92,7 @@ impl Client {
     /// Return open incident ID for `component_id`, if any.
     pub async fn open_incident(&self, component_id: &str) -> Result<Option<String>> {
         // Query any incidents that aren't RESOLVED (to catch MONITORING or IDENTIFIED too)
-        let mut url = self.base_url.join(&format!("v1/{}/incidents", self.page_id))?;
-        {
-            let statuses = ["INVESTIGATING", "IDENTIFIED", "MONITORING"];
-            let value = statuses.join(",");
-            url.query_pairs_mut().append_pair("status", &value);
-        }
+        let url = self.incidents_url_with_statuses()?;
 
         tracing::debug!(url = %url, "Querying incidents");
 
@@ -272,6 +277,20 @@ mod tests {
         let id = client.open_incident("comp1").await.unwrap();
         assert_eq!(id, None);
         mock.assert_async().await;
+    }
+
+    #[test]
+    fn incidents_url_encodes_multiple_statuses() {
+        let client = Client::with_base_url(
+            "key".into(),
+            "page1".into(),
+            Url::parse("https://example.com/").unwrap(),
+        );
+        let url = client.incidents_url_with_statuses().unwrap();
+        assert_eq!(
+            url.as_str(),
+            "https://example.com/v1/page1/incidents?status%5B%5D=INVESTIGATING&status%5B%5D=IDENTIFIED&status%5B%5D=MONITORING"
+        );
     }
 
     #[tokio::test]
