@@ -164,14 +164,27 @@ impl Driver {
     pub async fn start(mut self) -> Result<()> {
         info!("Starting event loop");
 
-        let mut l1_stream = self.subscribe_l1().await;
-        let mut l2_stream = self.subscribe_l2().await;
-        let mut batch_stream = self.subscribe_batch().await;
-        let mut forced_stream = self.subscribe_forced().await;
-        let mut proved_stream = self.subscribe_proved().await;
-        let mut verified_stream = self.subscribe_verified().await;
+        let l1_stream = self.subscribe_l1().await;
+        let l2_stream = self.subscribe_l2().await;
+        let batch_stream = self.subscribe_batch().await;
+        let forced_stream = self.subscribe_forced().await;
+        let proved_stream = self.subscribe_proved().await;
+        let verified_stream = self.subscribe_verified().await;
 
-        // spawn Instatus batch monitor
+        self.spawn_monitors();
+
+        self.event_loop(
+            l1_stream,
+            l2_stream,
+            batch_stream,
+            forced_stream,
+            proved_stream,
+            verified_stream,
+        )
+        .await
+    }
+
+    fn spawn_monitors(&self) {
         InstatusL1Monitor::new(
             self.clickhouse.clone(),
             self.incident_client.clone(),
@@ -181,7 +194,6 @@ impl Driver {
         )
         .spawn();
 
-        // spawn Instatus L2 head monitor
         InstatusMonitor::new(
             self.clickhouse.clone(),
             self.incident_client.clone(),
@@ -191,26 +203,34 @@ impl Driver {
         )
         .spawn();
 
-        // spawn batch proof timeout monitor (checks if batches take >3h to prove)
         BatchProofTimeoutMonitor::new(
             self.clickhouse.clone(),
             self.incident_client.clone(),
             self.instatus_batch_proof_timeout_component_id.clone(),
             Duration::from_secs(self.batch_proof_timeout_secs),
-            Duration::from_secs(60), // Run every minute
+            Duration::from_secs(60),
         )
         .spawn();
 
-        // spawn batch verify timeout monitor (checks if batches take >3h to verify)
         BatchVerifyTimeoutMonitor::new(
             self.clickhouse.clone(),
             self.incident_client.clone(),
             self.instatus_batch_verify_timeout_component_id.clone(),
             Duration::from_secs(self.batch_proof_timeout_secs),
-            Duration::from_secs(60), // Run every minute
+            Duration::from_secs(60),
         )
         .spawn();
+    }
 
+    async fn event_loop(
+        &mut self,
+        mut l1_stream: L1HeaderStream,
+        mut l2_stream: L2HeaderStream,
+        mut batch_stream: BatchProposedStream,
+        mut forced_stream: ForcedInclusionStream,
+        mut proved_stream: BatchesProvedStream,
+        mut verified_stream: BatchesVerifiedStream,
+    ) -> Result<()> {
         loop {
             tokio::select! {
                 maybe_l1_header = l1_stream.next() => {
@@ -280,9 +300,6 @@ impl Driver {
                     }
                 }
                 else => {
-                    // This branch should ideally not be reached if streams always re-subscribe.
-                    // If it is, it implies all streams terminated simultaneously and failed to re-subscribe,
-                    // which would be an unexpected state.
                     tracing::error!("All event streams ended and failed to re-subscribe. Shutting down driver loop");
                     break;
                 }
