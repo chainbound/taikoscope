@@ -490,7 +490,7 @@ impl BatchProofTimeoutMonitor {
         batches
             .iter()
             .filter(|(l1, batch, _)| !self.base.active_incidents.contains_key(&(*l1, *batch)))
-            .cloned()
+            .copied()
             .collect()
     }
 
