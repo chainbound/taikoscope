@@ -483,6 +483,22 @@ impl BatchProofTimeoutMonitor {
         Ok(id)
     }
 
+    fn filter_new_batches(
+        &self,
+        batches: &[(u64, u64, DateTime<Utc>)],
+    ) -> Vec<(u64, u64, DateTime<Utc>)> {
+        batches
+            .iter()
+            .filter(|(l1, batch, _)| !self.base.active_incidents.contains_key(&(*l1, *batch)))
+            .cloned()
+            .collect()
+    }
+
+    /// Returns `true` if the only active incident is the catch-all entry.
+    fn catch_all_only(&self) -> bool {
+        self.base.active_incidents.len() == 1 && self.base.active_incidents.contains_key(&(0, 0))
+    }
+
     /// Check for batches that have not been proven within the timeout period
     async fn check_unproven_batches(&mut self) -> Result<()> {
         let cutoff_time = Utc::now() - ChronoDuration::from_std(self.proof_timeout)?;
@@ -496,20 +512,17 @@ impl BatchProofTimeoutMonitor {
         );
 
         // Create incidents for new unproven batches
-        for (l1_block_number, batch_id, posted_at) in &unproven_batches {
-            let key = (*l1_block_number, *batch_id);
-            let age_hours = Utc::now().signed_duration_since(*posted_at).num_hours();
-            if !self.base.active_incidents.contains_key(&key) {
-                debug!(
-                    batch_id = batch_id,
-                    posted_at = %posted_at,
-                    age_hours = age_hours,
-                    "Found unproven batch exceeding timeout"
-                );
-                let incident_id =
-                    self.open_incident(*batch_id, *posted_at, age_hours as u64).await?;
-                self.base.active_incidents.insert(key, incident_id);
-            }
+        for (l1_block_number, batch_id, posted_at) in self.filter_new_batches(&unproven_batches) {
+            let key = (l1_block_number, batch_id);
+            let age_hours = Utc::now().signed_duration_since(posted_at).num_hours();
+            debug!(
+                batch_id = batch_id,
+                posted_at = %posted_at,
+                age_hours = age_hours,
+                "Found unproven batch exceeding timeout",
+            );
+            let incident_id = self.open_incident(batch_id, posted_at, age_hours as u64).await?;
+            self.base.active_incidents.insert(key, incident_id);
         }
 
         // Take a snapshot of active incidents to avoid concurrent immutable/mutable borrows
@@ -538,9 +551,7 @@ impl BatchProofTimeoutMonitor {
 
         // Special case for the catch-all incident (batch_id = 0)
         let catch_all_key = (0, 0);
-        if self.base.active_incidents.len() == 1 &&
-            self.base.active_incidents.contains_key(&catch_all_key)
-        {
+        if self.catch_all_only() {
             if let Some(incident_id) = self.base.active_incidents.get(&catch_all_key) {
                 let payload = self.base.create_resolve_payload();
                 self.base.resolve_incident_with_payload(incident_id, &payload).await?;
@@ -1031,7 +1042,43 @@ mod tests {
         monitor.handle(Utc::now()).await.unwrap();
         assert!(monitor.base.active_incidents.is_empty());
 
-        post_mock.assert_async().await;
         put_mock.assert_async().await;
+        post_mock.assert_async().await;
+    }
+
+    #[test]
+    fn filter_new_batches_only_returns_untracked() {
+        let (ch_client, _ch_server) = mock_clickhouse_client();
+        let (incident_client, _incident_server) = mock_incident_client();
+        let mut monitor = BatchProofTimeoutMonitor::new(
+            ch_client,
+            incident_client,
+            "comp".to_string(),
+            Duration::from_secs(1),
+            Duration::from_secs(1),
+        );
+        monitor.base.active_incidents.insert((1, 1), "id".to_string());
+        let now = Utc::now();
+        let batches = vec![(1, 1, now), (2, 2, now)];
+        let filtered = monitor.filter_new_batches(&batches);
+        assert_eq!(filtered, vec![(2, 2, now)]);
+    }
+
+    #[test]
+    fn catch_all_only_true_only_for_catch_all() {
+        let (ch_client, _ch_server) = mock_clickhouse_client();
+        let (incident_client, _incident_server) = mock_incident_client();
+        let mut monitor = BatchProofTimeoutMonitor::new(
+            ch_client,
+            incident_client,
+            "comp".to_string(),
+            Duration::from_secs(1),
+            Duration::from_secs(1),
+        );
+        assert!(!monitor.catch_all_only());
+        monitor.base.active_incidents.insert((0, 0), "id".to_string());
+        assert!(monitor.catch_all_only());
+        monitor.base.active_incidents.insert((1, 1), "other".to_string());
+        assert!(!monitor.catch_all_only());
     }
 }
