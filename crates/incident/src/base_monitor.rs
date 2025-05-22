@@ -216,9 +216,9 @@ mod tests {
         let url = Url::parse(&server.url()).unwrap();
         let client = ClickhouseInternalClient::new(
             url,
-            "test_db".to_string(),
-            "user".to_string(),
-            "pass".to_string(),
+            "test_db".to_owned(),
+            "user".to_owned(),
+            "pass".to_owned(),
         )
         .unwrap();
         (client, server)
@@ -227,7 +227,7 @@ mod tests {
     fn mock_incident_client() -> (IncidentClient, ServerGuard) {
         let server = mockito::Server::new();
         let url = Url::parse(&server.url()).unwrap();
-        let client = IncidentClient::with_base_url("testkey".to_string(), "page1".to_string(), url);
+        let client = IncidentClient::with_base_url("testkey".to_owned(), "page1".to_owned(), url);
         (client, server)
     }
 
@@ -236,9 +236,9 @@ mod tests {
         let url = Url::parse(&server.url()).unwrap();
         let client = ClickhouseInternalClient::new(
             url,
-            "test_db".to_string(),
-            "user".to_string(),
-            "pass".to_string(),
+            "test_db".to_owned(),
+            "user".to_owned(),
+            "pass".to_owned(),
         )
         .unwrap();
         (client, server)
@@ -247,7 +247,7 @@ mod tests {
     async fn mock_incident_client_async() -> (IncidentClient, ServerGuard) {
         let server = Server::new_async().await;
         let url = Url::parse(&server.url()).unwrap();
-        let client = IncidentClient::with_base_url("testkey".to_string(), "page1".to_string(), url);
+        let client = IncidentClient::with_base_url("testkey".to_owned(), "page1".to_owned(), url);
         (client, server)
     }
 
@@ -258,7 +258,7 @@ mod tests {
         let monitor = BaseMonitor::<u64>::new(
             ch_client,
             incident_client,
-            "comp1".to_string(),
+            "comp1".to_owned(),
             Duration::from_secs(1),
         );
         let started = Utc::now();
@@ -266,7 +266,7 @@ mod tests {
         assert_eq!(payload.name, "name");
         assert_eq!(payload.message, "msg");
         assert_eq!(payload.status, IncidentState::Investigating);
-        assert_eq!(payload.components, vec!["comp1".to_string()]);
+        assert_eq!(payload.components, vec!["comp1".to_owned()]);
         assert_eq!(payload.statuses, vec![ComponentStatus::major_outage("comp1")]);
         assert!(payload.notify);
         let expected = started.to_rfc3339();
@@ -280,12 +280,12 @@ mod tests {
         let monitor = BaseMonitor::<u64>::new(
             ch_client,
             incident_client,
-            "comp1".to_string(),
+            "comp1".to_owned(),
             Duration::from_secs(1),
         );
         let payload = monitor.create_resolve_payload();
         assert_eq!(payload.status, IncidentState::Resolved);
-        assert_eq!(payload.components, vec!["comp1".to_string()]);
+        assert_eq!(payload.components, vec!["comp1".to_owned()]);
         assert_eq!(payload.statuses, vec![ComponentStatus::operational("comp1")]);
         assert!(payload.notify);
         assert!(payload.started.is_some());
@@ -312,7 +312,7 @@ mod tests {
         let monitor = BaseMonitor::<u64>::new(
             ch_client,
             incident_client,
-            "comp1".to_string(),
+            "comp1".to_owned(),
             Duration::from_secs(1),
         );
         let payload = monitor.create_incident_payload("n".into(), "m".into(), Utc::now());
@@ -342,7 +342,7 @@ mod tests {
         let monitor = BaseMonitor::<u64>::new(
             ch_client,
             incident_client,
-            "comp1".to_string(),
+            "comp1".to_owned(),
             Duration::from_secs(1),
         );
         let payload = monitor.create_resolve_payload();
@@ -372,7 +372,7 @@ mod tests {
         let monitor = BaseMonitor::<u64>::new(
             ch_client,
             incident_client,
-            "comp1".to_string(),
+            "comp1".to_owned(),
             Duration::from_secs(1),
         );
         let payload = monitor.create_resolve_payload();
@@ -405,11 +405,11 @@ mod tests {
         let mut monitor = BaseMonitor::new(
             ch_client,
             incident_client,
-            "comp1".to_string(),
+            "comp1".to_owned(),
             Duration::from_secs(1),
         );
         monitor.check_existing_incidents(5u64).await.unwrap();
-        assert_eq!(monitor.active_incidents.get(&5u64), Some(&"inc1".to_string()));
+        assert_eq!(monitor.active_incidents.get(&5u64), Some(&"inc1".to_owned()));
         mock.assert_async().await;
     }
 
@@ -433,7 +433,7 @@ mod tests {
         let mut monitor = BaseMonitor::<u64>::new(
             ch_client,
             incident_client,
-            "comp1".to_string(),
+            "comp1".to_owned(),
             Duration::from_secs(1),
         );
         monitor.check_existing_incidents(42u64).await.unwrap();
@@ -462,10 +462,10 @@ mod tests {
         let mut monitor = BaseMonitor::new(
             ch_client,
             incident_client,
-            "comp1".to_string(),
+            "comp1".to_owned(),
             Duration::from_secs(1),
         );
-        monitor.active_incidents.insert(1u64, "inc123".to_string());
+        monitor.active_incidents.insert(1u64, "inc123".to_owned());
         assert!(monitor.mark_healthy(&1u64).await.unwrap());
         assert!(monitor.active_incidents.is_empty());
         mock.assert_async().await;
@@ -478,7 +478,7 @@ mod tests {
         let mut monitor = BaseMonitor::<u64>::new(
             ch_client,
             incident_client,
-            "comp1".to_string(),
+            "comp1".to_owned(),
             Duration::from_secs(1),
         );
         assert!(!monitor.mark_healthy(&1u64).await.unwrap());

@@ -845,9 +845,9 @@ mod tests {
         let url = Url::parse(&server.url()).unwrap();
         let client = ClickhouseInternalClient::new(
             url,
-            "test_db".to_string(),
-            "user".to_string(),
-            "pass".to_string(),
+            "test_db".to_owned(),
+            "user".to_owned(),
+            "pass".to_owned(),
         )
         .unwrap();
         (client, server)
@@ -858,8 +858,8 @@ mod tests {
         let server = mockito::Server::new();
         let url = Url::parse(&server.url()).unwrap();
         let client = IncidentClient::with_base_url(
-            "test_api_key".to_string(),
-            "test_page_id".to_string(),
+            "test_api_key".to_owned(),
+            "test_page_id".to_owned(),
             url,
         );
         (client, server)
@@ -870,9 +870,9 @@ mod tests {
         let url = Url::parse(&server.url()).unwrap();
         let client = ClickhouseInternalClient::new(
             url,
-            "test_db".to_string(),
-            "user".to_string(),
-            "pass".to_string(),
+            "test_db".to_owned(),
+            "user".to_owned(),
+            "pass".to_owned(),
         )
         .unwrap();
         (client, server)
@@ -886,7 +886,7 @@ mod tests {
         let _monitor = BatchProofTimeoutMonitor::new(
             ch_client,
             incident_client,
-            "component_proof_timeout".to_string(),
+            "component_proof_timeout".to_owned(),
             Duration::from_secs(3 * 60 * 60), // 3 hours
             Duration::from_secs(60),          // 1 minute interval
         );
@@ -900,7 +900,7 @@ mod tests {
         let _monitor = BatchVerifyTimeoutMonitor::new(
             ch_client,
             incident_client,
-            "component_verify_timeout".to_string(),
+            "component_verify_timeout".to_owned(),
             Duration::from_secs(60 * 60), // 1 hour
             Duration::from_secs(60),      // 1 minute interval
         );
@@ -938,7 +938,7 @@ mod tests {
         let monitor = InstatusMonitor::new(
             ch_client,
             incident_client,
-            "comp1".to_string(),
+            "comp1".to_owned(),
             Duration::from_secs(60),
             Duration::from_secs(1),
         );
@@ -984,7 +984,7 @@ mod tests {
         let monitor = InstatusL1Monitor::new(
             ch_client,
             incident_client,
-            "comp1".to_string(),
+            "comp1".to_owned(),
             Duration::from_secs(60),
             Duration::from_secs(1),
         );
@@ -1030,14 +1030,14 @@ mod tests {
         let mut monitor = InstatusMonitor::new(
             ch_client,
             incident_client,
-            "comp1".to_string(),
+            "comp1".to_owned(),
             Duration::from_secs(60),
             Duration::from_secs(1),
         );
 
         let outdated = Utc::now() - ChronoDuration::seconds(120);
         monitor.handle(outdated).await.unwrap();
-        assert_eq!(monitor.base.active_incidents.get(&()), Some(&"inc1".to_string()));
+        assert_eq!(monitor.base.active_incidents.get(&()), Some(&"inc1".to_owned()));
 
         monitor.handle(Utc::now()).await.unwrap();
         assert!(monitor.base.active_incidents.is_empty());
@@ -1053,11 +1053,11 @@ mod tests {
         let mut monitor = BatchProofTimeoutMonitor::new(
             ch_client,
             incident_client,
-            "comp".to_string(),
+            "comp".to_owned(),
             Duration::from_secs(1),
             Duration::from_secs(1),
         );
-        monitor.base.active_incidents.insert((1, 1), "id".to_string());
+        monitor.base.active_incidents.insert((1, 1), "id".to_owned());
         let now = Utc::now();
         let batches = vec![(1, 1, now), (2, 2, now)];
         let filtered = monitor.filter_new_batches(&batches);
@@ -1071,14 +1071,14 @@ mod tests {
         let mut monitor = BatchProofTimeoutMonitor::new(
             ch_client,
             incident_client,
-            "comp".to_string(),
+            "comp".to_owned(),
             Duration::from_secs(1),
             Duration::from_secs(1),
         );
         assert!(!monitor.catch_all_only());
-        monitor.base.active_incidents.insert((0, 0), "id".to_string());
+        monitor.base.active_incidents.insert((0, 0), "id".to_owned());
         assert!(monitor.catch_all_only());
-        monitor.base.active_incidents.insert((1, 1), "other".to_string());
+        monitor.base.active_incidents.insert((1, 1), "other".to_owned());
         assert!(!monitor.catch_all_only());
     }
 }

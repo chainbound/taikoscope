@@ -134,13 +134,13 @@ mod tests {
     #[test]
     fn test_new_incident_serialization() {
         let payload = NewIncident {
-            name: "No L2 head events - Possible Outage".to_string(),
-            message: "No L2 head event for 30s".to_string(),
+            name: "No L2 head events - Possible Outage".to_owned(),
+            message: "No L2 head event for 30s".to_owned(),
             status: IncidentState::Investigating,
-            components: vec!["comp1".to_string()],
+            components: vec!["comp1".to_owned()],
             statuses: vec![ComponentStatus::major_outage("comp1")],
             notify: true,
-            started: Some("2025-05-12T07:48:00Z".to_string()),
+            started: Some("2025-05-12T07:48:00Z".to_owned()),
         };
         let expected = json!({
             "name": "No L2 head events - Possible Outage",
@@ -159,10 +159,10 @@ mod tests {
     fn test_resolve_incident_serialization() {
         let payload = ResolveIncident {
             status: IncidentState::Resolved,
-            components: vec!["comp1".to_string()],
+            components: vec!["comp1".to_owned()],
             statuses: vec![ComponentStatus::operational("comp1")],
             notify: true,
-            started: Some("2025-05-12T07:48:00Z".to_string()),
+            started: Some("2025-05-12T07:48:00Z".to_owned()),
         };
         let expected = json!({
             "status": "RESOLVED",
@@ -224,7 +224,7 @@ mod tests {
             components: vec!["comp1".into()],
             statuses: vec![ComponentStatus::operational("comp1")],
             notify: true,
-            started: Some("2025-05-12T07:48:00Z".to_string()),
+            started: Some("2025-05-12T07:48:00Z".to_owned()),
         };
         client.resolve_incident("incident123", &payload).await.unwrap();
         mock.assert_async().await;
