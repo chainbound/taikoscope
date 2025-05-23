@@ -258,6 +258,7 @@ impl ClickhouseClient {
             "preconf_data",
             "l2_head_events",
             "batches",
+            "proved_batches",
             "l2_reorgs",
             "forced_inclusion_processed",
             "verified_batches",
@@ -1329,5 +1330,32 @@ mod tests {
 
         let result = client.get_proved_batch_ids().await.unwrap();
         assert_eq!(result, expected_ids);
+    }
+
+    #[tokio::test]
+    async fn test_init_db_drops_proved_batches() {
+        let mut mock = Mock::new();
+        // Capture all DDL queries executed during initialization
+        let mut controls = Vec::new();
+        for _ in 0..19 {
+            controls.push(mock.add(handlers::record_ddl()));
+        }
+
+        let url = Url::parse(mock.url()).unwrap();
+        let client =
+            ClickhouseClient::new(url, "testdb".to_owned(), "user".to_owned(), "pass".to_owned())
+                .unwrap();
+
+        client.init_db(true).await.unwrap();
+
+        let mut found = false;
+        for control in controls {
+            let query = control.query().await;
+            if query.contains("DROP TABLE IF EXISTS testdb.proved_batches") {
+                found = true;
+            }
+        }
+
+        assert!(found, "proved_batches table was not dropped");
     }
 }
