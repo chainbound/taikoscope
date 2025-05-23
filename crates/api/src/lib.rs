@@ -81,6 +81,11 @@ struct BatchPostingCadenceResponse {
 }
 
 #[derive(Debug, Serialize)]
+struct AvgL2TpsResponse {
+    avg_tps: Option<f64>,
+}
+
+#[derive(Debug, Serialize)]
 struct ProveTimesResponse {
     batches: Vec<clickhouse_lib::BatchProveTimeRow>,
 }
@@ -318,6 +323,28 @@ async fn batch_posting_cadence_24h(
     Json(BatchPostingCadenceResponse { batch_posting_cadence_ms: avg })
 }
 
+async fn avg_l2_tps(State(state): State<ApiState>) -> Json<AvgL2TpsResponse> {
+    let avg = match state.client.get_avg_l2_tps_last_hour().await {
+        Ok(val) => val,
+        Err(e) => {
+            tracing::error!("Failed to get avg L2 TPS: {}", e);
+            None
+        }
+    };
+    Json(AvgL2TpsResponse { avg_tps: avg })
+}
+
+async fn avg_l2_tps_24h(State(state): State<ApiState>) -> Json<AvgL2TpsResponse> {
+    let avg = match state.client.get_avg_l2_tps_last_24_hours().await {
+        Ok(val) => val,
+        Err(e) => {
+            tracing::error!("Failed to get avg L2 TPS: {}", e);
+            None
+        }
+    };
+    Json(AvgL2TpsResponse { avg_tps: avg })
+}
+
 async fn prove_times_last_hour(State(state): State<ApiState>) -> Json<ProveTimesResponse> {
     let batches = match state.client.get_prove_times_last_hour().await {
         Ok(rows) => rows,
@@ -438,6 +465,8 @@ fn router(state: ApiState) -> Router {
         .route("/l2-block-cadence/24h", get(l2_block_cadence_24h))
         .route("/batch-posting-cadence", get(batch_posting_cadence))
         .route("/batch-posting-cadence/24h", get(batch_posting_cadence_24h))
+        .route("/avg-l2-tps", get(avg_l2_tps))
+        .route("/avg-l2-tps/24h", get(avg_l2_tps_24h))
         .route("/prove-times/last-hour", get(prove_times_last_hour))
         .route("/prove-times/last-day", get(prove_times_last_day))
         .route("/verify-times/last-hour", get(verify_times_last_hour))
@@ -747,5 +776,38 @@ mod tests {
         let app = build_app(mock.url());
         let body = send_request(app, "/l2-block-times/last-day").await;
         assert_eq!(body, json!({ "blocks": [ { "minute": 0, "block_number": 1 } ] }));
+    }
+
+    #[derive(Serialize, Row)]
+    struct TpsRowTest {
+        min_ts: Option<u64>,
+        max_ts: Option<u64>,
+        tx_sum: Option<u64>,
+    }
+
+    #[tokio::test]
+    async fn avg_l2_tps_endpoint() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(vec![TpsRowTest {
+            min_ts: Some(10),
+            max_ts: Some(70),
+            tx_sum: Some(180),
+        }]));
+        let app = build_app(mock.url());
+        let body = send_request(app, "/avg-l2-tps").await;
+        assert_eq!(body, json!({ "avg_tps": 3.0 }));
+    }
+
+    #[tokio::test]
+    async fn avg_l2_tps_24h_endpoint() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(vec![TpsRowTest {
+            min_ts: Some(100),
+            max_ts: Some(460),
+            tx_sum: Some(720),
+        }]));
+        let app = build_app(mock.url());
+        let body = send_request(app, "/avg-l2-tps/24h").await;
+        assert_eq!(body, json!({ "avg_tps": 2.0 }));
     }
 }
