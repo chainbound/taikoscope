@@ -82,10 +82,10 @@ pub struct InstatusOpts {
 #[derive(Debug, Clone, Parser)]
 pub struct ApiOpts {
     /// API server host
-    #[clap(long, env = "API_HOST", default_value = "127.0.0.1")]
+    #[clap(long = "api-host", env = "API_HOST", default_value = "127.0.0.1")]
     pub host: String,
     /// API server port
-    #[clap(long, env = "API_PORT", default_value = "3000")]
+    #[clap(long = "api-port", env = "API_PORT", default_value = "3000")]
     pub port: u16,
 }
 
