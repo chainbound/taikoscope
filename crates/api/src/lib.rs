@@ -139,7 +139,7 @@ async fn slashing_last_hour(State(state): State<ApiState>) -> Json<SlashingEvent
 async fn forced_inclusions_last_hour(
     State(state): State<ApiState>,
 ) -> Json<ForcedInclusionEventsResponse> {
-    let since = Utc::now() - Duration::hours(1);
+    let since = Utc::now() - ChronoDuration::hours(1);
     let events = match state.client.get_forced_inclusions_since(since).await {
         Ok(evts) => evts,
         Err(e) => {

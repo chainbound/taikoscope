@@ -16,9 +16,17 @@ default:
 dev:
     ENV_FILE=dev.env cargo run -- --reset-db
 
+# start the API server for local development
+dev-api:
+    ENV_FILE=dev.env cargo run --bin api-server
+
 # start the Taikoscope binary with Masaya testnet config
 masaya:
     ENV_FILE=masaya.env cargo run
+
+# start the API server with Masaya testnet config
+masaya-api:
+    ENV_FILE=masaya.env cargo run --bin api-server
 
 # run all recipes required to pass CI workflows
 ci:
