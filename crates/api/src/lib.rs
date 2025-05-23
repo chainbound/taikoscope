@@ -1,4 +1,4 @@
-//! Thin HTTP API for accessing ClickHouse data
+//! Thin HTTP API for accessing `ClickHouse` data
 
 use std::net::SocketAddr;
 
@@ -14,7 +14,7 @@ struct ApiState {
 }
 
 impl ApiState {
-    fn new(client: ClickhouseClient) -> Self {
+    const fn new(client: ClickhouseClient) -> Self {
         Self { client }
     }
 }
