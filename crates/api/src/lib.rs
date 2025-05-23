@@ -90,6 +90,7 @@ struct VerifyTimesResponse {
     batches: Vec<clickhouse_lib::BatchVerifyTimeRow>,
 }
 
+#[derive(Serialize)]
 struct L1BlockTimesResponse {
     blocks: Vec<clickhouse_lib::L1BlockTimeRow>,
 }
