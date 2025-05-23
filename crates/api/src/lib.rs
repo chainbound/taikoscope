@@ -6,6 +6,7 @@ use axum::{Json, Router, extract::State, middleware, response::IntoResponse, rou
 use chrono::{Duration as ChronoDuration, Utc};
 use clickhouse_lib::ClickhouseClient;
 use eyre::Result;
+use hex::encode;
 use primitives::rate_limiter::RateLimiter;
 use serde::Serialize;
 use std::time::Duration as StdDuration;
@@ -47,6 +48,16 @@ struct SlashingEventsResponse {
 #[derive(Serialize)]
 struct ForcedInclusionEventsResponse {
     events: Vec<clickhouse_lib::ForcedInclusionProcessedRow>,
+}
+
+#[derive(Serialize)]
+struct ReorgEventsResponse {
+    events: Vec<clickhouse::L2ReorgRow>,
+}
+
+#[derive(Serialize)]
+struct ActiveGatewaysResponse {
+    gateways: Vec<String>,
 }
 
 #[derive(Serialize)]
@@ -111,6 +122,31 @@ async fn forced_inclusions_last_hour(
     Json(ForcedInclusionEventsResponse { events })
 }
 
+async fn reorgs_last_hour(State(state): State<ApiState>) -> Json<ReorgEventsResponse> {
+    let since = Utc::now() - ChronoDuration::hours(1);
+    let events = match state.client.get_l2_reorgs_since(since).await {
+        Ok(evts) => evts,
+        Err(e) => {
+            tracing::error!("Failed to get reorg events: {}", e);
+            Vec::new()
+        }
+    };
+    Json(ReorgEventsResponse { events })
+}
+
+async fn active_gateways_last_hour(State(state): State<ApiState>) -> Json<ActiveGatewaysResponse> {
+    let since = Utc::now() - ChronoDuration::hours(1);
+    let gateways = match state.client.get_active_gateways_since(since).await {
+        Ok(g) => g,
+        Err(e) => {
+            tracing::error!("Failed to get active gateways: {}", e);
+            Vec::new()
+        }
+    };
+    let gateways = gateways.into_iter().map(|a| format!("0x{}", encode(a))).collect();
+    Json(ActiveGatewaysResponse { gateways })
+}
+
 async fn avg_prove_time(State(state): State<ApiState>) -> Json<AvgProveTimeResponse> {
     let avg = match state.client.get_avg_prove_time_last_hour().await {
         Ok(val) => val,
@@ -153,6 +189,8 @@ pub async fn run(addr: SocketAddr, client: ClickhouseClient) -> Result<()> {
         .route("/l1-head", get(l1_head))
         .route("/slashings/last-hour", get(slashing_last_hour))
         .route("/forced-inclusions/last-hour", get(forced_inclusions_last_hour))
+        .route("/reorgs/last-hour", get(reorgs_last_hour))
+        .route("/active-gateways/last-hour", get(active_gateways_last_hour))
         .route("/avg-prove-time", get(avg_prove_time))
         .route("/avg-verify-time", get(avg_verify_time))
         .layer(middleware::from_fn_with_state(state.clone(), rate_limit))
