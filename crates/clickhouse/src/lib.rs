@@ -668,6 +668,27 @@ impl ClickhouseClient {
         let rows = client.query(&query).fetch_all::<VerifiedBatchIdRow>().await?;
         Ok(rows.into_iter().map(|r| r.batch_id).collect())
     }
+
+    /// Get all slashing events that occurred after the given cutoff time.
+    pub async fn get_slashing_events_since(
+        &self,
+        since: DateTime<Utc>,
+    ) -> Result<Vec<SlashingEventRow>> {
+        let client = self.base.clone().with_database(&self.db_name);
+        let query = format!(
+            "SELECT l1_block_number, validator_addr FROM {}.slashing_events \
+             WHERE inserted_at > toDateTime64({}, 3) \
+             ORDER BY inserted_at ASC",
+            self.db_name,
+            since.timestamp_millis() as f64 / 1000.0,
+        );
+        let rows = client
+            .query(&query)
+            .fetch_all::<SlashingEventRow>()
+            .await
+            .context("fetching slashing events failed")?;
+        Ok(rows)
+    }
 }
 
 #[cfg(test)]
