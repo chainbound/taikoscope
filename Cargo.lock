@@ -733,6 +733,7 @@ dependencies = [
  "chrono",
  "clickhouse 0.1.0",
  "eyre",
+ "hex",
  "primitives",
  "serde",
  "serde_json",

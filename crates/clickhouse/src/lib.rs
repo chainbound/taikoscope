@@ -711,6 +711,56 @@ impl ClickhouseClient {
         Ok(rows)
     }
 
+    /// Get all L2 reorg events that occurred after the given cutoff time.
+    pub async fn get_l2_reorgs_since(&self, since: DateTime<Utc>) -> Result<Vec<L2ReorgRow>> {
+        let client = self.base.clone().with_database(&self.db_name);
+        let query = format!(
+            "SELECT l2_block_number, depth FROM {}.l2_reorgs \
+             WHERE inserted_at > toDateTime64({}, 3) \
+             ORDER BY inserted_at ASC",
+            self.db_name,
+            since.timestamp_millis() as f64 / 1000.0,
+        );
+        let rows = client
+            .query(&query)
+            .fetch_all::<L2ReorgRow>()
+            .await
+            .context("fetching reorg events failed")?;
+        Ok(rows)
+    }
+
+    /// Get all active gateway addresses observed since the given cutoff time.
+    pub async fn get_active_gateways_since(&self, since: DateTime<Utc>) -> Result<Vec<[u8; 20]>> {
+        #[derive(Row, Deserialize)]
+        struct GatewayRow {
+            candidates: Vec<[u8; 20]>,
+            current_operator: Option<[u8; 20]>,
+            next_operator: Option<[u8; 20]>,
+        }
+
+        let client = self.base.clone().with_database(&self.db_name);
+        let query = format!(
+            "SELECT candidates, current_operator, next_operator FROM {}.preconf_data \
+             WHERE inserted_at > toDateTime64({}, 3)",
+            self.db_name,
+            since.timestamp_millis() as f64 / 1000.0,
+        );
+        let rows = client.query(&query).fetch_all::<GatewayRow>().await?;
+        let mut set = std::collections::HashSet::new();
+        for row in rows {
+            for cand in row.candidates {
+                set.insert(cand);
+            }
+            if let Some(op) = row.current_operator {
+                set.insert(op);
+            }
+            if let Some(op) = row.next_operator {
+                set.insert(op);
+            }
+        }
+        Ok(set.into_iter().collect())
+    }
+
     /// Get the average time in milliseconds it takes for a batch to be proven
     /// for proofs submitted within the last hour.
     pub async fn get_avg_prove_time_last_hour(&self) -> Result<Option<u64>> {

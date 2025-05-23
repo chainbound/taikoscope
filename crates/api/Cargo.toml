@@ -12,6 +12,7 @@ primitives = { path = "../primitives" }
 axum.workspace = true
 chrono.workspace = true
 eyre.workspace = true
+hex.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 serde.workspace = true
