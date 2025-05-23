@@ -959,7 +959,6 @@ impl ClickhouseClient {
             db = self.db_name
         );
 
-        let rows = client.query(&query).fetch_all::<L2BlockTimeRow>().await?;
         let rows = client.query(&query).fetch_all::<L1BlockTimeRow>().await?;
         Ok(rows)
     }
@@ -1737,7 +1736,18 @@ mod tests {
     async fn test_get_l2_block_times_last_hour() {
         let mock = Mock::new();
         let expected = BlockTimeRowTest { minute: 0, block_number: 42 };
-        let result = client.get_l1_block_times_last_hour().await.unwrap();
-        assert_eq!(result, vec![L1BlockTimeRow { minute: 1, block_number: 2 }]);
+        mock.add(handlers::provide(vec![expected.clone()]));
+
+        let url = Url::parse(mock.url()).unwrap();
+        let client = ClickhouseClient::new(
+            url,
+            "test-db".to_owned(),
+            "test_user".to_owned(),
+            "test_pass".to_owned(),
+        )
+        .unwrap();
+
+        let result = client.get_l2_block_times_last_hour().await.unwrap();
+        assert_eq!(result, vec![L2BlockTimeRow { minute: 0, block_number: 42 }]);
     }
 }
