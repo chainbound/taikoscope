@@ -6,26 +6,10 @@ use extractor::L2Header;
 use eyre::{Context, Error, Result, eyre};
 use std::convert::TryFrom;
 
-// Conversion from L2Header to L2HeadEvent
-impl TryFrom<&L2Header> for L2HeadEvent {
-    type Error = Error;
-
-    fn try_from(header: &L2Header) -> Result<Self, Self::Error> {
-        let mut hash_bytes = [0u8; 32];
-        hash_bytes.copy_from_slice(header.hash.as_slice());
-        let sequencer = header.beneficiary.into_array();
-
-        Ok(Self {
-            l2_block_number: header.number,
-            block_hash: hash_bytes,
-            block_ts: header.timestamp,
-            sum_gas_used: header.gas_used as u128,
-            sum_tx: 0,           // TODO: pull receipts and sum (or use RPC batch)
-            sum_priority_fee: 0, // TODO: pull receipts and sum (or use RPC batch)
-            sequencer,
-        })
-    }
-}
+// Conversion from L2Header to L2HeadEvent is intentionally omitted. The
+// extractor provides additional block statistics which are used when
+// constructing `L2HeadEvent`, so the direct conversion from a header would
+// omit important values.
 
 // Conversion from BatchProposed to BatchRow
 impl TryFrom<&ITaikoInbox::BatchProposed> for BatchRow {
