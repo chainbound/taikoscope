@@ -6,13 +6,14 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+clickhouse = { path = "../clickhouse" }
+
 axum.workspace = true
+eyre.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-eyre.workspace = true
-clickhouse = { path = "../clickhouse" }
 
 [lints]
 workspace = true
