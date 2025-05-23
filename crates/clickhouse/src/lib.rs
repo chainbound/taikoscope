@@ -234,6 +234,15 @@ pub struct BatchVerifyTimeRow {
     pub seconds_to_verify: u64,
 }
 
+/// Row representing the block number seen at a given minute
+#[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq)]
+pub struct L1BlockTimeRow {
+    /// Minute timestamp (unix seconds)
+    pub minute: u64,
+    /// Highest L1 block number within that minute
+    pub block_number: u64,
+}
+
 /// Row representing L2 block numbers per minute
 #[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq)]
 pub struct L2BlockTimeRow {
@@ -937,6 +946,25 @@ impl ClickhouseClient {
         Ok(rows)
     }
 
+    /// Get L1 block numbers grouped by minute for the last hour.
+    pub async fn get_l1_block_times_last_hour(&self) -> Result<Vec<L1BlockTimeRow>> {
+        let client = self.base.clone().with_database(&self.db_name);
+        let query = format!(
+            "SELECT toUInt64(toStartOfMinute(fromUnixTimestamp64Milli(block_ts * 1000))) AS minute, \
+                    max(l1_block_number) AS block_number \
+             FROM {db}.l1_head_events \
+             WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL 1 HOUR) \
+             GROUP BY minute \
+             ORDER BY minute",
+            db = self.db_name
+        );
+
+        let rows = client.query(&query).fetch_all::<L2BlockTimeRow>().await?;
+        let rows = client.query(&query).fetch_all::<L1BlockTimeRow>().await?;
+        Ok(rows)
+    }
+
+
     /// Get max L2 block number for each minute in the last hour.
     pub async fn get_l2_block_times_last_hour(&self) -> Result<Vec<L2BlockTimeRow>> {
         let client = self.base.clone().with_database(&self.db_name);
@@ -971,6 +999,9 @@ mod tests {
         BatchProveTimeRow, BatchRow, BatchVerifyTimeRow, ClickhouseClient,
         ForcedInclusionProcessedRow, L1HeadEvent, L2BlockTimeRow, L2HeadEvent, L2ReorgRow,
         PreconfData, ProvedBatchRow, VerifiedBatchRow,
+        BatchProveTimeRow, BatchRow, BatchVerifyTimeRow, L1BlockTimeRow, ClickhouseClient,
+        ForcedInclusionProcessedRow, L1HeadEvent, L2HeadEvent, L2ReorgRow, PreconfData,
+        ProvedBatchRow, VerifiedBatchRow,
     };
 
     #[derive(Serialize, Row)]
@@ -1687,10 +1718,11 @@ mod tests {
         block_number: u64,
     }
 
+
     #[tokio::test]
-    async fn test_get_l2_block_times_last_hour() {
+    async fn test_get_l1_block_times_last_hour() {
         let mock = Mock::new();
-        let expected = BlockTimeRowTest { minute: 0, block_number: 42 };
+        let expected = BlockTimeRowTest { minute: 1, block_number: 2 };
         mock.add(handlers::provide(vec![expected.clone()]));
 
         let url = Url::parse(mock.url()).unwrap();
@@ -1702,7 +1734,16 @@ mod tests {
         )
         .unwrap();
 
-        let result = client.get_l2_block_times_last_hour().await.unwrap();
-        assert_eq!(result, vec![L2BlockTimeRow { minute: 0, block_number: 42 }]);
+        let result = client.get_l1_block_times_last_hour().await.unwrap();
+        assert_eq!(result, vec![L1BlockTimeRow { minute: 1, block_number: 2 }]);
+    }
+
+    #[tokio::test]
+    async fn test_get_l2_block_times_last_hour() {
+        let mock = Mock::new();
+        let expected = BlockTimeRowTest { minute: 0, block_number: 42 };
+            let result = client.get_l1_block_times_last_hour().await.unwrap();
+            assert_eq!(result, vec![L1BlockTimeRow { minute: 1, block_number: 2 }]);
+        }
     }
 }
