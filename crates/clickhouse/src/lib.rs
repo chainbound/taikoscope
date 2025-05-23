@@ -641,8 +641,7 @@ impl ClickhouseClient {
         if row.block_ts == 0 {
             return Ok(None);
         }
-
-        let ts_opt = match Utc.timestamp_opt(row.block_ts as i64, 0) {
+        let ts_opt = match Utc.timestamp_millis_opt(row.block_ts as i64) {
             LocalResult::Single(dt) => Some(dt),
             _ => None,
         };
@@ -673,11 +672,10 @@ impl ClickhouseClient {
             return Ok(None);
         }
 
-        let ts_opt = match Utc.timestamp_opt(row.block_ts as i64, 0) {
+        let ts_opt = match Utc.timestamp_millis_opt(row.block_ts as i64) {
             LocalResult::Single(dt) => Some(dt),
             _ => None,
         };
-
         Ok(ts_opt)
     }
 
@@ -1210,7 +1208,7 @@ mod tests {
     #[tokio::test]
     async fn test_get_last_batch_time() {
         let mock = Mock::new();
-        let expected_ts = 77u64;
+        let expected_ts = 77_000u64; // milliseconds since epoch
         mock.add(handlers::provide(vec![MaxRow { block_ts: expected_ts }]));
 
         let url = Url::parse(mock.url()).unwrap();
@@ -1218,14 +1216,14 @@ mod tests {
             ClickhouseClient::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
 
         let result = ch.get_last_batch_time().await.unwrap();
-        let expected = Utc.timestamp_opt(expected_ts as i64, 0).single().unwrap();
+        let expected = Utc.timestamp_millis_opt(expected_ts as i64).single().unwrap();
         assert_eq!(result, Some(expected));
     }
 
     #[tokio::test]
     async fn test_get_last_verified_batch_time() {
         let mock = Mock::new();
-        let expected_ts = 99u64;
+        let expected_ts = 99_000u64; // milliseconds since epoch
         mock.add(handlers::provide(vec![MaxRow { block_ts: expected_ts }]));
 
         let url = Url::parse(mock.url()).unwrap();
@@ -1233,7 +1231,7 @@ mod tests {
             ClickhouseClient::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
 
         let result = ch.get_last_verified_batch_time().await.unwrap();
-        let expected = Utc.timestamp_opt(expected_ts as i64, 0).single().unwrap();
+        let expected = Utc.timestamp_millis_opt(expected_ts as i64).single().unwrap();
         assert_eq!(result, Some(expected));
     }
 
