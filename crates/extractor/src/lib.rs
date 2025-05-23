@@ -375,7 +375,6 @@ impl Extractor {
         tokio::spawn(async move {
             loop {
                 info!("Attempting to subscribe to TaikoInbox BatchesVerified events...");
-                // TODO: Implement batches_verified_filter in chainio::TaikoInbox
                 let filter = taiko_inbox.batches_verified_filter();
                 let sub_result = provider.subscribe_logs(&filter).await;
 
