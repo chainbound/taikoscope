@@ -90,6 +90,11 @@ struct VerifyTimesResponse {
     batches: Vec<clickhouse_lib::BatchVerifyTimeRow>,
 }
 
+#[derive(Serialize)]
+struct L2BlockTimesResponse {
+    blocks: Vec<clickhouse_lib::L2BlockTimeRow>,
+}
+
 async fn l2_head(State(state): State<ApiState>) -> Json<L2HeadResponse> {
     let ts = match state.client.get_last_l2_head_time().await {
         Ok(time) => time,
@@ -233,6 +238,17 @@ async fn verify_times_last_hour(State(state): State<ApiState>) -> Json<VerifyTim
     Json(VerifyTimesResponse { batches })
 }
 
+async fn l2_block_times_last_hour(State(state): State<ApiState>) -> Json<L2BlockTimesResponse> {
+    let blocks = match state.client.get_l2_block_times_last_hour().await {
+        Ok(rows) => rows,
+        Err(e) => {
+            tracing::error!("Failed to get L2 block times: {}", e);
+            Vec::new()
+        }
+    };
+    Json(L2BlockTimesResponse { blocks })
+}
+
 async fn rate_limit(
     State(state): State<ApiState>,
     req: axum::http::Request<axum::body::Body>,
@@ -259,6 +275,7 @@ fn router(state: ApiState) -> Router {
         .route("/batch-posting-cadence", get(batch_posting_cadence))
         .route("/prove-times/last-hour", get(prove_times_last_hour))
         .route("/verify-times/last-hour", get(verify_times_last_hour))
+        .route("/l2-block-times/last-hour", get(l2_block_times_last_hour))
         .layer(middleware::from_fn_with_state(state.clone(), rate_limit))
         .with_state(state)
 }
@@ -441,5 +458,20 @@ mod tests {
         let app = build_app(mock.url());
         let body = send_request(app, "/verify-times/last-hour").await;
         assert_eq!(body, json!({ "batches": [ { "batch_id": 2, "seconds_to_verify": 120 } ] }));
+    }
+
+    #[derive(Serialize, Row)]
+    struct BlockTimeRowTest {
+        minute: u64,
+        block_number: u64,
+    }
+
+    #[tokio::test]
+    async fn l2_block_times_last_hour_endpoint() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(vec![BlockTimeRowTest { minute: 0, block_number: 1 }]));
+        let app = build_app(mock.url());
+        let body = send_request(app, "/l2-block-times/last-hour").await;
+        assert_eq!(body, json!({ "blocks": [ { "minute": 0, "block_number": 1 } ] }));
     }
 }
