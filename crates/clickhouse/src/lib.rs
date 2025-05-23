@@ -1334,7 +1334,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_init_db_drops_proved_batches() {
-        let mut mock = Mock::new();
+        let mock = Mock::new();
         // Capture all DDL queries executed during initialization
         let mut controls = Vec::new();
         for _ in 0..19 {
