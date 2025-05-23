@@ -44,23 +44,21 @@ impl RateLimiter {
         }
     }
 
-
-fn try_acquire(&self) -> bool {
-    let mut state = self.state.lock().expect("lock poisoned");
-    let now = Instant::now();
-    if now >= state.reset_at {
-        state.reset_at = now + self.period;
-        state.count = 1;  // Start at 1 for this request
-        return true;
+    fn try_acquire(&self) -> bool {
+        let mut state = self.state.lock().expect("lock poisoned");
+        let now = Instant::now();
+        if now >= state.reset_at {
+            state.reset_at = now + self.period;
+            state.count = 1; // Start at 1 for this request
+            return true;
+        }
+        if state.count < self.capacity {
+            state.count += 1;
+            true
+        } else {
+            false
+        }
     }
-    if state.count < self.capacity {
-        state.count += 1;
-        true
-    } else {
-        false
-    }
-}
-
 }
 
 #[derive(Clone, Debug)]
