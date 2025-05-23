@@ -1,4 +1,4 @@
-# Run and deploy dashboard
+# Run and deploy the Taikoscope dashboard
 
 This contains everything you need to run your app locally.
 
