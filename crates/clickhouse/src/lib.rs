@@ -225,6 +225,15 @@ pub struct BatchProveTimeRow {
     pub seconds_to_prove: u64,
 }
 
+/// Row representing the time it took for a batch to be verified
+#[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq)]
+pub struct BatchVerifyTimeRow {
+    /// Batch ID
+    pub batch_id: u64,
+    /// Seconds between proof and verification
+    pub seconds_to_verify: u64,
+}
+
 /// Clickhouse client
 #[derive(Clone, Debug)]
 pub struct ClickhouseClient {
@@ -894,6 +903,30 @@ impl ClickhouseClient {
         let rows = client.query(&query).fetch_all::<BatchProveTimeRow>().await?;
         Ok(rows)
     }
+
+    /// Get verify times in seconds for batches verified within the last hour.
+    pub async fn get_verify_times_last_hour(&self) -> Result<Vec<BatchVerifyTimeRow>> {
+        let client = self.base.clone().with_database(&self.db_name);
+        let query = format!(
+            "SELECT pb.batch_id AS batch_id, \
+                    (l1_verified.block_ts - l1_proved.block_ts) AS seconds_to_verify \
+             FROM {db}.proved_batches pb \
+             INNER JOIN {db}.verified_batches vb \
+                ON pb.batch_id = vb.batch_id AND pb.block_hash = vb.block_hash \
+             INNER JOIN {db}.l1_head_events l1_proved \
+                ON pb.l1_block_number = l1_proved.l1_block_number \
+             INNER JOIN {db}.l1_head_events l1_verified \
+                ON vb.l1_block_number = l1_verified.l1_block_number \
+             WHERE l1_verified.block_ts >= (toUInt64(now()) - 3600) \
+               AND l1_verified.block_ts > l1_proved.block_ts \
+               AND (l1_verified.block_ts - l1_proved.block_ts) > 60 \
+             ORDER BY pb.batch_id ASC",
+            db = self.db_name
+        );
+
+        let rows = client.query(&query).fetch_all::<BatchVerifyTimeRow>().await?;
+        Ok(rows)
+    }
 }
 
 #[cfg(test)]
@@ -909,9 +942,9 @@ mod tests {
     use url::Url;
 
     use crate::{
-        BatchRow, ClickhouseClient, ForcedInclusionProcessedRow, L1HeadEvent, L2HeadEvent,
-        L2ReorgRow, PreconfData, ProvedBatchRow, VerifiedBatchRow,
-        BatchProveTimeRow,
+        BatchProveTimeRow, BatchRow, BatchVerifyTimeRow, ClickhouseClient,
+        ForcedInclusionProcessedRow, L1HeadEvent, L2HeadEvent, L2ReorgRow, PreconfData,
+        ProvedBatchRow, VerifiedBatchRow,
     };
 
     #[derive(Serialize, Row)]
@@ -1595,5 +1628,30 @@ mod tests {
 
         let result = client.get_prove_times_last_hour().await.unwrap();
         assert_eq!(result, vec![BatchProveTimeRow { batch_id: 7, seconds_to_prove: 42 }]);
+    }
+
+    #[derive(Serialize, Row, Debug, PartialEq, Eq, Clone)]
+    struct VerifyTimeRowTest {
+        batch_id: u64,
+        seconds_to_verify: u64,
+    }
+
+    #[tokio::test]
+    async fn test_get_verify_times_last_hour() {
+        let mock = Mock::new();
+        let expected = VerifyTimeRowTest { batch_id: 11, seconds_to_verify: 120 };
+        mock.add(handlers::provide(vec![expected.clone()]));
+
+        let url = Url::parse(mock.url()).unwrap();
+        let client = ClickhouseClient::new(
+            url,
+            "test-db".to_owned(),
+            "test_user".to_owned(),
+            "test_pass".to_owned(),
+        )
+        .unwrap();
+
+        let result = client.get_verify_times_last_hour().await.unwrap();
+        assert_eq!(result, vec![BatchVerifyTimeRow { batch_id: 11, seconds_to_verify: 120 }]);
     }
 }

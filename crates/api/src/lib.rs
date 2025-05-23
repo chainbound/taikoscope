@@ -85,6 +85,11 @@ struct ProveTimesResponse {
     batches: Vec<clickhouse_lib::BatchProveTimeRow>,
 }
 
+#[derive(Serialize)]
+struct VerifyTimesResponse {
+    batches: Vec<clickhouse_lib::BatchVerifyTimeRow>,
+}
+
 async fn l2_head(State(state): State<ApiState>) -> Json<L2HeadResponse> {
     let ts = match state.client.get_last_l2_head_time().await {
         Ok(time) => time,
@@ -217,6 +222,17 @@ async fn prove_times_last_hour(State(state): State<ApiState>) -> Json<ProveTimes
     Json(ProveTimesResponse { batches })
 }
 
+async fn verify_times_last_hour(State(state): State<ApiState>) -> Json<VerifyTimesResponse> {
+    let batches = match state.client.get_verify_times_last_hour().await {
+        Ok(rows) => rows,
+        Err(e) => {
+            tracing::error!("Failed to get verify times: {}", e);
+            Vec::new()
+        }
+    };
+    Json(VerifyTimesResponse { batches })
+}
+
 async fn rate_limit(
     State(state): State<ApiState>,
     req: axum::http::Request<axum::body::Body>,
@@ -242,6 +258,7 @@ fn router(state: ApiState) -> Router {
         .route("/l2-block-cadence", get(l2_block_cadence))
         .route("/batch-posting-cadence", get(batch_posting_cadence))
         .route("/prove-times/last-hour", get(prove_times_last_hour))
+        .route("/verify-times/last-hour", get(verify_times_last_hour))
         .layer(middleware::from_fn_with_state(state.clone(), rate_limit))
         .with_state(state)
 }
@@ -409,5 +426,20 @@ mod tests {
         let app = build_app(mock.url());
         let body = send_request(app, "/prove-times/last-hour").await;
         assert_eq!(body, json!({ "batches": [ { "batch_id": 1, "seconds_to_prove": 10 } ] }));
+    }
+
+    #[derive(Serialize, Row)]
+    struct VerifyRowTest {
+        batch_id: u64,
+        seconds_to_verify: u64,
+    }
+
+    #[tokio::test]
+    async fn verify_times_last_hour_endpoint() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(vec![VerifyRowTest { batch_id: 2, seconds_to_verify: 120 }]));
+        let app = build_app(mock.url());
+        let body = send_request(app, "/verify-times/last-hour").await;
+        assert_eq!(body, json!({ "batches": [ { "batch_id": 2, "seconds_to_verify": 120 } ] }));
     }
 }
