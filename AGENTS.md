@@ -2,6 +2,7 @@
 
 ## Build & Test Commands
 - Build & run: `just dev` (with dev.env file) or `cargo run`
+- API server: `just dev-api` or `cargo run --bin api-server`
 - Run tests: `just test` or `cargo nextest run --workspace --all-targets`
 - Run single test: `cargo nextest run <test_name>` or `cargo test <test_name>`
 - Linting: `just lint` or `cargo clippy --examples --tests --benches --all-features`

@@ -14,9 +14,14 @@ Taikoscope is a unified dashboard developed by Chainbound to provide real-time, 
 
 ## Deploy
 
-Run locally
+Run engine locally
 ```
 just dev
+just dev-api
+```
+
+Run API server locally
+```
 just dev-api
 ```
 
