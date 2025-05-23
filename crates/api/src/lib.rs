@@ -98,6 +98,11 @@ struct AvgProveTimeResponse {
     avg_prove_time_ms: Option<u64>,
 }
 
+#[derive(Serialize)]
+struct AvgVerifyTimeResponse {
+    avg_verify_time_ms: Option<u64>,
+}
+
 async fn l2_head(State(state): State<ApiState>) -> Json<L2HeadResponse> {
     let ts = match state.client.get_last_l2_head_time().await {
         Ok(time) => time,
@@ -139,7 +144,7 @@ async fn slashing_last_hour(State(state): State<ApiState>) -> Json<SlashingEvent
 async fn forced_inclusions_last_hour(
     State(state): State<ApiState>,
 ) -> Json<ForcedInclusionEventsResponse> {
-    let since = Utc::now() - Duration::hours(1);
+    let since = Utc::now() - ChronoDuration::hours(1);
     let events = match state.client.get_forced_inclusions_since(since).await {
         Ok(evts) => evts,
         Err(e) => {
@@ -159,6 +164,17 @@ async fn avg_prove_time(State(state): State<ApiState>) -> Json<AvgProveTimeRespo
         }
     };
     Json(AvgProveTimeResponse { avg_prove_time_ms: avg })
+}
+
+async fn avg_verify_time(State(state): State<ApiState>) -> Json<AvgVerifyTimeResponse> {
+    let avg = match state.client.get_avg_verify_time_last_hour().await {
+        Ok(val) => val,
+        Err(e) => {
+            tracing::error!("Failed to get avg verify time: {}", e);
+            None
+        }
+    };
+    Json(AvgVerifyTimeResponse { avg_verify_time_ms: avg })
 }
 
 async fn rate_limit(
@@ -182,6 +198,7 @@ pub async fn run(addr: SocketAddr, client: ClickhouseClient) -> Result<()> {
         .route("/slashings/last-hour", get(slashing_last_hour))
         .route("/forced-inclusions/last-hour", get(forced_inclusions_last_hour))
         .route("/avg-prove-time", get(avg_prove_time))
+        .route("/avg-verify-time", get(avg_verify_time))
         .layer(middleware::from_fn_with_state(state.clone(), rate_limit))
         .with_state(state)
         .layer(CorsLayer::permissive());
