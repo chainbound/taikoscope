@@ -24,8 +24,16 @@ struct L2HeadResponse {
     last_l2_head_time: Option<String>,
 }
 
+
 async fn l2_head(State(state): State<ApiState>) -> Json<L2HeadResponse> {
-    let ts = state.client.get_last_l2_head_time().await.unwrap_or(None);
+    let ts = match state.client.get_last_l2_head_time().await {
+        Ok(time) => time,
+        Err(e) => {
+            tracing::error!("Failed to get L2 head time: {}", e);
+            None
+        }
+    };
+
     let resp = L2HeadResponse { last_l2_head_time: ts.map(|t| t.to_rfc3339()) };
     Json(resp)
 }
