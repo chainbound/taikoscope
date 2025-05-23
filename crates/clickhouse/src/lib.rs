@@ -1182,6 +1182,74 @@ impl ClickhouseClient {
         let rows = client.query(&query).fetch_all::<L2BlockTimeRow>().await?;
         Ok(rows)
     }
+
+    /// Get the average number of L2 transactions per second for the last hour.
+    pub async fn get_avg_l2_tps_last_hour(&self) -> Result<Option<f64>> {
+        #[derive(Row, Deserialize)]
+        struct TpsRow {
+            min_ts: Option<u64>,
+            max_ts: Option<u64>,
+            tx_sum: Option<u64>,
+        }
+
+        let client = self.base.clone().with_database(&self.db_name);
+        let query = format!(
+            "SELECT toUInt64(min(block_ts)) AS min_ts, \
+                    toUInt64(max(block_ts)) AS max_ts, \
+                    sum(sum_tx) AS tx_sum \
+             FROM {db}.l2_head_events \
+             WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL 1 HOUR)",
+            db = self.db_name
+        );
+
+        let rows = client.query(&query).fetch_all::<TpsRow>().await?;
+        let row = match rows.into_iter().next() {
+            Some(r) => r,
+            None => return Ok(None),
+        };
+
+        match (row.min_ts, row.max_ts, row.tx_sum) {
+            (Some(min_ts), Some(max_ts), Some(sum)) if max_ts > min_ts && sum > 0 => {
+                let duration = (max_ts - min_ts) as f64;
+                Ok(Some(sum as f64 / duration))
+            }
+            _ => Ok(None),
+        }
+    }
+
+    /// Get the average number of L2 transactions per second for the last 24 hours.
+    pub async fn get_avg_l2_tps_last_24_hours(&self) -> Result<Option<f64>> {
+        #[derive(Row, Deserialize)]
+        struct TpsRow {
+            min_ts: Option<u64>,
+            max_ts: Option<u64>,
+            tx_sum: Option<u64>,
+        }
+
+        let client = self.base.clone().with_database(&self.db_name);
+        let query = format!(
+            "SELECT toUInt64(min(block_ts)) AS min_ts, \
+                    toUInt64(max(block_ts)) AS max_ts, \
+                    sum(sum_tx) AS tx_sum \
+             FROM {db}.l2_head_events \
+             WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL 24 HOUR)",
+            db = self.db_name
+        );
+
+        let rows = client.query(&query).fetch_all::<TpsRow>().await?;
+        let row = match rows.into_iter().next() {
+            Some(r) => r,
+            None => return Ok(None),
+        };
+
+        match (row.min_ts, row.max_ts, row.tx_sum) {
+            (Some(min_ts), Some(max_ts), Some(sum)) if max_ts > min_ts && sum > 0 => {
+                let duration = (max_ts - min_ts) as f64;
+                Ok(Some(sum as f64 / duration))
+            }
+            _ => Ok(None),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -2127,5 +2195,56 @@ mod tests {
 
         let result = client.get_l2_block_times_last_24_hours().await.unwrap();
         assert_eq!(result, vec![L2BlockTimeRow { minute: 0, block_number: 42 }]);
+    }
+
+    #[derive(Serialize, Row, Debug, PartialEq)]
+    struct TpsRowTest {
+        min_ts: Option<u64>,
+        max_ts: Option<u64>,
+        tx_sum: Option<u64>,
+    }
+
+    #[tokio::test]
+    async fn test_get_avg_l2_tps_last_hour() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(vec![TpsRowTest {
+            min_ts: Some(10),
+            max_ts: Some(70),
+            tx_sum: Some(180),
+        }]));
+
+        let url = Url::parse(mock.url()).unwrap();
+        let client = ClickhouseClient::new(
+            url,
+            "test-db".to_owned(),
+            "test_user".to_owned(),
+            "test_pass".to_owned(),
+        )
+        .unwrap();
+
+        let result = client.get_avg_l2_tps_last_hour().await.unwrap();
+        assert_eq!(result, Some(3.0));
+    }
+
+    #[tokio::test]
+    async fn test_get_avg_l2_tps_last_24_hours() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(vec![TpsRowTest {
+            min_ts: Some(100),
+            max_ts: Some(460),
+            tx_sum: Some(720),
+        }]));
+
+        let url = Url::parse(mock.url()).unwrap();
+        let client = ClickhouseClient::new(
+            url,
+            "test-db".to_owned(),
+            "test_user".to_owned(),
+            "test_pass".to_owned(),
+        )
+        .unwrap();
+
+        let result = client.get_avg_l2_tps_last_24_hours().await.unwrap();
+        assert_eq!(result, Some(2.0));
     }
 }
