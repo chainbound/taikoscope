@@ -15,6 +15,7 @@ tokio.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 eyre.workspace = true
+primitives = { path = "../../crates/primitives" }
 
 [[bin]]
 name = "api-server"
