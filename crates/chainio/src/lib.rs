@@ -301,6 +301,12 @@ impl BatchProposed {
 
         let count = self.info.blocks.len() as u64;
 
+        // When the last block id is 0 but there are blocks, the batch must
+        // contain the genesis block. In this case we simply return `[0]`.
+        if last == 0 && count > 0 {
+            return vec![0];
+        }
+
         // Add 1 to avoid off-by-one errors.
         // Example: `last == 3`, `count == 3`, then `first == 1`.
         let first = last.saturating_sub(count) + 1;
@@ -414,5 +420,20 @@ mod tests {
 
         let actual = batch.block_numbers_proposed();
         assert_eq!(actual, vec![1, 2]);
+    }
+
+    #[test]
+    fn block_numbers_when_last_zero() {
+        let batch = BatchProposed {
+            info: BatchInfo {
+                lastBlockId: 0,
+                blocks: vec![BlockParams::default(); 1],
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+
+        let actual = batch.block_numbers_proposed();
+        assert_eq!(actual, vec![0]);
     }
 }
