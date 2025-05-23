@@ -22,6 +22,7 @@ const TABLES: &[&str] = &[
     "forced_inclusion_processed",
     "verified_batches",
     "slashing_events",
+    "missed_slots",
 ];
 
 /// L1 head event
@@ -214,6 +215,17 @@ pub struct SlashingEventRow {
     pub l1_block_number: u64,
     /// Address of the validator that was slashed
     pub validator_addr: [u8; 20],
+}
+
+/// Missed slot row
+#[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq)]
+pub struct MissedSlotRow {
+    /// Address of the sequencer expected for the slot
+    pub sequencer_addr: [u8; 20],
+    /// Slot that was missed
+    pub slot: u64,
+    /// L1 block number associated with the slot
+    pub l1_block_number: u64,
 }
 
 /// Row representing the time it took for a batch to be proven
@@ -468,6 +480,24 @@ impl ClickhouseClient {
         // Insert into ClickHouse
         let mut insert = client.insert("verified_batches")?;
         insert.write(&verified_row).await?;
+        insert.end().await?;
+
+        Ok(())
+    }
+
+    /// Insert a missed slot event into `ClickHouse`
+    pub async fn insert_missed_slot(
+        &self,
+        sequencer: Address,
+        slot: u64,
+        l1_block_number: u64,
+    ) -> Result<()> {
+        let client = self.base.clone().with_database(&self.db_name);
+
+        let row = MissedSlotRow { sequencer_addr: sequencer.into_array(), slot, l1_block_number };
+
+        let mut insert = client.insert("missed_slots")?;
+        insert.write(&row).await?;
         insert.end().await?;
 
         Ok(())
@@ -1199,8 +1229,9 @@ mod tests {
     use crate::{
         BatchProveTimeRow, BatchRow, BatchVerifyTimeRow, ClickhouseClient,
         ForcedInclusionProcessedRow, L1BlockTimeRow, L1HeadEvent, L2BlockTimeRow, L2HeadEvent,
-        L2ReorgRow, PreconfData, ProvedBatchRow, VerifiedBatchRow,
+        L2ReorgRow, MissedSlotRow, PreconfData, ProvedBatchRow, VerifiedBatchRow,
     };
+    use alloy::primitives::Address;
 
     #[derive(Serialize, Row)]
     struct MaxRow {
@@ -1370,6 +1401,31 @@ mod tests {
                 block_hash: verified.block_hash,
             }
         );
+    }
+
+    #[tokio::test]
+    async fn test_insert_missed_slot() {
+        let mock = Mock::new();
+        let recorder = mock.add(handlers::record::<MissedSlotRow>());
+
+        let url = Url::parse(mock.url()).unwrap();
+        let client = ClickhouseClient::new(
+            url,
+            "test-db".to_owned(),
+            "test_user".to_owned(),
+            "test_pass".to_owned(),
+        )
+        .unwrap();
+
+        let slot = 7u64;
+        let l1_block_number = 100u64;
+        let sequencer: Address = [0x11u8; 20].into();
+
+        client.insert_missed_slot(sequencer, slot, l1_block_number).await.unwrap();
+
+        let rows: Vec<MissedSlotRow> = recorder.collect().await;
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0], MissedSlotRow { sequencer_addr: [0x11u8; 20], slot, l1_block_number });
     }
 
     #[tokio::test]

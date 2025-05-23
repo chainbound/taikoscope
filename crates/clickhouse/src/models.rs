@@ -116,3 +116,14 @@ pub struct SlashingEventRow {
     /// Address of the validator that was slashed
     pub validator_addr: [u8; 20],
 }
+
+/// Missed slot event row
+#[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq)]
+pub struct MissedSlotRow {
+    /// Address of the sequencer expected for the slot
+    pub sequencer_addr: [u8; 20],
+    /// Slot number that was missed
+    pub slot: u64,
+    /// L1 block number corresponding to the slot
+    pub l1_block_number: u64,
+}
