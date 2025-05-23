@@ -53,9 +53,8 @@ impl Client {
     pub(crate) fn incidents_url_with_statuses(&self) -> Result<Url> {
         let mut url = self.base_url.join(&format!("v1/{}/incidents", self.page_id))?;
         let statuses = ["INVESTIGATING", "IDENTIFIED", "MONITORING"];
-        for status in statuses {
-            url.query_pairs_mut().append_pair("status[]", status);
-        }
+        let joined = statuses.join(",");
+        url.query_pairs_mut().append_pair("status", &joined);
         Ok(url)
     }
 
@@ -289,7 +288,7 @@ mod tests {
         let url = client.incidents_url_with_statuses().unwrap();
         assert_eq!(
             url.as_str(),
-            "https://example.com/v1/page1/incidents?status%5B%5D=INVESTIGATING&status%5B%5D=IDENTIFIED&status%5B%5D=MONITORING"
+            "https://example.com/v1/page1/incidents?status=INVESTIGATING%2CIDENTIFIED%2CMONITORING"
         );
     }
 
