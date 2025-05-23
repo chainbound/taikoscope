@@ -71,7 +71,7 @@ deploy-remote-hekla:
     @just test || (echo "Tests failed, aborting deployment" && exit 1)
     test -f masaya.env || (echo "No masaya.env file found. Exiting." && exit 1)
     ssh {{ssh_alias}} "mkdir -p {{remote_dir}}"
-    rsync -av --exclude target --exclude .git . {{ssh_alias}}:{{remote_dir}}
+    rsync -av --exclude target --exclude .git --exclude dashboard . {{ssh_alias}}:{{remote_dir}}
     @echo "Building Taikoscope on {{ssh_alias}} (path: {{remote_dir}})"
     ssh {{ssh_alias}} "cd {{remote_dir}} && docker buildx build --load -t {{container}} ."
     @just start-remote-hekla
@@ -133,7 +133,7 @@ deploy-api-remote-hekla:
     @just test || (echo "Tests failed, aborting deployment" && exit 1)
     test -f masaya.env || (echo "No masaya.env file found. Exiting." && exit 1)
     ssh {{ssh_alias}} "mkdir -p {{remote_dir}}"
-    rsync -av --exclude target --exclude .git . {{ssh_alias}}:{{remote_dir}}
+    rsync -av --exclude target --exclude .git --exclude dashboard . {{ssh_alias}}:{{remote_dir}}
     @echo "Building API server on {{ssh_alias}} (path: {{remote_dir}})"
     ssh {{ssh_alias}} "cd {{remote_dir}} && docker buildx build --load -f Dockerfile.api -t {{api_container}} ."
     @just start-api-remote-hekla
