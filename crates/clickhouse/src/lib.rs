@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use tracing::info;
 use url::Url;
 
-// Constants for table definitions
+// List of tables managed by migrations
 const TABLES: &[&str] = &[
     "l1_head_events",
     "preconf_data",
@@ -22,96 +22,6 @@ const TABLES: &[&str] = &[
     "forced_inclusion_processed",
     "verified_batches",
     "slashing_events",
-];
-
-/// Table schema definition
-struct TableSchema {
-    name: &'static str,
-    columns: &'static str,
-    order_by: &'static str,
-}
-
-const TABLE_SCHEMAS: &[TableSchema] = &[
-    TableSchema {
-        name: "l1_head_events",
-        columns: "l1_block_number UInt64,
-                 block_hash FixedString(32),
-                 slot UInt64,
-                 block_ts UInt64,
-                 inserted_at DateTime64(3) DEFAULT now64()",
-        order_by: "l1_block_number",
-    },
-    TableSchema {
-        name: "preconf_data",
-        columns: "slot UInt64,
-                 candidates Array(FixedString(20)),
-                 current_operator Nullable(FixedString(20)),
-                 next_operator Nullable(FixedString(20)),
-                 inserted_at DateTime64(3) DEFAULT now64()",
-        order_by: "slot",
-    },
-    TableSchema {
-        name: "l2_head_events",
-        columns: "l2_block_number UInt64,
-                 block_hash FixedString(32),
-                 block_ts UInt64,
-                 sum_gas_used UInt128,
-                 sum_tx UInt32,
-                 sum_priority_fee UInt128,
-                 sequencer FixedString(20),
-                 inserted_at DateTime64(3) DEFAULT now64()",
-        order_by: "l2_block_number",
-    },
-    TableSchema {
-        name: "batches",
-        columns: "l1_block_number UInt64,
-                 batch_id UInt64,
-                 batch_size UInt16,
-                 proposer_addr FixedString(20),
-                 blob_count UInt8,
-                 blob_total_bytes UInt32,
-                 inserted_at DateTime64(3) DEFAULT now64()",
-        order_by: "l1_block_number, batch_id",
-    },
-    TableSchema {
-        name: "proved_batches",
-        columns: "l1_block_number UInt64,
-                 batch_id UInt64,
-                 verifier_addr FixedString(20),
-                 parent_hash FixedString(32),
-                 block_hash FixedString(32),
-                 state_root FixedString(32),
-                 inserted_at DateTime64(3) DEFAULT now64()",
-        order_by: "l1_block_number, batch_id",
-    },
-    TableSchema {
-        name: "l2_reorgs",
-        columns: "l2_block_number UInt64,
-                 depth UInt16,
-                 inserted_at DateTime64(3) DEFAULT now64()",
-        order_by: "inserted_at",
-    },
-    TableSchema {
-        name: "forced_inclusion_processed",
-        columns: "blob_hash FixedString(32),
-                 inserted_at DateTime64(3) DEFAULT now64()",
-        order_by: "inserted_at",
-    },
-    TableSchema {
-        name: "verified_batches",
-        columns: "l1_block_number UInt64,
-                 batch_id UInt64,
-                 block_hash FixedString(32),
-                 inserted_at DateTime64(3) DEFAULT now64()",
-        order_by: "l1_block_number, batch_id",
-    },
-    TableSchema {
-        name: "slashing_events",
-        columns: "l1_block_number UInt64,
-                 validator_addr FixedString(20),
-                 inserted_at DateTime64(3) DEFAULT now64()",
-        order_by: "l1_block_number, validator_addr",
-    },
 ];
 
 /// L1 head event
@@ -348,24 +258,6 @@ impl ClickhouseClient {
         Ok(Self { base: client, db_name })
     }
 
-    /// Create database and optionally drop existing tables if reset is true
-    /// Create a table with the given schema
-    async fn create_table(&self, schema: &TableSchema) -> Result<()> {
-        let query = format!(
-            "CREATE TABLE IF NOT EXISTS {}.{} (
-                    {}
-                ) ENGINE = MergeTree()
-                ORDER BY ({})",
-            self.db_name, schema.name, schema.columns, schema.order_by
-        );
-
-        self.base
-            .query(&query)
-            .execute()
-            .await
-            .wrap_err_with(|| format!("Failed to create {} table", schema.name))
-    }
-
     /// Drop a table if it exists
     async fn drop_table(&self, table_name: &str) -> Result<()> {
         self.base
@@ -396,10 +288,16 @@ impl ClickhouseClient {
         Ok(())
     }
 
-    /// Init database schema
+    /// Initialize database schema using SQL migrations
     pub async fn init_schema(&self) -> Result<()> {
-        for schema in TABLE_SCHEMAS {
-            self.create_table(schema).await?;
+        static INIT_SQL: &str = include_str!("../migrations/001_create_tables.sql");
+        for stmt in INIT_SQL.split(';') {
+            let stmt = stmt.trim();
+            if stmt.is_empty() {
+                continue;
+            }
+            let stmt = stmt.replace("${DB}", &self.db_name);
+            self.base.query(&stmt).execute().await?;
         }
         Ok(())
     }
