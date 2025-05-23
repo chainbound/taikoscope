@@ -52,7 +52,7 @@ struct ForcedInclusionEventsResponse {
 
 #[derive(Serialize)]
 struct ReorgEventsResponse {
-    events: Vec<clickhouse::L2ReorgRow>,
+    events: Vec<clickhouse_lib::L2ReorgRow>,
 }
 
 #[derive(Serialize)]
@@ -68,6 +68,16 @@ struct AvgProveTimeResponse {
 #[derive(Serialize)]
 struct AvgVerifyTimeResponse {
     avg_verify_time_ms: Option<u64>,
+}
+
+#[derive(Serialize)]
+struct L2BlockCadenceResponse {
+    l2_block_cadence_ms: Option<u64>,
+}
+
+#[derive(Serialize)]
+struct BatchPostingCadenceResponse {
+    batch_posting_cadence_ms: Option<u64>,
 }
 
 async fn l2_head(State(state): State<ApiState>) -> Json<L2HeadResponse> {
@@ -169,6 +179,28 @@ async fn avg_verify_time(State(state): State<ApiState>) -> Json<AvgVerifyTimeRes
     Json(AvgVerifyTimeResponse { avg_verify_time_ms: avg })
 }
 
+async fn l2_block_cadence(State(state): State<ApiState>) -> Json<L2BlockCadenceResponse> {
+    let avg = match state.client.get_l2_block_cadence_last_hour().await {
+        Ok(val) => val,
+        Err(e) => {
+            tracing::error!("Failed to get L2 block cadence: {}", e);
+            None
+        }
+    };
+    Json(L2BlockCadenceResponse { l2_block_cadence_ms: avg })
+}
+
+async fn batch_posting_cadence(State(state): State<ApiState>) -> Json<BatchPostingCadenceResponse> {
+    let avg = match state.client.get_batch_posting_cadence_last_hour().await {
+        Ok(val) => val,
+        Err(e) => {
+            tracing::error!("Failed to get batch posting cadence: {}", e);
+            None
+        }
+    };
+    Json(BatchPostingCadenceResponse { batch_posting_cadence_ms: avg })
+}
+
 async fn rate_limit(
     State(state): State<ApiState>,
     req: axum::http::Request<axum::body::Body>,
@@ -193,6 +225,8 @@ pub async fn run(addr: SocketAddr, client: ClickhouseClient) -> Result<()> {
         .route("/active-gateways/last-hour", get(active_gateways_last_hour))
         .route("/avg-prove-time", get(avg_prove_time))
         .route("/avg-verify-time", get(avg_verify_time))
+        .route("/l2-block-cadence", get(l2_block_cadence))
+        .route("/batch-posting-cadence", get(batch_posting_cadence))
         .layer(middleware::from_fn_with_state(state.clone(), rate_limit))
         .with_state(state)
         .layer(CorsLayer::permissive());
@@ -241,6 +275,8 @@ mod tests {
             .route("/forced-inclusions/last-hour", get(forced_inclusions_last_hour))
             .route("/avg-prove-time", get(avg_prove_time))
             .route("/avg-verify-time", get(avg_verify_time))
+            .route("/l2-block-cadence", get(l2_block_cadence))
+            .route("/batch-posting-cadence", get(batch_posting_cadence))
             .layer(middleware::from_fn_with_state(state.clone(), rate_limit))
             .with_state(state)
     }
@@ -315,5 +351,38 @@ mod tests {
         let app = build_app(mock.url());
         let body = send_request(app, "/avg-verify-time").await;
         assert_eq!(body, json!({ "avg_verify_time_ms": 2500 }));
+    }
+
+    #[derive(Serialize, Row)]
+    struct CadenceRowTest {
+        min_ts: Option<u64>,
+        max_ts: Option<u64>,
+        cnt: u64,
+    }
+
+    #[tokio::test]
+    async fn l2_block_cadence_endpoint() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(vec![CadenceRowTest {
+            min_ts: Some(1000),
+            max_ts: Some(4000),
+            cnt: 4,
+        }]));
+        let app = build_app(mock.url());
+        let body = send_request(app, "/l2-block-cadence").await;
+        assert_eq!(body, json!({ "l2_block_cadence_ms": 1000 }));
+    }
+
+    #[tokio::test]
+    async fn batch_posting_cadence_endpoint() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(vec![CadenceRowTest {
+            min_ts: Some(2000),
+            max_ts: Some(6000),
+            cnt: 3,
+        }]));
+        let app = build_app(mock.url());
+        let body = send_request(app, "/batch-posting-cadence").await;
+        assert_eq!(body, json!({ "batch_posting_cadence_ms": 2000 }));
     }
 }
