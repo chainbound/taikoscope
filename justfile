@@ -103,3 +103,40 @@ info-log-remote-hekla:
 # Search in logs for a specific term
 search-logs-remote-hekla term:
     ssh {{ssh_alias}} "docker logs {{container}} | grep -i \"{{term}}\""
+
+# --- API Server Deployment ---
+api_container := "taikoscope-api-hekla"
+api_port := "48101:3000"
+
+stop-api-container:
+    ssh {{ssh_alias}} "docker stop {{api_container}} || true"
+    ssh {{ssh_alias}} "docker rm {{api_container}} || true"
+
+run-api-container:
+    ssh {{ssh_alias}} "docker run -d \
+        --name {{api_container}} \
+        --restart unless-stopped \
+        --env-file \{{env_file}} \
+        -p {{api_port}} \
+        {{api_container}}"
+
+deploy-api-remote-hekla:
+    @echo "Deploying API server via SSH alias '{{ssh_alias}}'"
+    @just test || (echo "Tests failed, aborting deployment" && exit 1)
+    test -f masaya.env || (echo "No masaya.env file found. Exiting." && exit 1)
+    ssh {{ssh_alias}} "mkdir -p {{remote_dir}}"
+    rsync -av --exclude target --exclude .git . {{ssh_alias}}:{{remote_dir}}
+    @echo "Building API server on {{ssh_alias}} (path: {{remote_dir}})"
+    ssh {{ssh_alias}} "cd {{remote_dir}} && docker buildx build --load -f Dockerfile.api -t {{api_container}} ."
+    @just start-api-remote-hekla
+
+start-api-remote-hekla:
+    @echo "Starting API server on remote..."
+    @just stop-api-container
+    @just run-api-container
+    @echo "API server started."
+
+logs-api-remote-hekla:
+    ssh {{ssh_alias}} "docker logs -f {{api_container}}"
+status-api-remote-hekla:
+    ssh {{ssh_alias}} "docker ps -f name={{api_container}}"
