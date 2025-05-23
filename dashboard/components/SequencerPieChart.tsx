@@ -39,11 +39,18 @@ export const SequencerPieChart: React.FC<SequencerPieChartProps> = ({ data }) =>
             return <Cell key={`cell-${index}`} fill={color} />;
           })}
         </Pie>
-        <Tooltip formatter={(value: number, name: string, props: { payload: PieChartDataItem }) => {
-          const total = data.reduce((acc, curr) => acc + curr.value, 0);
-          const percentage = total > 0 ? ((props.payload.value / total) * 100).toFixed(2) : 0;
-          return [`${props.payload.value} blocks (${percentage}%)`, name];
-        }} />
+        <Tooltip
+          formatter={(
+            _value: number,
+            name: string,
+            item: any
+          ) => {
+            const total = data.reduce((acc, curr) => acc + curr.value, 0);
+            const payload = item.payload as PieChartDataItem;
+            const percentage = total > 0 ? ((payload.value / total) * 100).toFixed(2) : 0;
+            return [`${payload.value} blocks (${percentage}%)`, name];
+          }}
+        />
         <Legend verticalAlign="bottom" wrapperStyle={{ paddingTop: '10px' }} />
       </PieChart>
     </ResponsiveContainer>

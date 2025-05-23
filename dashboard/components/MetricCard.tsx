@@ -7,7 +7,7 @@ interface MetricCardProps {
   description?: string;
 }
 
-export const MetricCard: React.FC<MetricCardProps> = ({ title, value, unit, description }) => {
+export const MetricCard: React.FC<MetricCardProps> = ({ title, value, description }) => {
   return (
     <div className="bg-white p-4 rounded-lg shadow-md border border-gray-200 hover:shadow-lg transition-shadow duration-200">
       {/* Removed {unit && `(${unit})`} from here */}

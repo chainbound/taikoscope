@@ -1,9 +1,9 @@
 
 import { TimeRange, TimeSeriesData, PieChartDataItem, MetricData } from '../types';
 
-const TAΙΚΟ_PINK = '#BF007C';
-// These colors can be used by chart components if needed, but fill is removed from PieChartDataItem generation here
-// const COLORS = [TAΙΚΟ_PINK, '#E573B5', '#5DA5DA', '#FAA43A', '#60BD68', '#F17CB0', '#B2912F', '#B276B2', '#DECF3F', '#F15854'];
+// Example color palette if needed by future charts
+// const TAIKO_PINK = '#BF007C';
+// const COLORS = [TAIKO_PINK, '#E573B5', '#5DA5DA', '#FAA43A', '#60BD68', '#F17CB0', '#B2912F', '#B276B2', '#DECF3F', '#F15854'];
 
 
 const getRandom = (min: number, max: number, float = false): number => {
