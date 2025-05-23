@@ -90,7 +90,12 @@ struct VerifyTimesResponse {
     batches: Vec<clickhouse_lib::BatchVerifyTimeRow>,
 }
 
-#[derive(Serialize)]
+#[derive(Debug, Serialize)]
+struct L1BlockTimesResponse {
+    blocks: Vec<clickhouse_lib::L1BlockTimeRow>,
+}
+
+#[derive(Debug, Serialize)]
 struct L2BlockTimesResponse {
     blocks: Vec<clickhouse_lib::L2BlockTimeRow>,
 }
@@ -238,6 +243,17 @@ async fn verify_times_last_hour(State(state): State<ApiState>) -> Json<VerifyTim
     Json(VerifyTimesResponse { batches })
 }
 
+async fn l1_block_times_last_hour(State(state): State<ApiState>) -> Json<L1BlockTimesResponse> {
+    let blocks = match state.client.get_l1_block_times_last_hour().await {
+        Ok(rows) => rows,
+        Err(e) => {
+            tracing::error!("Failed to get L1 block times: {}", e);
+            Vec::new()
+        }
+    };
+    Json(L1BlockTimesResponse { blocks })
+}
+
 async fn l2_block_times_last_hour(State(state): State<ApiState>) -> Json<L2BlockTimesResponse> {
     let blocks = match state.client.get_l2_block_times_last_hour().await {
         Ok(rows) => rows,
@@ -275,6 +291,7 @@ fn router(state: ApiState) -> Router {
         .route("/batch-posting-cadence", get(batch_posting_cadence))
         .route("/prove-times/last-hour", get(prove_times_last_hour))
         .route("/verify-times/last-hour", get(verify_times_last_hour))
+        .route("/l1-block-times/last-hour", get(l1_block_times_last_hour))
         .route("/l2-block-times/last-hour", get(l2_block_times_last_hour))
         .layer(middleware::from_fn_with_state(state.clone(), rate_limit))
         .with_state(state)
@@ -464,6 +481,15 @@ mod tests {
     struct BlockTimeRowTest {
         minute: u64,
         block_number: u64,
+    }
+
+    #[tokio::test]
+    async fn l1_block_times_last_hour_endpoint() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(vec![BlockTimeRowTest { minute: 1, block_number: 2 }]));
+        let app = build_app(mock.url());
+        let body = send_request(app, "/l1-block-times/last-hour").await;
+        assert_eq!(body, json!({ "blocks": [ { "minute": 1, "block_number": 2 } ] }));
     }
 
     #[tokio::test]
