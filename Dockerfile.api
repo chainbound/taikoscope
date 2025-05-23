@@ -1,5 +1,8 @@
 # Reference guide: https://depot.dev/blog/rust-dockerfile-best-practices
 
+# Run with Debian, libclang has issues with Alpine.
+# Make sure to update rust-toolchain.toml when updating the base image,
+# and vice versa.
 FROM rust:1.87-bookworm AS base
 
 # Install build dependencies
@@ -32,6 +35,7 @@ FROM base AS builder
 WORKDIR /app
 COPY --from=planner /app/recipe.json recipe.json
 
+# Add architecture as a build arg
 ARG TARGETARCH
 
 RUN --mount=type=cache,target=$SCCACHE_DIR,sharing=locked \
