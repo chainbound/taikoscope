@@ -6,11 +6,9 @@ use axum::{Json, Router, extract::State, middleware, response::IntoResponse, rou
 use chrono::{Duration as ChronoDuration, Utc};
 use clickhouse::ClickhouseClient;
 use eyre::Result;
+use primitives::rate_limiter::RateLimiter;
 use serde::Serialize;
-use std::{
-    sync::{Arc, Mutex},
-    time::{Duration as StdDuration, Instant},
-};
+use std::time::Duration as StdDuration;
 use tower_http::cors::CorsLayer;
 use tracing::info;
 
@@ -18,48 +16,6 @@ use tracing::info;
 const MAX_REQUESTS: u64 = 60;
 /// Duration for the rate limiting window.
 const RATE_PERIOD: StdDuration = StdDuration::from_secs(60);
-
-#[derive(Clone, Debug)]
-struct RateLimiter {
-    state: Arc<Mutex<LimiterState>>,
-    capacity: u64,
-    period: StdDuration,
-}
-
-#[derive(Debug)]
-struct LimiterState {
-    count: u64,
-    reset_at: Instant,
-}
-
-impl RateLimiter {
-    fn new(capacity: u64, period: StdDuration) -> Self {
-        Self {
-            state: Arc::new(Mutex::new(LimiterState {
-                count: 0,
-                reset_at: Instant::now() + period,
-            })),
-            capacity,
-            period,
-        }
-    }
-
-    fn try_acquire(&self) -> bool {
-        let mut state = self.state.lock().expect("lock poisoned");
-        let now = Instant::now();
-        if now >= state.reset_at {
-            state.reset_at = now + self.period;
-            state.count = 1; // Start at 1 for this request
-            return true;
-        }
-        if state.count < self.capacity {
-            state.count += 1;
-            true
-        } else {
-            false
-        }
-    }
-}
 
 #[derive(Clone, Debug)]
 struct ApiState {
