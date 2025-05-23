@@ -78,6 +78,17 @@ pub struct InstatusOpts {
     pub batch_proof_timeout_secs: u64,
 }
 
+/// API server configuration options
+#[derive(Debug, Clone, Parser)]
+pub struct ApiOpts {
+    /// API server host
+    #[clap(long, env = "API_HOST", default_value = "127.0.0.1")]
+    pub host: String,
+    /// API server port
+    #[clap(long, env = "API_PORT", default_value = "3000")]
+    pub port: u16,
+}
+
 /// CLI options for taikoscope
 #[derive(Debug, Clone, Parser)]
 pub struct Opts {
@@ -96,6 +107,10 @@ pub struct Opts {
     /// Instatus monitoring configuration
     #[clap(flatten)]
     pub instatus: InstatusOpts,
+
+    /// API server configuration
+    #[clap(flatten)]
+    pub api: ApiOpts,
 
     /// If set, drop & re-create all tables (local/dev only)
     #[clap(long)]
@@ -146,6 +161,10 @@ mod tests {
             "verify",
             "--l2-component-id",
             "l2",
+            "--api-host",
+            "127.0.0.1",
+            "--api-port",
+            "3000",
         ]
     }
 
@@ -157,6 +176,8 @@ mod tests {
         assert_eq!(opts.instatus.monitor_poll_interval_secs, 30);
         assert_eq!(opts.instatus.monitor_threshold_secs, 96);
         assert_eq!(opts.instatus.batch_proof_timeout_secs, 10800);
+        assert_eq!(opts.api.host, "127.0.0.1");
+        assert_eq!(opts.api.port, 3000);
         assert!(!opts.reset_db);
     }
 
@@ -178,6 +199,8 @@ mod tests {
         assert_eq!(opts.instatus.monitor_poll_interval_secs, 42);
         assert_eq!(opts.instatus.monitor_threshold_secs, 33);
         assert_eq!(opts.instatus.batch_proof_timeout_secs, 99);
+        assert_eq!(opts.api.host, "127.0.0.1");
+        assert_eq!(opts.api.port, 3000);
         assert!(opts.reset_db);
 
         unsafe {
