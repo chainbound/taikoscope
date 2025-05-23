@@ -7,6 +7,7 @@ use chrono::{Duration, Utc};
 use clickhouse::ClickhouseClient;
 use eyre::Result;
 use serde::Serialize;
+use tower_http::cors::CorsLayer;
 use tracing::info;
 
 #[derive(Clone, Debug)]
@@ -97,7 +98,8 @@ pub async fn run(addr: SocketAddr, client: ClickhouseClient) -> Result<()> {
         .route("/l1-head", get(l1_head))
         .route("/slashings/last-hour", get(slashing_last_hour))
         .route("/avg-prove-time", get(avg_prove_time))
-        .with_state(state);
+        .with_state(state)
+        .layer(CorsLayer::permissive());
 
     info!("Starting API server on {}", addr);
     let listener = tokio::net::TcpListener::bind(addr).await?;
