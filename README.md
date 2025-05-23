@@ -33,4 +33,5 @@ Host taiko
 Then run deploy script
 ```
 just deploy-remote-hekla
+just deploy-api-remote-hekla
 ```
