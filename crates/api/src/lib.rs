@@ -30,62 +30,62 @@ impl ApiState {
     }
 }
 
-#[derive(Serialize)]
+#[derive(Debug, Serialize)]
 struct L2HeadResponse {
     last_l2_head_time: Option<String>,
 }
 
-#[derive(Serialize)]
+#[derive(Debug, Serialize)]
 struct L1HeadResponse {
     last_l1_head_time: Option<String>,
 }
 
-#[derive(Serialize)]
+#[derive(Debug, Serialize)]
 struct SlashingEventsResponse {
     events: Vec<clickhouse_lib::SlashingEventRow>,
 }
 
-#[derive(Serialize)]
+#[derive(Debug, Serialize)]
 struct ForcedInclusionEventsResponse {
     events: Vec<clickhouse_lib::ForcedInclusionProcessedRow>,
 }
 
-#[derive(Serialize)]
+#[derive(Debug, Serialize)]
 struct ReorgEventsResponse {
     events: Vec<clickhouse_lib::L2ReorgRow>,
 }
 
-#[derive(Serialize)]
+#[derive(Debug, Serialize)]
 struct ActiveGatewaysResponse {
     gateways: Vec<String>,
 }
 
-#[derive(Serialize)]
+#[derive(Debug, Serialize)]
 struct AvgProveTimeResponse {
     avg_prove_time_ms: Option<u64>,
 }
 
-#[derive(Serialize)]
+#[derive(Debug, Serialize)]
 struct AvgVerifyTimeResponse {
     avg_verify_time_ms: Option<u64>,
 }
 
-#[derive(Serialize)]
+#[derive(Debug, Serialize)]
 struct L2BlockCadenceResponse {
     l2_block_cadence_ms: Option<u64>,
 }
 
-#[derive(Serialize)]
+#[derive(Debug, Serialize)]
 struct BatchPostingCadenceResponse {
     batch_posting_cadence_ms: Option<u64>,
 }
 
-#[derive(Serialize)]
+#[derive(Debug, Serialize)]
 struct ProveTimesResponse {
     batches: Vec<clickhouse_lib::BatchProveTimeRow>,
 }
 
-#[derive(Serialize)]
+#[derive(Debug, Serialize)]
 struct VerifyTimesResponse {
     batches: Vec<clickhouse_lib::BatchVerifyTimeRow>,
 }
