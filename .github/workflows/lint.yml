@@ -5,7 +5,11 @@ on:
     branches:
       - unstable
       - main
+    paths-ignore:
+      - 'dashboard/**'
   pull_request:
+    paths-ignore:
+      - 'dashboard/**'
 
 env:
   CARGO_TERM_COLOR: always
