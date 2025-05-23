@@ -84,7 +84,7 @@ impl Driver {
             instatus_l2_component_id,
             instatus_monitor_poll_interval_secs: opts.instatus.monitor_poll_interval_secs,
             instatus_monitor_threshold_secs: opts.instatus.monitor_threshold_secs,
-            batch_proof_timeout_secs: 3 * 60 * 60, // 3 hours in seconds
+            batch_proof_timeout_secs: opts.instatus.batch_proof_timeout_secs,
         })
     }
 
@@ -444,5 +444,75 @@ impl Driver {
         } else {
             info!(batch_id = ?verified.batch_id, "Inserted verified batch");
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use alloy_primitives::Address;
+    use clickhouse_rs::test::{Mock, handlers};
+    use config::{ClickhouseOpts, InstatusOpts, Opts, RpcOpts, TaikoAddressOpts};
+    use futures::future;
+    use http::StatusCode;
+    use tokio::net::TcpListener;
+    use tokio_tungstenite::accept_async;
+    use url::Url;
+
+    async fn start_ws_server() -> (Url, tokio::task::JoinHandle<()>) {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let handle = tokio::spawn(async move {
+            if let Ok((stream, _)) = listener.accept().await {
+                let _ = accept_async(stream).await;
+                future::pending::<()>().await;
+            }
+        });
+        let url = Url::parse(&format!("ws://{}", addr)).unwrap();
+        (url, handle)
+    }
+
+    #[tokio::test]
+    async fn new_respects_batch_proof_timeout_from_opts() {
+        // Mock ClickHouse server with enough handlers for `init_db`
+        let mock = Mock::new();
+        for _ in 0..10 {
+            mock.add(handlers::failure(StatusCode::OK));
+        }
+
+        let url = Url::parse(mock.url()).unwrap();
+        let (l1_url, l1_handle) = start_ws_server().await;
+        let (l2_url, l2_handle) = start_ws_server().await;
+        let opts = Opts {
+            clickhouse: ClickhouseOpts {
+                url,
+                db: "test".into(),
+                username: "user".into(),
+                password: "pass".into(),
+            },
+            rpc: RpcOpts { l1_url, l2_url },
+            taiko_addresses: TaikoAddressOpts {
+                inbox_address: Address::ZERO,
+                preconf_whitelist_address: Address::ZERO,
+                taiko_wrapper_address: Address::ZERO,
+            },
+            instatus: InstatusOpts {
+                api_key: "key".into(),
+                page_id: "page".into(),
+                batch_component_id: String::new(),
+                batch_proof_timeout_component_id: String::new(),
+                batch_verify_timeout_component_id: String::new(),
+                l2_component_id: String::new(),
+                monitor_poll_interval_secs: 30,
+                monitor_threshold_secs: 96,
+                batch_proof_timeout_secs: 999,
+            },
+            reset_db: false,
+        };
+
+        let driver = Driver::new(opts.clone()).await.unwrap();
+        l1_handle.abort();
+        l2_handle.abort();
+        assert_eq!(driver.batch_proof_timeout_secs, opts.instatus.batch_proof_timeout_secs);
     }
 }

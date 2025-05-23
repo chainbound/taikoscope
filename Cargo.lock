@@ -1552,14 +1552,19 @@ dependencies = [
  "chrono",
  "clap",
  "clickhouse 0.1.0",
+ "clickhouse 0.13.2",
  "config",
  "dotenvy",
  "extractor",
  "eyre",
+ "futures",
+ "http",
  "incident",
  "tokio",
  "tokio-stream",
+ "tokio-tungstenite",
  "tracing",
+ "url",
 ]
 
 [[package]]
