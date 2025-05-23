@@ -88,6 +88,10 @@ impl Driver {
         })
     }
 
+    /// Subscribe to the L1 header stream with a retry loop.
+    ///
+    /// The function keeps attempting to subscribe until a stream is
+    /// successfully returned, waiting five seconds between retries.
     async fn subscribe_l1(&self) -> L1HeaderStream {
         loop {
             match self.extractor.get_l1_header_stream().await {
@@ -100,6 +104,10 @@ impl Driver {
         }
     }
 
+    /// Subscribe to the L2 header stream with a retry loop.
+    ///
+    /// Similar to [`subscribe_l1`], this will retry every five seconds
+    /// until a stream is obtained.
     async fn subscribe_l2(&self) -> L2HeaderStream {
         loop {
             match self.extractor.get_l2_header_stream().await {
@@ -112,6 +120,7 @@ impl Driver {
         }
     }
 
+    /// Subscribe to `BatchProposed` events with a retry loop.
     async fn subscribe_batch(&self) -> BatchProposedStream {
         loop {
             match self.extractor.get_batch_proposed_stream().await {
@@ -124,6 +133,7 @@ impl Driver {
         }
     }
 
+    /// Subscribe to `ForcedInclusionProcessed` events with a retry loop.
     async fn subscribe_forced(&self) -> ForcedInclusionStream {
         loop {
             match self.extractor.get_forced_inclusion_stream().await {
@@ -136,6 +146,7 @@ impl Driver {
         }
     }
 
+    /// Subscribe to `BatchesProved` events with a retry loop.
     async fn subscribe_proved(&self) -> BatchesProvedStream {
         loop {
             match self.extractor.get_batches_proved_stream().await {
@@ -148,6 +159,7 @@ impl Driver {
         }
     }
 
+    /// Subscribe to `BatchesVerified` events with a retry loop.
     async fn subscribe_verified(&self) -> BatchesVerifiedStream {
         loop {
             match self.extractor.get_batches_verified_stream().await {
@@ -184,6 +196,10 @@ impl Driver {
         .await
     }
 
+    /// Spawn all background monitors used by the driver.
+    ///
+    /// Each monitor runs in its own task and reports incidents via the
+    /// [`IncidentClient`].
     fn spawn_monitors(&self) {
         InstatusL1Monitor::new(
             self.clickhouse.clone(),
@@ -222,6 +238,11 @@ impl Driver {
         .spawn();
     }
 
+    /// Process incoming events from all subscriptions.
+    ///
+    /// The loop listens to every stream concurrently and delegates
+    /// handling of each event type to the appropriate method. If any
+    /// stream ends, it attempts to resubscribe before continuing.
     async fn event_loop(
         &mut self,
         mut l1_stream: L1HeaderStream,
@@ -308,6 +329,7 @@ impl Driver {
         Ok(())
     }
 
+    /// Insert the received L1 header and related preconfirmation data.
     async fn handle_l1_header(&self, header: L1Header) {
         if let Err(e) = self.clickhouse.insert_l1_header(&header).await {
             tracing::error!(header_number = header.number, err = %e, "Failed to insert L1 header");
@@ -374,6 +396,7 @@ impl Driver {
         }
     }
 
+    /// Process an L2 header event, inserting statistics and detecting reorgs.
     async fn handle_l2_header(&mut self, header: L2Header) {
         // Detect reorgs
         // The simplified on_new_block now only takes the new block's number.
@@ -412,6 +435,7 @@ impl Driver {
         }
     }
 
+    /// Store a newly proposed batch.
     async fn handle_batch_proposed(&self, batch: BatchProposed) {
         if let Err(e) = self.clickhouse.insert_batch(&batch).await {
             tracing::error!(batch_last_block = ?batch.last_block_number(), err = %e, "Failed to insert batch");
@@ -420,6 +444,7 @@ impl Driver {
         }
     }
 
+    /// Record a forced inclusion event.
     async fn handle_forced_inclusion(&self, fi: ForcedInclusionProcessed) {
         if let Err(e) = self.clickhouse.insert_forced_inclusion(&fi).await {
             tracing::error!(blob_hash = ?fi.blobHash, err = %e, "Failed to insert forced inclusion");
@@ -428,6 +453,7 @@ impl Driver {
         }
     }
 
+    /// Store batches that have been proved on L1.
     async fn handle_batches_proved(&self, proved_data: (BatchesProved, u64)) {
         let (proved, l1_block_number) = proved_data;
         if let Err(e) = self.clickhouse.insert_proved_batch(&proved, l1_block_number).await {
@@ -437,6 +463,7 @@ impl Driver {
         }
     }
 
+    /// Store batches that have been verified on L1.
     async fn handle_batches_verified(&self, verified_data: (chainio::BatchesVerified, u64)) {
         let (verified, l1_block_number) = verified_data;
         if let Err(e) = self.clickhouse.insert_verified_batch(&verified, l1_block_number).await {
