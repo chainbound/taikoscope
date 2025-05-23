@@ -10,16 +10,16 @@ exclude = [".github/"]
 repository = "https://github.com/chainbound/taikoscope"
 
 [workspace.dependencies]
-alloy = { version = "1.0.3", features = ["provider-ws"] }
-alloy-contract = { version = "1.0.3" }
-alloy-json-rpc = { version = "1.0.3" }
-alloy-rpc-client = "1.0.3"
-alloy-rpc-types-eth = "1.0.1"
-alloy-primitives = "1.1.0"
-alloy-consensus = "1.0.1"
-alloy-network-primitives = "1.0.1"
-alloy-sol-types = "1.1.0"
-alloy-sol-macro = "1.1.0"
+alloy = { version = "1.0.6", features = ["provider-ws"] }
+alloy-contract = { version = "1.0.6" }
+alloy-json-rpc = { version = "1.0.6" }
+alloy-rpc-client = "1.0.6"
+alloy-rpc-types-eth = "1.0.6"
+alloy-primitives = "1.1.2"
+alloy-consensus = "1.0.6"
+alloy-network-primitives = "1.0.6"
+alloy-sol-types = "1.1.2"
+alloy-sol-macro = "1.1.2"
 async-trait = "0.1"
 chrono = "0.4.41"
 clap = { version = "4.5.38", features = ["derive", "env"] }
@@ -39,7 +39,7 @@ tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter", "fmt"] }
 url = { version = "2.5.4", features = ["serde"] }
 hex = "0.4"
-axum = { version = "0.7.5", features = ["json"] }
+axum = { version = "0.7.9", features = ["json"] }
 tower-http = { version = "0.5.2", features = ["cors"] }
 tower = "0.5.2"
 
