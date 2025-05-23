@@ -1,0 +1,20 @@
+export type TimeRange = '1h' | '24h';
+
+export interface TimeSeriesData {
+  timestamp: number; // Unix timestamp (ms)
+  value: number;
+  name?: string; // For line charts with 'name' on x-axis (like batchId)
+}
+
+export interface PieChartDataItem {
+  name: string;
+  value: number;
+  fill?: string; // Color fill is now optional, can be assigned by the chart component
+}
+
+export interface MetricData {
+  title: string;
+  value: string;
+  unit?: string; // e.g., '1h', '24h', or specific units like 'ms'
+  description?: string;
+}

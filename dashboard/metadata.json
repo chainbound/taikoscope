@@ -1,0 +1,5 @@
+{
+  "name": "Taikoscope Dashboard",
+  "description": "A dashboard to display key metrics and charts for the Taiko Masaya Testnet, providing insights into network activity, block production, and batch processing.",
+  "requestFramePermissions": []
+}
