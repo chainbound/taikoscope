@@ -7,6 +7,7 @@
 - Linting: `just lint` or `cargo clippy --examples --tests --benches --all-features`
 - Format code: `just fmt` or `cargo +nightly fmt --all`
 - Run CI checks: `just ci` (runs fmt, lint, test)
+- Always run all CI checks after any changes
 
 ## Code Style Guidelines
 - Use Rust 2024 edition
