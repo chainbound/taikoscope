@@ -146,5 +146,10 @@ start-api-remote-hekla:
 
 logs-api-remote-hekla:
     ssh {{ssh_alias}} "docker logs -f {{api_container}}"
+
+# Deploy and tail logs for the API server
+deploy-logs-api-remote-hekla:
+    @just deploy-api-remote-hekla
+    @just logs-api-remote-hekla
 status-api-remote-hekla:
     ssh {{ssh_alias}} "docker ps -f name={{api_container}}"
