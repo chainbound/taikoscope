@@ -229,10 +229,8 @@ async fn rate_limit(
     }
 }
 
-/// Run the API server on the given address
-pub async fn run(addr: SocketAddr, client: ClickhouseClient) -> Result<()> {
-    let state = ApiState::new(client);
-    let app = Router::new()
+fn router(state: ApiState) -> Router {
+    Router::new()
         .route("/l2-head", get(l2_head))
         .route("/l1-head", get(l1_head))
         .route("/slashings/last-hour", get(slashing_last_hour))
@@ -246,7 +244,12 @@ pub async fn run(addr: SocketAddr, client: ClickhouseClient) -> Result<()> {
         .route("/prove-times/last-hour", get(prove_times_last_hour))
         .layer(middleware::from_fn_with_state(state.clone(), rate_limit))
         .with_state(state)
-        .layer(CorsLayer::permissive());
+}
+
+/// Run the API server on the given address
+pub async fn run(addr: SocketAddr, client: ClickhouseClient) -> Result<()> {
+    let state = ApiState::new(client);
+    let app = router(state).layer(CorsLayer::permissive());
 
     info!("Starting API server on {}", addr);
     let listener = tokio::net::TcpListener::bind(addr).await?;
@@ -285,18 +288,7 @@ mod tests {
         let client =
             ClickhouseClient::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
         let state = ApiState::new(client);
-        Router::new()
-            .route("/l2-head", get(l2_head))
-            .route("/l1-head", get(l1_head))
-            .route("/slashings/last-hour", get(slashing_last_hour))
-            .route("/forced-inclusions/last-hour", get(forced_inclusions_last_hour))
-            .route("/avg-prove-time", get(avg_prove_time))
-            .route("/avg-verify-time", get(avg_verify_time))
-            .route("/l2-block-cadence", get(l2_block_cadence))
-            .route("/batch-posting-cadence", get(batch_posting_cadence))
-            .route("/prove-times/last-hour", get(prove_times_last_hour))
-            .layer(middleware::from_fn_with_state(state.clone(), rate_limit))
-            .with_state(state)
+        router(state)
     }
 
     async fn send_request(app: Router, uri: &str) -> Value {
