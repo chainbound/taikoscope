@@ -690,6 +690,27 @@ impl ClickhouseClient {
         Ok(rows)
     }
 
+    /// Get all forced inclusion events that occurred after the given cutoff time.
+    pub async fn get_forced_inclusions_since(
+        &self,
+        since: DateTime<Utc>,
+    ) -> Result<Vec<ForcedInclusionProcessedRow>> {
+        let client = self.base.clone().with_database(&self.db_name);
+        let query = format!(
+            "SELECT blob_hash FROM {}.forced_inclusion_processed \
+             WHERE inserted_at > toDateTime64({}, 3) \
+             ORDER BY inserted_at ASC",
+            self.db_name,
+            since.timestamp_millis() as f64 / 1000.0,
+        );
+        let rows = client
+            .query(&query)
+            .fetch_all::<ForcedInclusionProcessedRow>()
+            .await
+            .context("fetching forced inclusion events failed")?;
+        Ok(rows)
+    }
+
     /// Get the average time in milliseconds it takes for a batch to be proven
     /// for proofs submitted within the last hour.
     pub async fn get_avg_prove_time_last_hour(&self) -> Result<Option<u64>> {
@@ -1114,6 +1135,27 @@ mod tests {
         let rows: Vec<ForcedInclusionProcessedRow> = recorder.collect().await;
         assert_eq!(rows.len(), 1);
         assert_eq!(rows[0].blob_hash, [9u8; 32]);
+    }
+
+    #[tokio::test]
+    async fn test_get_forced_inclusions_since() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(vec![ForcedInclusionProcessedRow { blob_hash: [1u8; 32] }]));
+
+        let url = Url::parse(mock.url()).unwrap();
+        let client = ClickhouseClient::new(
+            url,
+            "test-db".to_owned(),
+            "test_user".to_owned(),
+            "test_pass".to_owned(),
+        )
+        .unwrap();
+
+        let since = Utc::now() - chrono::Duration::hours(1);
+        let rows = client.get_forced_inclusions_since(since).await.unwrap();
+
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].blob_hash, [1u8; 32]);
     }
 
     #[tokio::test]
