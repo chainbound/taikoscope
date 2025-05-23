@@ -964,7 +964,6 @@ impl ClickhouseClient {
         Ok(rows)
     }
 
-
     /// Get max L2 block number for each minute in the last hour.
     pub async fn get_l2_block_times_last_hour(&self) -> Result<Vec<L2BlockTimeRow>> {
         let client = self.base.clone().with_database(&self.db_name);
@@ -997,11 +996,8 @@ mod tests {
 
     use crate::{
         BatchProveTimeRow, BatchRow, BatchVerifyTimeRow, ClickhouseClient,
-        ForcedInclusionProcessedRow, L1HeadEvent, L2BlockTimeRow, L2HeadEvent, L2ReorgRow,
-        PreconfData, ProvedBatchRow, VerifiedBatchRow,
-        BatchProveTimeRow, BatchRow, BatchVerifyTimeRow, L1BlockTimeRow, ClickhouseClient,
-        ForcedInclusionProcessedRow, L1HeadEvent, L2HeadEvent, L2ReorgRow, PreconfData,
-        ProvedBatchRow, VerifiedBatchRow,
+        ForcedInclusionProcessedRow, L1BlockTimeRow, L1HeadEvent, L2BlockTimeRow, L2HeadEvent,
+        L2ReorgRow, PreconfData, ProvedBatchRow, VerifiedBatchRow,
     };
 
     #[derive(Serialize, Row)]
@@ -1718,7 +1714,6 @@ mod tests {
         block_number: u64,
     }
 
-
     #[tokio::test]
     async fn test_get_l1_block_times_last_hour() {
         let mock = Mock::new();
@@ -1742,8 +1737,7 @@ mod tests {
     async fn test_get_l2_block_times_last_hour() {
         let mock = Mock::new();
         let expected = BlockTimeRowTest { minute: 0, block_number: 42 };
-            let result = client.get_l1_block_times_last_hour().await.unwrap();
-            assert_eq!(result, vec![L1BlockTimeRow { minute: 1, block_number: 2 }]);
-        }
+        let result = client.get_l1_block_times_last_hour().await.unwrap();
+        assert_eq!(result, vec![L1BlockTimeRow { minute: 1, block_number: 2 }]);
     }
 }
