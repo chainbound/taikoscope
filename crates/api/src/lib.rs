@@ -90,14 +90,13 @@ struct VerifyTimesResponse {
     batches: Vec<clickhouse_lib::BatchVerifyTimeRow>,
 }
 
-#[derive(Serialize)]
-<<<<<<< HEAD
-struct L2BlockTimesResponse {
-    blocks: Vec<clickhouse_lib::L2BlockTimeRow>,
-=======
 struct L1BlockTimesResponse {
     blocks: Vec<clickhouse_lib::L1BlockTimeRow>,
->>>>>>> fbdf5af (feat(api): add L1 block times endpoint)
+}
+
+#[derive(Serialize)]
+struct L2BlockTimesResponse {
+    blocks: Vec<clickhouse_lib::L2BlockTimeRow>,
 }
 
 async fn l2_head(State(state): State<ApiState>) -> Json<L2HeadResponse> {
@@ -243,17 +242,6 @@ async fn verify_times_last_hour(State(state): State<ApiState>) -> Json<VerifyTim
     Json(VerifyTimesResponse { batches })
 }
 
-<<<<<<< HEAD
-async fn l2_block_times_last_hour(State(state): State<ApiState>) -> Json<L2BlockTimesResponse> {
-    let blocks = match state.client.get_l2_block_times_last_hour().await {
-        Ok(rows) => rows,
-        Err(e) => {
-            tracing::error!("Failed to get L2 block times: {}", e);
-            Vec::new()
-        }
-    };
-    Json(L2BlockTimesResponse { blocks })
-=======
 async fn l1_block_times_last_hour(State(state): State<ApiState>) -> Json<L1BlockTimesResponse> {
     let blocks = match state.client.get_l1_block_times_last_hour().await {
         Ok(rows) => rows,
@@ -263,7 +251,17 @@ async fn l1_block_times_last_hour(State(state): State<ApiState>) -> Json<L1Block
         }
     };
     Json(L1BlockTimesResponse { blocks })
->>>>>>> fbdf5af (feat(api): add L1 block times endpoint)
+}
+
+async fn l2_block_times_last_hour(State(state): State<ApiState>) -> Json<L2BlockTimesResponse> {
+    let blocks = match state.client.get_l2_block_times_last_hour().await {
+        Ok(rows) => rows,
+        Err(e) => {
+            tracing::error!("Failed to get L2 block times: {}", e);
+            Vec::new()
+        }
+    };
+    Json(L2BlockTimesResponse { blocks })
 }
 
 async fn rate_limit(
@@ -292,11 +290,8 @@ fn router(state: ApiState) -> Router {
         .route("/batch-posting-cadence", get(batch_posting_cadence))
         .route("/prove-times/last-hour", get(prove_times_last_hour))
         .route("/verify-times/last-hour", get(verify_times_last_hour))
-<<<<<<< HEAD
-        .route("/l2-block-times/last-hour", get(l2_block_times_last_hour))
-=======
         .route("/l1-block-times/last-hour", get(l1_block_times_last_hour))
->>>>>>> fbdf5af (feat(api): add L1 block times endpoint)
+        .route("/l2-block-times/last-hour", get(l2_block_times_last_hour))
         .layer(middleware::from_fn_with_state(state.clone(), rate_limit))
         .with_state(state)
 }
@@ -488,20 +483,20 @@ mod tests {
     }
 
     #[tokio::test]
-<<<<<<< HEAD
-    async fn l2_block_times_last_hour_endpoint() {
-        let mock = Mock::new();
-        mock.add(handlers::provide(vec![BlockTimeRowTest { minute: 0, block_number: 1 }]));
-        let app = build_app(mock.url());
-        let body = send_request(app, "/l2-block-times/last-hour").await;
-        assert_eq!(body, json!({ "blocks": [ { "minute": 0, "block_number": 1 } ] }));
-=======
     async fn l1_block_times_last_hour_endpoint() {
         let mock = Mock::new();
         mock.add(handlers::provide(vec![BlockTimeRowTest { minute: 1, block_number: 2 }]));
         let app = build_app(mock.url());
         let body = send_request(app, "/l1-block-times/last-hour").await;
         assert_eq!(body, json!({ "blocks": [ { "minute": 1, "block_number": 2 } ] }));
->>>>>>> fbdf5af (feat(api): add L1 block times endpoint)
+    }
+
+    #[tokio::test]
+    async fn l2_block_times_last_hour_endpoint() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(vec![BlockTimeRowTest { minute: 0, block_number: 1 }]));
+        let app = build_app(mock.url());
+        let body = send_request(app, "/l2-block-times/last-hour").await;
+        assert_eq!(body, json!({ "blocks": [ { "minute": 0, "block_number": 1 } ] }));
     }
 }
