@@ -316,6 +316,12 @@ impl InstatusMonitor {
 
     /// Opens a new incident.
     async fn open(&self, last: DateTime<Utc>) -> Result<String> {
+        // Check if an incident already exists to avoid duplicates
+        if let Some(id) = self.base.client.open_incident(&self.base.component_id).await? {
+            tracing::info!(incident_id = %id, "existing incident found, skipping creation");
+            return Ok(id);
+        }
+
         // The incident starts when the L2 block should have been processed
         let _started = (last + ChronoDuration::seconds(2)).to_rfc3339();
 
@@ -835,7 +841,7 @@ mod tests {
     use super::*;
     use crate::client::Client as IncidentClient;
     use clickhouse::ClickhouseClient as ClickhouseInternalClient;
-    use mockito::{Server, ServerGuard};
+    use mockito::{Matcher, Server, ServerGuard};
     use std::time::Duration;
     use url::Url;
 
@@ -929,6 +935,14 @@ mod tests {
             .create_async()
             .await;
 
+        let get_mock = server
+            .mock("GET", "/v1/test_page_id/incidents")
+            .match_query(Matcher::Any)
+            .with_status(200)
+            .with_body("[]")
+            .create_async()
+            .await;
+
         let incident_client = IncidentClient::with_base_url(
             "test_api_key".into(),
             "test_page_id".into(),
@@ -950,6 +964,7 @@ mod tests {
 
         post_mock.assert_async().await;
         put_mock.assert_async().await;
+        get_mock.assert_async().await;
     }
 
     #[tokio::test]
@@ -1020,6 +1035,13 @@ mod tests {
             .with_body("{}")
             .create_async()
             .await;
+        let get_mock = server
+            .mock("GET", "/v1/test_page_id/incidents")
+            .match_query(Matcher::Any)
+            .with_status(200)
+            .with_body("[]")
+            .create_async()
+            .await;
 
         let incident_client = IncidentClient::with_base_url(
             "test_api_key".into(),
@@ -1043,6 +1065,50 @@ mod tests {
         assert!(monitor.base.active_incidents.is_empty());
 
         put_mock.assert_async().await;
+        post_mock.assert_async().await;
+        get_mock.assert_async().await;
+    }
+
+    #[tokio::test]
+    async fn instatus_monitor_does_not_duplicate_incident() {
+        let (ch_client, _ch_server) = mock_clickhouse_client_async().await;
+        let mut server = Server::new_async().await;
+
+        let list = serde_json::json!([
+            {"id": "inc1", "components": [{"id": "comp1", "name": "comp1", "status": "MAJOROUTAGE"}]}
+        ])
+        .to_string();
+
+        let get_mock = server
+            .mock("GET", "/v1/test_page_id/incidents")
+            .match_query(Matcher::Any)
+            .with_status(200)
+            .with_body(list)
+            .create_async()
+            .await;
+
+        let post_mock =
+            server.mock("POST", "/v1/test_page_id/incidents").expect(0).create_async().await;
+
+        let incident_client = IncidentClient::with_base_url(
+            "test_api_key".into(),
+            "test_page_id".into(),
+            server.url().parse().unwrap(),
+        );
+
+        let mut monitor = InstatusMonitor::new(
+            ch_client,
+            incident_client,
+            "comp1".to_owned(),
+            Duration::from_secs(60),
+            Duration::from_secs(1),
+        );
+
+        let outdated = Utc::now() - ChronoDuration::seconds(120);
+        monitor.handle(outdated).await.unwrap();
+        assert_eq!(monitor.base.active_incidents.get(&()), Some(&"inc1".to_owned()));
+
+        get_mock.assert_async().await;
         post_mock.assert_async().await;
     }
 
