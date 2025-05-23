@@ -796,6 +796,74 @@ impl ClickhouseClient {
 
         Ok(row.avg_ms.map(|ms| ms.round() as u64))
     }
+
+    /// Get the average interval in milliseconds between consecutive L2 blocks
+    /// observed within the last hour.
+    pub async fn get_l2_block_cadence_last_hour(&self) -> Result<Option<u64>> {
+        #[derive(Row, Deserialize)]
+        struct CadenceRow {
+            min_ts: Option<u64>,
+            max_ts: Option<u64>,
+            cnt: u64,
+        }
+
+        let client = self.base.clone().with_database(&self.db_name);
+        let query = format!(
+            "SELECT toUInt64(min(toUnixTimestamp64Milli(inserted_at))) AS min_ts, \
+                    toUInt64(max(toUnixTimestamp64Milli(inserted_at))) AS max_ts, \
+                    count() as cnt \
+             FROM {db}.l2_head_events \
+             WHERE inserted_at >= now64() - INTERVAL 1 HOUR",
+            db = self.db_name
+        );
+
+        let rows = client.query(&query).fetch_all::<CadenceRow>().await?;
+        let row = match rows.into_iter().next() {
+            Some(r) => r,
+            None => return Ok(None),
+        };
+
+        match (row.min_ts, row.max_ts) {
+            (Some(min_ts), Some(max_ts)) if row.cnt > 1 => {
+                Ok(Some((max_ts - min_ts) / (row.cnt - 1)))
+            }
+            _ => Ok(None),
+        }
+    }
+
+    /// Get the average interval in milliseconds between consecutive batch
+    /// proposals observed within the last hour.
+    pub async fn get_batch_posting_cadence_last_hour(&self) -> Result<Option<u64>> {
+        #[derive(Row, Deserialize)]
+        struct CadenceRow {
+            min_ts: Option<u64>,
+            max_ts: Option<u64>,
+            cnt: u64,
+        }
+
+        let client = self.base.clone().with_database(&self.db_name);
+        let query = format!(
+            "SELECT toUInt64(min(toUnixTimestamp64Milli(inserted_at))) AS min_ts, \
+                    toUInt64(max(toUnixTimestamp64Milli(inserted_at))) AS max_ts, \
+                    count() as cnt \
+             FROM {db}.batches \
+             WHERE inserted_at >= now64() - INTERVAL 1 HOUR",
+            db = self.db_name
+        );
+
+        let rows = client.query(&query).fetch_all::<CadenceRow>().await?;
+        let row = match rows.into_iter().next() {
+            Some(r) => r,
+            None => return Ok(None),
+        };
+
+        match (row.min_ts, row.max_ts) {
+            (Some(min_ts), Some(max_ts)) if row.cnt > 1 => {
+                Ok(Some((max_ts - min_ts) / (row.cnt - 1)))
+            }
+            _ => Ok(None),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -1420,5 +1488,56 @@ mod tests {
 
         let result = client.get_avg_verify_time_last_hour().await.unwrap();
         assert_eq!(result, None);
+    }
+
+    #[derive(Serialize, Row)]
+    struct CadenceRowTest {
+        min_ts: Option<u64>,
+        max_ts: Option<u64>,
+        cnt: u64,
+    }
+
+    #[tokio::test]
+    async fn test_get_l2_block_cadence_last_hour() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(vec![CadenceRowTest {
+            min_ts: Some(1_000),
+            max_ts: Some(4_000),
+            cnt: 4,
+        }]));
+
+        let url = Url::parse(mock.url()).unwrap();
+        let client = ClickhouseClient::new(
+            url,
+            "test-db".to_owned(),
+            "test_user".to_owned(),
+            "test_pass".to_owned(),
+        )
+        .unwrap();
+
+        let result = client.get_l2_block_cadence_last_hour().await.unwrap();
+        assert_eq!(result, Some(1_000));
+    }
+
+    #[tokio::test]
+    async fn test_get_batch_posting_cadence_last_hour() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(vec![CadenceRowTest {
+            min_ts: Some(2_000),
+            max_ts: Some(6_000),
+            cnt: 3,
+        }]));
+
+        let url = Url::parse(mock.url()).unwrap();
+        let client = ClickhouseClient::new(
+            url,
+            "test-db".to_owned(),
+            "test_user".to_owned(),
+            "test_pass".to_owned(),
+        )
+        .unwrap();
+
+        let result = client.get_batch_posting_cadence_last_hour().await.unwrap();
+        assert_eq!(result, Some(2_000));
     }
 }
