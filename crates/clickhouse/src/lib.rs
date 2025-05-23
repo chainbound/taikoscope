@@ -689,6 +689,34 @@ impl ClickhouseClient {
             .context("fetching slashing events failed")?;
         Ok(rows)
     }
+
+    /// Get the average time in milliseconds it takes for a batch to be proven
+    /// for proofs submitted within the last hour.
+    pub async fn get_avg_prove_time_last_hour(&self) -> Result<Option<u64>> {
+        #[derive(Row, Deserialize)]
+        struct AvgRow {
+            avg_ms: Option<f64>,
+        }
+
+        let client = self.base.clone().with_database(&self.db_name);
+        let query = format!(
+            "SELECT avg(toUnixTimestamp64Milli(p.inserted_at) - \
+                    toUnixTimestamp64Milli(b.inserted_at)) AS avg_ms \
+             FROM {db}.proved_batches p \
+             INNER JOIN {db}.batches b \
+             ON p.l1_block_number = b.l1_block_number AND p.batch_id = b.batch_id \
+             WHERE p.inserted_at >= now64() - INTERVAL 1 HOUR",
+            db = self.db_name
+        );
+
+        let rows = client.query(&query).fetch_all::<AvgRow>().await?;
+        let row = match rows.into_iter().next() {
+            Some(r) => r,
+            None => return Ok(None),
+        };
+
+        Ok(row.avg_ms.map(|ms| ms.round() as u64))
+    }
 }
 
 #[cfg(test)]
@@ -1213,5 +1241,47 @@ mod tests {
 
         let result = client.get_proved_batch_ids().await.unwrap();
         assert_eq!(result, expected_ids);
+    }
+
+    #[derive(Serialize, Row)]
+    struct AvgRowTest {
+        avg_ms: Option<f64>,
+    }
+
+    #[tokio::test]
+    async fn test_get_avg_prove_time_last_hour() {
+        let mock = Mock::new();
+        let expected = 1500.0f64;
+        mock.add(handlers::provide(vec![AvgRowTest { avg_ms: Some(expected) }]));
+
+        let url = Url::parse(mock.url()).unwrap();
+        let client = ClickhouseClient::new(
+            url,
+            "test-db".to_owned(),
+            "test_user".to_owned(),
+            "test_pass".to_owned(),
+        )
+        .unwrap();
+
+        let result = client.get_avg_prove_time_last_hour().await.unwrap();
+        assert_eq!(result, Some(expected.round() as u64));
+    }
+
+    #[tokio::test]
+    async fn test_get_avg_prove_time_last_hour_empty() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(Vec::<AvgRowTest>::new()));
+
+        let url = Url::parse(mock.url()).unwrap();
+        let client = ClickhouseClient::new(
+            url,
+            "test-db".to_owned(),
+            "test_user".to_owned(),
+            "test_pass".to_owned(),
+        )
+        .unwrap();
+
+        let result = client.get_avg_prove_time_last_hour().await.unwrap();
+        assert_eq!(result, None);
     }
 }
