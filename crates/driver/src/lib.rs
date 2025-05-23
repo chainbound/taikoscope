@@ -452,7 +452,7 @@ mod tests {
     use super::*;
     use alloy_primitives::Address;
     use clickhouse_rs::test::{Mock, handlers};
-    use config::{ClickhouseOpts, InstatusOpts, Opts, RpcOpts, TaikoAddressOpts};
+    use config::{ApiOpts, ClickhouseOpts, InstatusOpts, Opts, RpcOpts, TaikoAddressOpts};
     use futures::future;
     use http::StatusCode;
     use tokio::net::TcpListener;
@@ -491,6 +491,7 @@ mod tests {
                 password: "pass".into(),
             },
             rpc: RpcOpts { l1_url, l2_url },
+            api: ApiOpts { host: "127.0.0.1".into(), port: 3000 },
             taiko_addresses: TaikoAddressOpts {
                 inbox_address: Address::ZERO,
                 preconf_whitelist_address: Address::ZERO,
