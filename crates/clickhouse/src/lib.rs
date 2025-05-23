@@ -805,6 +805,34 @@ impl ClickhouseClient {
         Ok(row.avg_ms.map(|ms| ms.round() as u64))
     }
 
+    /// Get the average time in milliseconds it takes for a batch to be proven
+    /// for proofs submitted within the last 24 hours.
+    pub async fn get_avg_prove_time_last_24_hours(&self) -> Result<Option<u64>> {
+        #[derive(Row, Deserialize)]
+        struct AvgRow {
+            avg_ms: Option<f64>,
+        }
+
+        let client = self.base.clone().with_database(&self.db_name);
+        let query = format!(
+            "SELECT avg(toUnixTimestamp64Milli(p.inserted_at) - \
+                    toUnixTimestamp64Milli(b.inserted_at)) AS avg_ms \
+             FROM {db}.proved_batches p \
+             INNER JOIN {db}.batches b \
+             ON p.l1_block_number = b.l1_block_number AND p.batch_id = b.batch_id \
+             WHERE p.inserted_at >= now64() - INTERVAL 24 HOUR",
+            db = self.db_name
+        );
+
+        let rows = client.query(&query).fetch_all::<AvgRow>().await?;
+        let row = match rows.into_iter().next() {
+            Some(r) => r,
+            None => return Ok(None),
+        };
+
+        Ok(row.avg_ms.map(|ms| ms.round() as u64))
+    }
+
     /// Get the average time in milliseconds it takes for a batch to be verified
     /// for verifications submitted within the last hour.
     pub async fn get_avg_verify_time_last_hour(&self) -> Result<Option<u64>> {
@@ -821,6 +849,34 @@ impl ClickhouseClient {
              INNER JOIN {db}.proved_batches p \
              ON v.l1_block_number = p.l1_block_number AND v.batch_id = p.batch_id \
              WHERE v.inserted_at >= now64() - INTERVAL 1 HOUR",
+            db = self.db_name
+        );
+
+        let rows = client.query(&query).fetch_all::<AvgRow>().await?;
+        let row = match rows.into_iter().next() {
+            Some(r) => r,
+            None => return Ok(None),
+        };
+
+        Ok(row.avg_ms.map(|ms| ms.round() as u64))
+    }
+
+    /// Get the average time in milliseconds it takes for a batch to be verified
+    /// for verifications submitted within the last 24 hours.
+    pub async fn get_avg_verify_time_last_24_hours(&self) -> Result<Option<u64>> {
+        #[derive(Row, Deserialize)]
+        struct AvgRow {
+            avg_ms: Option<f64>,
+        }
+
+        let client = self.base.clone().with_database(&self.db_name);
+        let query = format!(
+            "SELECT avg(toUnixTimestamp64Milli(v.inserted_at) - \
+                    toUnixTimestamp64Milli(p.inserted_at)) AS avg_ms \
+             FROM {db}.verified_batches v \
+             INNER JOIN {db}.proved_batches p \
+             ON v.l1_block_number = p.l1_block_number AND v.batch_id = p.batch_id \
+             WHERE v.inserted_at >= now64() - INTERVAL 24 HOUR",
             db = self.db_name
         );
 
@@ -850,6 +906,40 @@ impl ClickhouseClient {
                     count() as cnt \
              FROM {db}.l2_head_events \
              WHERE inserted_at >= now64() - INTERVAL 1 HOUR",
+            db = self.db_name
+        );
+
+        let rows = client.query(&query).fetch_all::<CadenceRow>().await?;
+        let row = match rows.into_iter().next() {
+            Some(r) => r,
+            None => return Ok(None),
+        };
+
+        match (row.min_ts, row.max_ts) {
+            (Some(min_ts), Some(max_ts)) if row.cnt > 1 => {
+                Ok(Some((max_ts - min_ts) / (row.cnt - 1)))
+            }
+            _ => Ok(None),
+        }
+    }
+
+    /// Get the average interval in milliseconds between consecutive L2 blocks
+    /// observed within the last 24 hours.
+    pub async fn get_l2_block_cadence_last_24_hours(&self) -> Result<Option<u64>> {
+        #[derive(Row, Deserialize)]
+        struct CadenceRow {
+            min_ts: Option<u64>,
+            max_ts: Option<u64>,
+            cnt: u64,
+        }
+
+        let client = self.base.clone().with_database(&self.db_name);
+        let query = format!(
+            "SELECT toUInt64(min(toUnixTimestamp64Milli(inserted_at))) AS min_ts, \
+                    toUInt64(max(toUnixTimestamp64Milli(inserted_at))) AS max_ts, \
+                    count() as cnt \
+             FROM {db}.l2_head_events \
+             WHERE inserted_at >= now64() - INTERVAL 24 HOUR",
             db = self.db_name
         );
 
@@ -901,6 +991,40 @@ impl ClickhouseClient {
         }
     }
 
+    /// Get the average interval in milliseconds between consecutive batch
+    /// proposals observed within the last 24 hours.
+    pub async fn get_batch_posting_cadence_last_24_hours(&self) -> Result<Option<u64>> {
+        #[derive(Row, Deserialize)]
+        struct CadenceRow {
+            min_ts: Option<u64>,
+            max_ts: Option<u64>,
+            cnt: u64,
+        }
+
+        let client = self.base.clone().with_database(&self.db_name);
+        let query = format!(
+            "SELECT toUInt64(min(toUnixTimestamp64Milli(inserted_at))) AS min_ts, \
+                    toUInt64(max(toUnixTimestamp64Milli(inserted_at))) AS max_ts, \
+                    count() as cnt \
+             FROM {db}.batches \
+             WHERE inserted_at >= now64() - INTERVAL 24 HOUR",
+            db = self.db_name
+        );
+
+        let rows = client.query(&query).fetch_all::<CadenceRow>().await?;
+        let row = match rows.into_iter().next() {
+            Some(r) => r,
+            None => return Ok(None),
+        };
+
+        match (row.min_ts, row.max_ts) {
+            (Some(min_ts), Some(max_ts)) if row.cnt > 1 => {
+                Ok(Some((max_ts - min_ts) / (row.cnt - 1)))
+            }
+            _ => Ok(None),
+        }
+    }
+
     /// Get prove times in seconds for batches proved within the last hour.
     pub async fn get_prove_times_last_hour(&self) -> Result<Vec<BatchProveTimeRow>> {
         let client = self.base.clone().with_database(&self.db_name);
@@ -914,6 +1038,27 @@ impl ClickhouseClient {
              JOIN {db}.l1_head_events l1_proved \
                ON pb.l1_block_number = l1_proved.l1_block_number \
              WHERE l1_proved.block_ts >= (toUInt64(now()) - 3600) \
+             ORDER BY b.batch_id ASC",
+            db = self.db_name
+        );
+
+        let rows = client.query(&query).fetch_all::<BatchProveTimeRow>().await?;
+        Ok(rows)
+    }
+
+    /// Get prove times in seconds for batches proved within the last 24 hours.
+    pub async fn get_prove_times_last_24_hours(&self) -> Result<Vec<BatchProveTimeRow>> {
+        let client = self.base.clone().with_database(&self.db_name);
+        let query = format!(
+            "SELECT b.batch_id AS batch_id, \
+                    (l1_proved.block_ts - l1_proposed.block_ts) AS seconds_to_prove \
+             FROM {db}.batches b \
+             JOIN {db}.proved_batches pb ON b.batch_id = pb.batch_id \
+             JOIN {db}.l1_head_events l1_proposed \
+               ON b.l1_block_number = l1_proposed.l1_block_number \
+             JOIN {db}.l1_head_events l1_proved \
+               ON pb.l1_block_number = l1_proved.l1_block_number \
+             WHERE l1_proved.block_ts >= (toUInt64(now()) - 86400) \
              ORDER BY b.batch_id ASC",
             db = self.db_name
         );
@@ -946,6 +1091,30 @@ impl ClickhouseClient {
         Ok(rows)
     }
 
+    /// Get verify times in seconds for batches verified within the last 24 hours.
+    pub async fn get_verify_times_last_24_hours(&self) -> Result<Vec<BatchVerifyTimeRow>> {
+        let client = self.base.clone().with_database(&self.db_name);
+        let query = format!(
+            "SELECT pb.batch_id AS batch_id, \
+                    (l1_verified.block_ts - l1_proved.block_ts) AS seconds_to_verify \
+             FROM {db}.proved_batches pb \
+             INNER JOIN {db}.verified_batches vb \
+                ON pb.batch_id = vb.batch_id AND pb.block_hash = vb.block_hash \
+             INNER JOIN {db}.l1_head_events l1_proved \
+                ON pb.l1_block_number = l1_proved.l1_block_number \
+             INNER JOIN {db}.l1_head_events l1_verified \
+                ON vb.l1_block_number = l1_verified.l1_block_number \
+             WHERE l1_verified.block_ts >= (toUInt64(now()) - 86400) \
+               AND l1_verified.block_ts > l1_proved.block_ts \
+               AND (l1_verified.block_ts - l1_proved.block_ts) > 60 \
+             ORDER BY pb.batch_id ASC",
+            db = self.db_name
+        );
+
+        let rows = client.query(&query).fetch_all::<BatchVerifyTimeRow>().await?;
+        Ok(rows)
+    }
+
     /// Get L1 block numbers grouped by minute for the last hour.
     pub async fn get_l1_block_times_last_hour(&self) -> Result<Vec<L1BlockTimeRow>> {
         let client = self.base.clone().with_database(&self.db_name);
@@ -963,6 +1132,23 @@ impl ClickhouseClient {
         Ok(rows)
     }
 
+    /// Get L1 block numbers grouped by minute for the last 24 hours.
+    pub async fn get_l1_block_times_last_24_hours(&self) -> Result<Vec<L1BlockTimeRow>> {
+        let client = self.base.clone().with_database(&self.db_name);
+        let query = format!(
+            "SELECT toUInt64(toStartOfMinute(fromUnixTimestamp64Milli(block_ts * 1000))) AS minute, \
+                    max(l1_block_number) AS block_number \
+             FROM {db}.l1_head_events \
+             WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL 24 HOUR) \
+             GROUP BY minute \
+             ORDER BY minute",
+            db = self.db_name
+        );
+
+        let rows = client.query(&query).fetch_all::<L1BlockTimeRow>().await?;
+        Ok(rows)
+    }
+
     /// Get max L2 block number for each minute in the last hour.
     pub async fn get_l2_block_times_last_hour(&self) -> Result<Vec<L2BlockTimeRow>> {
         let client = self.base.clone().with_database(&self.db_name);
@@ -971,6 +1157,23 @@ impl ClickhouseClient {
                     max(l2_block_number) AS block_number \
              FROM {db}.l2_head_events \
              WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL 1 HOUR) \
+             GROUP BY minute \
+             ORDER BY minute",
+            db = self.db_name
+        );
+
+        let rows = client.query(&query).fetch_all::<L2BlockTimeRow>().await?;
+        Ok(rows)
+    }
+
+    /// Get max L2 block number for each minute in the last 24 hours.
+    pub async fn get_l2_block_times_last_24_hours(&self) -> Result<Vec<L2BlockTimeRow>> {
+        let client = self.base.clone().with_database(&self.db_name);
+        let query = format!(
+            "SELECT toUInt64(toUnixTimestamp64Milli(toStartOfMinute(fromUnixTimestamp64Milli(block_ts * 1000)))) AS minute, \
+                    max(l2_block_number) AS block_number \
+             FROM {db}.l2_head_events \
+             WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL 24 HOUR) \
              GROUP BY minute \
              ORDER BY minute",
             db = self.db_name
@@ -1552,6 +1755,25 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_get_avg_prove_time_last_24_hours() {
+        let mock = Mock::new();
+        let expected = 1500.0f64;
+        mock.add(handlers::provide(vec![AvgRowTest { avg_ms: Some(expected) }]));
+
+        let url = Url::parse(mock.url()).unwrap();
+        let client = ClickhouseClient::new(
+            url,
+            "test-db".to_owned(),
+            "test_user".to_owned(),
+            "test_pass".to_owned(),
+        )
+        .unwrap();
+
+        let result = client.get_avg_prove_time_last_24_hours().await.unwrap();
+        assert_eq!(result, Some(expected.round() as u64));
+    }
+
+    #[tokio::test]
     async fn test_get_avg_prove_time_last_hour_empty() {
         let mock = Mock::new();
         mock.add(handlers::provide(Vec::<AvgRowTest>::new()));
@@ -1566,6 +1788,24 @@ mod tests {
         .unwrap();
 
         let result = client.get_avg_prove_time_last_hour().await.unwrap();
+        assert_eq!(result, None);
+    }
+
+    #[tokio::test]
+    async fn test_get_avg_prove_time_last_24_hours_empty() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(Vec::<AvgRowTest>::new()));
+
+        let url = Url::parse(mock.url()).unwrap();
+        let client = ClickhouseClient::new(
+            url,
+            "test-db".to_owned(),
+            "test_user".to_owned(),
+            "test_pass".to_owned(),
+        )
+        .unwrap();
+
+        let result = client.get_avg_prove_time_last_24_hours().await.unwrap();
         assert_eq!(result, None);
     }
 
@@ -1589,6 +1829,25 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_get_avg_verify_time_last_24_hours() {
+        let mock = Mock::new();
+        let expected = 2500.0f64;
+        mock.add(handlers::provide(vec![AvgRowTest { avg_ms: Some(expected) }]));
+
+        let url = Url::parse(mock.url()).unwrap();
+        let client = ClickhouseClient::new(
+            url,
+            "test-db".to_owned(),
+            "test_user".to_owned(),
+            "test_pass".to_owned(),
+        )
+        .unwrap();
+
+        let result = client.get_avg_verify_time_last_24_hours().await.unwrap();
+        assert_eq!(result, Some(expected.round() as u64));
+    }
+
+    #[tokio::test]
     async fn test_get_avg_verify_time_last_hour_empty() {
         let mock = Mock::new();
         mock.add(handlers::provide(Vec::<AvgRowTest>::new()));
@@ -1603,6 +1862,24 @@ mod tests {
         .unwrap();
 
         let result = client.get_avg_verify_time_last_hour().await.unwrap();
+        assert_eq!(result, None);
+    }
+
+    #[tokio::test]
+    async fn test_get_avg_verify_time_last_24_hours_empty() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(Vec::<AvgRowTest>::new()));
+
+        let url = Url::parse(mock.url()).unwrap();
+        let client = ClickhouseClient::new(
+            url,
+            "test-db".to_owned(),
+            "test_user".to_owned(),
+            "test_pass".to_owned(),
+        )
+        .unwrap();
+
+        let result = client.get_avg_verify_time_last_24_hours().await.unwrap();
         assert_eq!(result, None);
     }
 
@@ -1636,6 +1913,28 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_get_l2_block_cadence_last_24_hours() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(vec![CadenceRowTest {
+            min_ts: Some(1_000),
+            max_ts: Some(4_000),
+            cnt: 4,
+        }]));
+
+        let url = Url::parse(mock.url()).unwrap();
+        let client = ClickhouseClient::new(
+            url,
+            "test-db".to_owned(),
+            "test_user".to_owned(),
+            "test_pass".to_owned(),
+        )
+        .unwrap();
+
+        let result = client.get_l2_block_cadence_last_24_hours().await.unwrap();
+        assert_eq!(result, Some(1_000));
+    }
+
+    #[tokio::test]
     async fn test_get_batch_posting_cadence_last_hour() {
         let mock = Mock::new();
         mock.add(handlers::provide(vec![CadenceRowTest {
@@ -1654,6 +1953,28 @@ mod tests {
         .unwrap();
 
         let result = client.get_batch_posting_cadence_last_hour().await.unwrap();
+        assert_eq!(result, Some(2_000));
+    }
+
+    #[tokio::test]
+    async fn test_get_batch_posting_cadence_last_24_hours() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(vec![CadenceRowTest {
+            min_ts: Some(2_000),
+            max_ts: Some(6_000),
+            cnt: 3,
+        }]));
+
+        let url = Url::parse(mock.url()).unwrap();
+        let client = ClickhouseClient::new(
+            url,
+            "test-db".to_owned(),
+            "test_user".to_owned(),
+            "test_pass".to_owned(),
+        )
+        .unwrap();
+
+        let result = client.get_batch_posting_cadence_last_24_hours().await.unwrap();
         assert_eq!(result, Some(2_000));
     }
 
@@ -1682,6 +2003,25 @@ mod tests {
         assert_eq!(result, vec![BatchProveTimeRow { batch_id: 7, seconds_to_prove: 42 }]);
     }
 
+    #[tokio::test]
+    async fn test_get_prove_times_last_24_hours() {
+        let mock = Mock::new();
+        let expected = ProveTimeRowTest { batch_id: 7, seconds_to_prove: 42 };
+        mock.add(handlers::provide(vec![expected.clone()]));
+
+        let url = Url::parse(mock.url()).unwrap();
+        let client = ClickhouseClient::new(
+            url,
+            "test-db".to_owned(),
+            "test_user".to_owned(),
+            "test_pass".to_owned(),
+        )
+        .unwrap();
+
+        let result = client.get_prove_times_last_24_hours().await.unwrap();
+        assert_eq!(result, vec![BatchProveTimeRow { batch_id: 7, seconds_to_prove: 42 }]);
+    }
+
     #[derive(Serialize, Row, Debug, PartialEq, Eq, Clone)]
     struct VerifyTimeRowTest {
         batch_id: u64,
@@ -1704,6 +2044,25 @@ mod tests {
         .unwrap();
 
         let result = client.get_verify_times_last_hour().await.unwrap();
+        assert_eq!(result, vec![BatchVerifyTimeRow { batch_id: 11, seconds_to_verify: 120 }]);
+    }
+
+    #[tokio::test]
+    async fn test_get_verify_times_last_24_hours() {
+        let mock = Mock::new();
+        let expected = VerifyTimeRowTest { batch_id: 11, seconds_to_verify: 120 };
+        mock.add(handlers::provide(vec![expected.clone()]));
+
+        let url = Url::parse(mock.url()).unwrap();
+        let client = ClickhouseClient::new(
+            url,
+            "test-db".to_owned(),
+            "test_user".to_owned(),
+            "test_pass".to_owned(),
+        )
+        .unwrap();
+
+        let result = client.get_verify_times_last_24_hours().await.unwrap();
         assert_eq!(result, vec![BatchVerifyTimeRow { batch_id: 11, seconds_to_verify: 120 }]);
     }
 
@@ -1748,6 +2107,25 @@ mod tests {
         .unwrap();
 
         let result = client.get_l2_block_times_last_hour().await.unwrap();
+        assert_eq!(result, vec![L2BlockTimeRow { minute: 0, block_number: 42 }]);
+    }
+
+    #[tokio::test]
+    async fn test_get_l2_block_times_last_24_hours() {
+        let mock = Mock::new();
+        let expected = BlockTimeRowTest { minute: 0, block_number: 42 };
+        mock.add(handlers::provide(vec![expected.clone()]));
+
+        let url = Url::parse(mock.url()).unwrap();
+        let client = ClickhouseClient::new(
+            url,
+            "test-db".to_owned(),
+            "test_user".to_owned(),
+            "test_pass".to_owned(),
+        )
+        .unwrap();
+
+        let result = client.get_l2_block_times_last_24_hours().await.unwrap();
         assert_eq!(result, vec![L2BlockTimeRow { minute: 0, block_number: 42 }]);
     }
 }
