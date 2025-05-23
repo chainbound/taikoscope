@@ -24,6 +24,10 @@ struct L2HeadResponse {
     last_l2_head_time: Option<String>,
 }
 
+#[derive(Serialize)]
+struct L1HeadResponse {
+    last_l1_head_time: Option<String>,
+}
 
 async fn l2_head(State(state): State<ApiState>) -> Json<L2HeadResponse> {
     let ts = match state.client.get_last_l2_head_time().await {
@@ -38,10 +42,26 @@ async fn l2_head(State(state): State<ApiState>) -> Json<L2HeadResponse> {
     Json(resp)
 }
 
+async fn l1_head(State(state): State<ApiState>) -> Json<L1HeadResponse> {
+    let ts = match state.client.get_last_l1_head_time().await {
+        Ok(time) => time,
+        Err(e) => {
+            tracing::error!("Failed to get L1 head time: {}", e);
+            None
+        }
+    };
+
+    let resp = L1HeadResponse { last_l1_head_time: ts.map(|t| t.to_rfc3339()) };
+    Json(resp)
+}
+
 /// Run the API server on the given address
 pub async fn run(addr: SocketAddr, client: ClickhouseClient) -> Result<()> {
     let state = ApiState::new(client);
-    let app = Router::new().route("/l2-head", get(l2_head)).with_state(state);
+    let app = Router::new()
+        .route("/l2-head", get(l2_head))
+        .route("/l1-head", get(l1_head))
+        .with_state(state);
 
     info!("Starting API server on {}", addr);
     let listener = tokio::net::TcpListener::bind(addr).await?;
