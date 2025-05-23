@@ -6,7 +6,7 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-clickhouse = { path = "../clickhouse" }
+clickhouse_lib = { path = "../clickhouse", package = "clickhouse" }
 primitives = { path = "../primitives" }
 
 axum.workspace = true
@@ -17,6 +17,11 @@ tracing.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 tower-http.workspace = true
+
+[dev-dependencies]
+tower = "0.5"
+url.workspace = true
+clickhouse = { package = "clickhouse", version = "0.13.2", features = ["native-tls", "test-util"] }
 
 [lints]
 workspace = true

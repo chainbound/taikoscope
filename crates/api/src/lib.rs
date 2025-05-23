@@ -4,7 +4,7 @@ use std::net::SocketAddr;
 
 use axum::{Json, Router, extract::State, middleware, response::IntoResponse, routing::get};
 use chrono::{Duration as ChronoDuration, Utc};
-use clickhouse::ClickhouseClient;
+use clickhouse_lib::ClickhouseClient;
 use eyre::Result;
 use primitives::rate_limiter::RateLimiter;
 use serde::Serialize;
@@ -41,12 +41,12 @@ struct L1HeadResponse {
 
 #[derive(Serialize)]
 struct SlashingEventsResponse {
-    events: Vec<clickhouse::SlashingEventRow>,
+    events: Vec<clickhouse_lib::SlashingEventRow>,
 }
 
 #[derive(Serialize)]
 struct ForcedInclusionEventsResponse {
-    events: Vec<clickhouse::ForcedInclusionProcessedRow>,
+    events: Vec<clickhouse_lib::ForcedInclusionProcessedRow>,
 }
 
 #[derive(Serialize)]
@@ -163,4 +163,119 @@ pub async fn run(addr: SocketAddr, client: ClickhouseClient) -> Result<()> {
     let listener = tokio::net::TcpListener::bind(addr).await?;
     axum::serve(listener, app).await?;
     Ok(())
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use axum::{
+        body::{self, Body},
+        http::Request,
+    };
+    use chrono::{TimeZone, Utc};
+    use clickhouse::{
+        Row,
+        test::{Mock, handlers},
+    };
+    use serde::Serialize;
+    use serde_json::{Value, json};
+    use tower::util::ServiceExt;
+    use url::Url;
+
+    #[derive(Serialize, Row)]
+    struct MaxRow {
+        block_ts: u64,
+    }
+
+    #[derive(Serialize, Row)]
+    struct AvgRowTest {
+        avg_ms: Option<f64>,
+    }
+
+    fn build_app(mock_url: &str) -> Router {
+        let url = Url::parse(mock_url).unwrap();
+        let client =
+            ClickhouseClient::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
+        let state = ApiState::new(client);
+        Router::new()
+            .route("/l2-head", get(l2_head))
+            .route("/l1-head", get(l1_head))
+            .route("/slashings/last-hour", get(slashing_last_hour))
+            .route("/forced-inclusions/last-hour", get(forced_inclusions_last_hour))
+            .route("/avg-prove-time", get(avg_prove_time))
+            .route("/avg-verify-time", get(avg_verify_time))
+            .layer(middleware::from_fn_with_state(state.clone(), rate_limit))
+            .with_state(state)
+    }
+
+    async fn send_request(app: Router, uri: &str) -> Value {
+        let response =
+            app.oneshot(Request::builder().uri(uri).body(Body::empty()).unwrap()).await.unwrap();
+        assert!(response.status().is_success());
+        let bytes = body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        serde_json::from_slice(&bytes).unwrap()
+    }
+
+    #[tokio::test]
+    async fn l2_head_endpoint() {
+        let mock = Mock::new();
+        let ts = 42u64;
+        mock.add(handlers::provide(vec![MaxRow { block_ts: ts }]));
+        let app = build_app(mock.url());
+        let body = send_request(app, "/l2-head").await;
+        let expected = Utc.timestamp_opt(ts as i64, 0).single().unwrap().to_rfc3339();
+        assert_eq!(body, json!({ "last_l2_head_time": expected }));
+    }
+
+    #[tokio::test]
+    async fn l1_head_endpoint() {
+        let mock = Mock::new();
+        let ts = 24u64;
+        mock.add(handlers::provide(vec![MaxRow { block_ts: ts }]));
+        let app = build_app(mock.url());
+        let body = send_request(app, "/l1-head").await;
+        let expected = Utc.timestamp_opt(ts as i64, 0).single().unwrap().to_rfc3339();
+        assert_eq!(body, json!({ "last_l1_head_time": expected }));
+    }
+
+    #[tokio::test]
+    async fn slashing_events_endpoint() {
+        let mock = Mock::new();
+        let event =
+            clickhouse_lib::SlashingEventRow { l1_block_number: 1, validator_addr: [1u8; 20] };
+        mock.add(handlers::provide(vec![event]));
+        let expected =
+            clickhouse_lib::SlashingEventRow { l1_block_number: 1, validator_addr: [1u8; 20] };
+        let app = build_app(mock.url());
+        let body = send_request(app, "/slashings/last-hour").await;
+        assert_eq!(body, json!({ "events": [expected] }));
+    }
+
+    #[tokio::test]
+    async fn forced_inclusions_endpoint() {
+        let mock = Mock::new();
+        let event = clickhouse_lib::ForcedInclusionProcessedRow { blob_hash: [2u8; 32] };
+        mock.add(handlers::provide(vec![event]));
+        let expected = clickhouse_lib::ForcedInclusionProcessedRow { blob_hash: [2u8; 32] };
+        let app = build_app(mock.url());
+        let body = send_request(app, "/forced-inclusions/last-hour").await;
+        assert_eq!(body, json!({ "events": [expected] }));
+    }
+
+    #[tokio::test]
+    async fn avg_prove_time_endpoint() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(vec![AvgRowTest { avg_ms: Some(1500.0) }]));
+        let app = build_app(mock.url());
+        let body = send_request(app, "/avg-prove-time").await;
+        assert_eq!(body, json!({ "avg_prove_time_ms": 1500 }));
+    }
+
+    #[tokio::test]
+    async fn avg_verify_time_endpoint() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(vec![AvgRowTest { avg_ms: Some(2500.0) }]));
+        let app = build_app(mock.url());
+        let body = send_request(app, "/avg-verify-time").await;
+        assert_eq!(body, json!({ "avg_verify_time_ms": 2500 }));
+    }
 }
