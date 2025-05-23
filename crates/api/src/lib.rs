@@ -138,6 +138,18 @@ async fn slashing_last_hour(State(state): State<ApiState>) -> Json<SlashingEvent
     Json(SlashingEventsResponse { events })
 }
 
+async fn slashing_last_day(State(state): State<ApiState>) -> Json<SlashingEventsResponse> {
+    let since = Utc::now() - ChronoDuration::hours(24);
+    let events = match state.client.get_slashing_events_since(since).await {
+        Ok(evts) => evts,
+        Err(e) => {
+            tracing::error!("Failed to get slashing events: {}", e);
+            Vec::new()
+        }
+    };
+    Json(SlashingEventsResponse { events })
+}
+
 async fn forced_inclusions_last_hour(
     State(state): State<ApiState>,
 ) -> Json<ForcedInclusionEventsResponse> {
@@ -152,8 +164,34 @@ async fn forced_inclusions_last_hour(
     Json(ForcedInclusionEventsResponse { events })
 }
 
+async fn forced_inclusions_last_day(
+    State(state): State<ApiState>,
+) -> Json<ForcedInclusionEventsResponse> {
+    let since = Utc::now() - ChronoDuration::hours(24);
+    let events = match state.client.get_forced_inclusions_since(since).await {
+        Ok(evts) => evts,
+        Err(e) => {
+            tracing::error!("Failed to get forced inclusion events: {}", e);
+            Vec::new()
+        }
+    };
+    Json(ForcedInclusionEventsResponse { events })
+}
+
 async fn reorgs_last_hour(State(state): State<ApiState>) -> Json<ReorgEventsResponse> {
     let since = Utc::now() - ChronoDuration::hours(1);
+    let events = match state.client.get_l2_reorgs_since(since).await {
+        Ok(evts) => evts,
+        Err(e) => {
+            tracing::error!("Failed to get reorg events: {}", e);
+            Vec::new()
+        }
+    };
+    Json(ReorgEventsResponse { events })
+}
+
+async fn reorgs_last_day(State(state): State<ApiState>) -> Json<ReorgEventsResponse> {
+    let since = Utc::now() - ChronoDuration::hours(24);
     let events = match state.client.get_l2_reorgs_since(since).await {
         Ok(evts) => evts,
         Err(e) => {
@@ -177,8 +215,32 @@ async fn active_gateways_last_hour(State(state): State<ApiState>) -> Json<Active
     Json(ActiveGatewaysResponse { gateways })
 }
 
+async fn active_gateways_last_day(State(state): State<ApiState>) -> Json<ActiveGatewaysResponse> {
+    let since = Utc::now() - ChronoDuration::hours(24);
+    let gateways = match state.client.get_active_gateways_since(since).await {
+        Ok(g) => g,
+        Err(e) => {
+            tracing::error!("Failed to get active gateways: {}", e);
+            Vec::new()
+        }
+    };
+    let gateways = gateways.into_iter().map(|a| format!("0x{}", encode(a))).collect();
+    Json(ActiveGatewaysResponse { gateways })
+}
+
 async fn avg_prove_time(State(state): State<ApiState>) -> Json<AvgProveTimeResponse> {
     let avg = match state.client.get_avg_prove_time_last_hour().await {
+        Ok(val) => val,
+        Err(e) => {
+            tracing::error!("Failed to get avg prove time: {}", e);
+            None
+        }
+    };
+    Json(AvgProveTimeResponse { avg_prove_time_ms: avg })
+}
+
+async fn avg_prove_time_24h(State(state): State<ApiState>) -> Json<AvgProveTimeResponse> {
+    let avg = match state.client.get_avg_prove_time_last_24_hours().await {
         Ok(val) => val,
         Err(e) => {
             tracing::error!("Failed to get avg prove time: {}", e);
@@ -199,8 +261,30 @@ async fn avg_verify_time(State(state): State<ApiState>) -> Json<AvgVerifyTimeRes
     Json(AvgVerifyTimeResponse { avg_verify_time_ms: avg })
 }
 
+async fn avg_verify_time_24h(State(state): State<ApiState>) -> Json<AvgVerifyTimeResponse> {
+    let avg = match state.client.get_avg_verify_time_last_24_hours().await {
+        Ok(val) => val,
+        Err(e) => {
+            tracing::error!("Failed to get avg verify time: {}", e);
+            None
+        }
+    };
+    Json(AvgVerifyTimeResponse { avg_verify_time_ms: avg })
+}
+
 async fn l2_block_cadence(State(state): State<ApiState>) -> Json<L2BlockCadenceResponse> {
     let avg = match state.client.get_l2_block_cadence_last_hour().await {
+        Ok(val) => val,
+        Err(e) => {
+            tracing::error!("Failed to get L2 block cadence: {}", e);
+            None
+        }
+    };
+    Json(L2BlockCadenceResponse { l2_block_cadence_ms: avg })
+}
+
+async fn l2_block_cadence_24h(State(state): State<ApiState>) -> Json<L2BlockCadenceResponse> {
+    let avg = match state.client.get_l2_block_cadence_last_24_hours().await {
         Ok(val) => val,
         Err(e) => {
             tracing::error!("Failed to get L2 block cadence: {}", e);
@@ -221,8 +305,32 @@ async fn batch_posting_cadence(State(state): State<ApiState>) -> Json<BatchPosti
     Json(BatchPostingCadenceResponse { batch_posting_cadence_ms: avg })
 }
 
+async fn batch_posting_cadence_24h(
+    State(state): State<ApiState>,
+) -> Json<BatchPostingCadenceResponse> {
+    let avg = match state.client.get_batch_posting_cadence_last_24_hours().await {
+        Ok(val) => val,
+        Err(e) => {
+            tracing::error!("Failed to get batch posting cadence: {}", e);
+            None
+        }
+    };
+    Json(BatchPostingCadenceResponse { batch_posting_cadence_ms: avg })
+}
+
 async fn prove_times_last_hour(State(state): State<ApiState>) -> Json<ProveTimesResponse> {
     let batches = match state.client.get_prove_times_last_hour().await {
+        Ok(rows) => rows,
+        Err(e) => {
+            tracing::error!("Failed to get prove times: {}", e);
+            Vec::new()
+        }
+    };
+    Json(ProveTimesResponse { batches })
+}
+
+async fn prove_times_last_day(State(state): State<ApiState>) -> Json<ProveTimesResponse> {
+    let batches = match state.client.get_prove_times_last_24_hours().await {
         Ok(rows) => rows,
         Err(e) => {
             tracing::error!("Failed to get prove times: {}", e);
@@ -243,6 +351,17 @@ async fn verify_times_last_hour(State(state): State<ApiState>) -> Json<VerifyTim
     Json(VerifyTimesResponse { batches })
 }
 
+async fn verify_times_last_day(State(state): State<ApiState>) -> Json<VerifyTimesResponse> {
+    let batches = match state.client.get_verify_times_last_24_hours().await {
+        Ok(rows) => rows,
+        Err(e) => {
+            tracing::error!("Failed to get verify times: {}", e);
+            Vec::new()
+        }
+    };
+    Json(VerifyTimesResponse { batches })
+}
+
 async fn l1_block_times_last_hour(State(state): State<ApiState>) -> Json<L1BlockTimesResponse> {
     let blocks = match state.client.get_l1_block_times_last_hour().await {
         Ok(rows) => rows,
@@ -254,8 +373,30 @@ async fn l1_block_times_last_hour(State(state): State<ApiState>) -> Json<L1Block
     Json(L1BlockTimesResponse { blocks })
 }
 
+async fn l1_block_times_last_day(State(state): State<ApiState>) -> Json<L1BlockTimesResponse> {
+    let blocks = match state.client.get_l1_block_times_last_24_hours().await {
+        Ok(rows) => rows,
+        Err(e) => {
+            tracing::error!("Failed to get L1 block times: {}", e);
+            Vec::new()
+        }
+    };
+    Json(L1BlockTimesResponse { blocks })
+}
+
 async fn l2_block_times_last_hour(State(state): State<ApiState>) -> Json<L2BlockTimesResponse> {
     let blocks = match state.client.get_l2_block_times_last_hour().await {
+        Ok(rows) => rows,
+        Err(e) => {
+            tracing::error!("Failed to get L2 block times: {}", e);
+            Vec::new()
+        }
+    };
+    Json(L2BlockTimesResponse { blocks })
+}
+
+async fn l2_block_times_last_day(State(state): State<ApiState>) -> Json<L2BlockTimesResponse> {
+    let blocks = match state.client.get_l2_block_times_last_24_hours().await {
         Ok(rows) => rows,
         Err(e) => {
             tracing::error!("Failed to get L2 block times: {}", e);
@@ -282,17 +423,29 @@ fn router(state: ApiState) -> Router {
         .route("/l2-head", get(l2_head))
         .route("/l1-head", get(l1_head))
         .route("/slashings/last-hour", get(slashing_last_hour))
+        .route("/slashings/last-day", get(slashing_last_day))
         .route("/forced-inclusions/last-hour", get(forced_inclusions_last_hour))
+        .route("/forced-inclusions/last-day", get(forced_inclusions_last_day))
         .route("/reorgs/last-hour", get(reorgs_last_hour))
+        .route("/reorgs/last-day", get(reorgs_last_day))
         .route("/active-gateways/last-hour", get(active_gateways_last_hour))
+        .route("/active-gateways/last-day", get(active_gateways_last_day))
         .route("/avg-prove-time", get(avg_prove_time))
+        .route("/avg-prove-time/24h", get(avg_prove_time_24h))
         .route("/avg-verify-time", get(avg_verify_time))
+        .route("/avg-verify-time/24h", get(avg_verify_time_24h))
         .route("/l2-block-cadence", get(l2_block_cadence))
+        .route("/l2-block-cadence/24h", get(l2_block_cadence_24h))
         .route("/batch-posting-cadence", get(batch_posting_cadence))
+        .route("/batch-posting-cadence/24h", get(batch_posting_cadence_24h))
         .route("/prove-times/last-hour", get(prove_times_last_hour))
+        .route("/prove-times/last-day", get(prove_times_last_day))
         .route("/verify-times/last-hour", get(verify_times_last_hour))
+        .route("/verify-times/last-day", get(verify_times_last_day))
         .route("/l1-block-times/last-hour", get(l1_block_times_last_hour))
+        .route("/l1-block-times/last-day", get(l1_block_times_last_day))
         .route("/l2-block-times/last-hour", get(l2_block_times_last_hour))
+        .route("/l2-block-times/last-day", get(l2_block_times_last_day))
         .layer(middleware::from_fn_with_state(state.clone(), rate_limit))
         .with_state(state)
 }
@@ -386,6 +539,19 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn slashing_events_last_day_endpoint() {
+        let mock = Mock::new();
+        let event =
+            clickhouse_lib::SlashingEventRow { l1_block_number: 1, validator_addr: [1u8; 20] };
+        mock.add(handlers::provide(vec![event]));
+        let expected =
+            clickhouse_lib::SlashingEventRow { l1_block_number: 1, validator_addr: [1u8; 20] };
+        let app = build_app(mock.url());
+        let body = send_request(app, "/slashings/last-day").await;
+        assert_eq!(body, json!({ "events": [expected] }));
+    }
+
+    #[tokio::test]
     async fn forced_inclusions_endpoint() {
         let mock = Mock::new();
         let event = clickhouse_lib::ForcedInclusionProcessedRow { blob_hash: [2u8; 32] };
@@ -393,6 +559,17 @@ mod tests {
         let expected = clickhouse_lib::ForcedInclusionProcessedRow { blob_hash: [2u8; 32] };
         let app = build_app(mock.url());
         let body = send_request(app, "/forced-inclusions/last-hour").await;
+        assert_eq!(body, json!({ "events": [expected] }));
+    }
+
+    #[tokio::test]
+    async fn forced_inclusions_last_day_endpoint() {
+        let mock = Mock::new();
+        let event = clickhouse_lib::ForcedInclusionProcessedRow { blob_hash: [2u8; 32] };
+        mock.add(handlers::provide(vec![event]));
+        let expected = clickhouse_lib::ForcedInclusionProcessedRow { blob_hash: [2u8; 32] };
+        let app = build_app(mock.url());
+        let body = send_request(app, "/forced-inclusions/last-day").await;
         assert_eq!(body, json!({ "events": [expected] }));
     }
 
@@ -406,11 +583,29 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn avg_prove_time_24h_endpoint() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(vec![AvgRowTest { avg_ms: Some(1500.0) }]));
+        let app = build_app(mock.url());
+        let body = send_request(app, "/avg-prove-time/24h").await;
+        assert_eq!(body, json!({ "avg_prove_time_ms": 1500 }));
+    }
+
+    #[tokio::test]
     async fn avg_verify_time_endpoint() {
         let mock = Mock::new();
         mock.add(handlers::provide(vec![AvgRowTest { avg_ms: Some(2500.0) }]));
         let app = build_app(mock.url());
         let body = send_request(app, "/avg-verify-time").await;
+        assert_eq!(body, json!({ "avg_verify_time_ms": 2500 }));
+    }
+
+    #[tokio::test]
+    async fn avg_verify_time_24h_endpoint() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(vec![AvgRowTest { avg_ms: Some(2500.0) }]));
+        let app = build_app(mock.url());
+        let body = send_request(app, "/avg-verify-time/24h").await;
         assert_eq!(body, json!({ "avg_verify_time_ms": 2500 }));
     }
 
@@ -435,6 +630,19 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn l2_block_cadence_24h_endpoint() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(vec![CadenceRowTest {
+            min_ts: Some(1000),
+            max_ts: Some(4000),
+            cnt: 4,
+        }]));
+        let app = build_app(mock.url());
+        let body = send_request(app, "/l2-block-cadence/24h").await;
+        assert_eq!(body, json!({ "l2_block_cadence_ms": 1000 }));
+    }
+
+    #[tokio::test]
     async fn batch_posting_cadence_endpoint() {
         let mock = Mock::new();
         mock.add(handlers::provide(vec![CadenceRowTest {
@@ -444,6 +652,19 @@ mod tests {
         }]));
         let app = build_app(mock.url());
         let body = send_request(app, "/batch-posting-cadence").await;
+        assert_eq!(body, json!({ "batch_posting_cadence_ms": 2000 }));
+    }
+
+    #[tokio::test]
+    async fn batch_posting_cadence_24h_endpoint() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(vec![CadenceRowTest {
+            min_ts: Some(2000),
+            max_ts: Some(6000),
+            cnt: 3,
+        }]));
+        let app = build_app(mock.url());
+        let body = send_request(app, "/batch-posting-cadence/24h").await;
         assert_eq!(body, json!({ "batch_posting_cadence_ms": 2000 }));
     }
 
@@ -462,6 +683,15 @@ mod tests {
         assert_eq!(body, json!({ "batches": [ { "batch_id": 1, "seconds_to_prove": 10 } ] }));
     }
 
+    #[tokio::test]
+    async fn prove_times_last_day_endpoint() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(vec![ProveRowTest { batch_id: 1, seconds_to_prove: 10 }]));
+        let app = build_app(mock.url());
+        let body = send_request(app, "/prove-times/last-day").await;
+        assert_eq!(body, json!({ "batches": [ { "batch_id": 1, "seconds_to_prove": 10 } ] }));
+    }
+
     #[derive(Serialize, Row)]
     struct VerifyRowTest {
         batch_id: u64,
@@ -474,6 +704,15 @@ mod tests {
         mock.add(handlers::provide(vec![VerifyRowTest { batch_id: 2, seconds_to_verify: 120 }]));
         let app = build_app(mock.url());
         let body = send_request(app, "/verify-times/last-hour").await;
+        assert_eq!(body, json!({ "batches": [ { "batch_id": 2, "seconds_to_verify": 120 } ] }));
+    }
+
+    #[tokio::test]
+    async fn verify_times_last_day_endpoint() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(vec![VerifyRowTest { batch_id: 2, seconds_to_verify: 120 }]));
+        let app = build_app(mock.url());
+        let body = send_request(app, "/verify-times/last-day").await;
         assert_eq!(body, json!({ "batches": [ { "batch_id": 2, "seconds_to_verify": 120 } ] }));
     }
 
@@ -498,6 +737,15 @@ mod tests {
         mock.add(handlers::provide(vec![BlockTimeRowTest { minute: 0, block_number: 1 }]));
         let app = build_app(mock.url());
         let body = send_request(app, "/l2-block-times/last-hour").await;
+        assert_eq!(body, json!({ "blocks": [ { "minute": 0, "block_number": 1 } ] }));
+    }
+
+    #[tokio::test]
+    async fn l2_block_times_last_day_endpoint() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(vec![BlockTimeRowTest { minute: 0, block_number: 1 }]));
+        let app = build_app(mock.url());
+        let body = send_request(app, "/l2-block-times/last-day").await;
         assert_eq!(body, json!({ "blocks": [ { "minute": 0, "block_number": 1 } ] }));
     }
 }
