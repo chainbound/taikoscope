@@ -36,6 +36,11 @@ struct SlashingEventsResponse {
 }
 
 #[derive(Serialize)]
+struct ForcedInclusionEventsResponse {
+    events: Vec<clickhouse::ForcedInclusionProcessedRow>,
+}
+
+#[derive(Serialize)]
 struct AvgProveTimeResponse {
     avg_prove_time_ms: Option<u64>,
 }
@@ -78,6 +83,20 @@ async fn slashing_last_hour(State(state): State<ApiState>) -> Json<SlashingEvent
     Json(SlashingEventsResponse { events })
 }
 
+async fn forced_inclusions_last_hour(
+    State(state): State<ApiState>,
+) -> Json<ForcedInclusionEventsResponse> {
+    let since = Utc::now() - Duration::hours(1);
+    let events = match state.client.get_forced_inclusions_since(since).await {
+        Ok(evts) => evts,
+        Err(e) => {
+            tracing::error!("Failed to get forced inclusion events: {}", e);
+            Vec::new()
+        }
+    };
+    Json(ForcedInclusionEventsResponse { events })
+}
+
 async fn avg_prove_time(State(state): State<ApiState>) -> Json<AvgProveTimeResponse> {
     let avg = match state.client.get_avg_prove_time_last_hour().await {
         Ok(val) => val,
@@ -96,6 +115,7 @@ pub async fn run(addr: SocketAddr, client: ClickhouseClient) -> Result<()> {
         .route("/l2-head", get(l2_head))
         .route("/l1-head", get(l1_head))
         .route("/slashings/last-hour", get(slashing_last_hour))
+        .route("/forced-inclusions/last-hour", get(forced_inclusions_last_hour))
         .route("/avg-prove-time", get(avg_prove_time))
         .with_state(state);
 
