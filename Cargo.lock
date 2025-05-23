@@ -732,13 +732,16 @@ dependencies = [
  "axum",
  "chrono",
  "clickhouse 0.1.0",
+ "clickhouse 0.13.2",
  "eyre",
  "primitives",
  "serde",
  "serde_json",
  "tokio",
+ "tower",
  "tower-http",
  "tracing",
+ "url",
 ]
 
 [[package]]

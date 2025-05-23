@@ -40,6 +40,7 @@ tracing-subscriber = { version = "0.3.19", features = ["env-filter", "fmt"] }
 url = { version = "2.5.4", features = ["serde"] }
 axum = { version = "0.7.5", features = ["json"] }
 tower-http = { version = "0.5.2", features = ["cors"] }
+tower = "0.5.2"
 
 [workspace.lints]
 rust.missing_debug_implementations = "warn"
