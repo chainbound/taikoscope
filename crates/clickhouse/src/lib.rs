@@ -216,6 +216,15 @@ pub struct SlashingEventRow {
     pub validator_addr: [u8; 20],
 }
 
+/// Row representing the time it took for a batch to be proven
+#[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq)]
+pub struct BatchProveTimeRow {
+    /// Batch ID
+    pub batch_id: u64,
+    /// Seconds between proposal and proof
+    pub seconds_to_prove: u64,
+}
+
 /// Clickhouse client
 #[derive(Clone, Debug)]
 pub struct ClickhouseClient {
@@ -864,6 +873,27 @@ impl ClickhouseClient {
             _ => Ok(None),
         }
     }
+
+    /// Get prove times in seconds for batches proved within the last hour.
+    pub async fn get_prove_times_last_hour(&self) -> Result<Vec<BatchProveTimeRow>> {
+        let client = self.base.clone().with_database(&self.db_name);
+        let query = format!(
+            "SELECT b.batch_id AS batch_id, \
+                    (l1_proved.block_ts - l1_proposed.block_ts) AS seconds_to_prove \
+             FROM {db}.batches b \
+             JOIN {db}.proved_batches pb ON b.batch_id = pb.batch_id \
+             JOIN {db}.l1_head_events l1_proposed \
+               ON b.l1_block_number = l1_proposed.l1_block_number \
+             JOIN {db}.l1_head_events l1_proved \
+               ON pb.l1_block_number = l1_proved.l1_block_number \
+             WHERE l1_proved.block_ts >= (toUInt64(now()) - 3600) \
+             ORDER BY b.batch_id ASC",
+            db = self.db_name
+        );
+
+        let rows = client.query(&query).fetch_all::<BatchProveTimeRow>().await?;
+        Ok(rows)
+    }
 }
 
 #[cfg(test)]
@@ -881,6 +911,7 @@ mod tests {
     use crate::{
         BatchRow, ClickhouseClient, ForcedInclusionProcessedRow, L1HeadEvent, L2HeadEvent,
         L2ReorgRow, PreconfData, ProvedBatchRow, VerifiedBatchRow,
+        BatchProveTimeRow,
     };
 
     #[derive(Serialize, Row)]
@@ -1539,5 +1570,30 @@ mod tests {
 
         let result = client.get_batch_posting_cadence_last_hour().await.unwrap();
         assert_eq!(result, Some(2_000));
+    }
+
+    #[derive(Serialize, Row, Debug, PartialEq, Eq, Clone)]
+    struct ProveTimeRowTest {
+        batch_id: u64,
+        seconds_to_prove: u64,
+    }
+
+    #[tokio::test]
+    async fn test_get_prove_times_last_hour() {
+        let mock = Mock::new();
+        let expected = ProveTimeRowTest { batch_id: 7, seconds_to_prove: 42 };
+        mock.add(handlers::provide(vec![expected.clone()]));
+
+        let url = Url::parse(mock.url()).unwrap();
+        let client = ClickhouseClient::new(
+            url,
+            "test-db".to_owned(),
+            "test_user".to_owned(),
+            "test_pass".to_owned(),
+        )
+        .unwrap();
+
+        let result = client.get_prove_times_last_hour().await.unwrap();
+        assert_eq!(result, vec![BatchProveTimeRow { batch_id: 7, seconds_to_prove: 42 }]);
     }
 }

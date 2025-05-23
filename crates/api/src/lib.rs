@@ -80,6 +80,11 @@ struct BatchPostingCadenceResponse {
     batch_posting_cadence_ms: Option<u64>,
 }
 
+#[derive(Serialize)]
+struct ProveTimesResponse {
+    batches: Vec<clickhouse_lib::BatchProveTimeRow>,
+}
+
 async fn l2_head(State(state): State<ApiState>) -> Json<L2HeadResponse> {
     let ts = match state.client.get_last_l2_head_time().await {
         Ok(time) => time,
@@ -201,6 +206,17 @@ async fn batch_posting_cadence(State(state): State<ApiState>) -> Json<BatchPosti
     Json(BatchPostingCadenceResponse { batch_posting_cadence_ms: avg })
 }
 
+async fn prove_times_last_hour(State(state): State<ApiState>) -> Json<ProveTimesResponse> {
+    let batches = match state.client.get_prove_times_last_hour().await {
+        Ok(rows) => rows,
+        Err(e) => {
+            tracing::error!("Failed to get prove times: {}", e);
+            Vec::new()
+        }
+    };
+    Json(ProveTimesResponse { batches })
+}
+
 async fn rate_limit(
     State(state): State<ApiState>,
     req: axum::http::Request<axum::body::Body>,
@@ -227,6 +243,7 @@ pub async fn run(addr: SocketAddr, client: ClickhouseClient) -> Result<()> {
         .route("/avg-verify-time", get(avg_verify_time))
         .route("/l2-block-cadence", get(l2_block_cadence))
         .route("/batch-posting-cadence", get(batch_posting_cadence))
+        .route("/prove-times/last-hour", get(prove_times_last_hour))
         .layer(middleware::from_fn_with_state(state.clone(), rate_limit))
         .with_state(state)
         .layer(CorsLayer::permissive());
@@ -277,6 +294,7 @@ mod tests {
             .route("/avg-verify-time", get(avg_verify_time))
             .route("/l2-block-cadence", get(l2_block_cadence))
             .route("/batch-posting-cadence", get(batch_posting_cadence))
+            .route("/prove-times/last-hour", get(prove_times_last_hour))
             .layer(middleware::from_fn_with_state(state.clone(), rate_limit))
             .with_state(state)
     }
@@ -384,5 +402,20 @@ mod tests {
         let app = build_app(mock.url());
         let body = send_request(app, "/batch-posting-cadence").await;
         assert_eq!(body, json!({ "batch_posting_cadence_ms": 2000 }));
+    }
+
+    #[derive(Serialize, Row)]
+    struct ProveRowTest {
+        batch_id: u64,
+        seconds_to_prove: u64,
+    }
+
+    #[tokio::test]
+    async fn prove_times_last_hour_endpoint() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(vec![ProveRowTest { batch_id: 1, seconds_to_prove: 10 }]));
+        let app = build_app(mock.url());
+        let body = send_request(app, "/prove-times/last-hour").await;
+        assert_eq!(body, json!({ "batches": [ { "batch_id": 1, "seconds_to_prove": 10 } ] }));
     }
 }
