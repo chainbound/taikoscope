@@ -12,12 +12,22 @@ import {
   MetricData,
 } from "./types";
 import {
-  generateMockMetrics,
   generateMockBlockTimeData,
   generateMockBatchProcessData,
   generateMockSequencerData,
 } from "./services/mockDataService";
-import { fetchAvgProveTime, fetchAvgVerifyTime } from "./services/apiService";
+import {
+  fetchAvgProveTime,
+  fetchAvgVerifyTime,
+  fetchL2BlockCadence,
+  fetchBatchPostingCadence,
+  fetchActiveGateways,
+  fetchL2Reorgs,
+  fetchSlashingEvents,
+  fetchForcedInclusions,
+  fetchL2HeadBlock,
+  fetchL1HeadBlock,
+} from "./services/apiService";
 
 const TAΙΚΟ_PINK = "#e81899"; // Updated Taiko Pink
 
@@ -39,23 +49,76 @@ const App: React.FC = () => {
   const [l1HeadBlock, setL1HeadBlock] = useState<string>("0");
 
   const fetchData = useCallback(async () => {
-    const currentMetrics = generateMockMetrics(timeRange);
+    const range = timeRange;
+    const [
+      l2Cadence,
+      batchCadence,
+      avgProve,
+      avgVerify,
+      activeGateways,
+      l2Reorgs,
+      slashings,
+      forcedInclusions,
+      l2Block,
+      l1Block,
+    ] = await Promise.all([
+      fetchL2BlockCadence(range),
+      fetchBatchPostingCadence(range),
+      fetchAvgProveTime(range),
+      fetchAvgVerifyTime(range),
+      fetchActiveGateways(range),
+      fetchL2Reorgs(range),
+      fetchSlashingEvents(range),
+      fetchForcedInclusions(range),
+      fetchL2HeadBlock(range),
+      fetchL1HeadBlock(range),
+    ]);
 
-    if (timeRange === "1h") {
-      const [avgProve, avgVerify] = await Promise.all([
-        fetchAvgProveTime(),
-        fetchAvgVerifyTime(),
-      ]);
-
-      currentMetrics.forEach((m) => {
-        if (m.title === "Avg. Prove Time" && avgProve !== null) {
-          m.value = `${(avgProve / 1000).toFixed(2)}s`;
-        }
-        if (m.title === "Avg. Verify Time" && avgVerify !== null) {
-          m.value = `${(avgVerify / 1000).toFixed(2)}s`;
-        }
-      });
-    }
+    const currentMetrics: MetricData[] = [
+      {
+        title: "L2 Block Cadence",
+        value: l2Cadence !== null ? `${(l2Cadence / 1000).toFixed(2)}s` : "N/A",
+      },
+      {
+        title: "Batch Posting Cadence",
+        value:
+          batchCadence !== null
+            ? `${(batchCadence / 1000).toFixed(2)}s`
+            : "N/A",
+      },
+      {
+        title: "Avg. Prove Time",
+        value: avgProve !== null ? `${(avgProve / 1000).toFixed(2)}s` : "N/A",
+      },
+      {
+        title: "Avg. Verify Time",
+        value: avgVerify !== null ? `${(avgVerify / 1000).toFixed(2)}s` : "N/A",
+      },
+      {
+        title: "Active Gateways",
+        value: activeGateways !== null ? activeGateways.toString() : "N/A",
+      },
+      {
+        title: "L2 Reorgs",
+        value: l2Reorgs !== null ? l2Reorgs.toString() : "N/A",
+      },
+      {
+        title: "Slashing Events",
+        value: slashings !== null ? slashings.toString() : "N/A",
+      },
+      {
+        title: "Forced Inclusions",
+        value: forcedInclusions !== null ? forcedInclusions.toString() : "N/A",
+      },
+      {
+        title: "L2 Head Block",
+        value: l2Block !== null ? l2Block.toLocaleString() : "N/A",
+      },
+      {
+        title: "L1 Head Block",
+        value: l1Block !== null ? l1Block.toLocaleString() : "N/A",
+      },
+    ];
 
     setMetrics(currentMetrics);
     setSecondsToProveData(generateMockBatchProcessData(timeRange, "prove"));
@@ -63,15 +126,12 @@ const App: React.FC = () => {
     setL2BlockTimeData(generateMockBlockTimeData(timeRange, "L2"));
     setL1BlockTimeData(generateMockBlockTimeData(timeRange, "L1"));
     setSequencerDistribution(generateMockSequencerData());
-
-    const l2BlockMetric = currentMetrics.find((m) =>
-      m.title.includes("L2 Head Block"),
+    setL2HeadBlock(
+      currentMetrics.find((m) => m.title === "L2 Head Block")?.value || "N/A",
     );
-    setL2HeadBlock(l2BlockMetric ? l2BlockMetric.value : "N/A");
-    const l1BlockMetric = currentMetrics.find((m) =>
-      m.title.includes("L1 Head Block"),
+    setL1HeadBlock(
+      currentMetrics.find((m) => m.title === "L1 Head Block")?.value || "N/A",
     );
-    setL1HeadBlock(l1BlockMetric ? l1BlockMetric.value : "N/A");
   }, [timeRange]);
 
   useEffect(() => {
