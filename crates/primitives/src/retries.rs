@@ -220,4 +220,9 @@ mod tests {
         assert!(is_connection_refused("connection refused"));
         assert!(!is_connection_refused("other error"));
     }
+
+    #[test]
+    fn is_retryable_on_null_response() {
+        assert!(RpcError::<TransportErrorKind>::NullResp.is_retryable());
+    }
 }
