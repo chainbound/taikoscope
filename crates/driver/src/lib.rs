@@ -39,6 +39,7 @@ pub struct Driver {
     instatus_monitor_poll_interval_secs: u64,
     instatus_monitor_threshold_secs: u64,
     batch_proof_timeout_secs: u64,
+    last_batch_slot: u64,
 }
 
 impl Driver {
@@ -85,6 +86,7 @@ impl Driver {
             instatus_monitor_poll_interval_secs: opts.instatus.monitor_poll_interval_secs,
             instatus_monitor_threshold_secs: opts.instatus.monitor_threshold_secs,
             batch_proof_timeout_secs: opts.instatus.batch_proof_timeout_secs,
+            last_batch_slot: 0,
         })
     }
 
@@ -330,7 +332,7 @@ impl Driver {
     }
 
     /// Insert the received L1 header and related preconfirmation data.
-    async fn handle_l1_header(&self, header: L1Header) {
+    async fn handle_l1_header(&mut self, header: L1Header) {
         if let Err(e) = self.clickhouse.insert_l1_header(&header).await {
             tracing::error!(header_number = header.number, err = %e, "Failed to insert L1 header");
         } else {
@@ -372,6 +374,17 @@ impl Driver {
                 None
             }
         };
+
+        if header.slot > self.last_batch_slot + 1 {
+            let sequencer = opt_current_operator.unwrap_or(Address::ZERO);
+            for s in (self.last_batch_slot + 1)..header.slot {
+                match self.clickhouse.insert_missed_slot(sequencer, s, header.number).await {
+                    Ok(_) => info!(slot = s, "Inserted missed slot"),
+                    Err(e) => tracing::error!(slot = s, err = %e, "Failed to insert missed slot"),
+                }
+            }
+            self.last_batch_slot = header.slot - 1;
+        }
 
         if opt_current_operator.is_some() || opt_next_operator.is_some() {
             if let Err(e) = self
@@ -436,11 +449,12 @@ impl Driver {
     }
 
     /// Store a newly proposed batch.
-    async fn handle_batch_proposed(&self, batch: BatchProposed) {
+    async fn handle_batch_proposed(&mut self, batch: BatchProposed) {
         if let Err(e) = self.clickhouse.insert_batch(&batch).await {
             tracing::error!(batch_last_block = ?batch.last_block_number(), err = %e, "Failed to insert batch");
         } else {
             info!(last_block_number = ?batch.last_block_number(), "Inserted batch");
+            self.last_batch_slot = batch.meta.batchId;
         }
     }
 
@@ -503,7 +517,7 @@ mod tests {
     async fn new_respects_batch_proof_timeout_from_opts() {
         // Mock ClickHouse server with enough handlers for `init_db`
         let mock = Mock::new();
-        for _ in 0..10 {
+        for _ in 0..11 {
             mock.add(handlers::failure(StatusCode::OK));
         }
 

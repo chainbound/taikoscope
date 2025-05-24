@@ -18,6 +18,7 @@ pub const TABLES: &[&str] = &[
     "forced_inclusion_processed",
     "verified_batches",
     "slashing_events",
+    "missed_slots",
 ];
 
 /// Schema definitions for tables
@@ -101,5 +102,13 @@ pub const TABLE_SCHEMAS: &[TableSchema] = &[
                  validator_addr FixedString(20),
                  inserted_at DateTime64(3) DEFAULT now64()",
         order_by: "l1_block_number, validator_addr",
+    },
+    TableSchema {
+        name: "missed_slots",
+        columns: "sequencer_addr FixedString(20),
+                 slot UInt64,
+                 l1_block_number UInt64,
+                 inserted_at DateTime64(3) DEFAULT now64()",
+        order_by: "slot, sequencer_addr",
     },
 ];
