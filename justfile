@@ -125,6 +125,7 @@ run-api-container:
         --name {{api_container}} \
         --restart unless-stopped \
         --env-file \{{env_file}} \
+        -e HOST=0.0.0.0 \
         -p {{api_port}} \
         {{api_container}}"
 
