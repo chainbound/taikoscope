@@ -23,12 +23,22 @@ pub struct ClickhouseOpts {
 /// RPC endpoint configuration options
 #[derive(Debug, Clone, Parser)]
 pub struct RpcOpts {
-    /// L1 RPC URL
-    #[clap(long, env = "L1_RPC_URL")]
-    pub l1_url: Url,
-    /// L2 RPC URL
-    #[clap(long, env = "L2_RPC_URL")]
-    pub l2_url: Url,
+    /// L1 RPC URLs (comma separated or repeated)
+    #[clap(
+        long = "l1-url",
+        env = "L1_RPC_URL",
+        value_delimiter = ',',
+        num_args = 1..
+    )]
+    pub l1_urls: Vec<Url>,
+    /// L2 RPC URLs (comma separated or repeated)
+    #[clap(
+        long = "l2-url",
+        env = "L2_RPC_URL",
+        value_delimiter = ',',
+        num_args = 1..
+    )]
+    pub l2_urls: Vec<Url>,
 }
 
 /// Taiko contract address configuration options
@@ -179,6 +189,8 @@ mod tests {
         assert_eq!(opts.api.host, "127.0.0.1");
         assert_eq!(opts.api.port, 3000);
         assert!(!opts.reset_db);
+        assert_eq!(opts.rpc.l1_urls.len(), 1);
+        assert_eq!(opts.rpc.l2_urls.len(), 1);
     }
 
     #[test]
@@ -202,6 +214,8 @@ mod tests {
         assert_eq!(opts.api.host, "127.0.0.1");
         assert_eq!(opts.api.port, 3000);
         assert!(opts.reset_db);
+        assert_eq!(opts.rpc.l1_urls.len(), 1);
+        assert_eq!(opts.rpc.l2_urls.len(), 1);
 
         unsafe {
             env::remove_var("INSTATUS_MONITOR_POLL_INTERVAL_SECS");
