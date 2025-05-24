@@ -55,8 +55,8 @@ impl Driver {
 
         // init extractor
         let extractor = Extractor::new(
-            opts.rpc.l1_url,
-            opts.rpc.l2_url,
+            opts.rpc.l1_urls,
+            opts.rpc.l2_urls,
             opts.taiko_addresses.inbox_address,
             opts.taiko_addresses.preconf_whitelist_address,
             opts.taiko_addresses.taiko_wrapper_address,
@@ -517,7 +517,7 @@ mod tests {
                 username: "user".into(),
                 password: "pass".into(),
             },
-            rpc: RpcOpts { l1_url, l2_url },
+            rpc: RpcOpts { l1_urls: vec![l1_url], l2_urls: vec![l2_url] },
             api: ApiOpts { host: "127.0.0.1".into(), port: 3000 },
             taiko_addresses: TaikoAddressOpts {
                 inbox_address: Address::ZERO,

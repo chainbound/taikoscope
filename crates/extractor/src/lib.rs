@@ -30,13 +30,13 @@ use url::Url;
 /// Extractor client
 #[derive(Debug)]
 pub struct Extractor {
-    #[debug(skip)]
-    l1_provider: DefaultProvider,
-    #[debug(skip)]
-    l2_provider: DefaultProvider,
-    preconf_whitelist: TaikoPreconfWhitelist,
-    taiko_inbox: TaikoInbox,
-    taiko_wrapper: TaikoWrapper,
+    /// Available L1 RPC URLs
+    l1_urls: Vec<Url>,
+    /// Available L2 RPC URLs
+    l2_urls: Vec<Url>,
+    inbox_address: Address,
+    preconf_whitelist_address: Address,
+    taiko_wrapper_address: Address,
 }
 
 /// L1 Header
@@ -86,49 +86,69 @@ pub type BatchesVerifiedStream =
 /// Stream of forced inclusion processed events
 pub type ForcedInclusionStream = Pin<Box<dyn Stream<Item = ForcedInclusionProcessed> + Send>>;
 
+async fn connect_provider(url: &Url) -> Result<DefaultProvider> {
+    let ws = RetryWsConnect::from_url(url.clone());
+    let client = ClientBuilder::default().layer(DEFAULT_RETRY_LAYER).pubsub(ws).await?;
+    Ok(ProviderBuilder::new().connect_client(client))
+}
+
+async fn connect_any(urls: &[Url]) -> Result<(DefaultProvider, Url)> {
+    let mut last_err = None;
+    for url in urls {
+        match connect_provider(url).await {
+            Ok(p) => return Ok((p, url.clone())),
+            Err(e) => {
+                last_err = Some(e);
+            }
+        }
+    }
+    Err(last_err.unwrap_or_else(|| eyre::eyre!("no rpc urls provided")))
+}
+
 impl Extractor {
     /// Create a new extractor
     pub async fn new(
-        l1_rpc_url: Url,
-        l2_rpc_url: Url,
+        l1_rpc_urls: Vec<Url>,
+        l2_rpc_urls: Vec<Url>,
         inbox_address: Address,
         preconf_whitelist_address: Address,
         taiko_wrapper_address: Address,
     ) -> Result<Self> {
-        let l1_ws = RetryWsConnect::from_url(l1_rpc_url);
-        let l1_client = ClientBuilder::default().layer(DEFAULT_RETRY_LAYER).pubsub(l1_ws).await?;
-        let l1_provider = ProviderBuilder::new().connect_client(l1_client);
-
-        let l2_ws = RetryWsConnect::from_url(l2_rpc_url);
-        let l2_client = ClientBuilder::default().layer(DEFAULT_RETRY_LAYER).pubsub(l2_ws).await?;
-        let l2_provider = ProviderBuilder::new().connect_client(l2_client);
-
-        let taiko_inbox = TaikoInbox::new_readonly(inbox_address, l1_provider.clone());
-        let preconf_whitelist =
-            TaikoPreconfWhitelist::new_readonly(preconf_whitelist_address, l1_provider.clone());
-        let taiko_wrapper = TaikoWrapper::new_readonly(taiko_wrapper_address, l1_provider.clone());
-
-        Ok(Self { l1_provider, l2_provider, preconf_whitelist, taiko_inbox, taiko_wrapper })
+        Ok(Self {
+            l1_urls: l1_rpc_urls,
+            l2_urls: l2_rpc_urls,
+            inbox_address,
+            preconf_whitelist_address,
+            taiko_wrapper_address,
+        })
     }
 
     /// Get a stream of L1 headers. This stream will attempt to automatically
     /// resubscribe and continue yielding headers in case of disconnections.
     pub async fn get_l1_header_stream(&self) -> Result<L1HeaderStream> {
         let (tx, rx) = mpsc::unbounded_channel();
-        let provider = self.l1_provider.clone();
+        let urls = self.l1_urls.clone();
 
         tokio::spawn(async move {
             loop {
-                info!("Attempting to subscribe to L1 block headers...");
+                let (provider, url) = match connect_any(&urls).await {
+                    Ok(p) => p,
+                    Err(e) => {
+                        error!(error = %e, "Failed to connect to any L1 provider, retrying in 5s");
+                        sleep(Duration::from_secs(5)).await;
+                        continue;
+                    }
+                };
+                info!(url = %url, "Attempting to subscribe to L1 block headers...");
                 let sub_result = provider.subscribe_blocks().await;
 
                 let mut block_stream = match sub_result {
                     Ok(sub) => {
-                        info!("Successfully subscribed to L1 block headers.");
+                        info!(url = %url, "Successfully subscribed to L1 block headers.");
                         sub.into_stream()
                     }
                     Err(e) => {
-                        error!(error = %e, "Failed to subscribe to L1 blocks, retrying in 5s");
+                        error!(error = %e, url = %url, "Failed to subscribe to L1 blocks, retrying in 5s");
                         sleep(Duration::from_secs(5)).await;
                         continue;
                     }
@@ -148,7 +168,6 @@ impl Extractor {
                     }
                 }
                 warn!("L1 block stream ended. Attempting to resubscribe...");
-                // Outer loop will retry subscription.
             }
         });
 
@@ -159,20 +178,28 @@ impl Extractor {
     /// resubscribe and continue yielding headers in case of disconnections.
     pub async fn get_l2_header_stream(&self) -> Result<L2HeaderStream> {
         let (tx, rx) = mpsc::unbounded_channel();
-        let provider = self.l2_provider.clone();
+        let urls = self.l2_urls.clone();
 
         tokio::spawn(async move {
             loop {
-                info!("Attempting to subscribe to L2 block headers...");
+                let (provider, url) = match connect_any(&urls).await {
+                    Ok(p) => p,
+                    Err(e) => {
+                        error!(error = %e, "Failed to connect to any L2 provider, retrying in 5s");
+                        sleep(Duration::from_secs(5)).await;
+                        continue;
+                    }
+                };
+                info!(url = %url, "Attempting to subscribe to L2 block headers...");
                 let sub_result = provider.subscribe_blocks().await;
 
                 let mut block_stream = match sub_result {
                     Ok(sub) => {
-                        info!("Successfully subscribed to L2 block headers.");
+                        info!(url = %url, "Successfully subscribed to L2 block headers.");
                         sub.into_stream()
                     }
                     Err(e) => {
-                        error!(error = %e, "Failed to subscribe to L2 blocks, retrying in 5s");
+                        error!(error = %e, url = %url, "Failed to subscribe to L2 blocks, retrying in 5s");
                         sleep(Duration::from_secs(5)).await;
                         continue;
                     }
@@ -204,12 +231,21 @@ impl Extractor {
     /// This stream will attempt to automatically resubscribe and continue yielding events.
     pub async fn get_batch_proposed_stream(&self) -> Result<BatchProposedStream> {
         let (tx, rx) = mpsc::unbounded_channel();
-        let provider = self.l1_provider.clone();
-        let taiko_inbox = self.taiko_inbox.clone(); // Clone for use in the spawned task
+        let urls = self.l1_urls.clone();
+        let inbox = self.inbox_address;
 
         tokio::spawn(async move {
             loop {
-                info!("Attempting to subscribe to TaikoInbox BatchProposed events...");
+                let (provider, url) = match connect_any(&urls).await {
+                    Ok(p) => p,
+                    Err(e) => {
+                        error!(error = %e, "Failed to connect to any L1 provider, retrying in 5s");
+                        sleep(Duration::from_secs(5)).await;
+                        continue;
+                    }
+                };
+                let taiko_inbox = TaikoInbox::new_readonly(inbox, provider.clone());
+                info!(url = %url, "Attempting to subscribe to TaikoInbox BatchProposed events...");
                 let filter = taiko_inbox.batch_proposed_filter();
                 let sub_result = provider.subscribe_logs(&filter).await;
 
@@ -254,12 +290,21 @@ impl Extractor {
     /// continue yielding events.
     pub async fn get_batches_proved_stream(&self) -> Result<BatchesProvedStream> {
         let (tx, rx) = mpsc::unbounded_channel();
-        let provider = self.l1_provider.clone();
-        let taiko_inbox = self.taiko_inbox.clone(); // Clone for use in the spawned task
+        let urls = self.l1_urls.clone();
+        let inbox = self.inbox_address;
 
         tokio::spawn(async move {
             loop {
-                info!("Attempting to subscribe to TaikoInbox BatchesProved events...");
+                let (provider, url) = match connect_any(&urls).await {
+                    Ok(p) => p,
+                    Err(e) => {
+                        error!(error = %e, "Failed to connect to any L1 provider, retrying in 5s");
+                        sleep(Duration::from_secs(5)).await;
+                        continue;
+                    }
+                };
+                let taiko_inbox = TaikoInbox::new_readonly(inbox, provider.clone());
+                info!(url = %url, "Attempting to subscribe to TaikoInbox BatchesProved events...");
                 let filter = taiko_inbox.batches_proved_filter();
                 let sub_result = provider.subscribe_logs(&filter).await;
 
@@ -306,12 +351,21 @@ impl Extractor {
     /// yielding events.
     pub async fn get_forced_inclusion_stream(&self) -> Result<ForcedInclusionStream> {
         let (tx, rx) = mpsc::unbounded_channel();
-        let provider = self.l1_provider.clone();
-        let taiko_wrapper = self.taiko_wrapper.clone(); // Clone for use in the spawned task
+        let urls = self.l1_urls.clone();
+        let wrapper_addr = self.taiko_wrapper_address;
 
         tokio::spawn(async move {
             loop {
-                info!("Attempting to subscribe to TaikoWrapper ForcedInclusionProcessed events...");
+                let (provider, url) = match connect_any(&urls).await {
+                    Ok(p) => p,
+                    Err(e) => {
+                        error!(error = %e, "Failed to connect to any L1 provider, retrying in 5s");
+                        sleep(Duration::from_secs(5)).await;
+                        continue;
+                    }
+                };
+                let taiko_wrapper = TaikoWrapper::new_readonly(wrapper_addr, provider.clone());
+                info!(url = %url, "Attempting to subscribe to TaikoWrapper ForcedInclusionProcessed events...");
                 let filter = taiko_wrapper.forced_inclusion_processed_filter();
                 let sub_result = provider.subscribe_logs(&filter).await;
 
@@ -354,14 +408,18 @@ impl Extractor {
 
     /// Get the current epoch operator
     pub async fn get_operator_for_current_epoch(&self) -> Result<Address> {
-        let operator = self.preconf_whitelist.get_operator_for_current_epoch().await?;
-        Ok(operator)
+        let (provider, _) = connect_any(&self.l1_urls).await?;
+        let whitelist =
+            TaikoPreconfWhitelist::new_readonly(self.preconf_whitelist_address, provider);
+        Ok(whitelist.get_operator_for_current_epoch().await?)
     }
 
     /// Get the next epoch operator
     pub async fn get_operator_for_next_epoch(&self) -> Result<Address> {
-        let operator = self.preconf_whitelist.get_operator_for_next_epoch().await?;
-        Ok(operator)
+        let (provider, _) = connect_any(&self.l1_urls).await?;
+        let whitelist =
+            TaikoPreconfWhitelist::new_readonly(self.preconf_whitelist_address, provider);
+        Ok(whitelist.get_operator_for_next_epoch().await?)
     }
 
     /// Subscribes to the `TaikoInbox` `BatchesVerified` event and returns a stream of decoded
@@ -369,12 +427,21 @@ impl Extractor {
     /// resubscribe and continue yielding events.
     pub async fn get_batches_verified_stream(&self) -> Result<BatchesVerifiedStream> {
         let (tx, rx) = mpsc::unbounded_channel();
-        let provider = self.l1_provider.clone();
-        let taiko_inbox = self.taiko_inbox.clone(); // Clone for use in the spawned task
+        let urls = self.l1_urls.clone();
+        let inbox = self.inbox_address;
 
         tokio::spawn(async move {
             loop {
-                info!("Attempting to subscribe to TaikoInbox BatchesVerified events...");
+                let (provider, url) = match connect_any(&urls).await {
+                    Ok(p) => p,
+                    Err(e) => {
+                        error!(error = %e, "Failed to connect to any L1 provider, retrying in 5s");
+                        sleep(Duration::from_secs(5)).await;
+                        continue;
+                    }
+                };
+                let taiko_inbox = TaikoInbox::new_readonly(inbox, provider.clone());
+                info!(url = %url, "Attempting to subscribe to TaikoInbox BatchesVerified events...");
                 let filter = taiko_inbox.batches_verified_filter();
                 let sub_result = provider.subscribe_logs(&filter).await;
 
@@ -425,8 +492,10 @@ impl Extractor {
 
     /// Get the operator candidates for the current epoch
     pub async fn get_operator_candidates_for_current_epoch(&self) -> Result<Vec<Address>> {
-        let candidates = self.preconf_whitelist.get_operator_candidates_for_current_epoch().await?;
-        Ok(candidates)
+        let (provider, _) = connect_any(&self.l1_urls).await?;
+        let whitelist =
+            TaikoPreconfWhitelist::new_readonly(self.preconf_whitelist_address, provider);
+        Ok(whitelist.get_operator_candidates_for_current_epoch().await?)
     }
 
     /// Calculate aggregated statistics for an L2 block by fetching its receipts.
@@ -437,8 +506,9 @@ impl Extractor {
     ) -> Result<(u128, u32, u128)> {
         use alloy_rpc_types_eth::{BlockId, BlockNumberOrTag};
 
+        let (provider, _) = connect_any(&self.l2_urls).await?;
         let block = BlockId::Number(BlockNumberOrTag::Number(block_number));
-        let receipts_opt = self.l2_provider.get_block_receipts(block).await?;
+        let receipts_opt = provider.get_block_receipts(block).await?;
         let receipts = receipts_opt.ok_or_else(|| eyre::eyre!("missing receipts"))?;
 
         Ok(compute_block_stats(&receipts, base_fee))
