@@ -29,10 +29,7 @@ const MAX_REQUESTS: u64 = 1000;
 const RATE_PERIOD: StdDuration = StdDuration::from_secs(60);
 
 /// Allowed CORS origins for dashboard requests.
-const ALLOWED_ORIGINS: &[&str] = &[
-    "https://taikoscope.xyz",
-    "https://www.taikoscope.xyz",
-];
+const ALLOWED_ORIGINS: &[&str] = &["https://taikoscope.xyz", "https://www.taikoscope.xyz"];
 
 #[derive(Clone, Debug)]
 struct ApiState {
@@ -493,13 +490,9 @@ fn router(state: ApiState) -> Router {
 pub async fn run(addr: SocketAddr, client: ClickhouseClient) -> Result<()> {
     let state = ApiState::new(client);
     let cors = CorsLayer::new()
-        .allow_origin(AllowOrigin::predicate(|origin: &HeaderValue, _| {
-            match origin.to_str() {
-                Ok(origin) => {
-                    ALLOWED_ORIGINS.contains(&origin) || origin.ends_with(".vercel.app")
-                }
-                Err(_) => false,
-            }
+        .allow_origin(AllowOrigin::predicate(|origin: &HeaderValue, _| match origin.to_str() {
+            Ok(origin) => ALLOWED_ORIGINS.contains(&origin) || origin.ends_with(".vercel.app"),
+            Err(_) => false,
         }))
         .allow_methods([Method::GET])
         .allow_headers(Any);

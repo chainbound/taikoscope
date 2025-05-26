@@ -814,12 +814,9 @@ impl ClickhouseClient {
 
         let client = self.base.clone().with_database(&self.db_name);
         let query = format!(
-            "SELECT COALESCE(avg(toUnixTimestamp64Milli(p.inserted_at) - \
-                    toUnixTimestamp64Milli(b.inserted_at)), 0) AS avg_ms \
-             FROM {db}.proved_batches p \
-             INNER JOIN {db}.batches b \
-             ON p.l1_block_number = b.l1_block_number AND p.batch_id = b.batch_id \
-             WHERE p.inserted_at >= now64() - INTERVAL 1 HOUR",
+            "SELECT COALESCE(avg(prove_time_ms), 0) AS avg_ms \
+             FROM {db}.batch_prove_times_mv \
+             WHERE proved_at >= now64() - INTERVAL 1 HOUR",
             db = self.db_name
         );
 
@@ -842,12 +839,9 @@ impl ClickhouseClient {
 
         let client = self.base.clone().with_database(&self.db_name);
         let query = format!(
-            "SELECT COALESCE(avg(toUnixTimestamp64Milli(p.inserted_at) - \
-                    toUnixTimestamp64Milli(b.inserted_at)), 0) AS avg_ms \
-             FROM {db}.proved_batches p \
-             INNER JOIN {db}.batches b \
-             ON p.l1_block_number = b.l1_block_number AND p.batch_id = b.batch_id \
-             WHERE p.inserted_at >= now64() - INTERVAL 24 HOUR",
+            "SELECT COALESCE(avg(prove_time_ms), 0) AS avg_ms \
+             FROM {db}.batch_prove_times_mv \
+             WHERE proved_at >= now64() - INTERVAL 24 HOUR",
             db = self.db_name
         );
 
@@ -870,12 +864,9 @@ impl ClickhouseClient {
 
         let client = self.base.clone().with_database(&self.db_name);
         let query = format!(
-            "SELECT COALESCE(avg(toUnixTimestamp64Milli(v.inserted_at) - \
-                    toUnixTimestamp64Milli(p.inserted_at)), 0) AS avg_ms \
-             FROM {db}.verified_batches v \
-             INNER JOIN {db}.proved_batches p \
-             ON v.l1_block_number = p.l1_block_number AND v.batch_id = p.batch_id \
-             WHERE v.inserted_at >= now64() - INTERVAL 1 HOUR",
+            "SELECT COALESCE(avg(verify_time_ms), 0) AS avg_ms \
+             FROM {db}.batch_verify_times_mv \
+             WHERE verified_at >= now64() - INTERVAL 1 HOUR",
             db = self.db_name
         );
 
@@ -898,12 +889,9 @@ impl ClickhouseClient {
 
         let client = self.base.clone().with_database(&self.db_name);
         let query = format!(
-            "SELECT COALESCE(avg(toUnixTimestamp64Milli(v.inserted_at) - \
-                    toUnixTimestamp64Milli(p.inserted_at)), 0) AS avg_ms \
-             FROM {db}.verified_batches v \
-             INNER JOIN {db}.proved_batches p \
-             ON v.l1_block_number = p.l1_block_number AND v.batch_id = p.batch_id \
-             WHERE v.inserted_at >= now64() - INTERVAL 24 HOUR",
+            "SELECT COALESCE(avg(verify_time_ms), 0) AS avg_ms \
+             FROM {db}.batch_verify_times_mv \
+             WHERE verified_at >= now64() - INTERVAL 24 HOUR",
             db = self.db_name
         );
 

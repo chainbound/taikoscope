@@ -98,6 +98,25 @@ impl ClickhouseClient {
         for schema in TABLE_SCHEMAS {
             self.create_table(schema).await?;
         }
+
+        // Apply materialized views migration
+        self.apply_materialized_views_migration().await?;
+
+        Ok(())
+    }
+
+    /// Apply materialized views migration
+    async fn apply_materialized_views_migration(&self) -> Result<()> {
+        static MV_SQL: &str = include_str!("../migrations/002_create_materialized_views.sql");
+        for stmt in MV_SQL.split(';') {
+            let stmt = stmt.trim();
+            if stmt.is_empty() {
+                continue;
+            }
+            let stmt = stmt.replace("${DB}", &self.db_name);
+            self.base.query(&stmt).execute().await
+                .wrap_err_with(|| format!("Failed to execute materialized view migration: {}", stmt))?;
+        }
         Ok(())
     }
 
