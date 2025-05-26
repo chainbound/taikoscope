@@ -46,10 +46,27 @@ struct RangeQuery {
 }
 
 fn range_duration(range: &Option<String>) -> ChronoDuration {
-    match range.as_deref() {
-        Some("24h") => ChronoDuration::hours(24),
-        _ => ChronoDuration::hours(1),
+    const MAX_RANGE_HOURS: i64 = 24 * 7; // maximum range of 7 days
+
+    if let Some(r) = range.as_deref() {
+        let r = r.trim();
+
+        if let Some(h) = r.strip_suffix('h') {
+            if let Ok(hours) = h.parse::<i64>() {
+                let hours = hours.min(MAX_RANGE_HOURS);
+                return ChronoDuration::hours(hours);
+            }
+        }
+
+        if let Some(d) = r.strip_suffix('d') {
+            if let Ok(days) = d.parse::<i64>() {
+                let hours = (days * 24).min(MAX_RANGE_HOURS);
+                return ChronoDuration::hours(hours);
+            }
+        }
     }
+
+    ChronoDuration::hours(1)
 }
 
 #[derive(Debug, Serialize)]
@@ -534,6 +551,19 @@ mod tests {
             clickhouse_lib::SlashingEventRow { l1_block_number: 1, validator_addr: [1u8; 20] };
         let app = build_app(mock.url());
         let body = send_request(app, "/slashings?range=24h").await;
+        assert_eq!(body, json!({ "events": [expected] }));
+    }
+
+    #[tokio::test]
+    async fn slashing_events_last_week_endpoint() {
+        let mock = Mock::new();
+        let event =
+            clickhouse_lib::SlashingEventRow { l1_block_number: 1, validator_addr: [1u8; 20] };
+        mock.add(handlers::provide(vec![event]));
+        let expected =
+            clickhouse_lib::SlashingEventRow { l1_block_number: 1, validator_addr: [1u8; 20] };
+        let app = build_app(mock.url());
+        let body = send_request(app, "/slashings?range=7d").await;
         assert_eq!(body, json!({ "events": [expected] }));
     }
 
