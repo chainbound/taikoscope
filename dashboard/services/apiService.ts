@@ -30,10 +30,7 @@ export interface AvgTimeResponse {
 export const fetchAvgProveTime = async (
   range: "1h" | "24h" | "7d",
 ): Promise<RequestResult<number>> => {
-  const url =
-    range === "1h"
-      ? `${API_BASE}/avg-prove-time`
-      : `${API_BASE}/avg-prove-time/24h`;
+  const url = `${API_BASE}/avg-prove-time?range=${range}`;
   const res = await fetchJson<{ avg_prove_time_ms?: number }>(url);
   return {
     data: res.data?.avg_prove_time_ms ?? null,
@@ -44,10 +41,7 @@ export const fetchAvgProveTime = async (
 export const fetchAvgVerifyTime = async (
   range: "1h" | "24h" | "7d",
 ): Promise<RequestResult<number>> => {
-  const url =
-    range === "1h"
-      ? `${API_BASE}/avg-verify-time`
-      : `${API_BASE}/avg-verify-time/24h`;
+  const url = `${API_BASE}/avg-verify-time?range=${range}`;
   const res = await fetchJson<{ avg_verify_time_ms?: number }>(url);
   return {
     data: res.data?.avg_verify_time_ms ?? null,
