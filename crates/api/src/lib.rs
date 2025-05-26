@@ -2,7 +2,14 @@
 
 use std::net::SocketAddr;
 
-use axum::{Json, Router, extract::State, middleware, response::IntoResponse, routing::get};
+use axum::{
+    Json, Router,
+    extract::State,
+    http::{HeaderValue, Method},
+    middleware,
+    response::IntoResponse,
+    routing::get,
+};
 use chrono::{Duration as ChronoDuration, Utc};
 use clickhouse_lib::ClickhouseClient;
 use eyre::Result;
@@ -10,13 +17,16 @@ use hex::encode;
 use primitives::rate_limiter::RateLimiter;
 use serde::Serialize;
 use std::time::Duration as StdDuration;
-use tower_http::cors::CorsLayer;
+use tower_http::cors::{Any, CorsLayer};
 use tracing::info;
 
 /// Maximum number of requests allowed during the [`RATE_PERIOD`].
 const MAX_REQUESTS: u64 = 60;
 /// Duration for the rate limiting window.
 const RATE_PERIOD: StdDuration = StdDuration::from_secs(60);
+
+/// Allowed CORS origin for dashboard requests.
+const ALLOWED_ORIGIN: &str = "https://taikoscope.xyz";
 
 #[derive(Clone, Debug)]
 struct ApiState {
@@ -482,7 +492,11 @@ fn router(state: ApiState) -> Router {
 /// Run the API server on the given address
 pub async fn run(addr: SocketAddr, client: ClickhouseClient) -> Result<()> {
     let state = ApiState::new(client);
-    let app = router(state).layer(CorsLayer::permissive());
+    let cors = CorsLayer::new()
+        .allow_origin(HeaderValue::from_static(ALLOWED_ORIGIN))
+        .allow_methods([Method::GET])
+        .allow_headers(Any);
+    let app = router(state).layer(cors);
 
     info!("Starting API server on {}", addr);
     let listener = tokio::net::TcpListener::bind(addr).await?;
