@@ -4,7 +4,7 @@ use std::net::SocketAddr;
 
 use axum::{
     Json, Router,
-    extract::State,
+    extract::{Query, State},
     http::{HeaderValue, Method},
     middleware,
     response::IntoResponse,
@@ -15,7 +15,7 @@ use clickhouse_lib::ClickhouseClient;
 use eyre::Result;
 use hex::encode;
 use primitives::rate_limiter::RateLimiter;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::time::Duration as StdDuration;
 use tower_http::cors::{Any, CorsLayer};
 use tracing::info;
@@ -37,6 +37,18 @@ struct ApiState {
 impl ApiState {
     fn new(client: ClickhouseClient) -> Self {
         Self { client, limiter: RateLimiter::new(MAX_REQUESTS, RATE_PERIOD) }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct RangeQuery {
+    range: Option<String>,
+}
+
+fn range_duration(range: &Option<String>) -> ChronoDuration {
+    match range.as_deref() {
+        Some("24h") => ChronoDuration::hours(24),
+        _ => ChronoDuration::hours(1),
     }
 }
 
@@ -141,8 +153,11 @@ async fn l1_head(State(state): State<ApiState>) -> Json<L1HeadResponse> {
     Json(resp)
 }
 
-async fn slashing_last_hour(State(state): State<ApiState>) -> Json<SlashingEventsResponse> {
-    let since = Utc::now() - ChronoDuration::hours(1);
+async fn slashings(
+    Query(params): Query<RangeQuery>,
+    State(state): State<ApiState>,
+) -> Json<SlashingEventsResponse> {
+    let since = Utc::now() - range_duration(&params.range);
     let events = match state.client.get_slashing_events_since(since).await {
         Ok(evts) => evts,
         Err(e) => {
@@ -153,22 +168,11 @@ async fn slashing_last_hour(State(state): State<ApiState>) -> Json<SlashingEvent
     Json(SlashingEventsResponse { events })
 }
 
-async fn slashing_last_day(State(state): State<ApiState>) -> Json<SlashingEventsResponse> {
-    let since = Utc::now() - ChronoDuration::hours(24);
-    let events = match state.client.get_slashing_events_since(since).await {
-        Ok(evts) => evts,
-        Err(e) => {
-            tracing::error!("Failed to get slashing events: {}", e);
-            Vec::new()
-        }
-    };
-    Json(SlashingEventsResponse { events })
-}
-
-async fn forced_inclusions_last_hour(
+async fn forced_inclusions(
+    Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
 ) -> Json<ForcedInclusionEventsResponse> {
-    let since = Utc::now() - ChronoDuration::hours(1);
+    let since = Utc::now() - range_duration(&params.range);
     let events = match state.client.get_forced_inclusions_since(since).await {
         Ok(evts) => evts,
         Err(e) => {
@@ -179,22 +183,11 @@ async fn forced_inclusions_last_hour(
     Json(ForcedInclusionEventsResponse { events })
 }
 
-async fn forced_inclusions_last_day(
+async fn reorgs(
+    Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
-) -> Json<ForcedInclusionEventsResponse> {
-    let since = Utc::now() - ChronoDuration::hours(24);
-    let events = match state.client.get_forced_inclusions_since(since).await {
-        Ok(evts) => evts,
-        Err(e) => {
-            tracing::error!("Failed to get forced inclusion events: {}", e);
-            Vec::new()
-        }
-    };
-    Json(ForcedInclusionEventsResponse { events })
-}
-
-async fn reorgs_last_hour(State(state): State<ApiState>) -> Json<ReorgEventsResponse> {
-    let since = Utc::now() - ChronoDuration::hours(1);
+) -> Json<ReorgEventsResponse> {
+    let since = Utc::now() - range_duration(&params.range);
     let events = match state.client.get_l2_reorgs_since(since).await {
         Ok(evts) => evts,
         Err(e) => {
@@ -205,33 +198,11 @@ async fn reorgs_last_hour(State(state): State<ApiState>) -> Json<ReorgEventsResp
     Json(ReorgEventsResponse { events })
 }
 
-async fn reorgs_last_day(State(state): State<ApiState>) -> Json<ReorgEventsResponse> {
-    let since = Utc::now() - ChronoDuration::hours(24);
-    let events = match state.client.get_l2_reorgs_since(since).await {
-        Ok(evts) => evts,
-        Err(e) => {
-            tracing::error!("Failed to get reorg events: {}", e);
-            Vec::new()
-        }
-    };
-    Json(ReorgEventsResponse { events })
-}
-
-async fn active_gateways_last_hour(State(state): State<ApiState>) -> Json<ActiveGatewaysResponse> {
-    let since = Utc::now() - ChronoDuration::hours(1);
-    let gateways = match state.client.get_active_gateways_since(since).await {
-        Ok(g) => g,
-        Err(e) => {
-            tracing::error!("Failed to get active gateways: {}", e);
-            Vec::new()
-        }
-    };
-    let gateways = gateways.into_iter().map(|a| format!("0x{}", encode(a))).collect();
-    Json(ActiveGatewaysResponse { gateways })
-}
-
-async fn active_gateways_last_day(State(state): State<ApiState>) -> Json<ActiveGatewaysResponse> {
-    let since = Utc::now() - ChronoDuration::hours(24);
+async fn active_gateways(
+    Query(params): Query<RangeQuery>,
+    State(state): State<ApiState>,
+) -> Json<ActiveGatewaysResponse> {
+    let since = Utc::now() - range_duration(&params.range);
     let gateways = match state.client.get_active_gateways_since(since).await {
         Ok(g) => g,
         Err(e) => {
@@ -355,8 +326,14 @@ async fn avg_l2_tps_24h(State(state): State<ApiState>) -> Json<AvgL2TpsResponse>
     Json(AvgL2TpsResponse { avg_tps: avg })
 }
 
-async fn prove_times_last_hour(State(state): State<ApiState>) -> Json<ProveTimesResponse> {
-    let batches = match state.client.get_prove_times_last_hour().await {
+async fn prove_times(
+    Query(params): Query<RangeQuery>,
+    State(state): State<ApiState>,
+) -> Json<ProveTimesResponse> {
+    let batches = match match params.range.as_deref() {
+        Some("24h") => state.client.get_prove_times_last_24_hours().await,
+        _ => state.client.get_prove_times_last_hour().await,
+    } {
         Ok(rows) => rows,
         Err(e) => {
             tracing::error!("Failed to get prove times: {}", e);
@@ -366,19 +343,14 @@ async fn prove_times_last_hour(State(state): State<ApiState>) -> Json<ProveTimes
     Json(ProveTimesResponse { batches })
 }
 
-async fn prove_times_last_day(State(state): State<ApiState>) -> Json<ProveTimesResponse> {
-    let batches = match state.client.get_prove_times_last_24_hours().await {
-        Ok(rows) => rows,
-        Err(e) => {
-            tracing::error!("Failed to get prove times: {}", e);
-            Vec::new()
-        }
-    };
-    Json(ProveTimesResponse { batches })
-}
-
-async fn verify_times_last_hour(State(state): State<ApiState>) -> Json<VerifyTimesResponse> {
-    let batches = match state.client.get_verify_times_last_hour().await {
+async fn verify_times(
+    Query(params): Query<RangeQuery>,
+    State(state): State<ApiState>,
+) -> Json<VerifyTimesResponse> {
+    let batches = match match params.range.as_deref() {
+        Some("24h") => state.client.get_verify_times_last_24_hours().await,
+        _ => state.client.get_verify_times_last_hour().await,
+    } {
         Ok(rows) => rows,
         Err(e) => {
             tracing::error!("Failed to get verify times: {}", e);
@@ -388,19 +360,14 @@ async fn verify_times_last_hour(State(state): State<ApiState>) -> Json<VerifyTim
     Json(VerifyTimesResponse { batches })
 }
 
-async fn verify_times_last_day(State(state): State<ApiState>) -> Json<VerifyTimesResponse> {
-    let batches = match state.client.get_verify_times_last_24_hours().await {
-        Ok(rows) => rows,
-        Err(e) => {
-            tracing::error!("Failed to get verify times: {}", e);
-            Vec::new()
-        }
-    };
-    Json(VerifyTimesResponse { batches })
-}
-
-async fn l1_block_times_last_hour(State(state): State<ApiState>) -> Json<L1BlockTimesResponse> {
-    let blocks = match state.client.get_l1_block_times_last_hour().await {
+async fn l1_block_times(
+    Query(params): Query<RangeQuery>,
+    State(state): State<ApiState>,
+) -> Json<L1BlockTimesResponse> {
+    let blocks = match match params.range.as_deref() {
+        Some("24h") => state.client.get_l1_block_times_last_24_hours().await,
+        _ => state.client.get_l1_block_times_last_hour().await,
+    } {
         Ok(rows) => rows,
         Err(e) => {
             tracing::error!("Failed to get L1 block times: {}", e);
@@ -410,30 +377,14 @@ async fn l1_block_times_last_hour(State(state): State<ApiState>) -> Json<L1Block
     Json(L1BlockTimesResponse { blocks })
 }
 
-async fn l1_block_times_last_day(State(state): State<ApiState>) -> Json<L1BlockTimesResponse> {
-    let blocks = match state.client.get_l1_block_times_last_24_hours().await {
-        Ok(rows) => rows,
-        Err(e) => {
-            tracing::error!("Failed to get L1 block times: {}", e);
-            Vec::new()
-        }
-    };
-    Json(L1BlockTimesResponse { blocks })
-}
-
-async fn l2_block_times_last_hour(State(state): State<ApiState>) -> Json<L2BlockTimesResponse> {
-    let blocks = match state.client.get_l2_block_times_last_hour().await {
-        Ok(rows) => rows,
-        Err(e) => {
-            tracing::error!("Failed to get L2 block times: {}", e);
-            Vec::new()
-        }
-    };
-    Json(L2BlockTimesResponse { blocks })
-}
-
-async fn l2_block_times_last_day(State(state): State<ApiState>) -> Json<L2BlockTimesResponse> {
-    let blocks = match state.client.get_l2_block_times_last_24_hours().await {
+async fn l2_block_times(
+    Query(params): Query<RangeQuery>,
+    State(state): State<ApiState>,
+) -> Json<L2BlockTimesResponse> {
+    let blocks = match match params.range.as_deref() {
+        Some("24h") => state.client.get_l2_block_times_last_24_hours().await,
+        _ => state.client.get_l2_block_times_last_hour().await,
+    } {
         Ok(rows) => rows,
         Err(e) => {
             tracing::error!("Failed to get L2 block times: {}", e);
@@ -459,14 +410,10 @@ fn router(state: ApiState) -> Router {
     Router::new()
         .route("/l2-head", get(l2_head))
         .route("/l1-head", get(l1_head))
-        .route("/slashings/last-hour", get(slashing_last_hour))
-        .route("/slashings/last-day", get(slashing_last_day))
-        .route("/forced-inclusions/last-hour", get(forced_inclusions_last_hour))
-        .route("/forced-inclusions/last-day", get(forced_inclusions_last_day))
-        .route("/reorgs/last-hour", get(reorgs_last_hour))
-        .route("/reorgs/last-day", get(reorgs_last_day))
-        .route("/active-gateways/last-hour", get(active_gateways_last_hour))
-        .route("/active-gateways/last-day", get(active_gateways_last_day))
+        .route("/slashings", get(slashings))
+        .route("/forced-inclusions", get(forced_inclusions))
+        .route("/reorgs", get(reorgs))
+        .route("/active-gateways", get(active_gateways))
         .route("/avg-prove-time", get(avg_prove_time))
         .route("/avg-prove-time/24h", get(avg_prove_time_24h))
         .route("/avg-verify-time", get(avg_verify_time))
@@ -477,14 +424,10 @@ fn router(state: ApiState) -> Router {
         .route("/batch-posting-cadence/24h", get(batch_posting_cadence_24h))
         .route("/avg-l2-tps", get(avg_l2_tps))
         .route("/avg-l2-tps/24h", get(avg_l2_tps_24h))
-        .route("/prove-times/last-hour", get(prove_times_last_hour))
-        .route("/prove-times/last-day", get(prove_times_last_day))
-        .route("/verify-times/last-hour", get(verify_times_last_hour))
-        .route("/verify-times/last-day", get(verify_times_last_day))
-        .route("/l1-block-times/last-hour", get(l1_block_times_last_hour))
-        .route("/l1-block-times/last-day", get(l1_block_times_last_day))
-        .route("/l2-block-times/last-hour", get(l2_block_times_last_hour))
-        .route("/l2-block-times/last-day", get(l2_block_times_last_day))
+        .route("/prove-times", get(prove_times))
+        .route("/verify-times", get(verify_times))
+        .route("/l1-block-times", get(l1_block_times))
+        .route("/l2-block-times", get(l2_block_times))
         .layer(middleware::from_fn_with_state(state.clone(), rate_limit))
         .with_state(state)
 }
@@ -577,7 +520,7 @@ mod tests {
         let expected =
             clickhouse_lib::SlashingEventRow { l1_block_number: 1, validator_addr: [1u8; 20] };
         let app = build_app(mock.url());
-        let body = send_request(app, "/slashings/last-hour").await;
+        let body = send_request(app, "/slashings?range=1h").await;
         assert_eq!(body, json!({ "events": [expected] }));
     }
 
@@ -590,7 +533,7 @@ mod tests {
         let expected =
             clickhouse_lib::SlashingEventRow { l1_block_number: 1, validator_addr: [1u8; 20] };
         let app = build_app(mock.url());
-        let body = send_request(app, "/slashings/last-day").await;
+        let body = send_request(app, "/slashings?range=24h").await;
         assert_eq!(body, json!({ "events": [expected] }));
     }
 
@@ -601,7 +544,7 @@ mod tests {
         mock.add(handlers::provide(vec![event]));
         let expected = clickhouse_lib::ForcedInclusionProcessedRow { blob_hash: [2u8; 32] };
         let app = build_app(mock.url());
-        let body = send_request(app, "/forced-inclusions/last-hour").await;
+        let body = send_request(app, "/forced-inclusions?range=1h").await;
         assert_eq!(body, json!({ "events": [expected] }));
     }
 
@@ -612,7 +555,7 @@ mod tests {
         mock.add(handlers::provide(vec![event]));
         let expected = clickhouse_lib::ForcedInclusionProcessedRow { blob_hash: [2u8; 32] };
         let app = build_app(mock.url());
-        let body = send_request(app, "/forced-inclusions/last-day").await;
+        let body = send_request(app, "/forced-inclusions?range=24h").await;
         assert_eq!(body, json!({ "events": [expected] }));
     }
 
@@ -722,7 +665,7 @@ mod tests {
         let mock = Mock::new();
         mock.add(handlers::provide(vec![ProveRowTest { batch_id: 1, seconds_to_prove: 10 }]));
         let app = build_app(mock.url());
-        let body = send_request(app, "/prove-times/last-hour").await;
+        let body = send_request(app, "/prove-times?range=1h").await;
         assert_eq!(body, json!({ "batches": [ { "batch_id": 1, "seconds_to_prove": 10 } ] }));
     }
 
@@ -731,7 +674,7 @@ mod tests {
         let mock = Mock::new();
         mock.add(handlers::provide(vec![ProveRowTest { batch_id: 1, seconds_to_prove: 10 }]));
         let app = build_app(mock.url());
-        let body = send_request(app, "/prove-times/last-day").await;
+        let body = send_request(app, "/prove-times?range=24h").await;
         assert_eq!(body, json!({ "batches": [ { "batch_id": 1, "seconds_to_prove": 10 } ] }));
     }
 
@@ -746,7 +689,7 @@ mod tests {
         let mock = Mock::new();
         mock.add(handlers::provide(vec![VerifyRowTest { batch_id: 2, seconds_to_verify: 120 }]));
         let app = build_app(mock.url());
-        let body = send_request(app, "/verify-times/last-hour").await;
+        let body = send_request(app, "/verify-times?range=1h").await;
         assert_eq!(body, json!({ "batches": [ { "batch_id": 2, "seconds_to_verify": 120 } ] }));
     }
 
@@ -755,7 +698,7 @@ mod tests {
         let mock = Mock::new();
         mock.add(handlers::provide(vec![VerifyRowTest { batch_id: 2, seconds_to_verify: 120 }]));
         let app = build_app(mock.url());
-        let body = send_request(app, "/verify-times/last-day").await;
+        let body = send_request(app, "/verify-times?range=24h").await;
         assert_eq!(body, json!({ "batches": [ { "batch_id": 2, "seconds_to_verify": 120 } ] }));
     }
 
@@ -770,7 +713,7 @@ mod tests {
         let mock = Mock::new();
         mock.add(handlers::provide(vec![BlockTimeRowTest { minute: 1, block_number: 2 }]));
         let app = build_app(mock.url());
-        let body = send_request(app, "/l1-block-times/last-hour").await;
+        let body = send_request(app, "/l1-block-times?range=1h").await;
         assert_eq!(body, json!({ "blocks": [ { "minute": 1, "block_number": 2 } ] }));
     }
 
@@ -779,7 +722,7 @@ mod tests {
         let mock = Mock::new();
         mock.add(handlers::provide(vec![BlockTimeRowTest { minute: 0, block_number: 1 }]));
         let app = build_app(mock.url());
-        let body = send_request(app, "/l2-block-times/last-hour").await;
+        let body = send_request(app, "/l2-block-times?range=1h").await;
         assert_eq!(body, json!({ "blocks": [ { "minute": 0, "block_number": 1 } ] }));
     }
 
@@ -788,7 +731,7 @@ mod tests {
         let mock = Mock::new();
         mock.add(handlers::provide(vec![BlockTimeRowTest { minute: 0, block_number: 1 }]));
         let app = build_app(mock.url());
-        let body = send_request(app, "/l2-block-times/last-day").await;
+        let body = send_request(app, "/l2-block-times?range=24h").await;
         assert_eq!(body, json!({ "blocks": [ { "minute": 0, "block_number": 1 } ] }));
     }
 

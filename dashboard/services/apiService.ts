@@ -65,10 +65,7 @@ export const fetchBatchPostingCadence = async (
 export const fetchActiveGateways = async (
   range: "1h" | "24h",
 ): Promise<number | null> => {
-  const url =
-    range === "1h"
-      ? `${API_BASE}/active-gateways/last-hour`
-      : `${API_BASE}/active-gateways/last-day`;
+  const url = `${API_BASE}/active-gateways?range=${range}`;
   const data = await fetchJson<{ gateways: string[] }>(url);
   return data ? data.gateways.length : null;
 };
@@ -76,10 +73,7 @@ export const fetchActiveGateways = async (
 export const fetchL2Reorgs = async (
   range: "1h" | "24h",
 ): Promise<number | null> => {
-  const url =
-    range === "1h"
-      ? `${API_BASE}/reorgs/last-hour`
-      : `${API_BASE}/reorgs/last-day`;
+  const url = `${API_BASE}/reorgs?range=${range}`;
   const data = await fetchJson<{ events: unknown[] }>(url);
   return data ? data.events.length : null;
 };
@@ -87,10 +81,7 @@ export const fetchL2Reorgs = async (
 export const fetchSlashingEvents = async (
   range: "1h" | "24h",
 ): Promise<number | null> => {
-  const url =
-    range === "1h"
-      ? `${API_BASE}/slashings/last-hour`
-      : `${API_BASE}/slashings/last-day`;
+  const url = `${API_BASE}/slashings?range=${range}`;
   const data = await fetchJson<{ events: unknown[] }>(url);
   return data ? data.events.length : null;
 };
@@ -98,10 +89,7 @@ export const fetchSlashingEvents = async (
 export const fetchForcedInclusions = async (
   range: "1h" | "24h",
 ): Promise<number | null> => {
-  const url =
-    range === "1h"
-      ? `${API_BASE}/forced-inclusions/last-hour`
-      : `${API_BASE}/forced-inclusions/last-day`;
+  const url = `${API_BASE}/forced-inclusions?range=${range}`;
   const data = await fetchJson<{ events: unknown[] }>(url);
   return data ? data.events.length : null;
 };
@@ -109,10 +97,7 @@ export const fetchForcedInclusions = async (
 export const fetchL2HeadBlock = async (
   range: "1h" | "24h",
 ): Promise<number | null> => {
-  const url =
-    range === "1h"
-      ? `${API_BASE}/l2-block-times/last-hour`
-      : `${API_BASE}/l2-block-times/last-day`;
+  const url = `${API_BASE}/l2-block-times?range=${range}`;
   const data = await fetchJson<{ blocks: { block_number: number }[] }>(url);
   return data && data.blocks.length > 0
     ? data.blocks[data.blocks.length - 1].block_number
@@ -122,10 +107,7 @@ export const fetchL2HeadBlock = async (
 export const fetchL1HeadBlock = async (
   range: "1h" | "24h",
 ): Promise<number | null> => {
-  const url =
-    range === "1h"
-      ? `${API_BASE}/l1-block-times/last-hour`
-      : `${API_BASE}/l1-block-times/last-day`;
+  const url = `${API_BASE}/l1-block-times?range=${range}`;
   const data = await fetchJson<{ blocks: { block_number: number }[] }>(url);
   return data && data.blocks.length > 0
     ? data.blocks[data.blocks.length - 1].block_number
