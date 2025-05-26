@@ -453,7 +453,7 @@ fn router(state: ApiState) -> Router {
 pub async fn run(addr: SocketAddr, client: ClickhouseClient) -> Result<()> {
     let state = ApiState::new(client);
     let cors = CorsLayer::new()
-        .allow_origin(HeaderValue::from_static(ALLOWED_ORIGIN))
+        .allow_origin(Any)
         .allow_methods([Method::GET])
         .allow_headers(Any);
     let app = router(state).layer(cors);
