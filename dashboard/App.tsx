@@ -113,11 +113,11 @@ const App: React.FC = () => {
       },
       {
         title: "Avg. Prove Time",
-        value: avgProve !== null ? `${(avgProve / 1000).toFixed(2)}s` : "N/A",
+        value: avgProve !== null && avgProve > 0 ? `${(avgProve / 1000).toFixed(2)}s` : "N/A",
       },
       {
         title: "Avg. Verify Time",
-        value: avgVerify !== null ? `${(avgVerify / 1000).toFixed(2)}s` : "N/A",
+        value: avgVerify !== null && avgVerify > 0 ? `${(avgVerify / 1000).toFixed(2)}s` : "N/A",
       },
       {
         title: "Active Gateways",
