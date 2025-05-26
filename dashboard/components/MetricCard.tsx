@@ -13,10 +13,10 @@ export const MetricCard: React.FC<MetricCardProps> = ({
   description,
 }) => {
   return (
-    <div className="bg-white p-4 rounded-lg border border-gray-200 transition-shadow duration-200">
+    <div className="bg-gray-800 p-4 rounded-lg border border-gray-700 transition-shadow duration-200">
       {/* Removed {unit && `(${unit})`} from here */}
-      <h3 className="text-sm font-medium text-gray-500 truncate">{title}</h3>
-      <p className="mt-1 text-3xl font-semibold text-gray-900">{value}</p>
+      <h3 className="text-sm font-medium text-gray-400 truncate">{title}</h3>
+      <p className="mt-1 text-3xl font-semibold text-white">{value}</p>
       {description && (
         <p className="text-xs text-gray-400 mt-1">{description}</p>
       )}

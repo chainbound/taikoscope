@@ -217,7 +217,7 @@ const App: React.FC = () => {
 
   return (
     <div
-      className="min-h-screen bg-white text-gray-800 p-4 md:p-6 lg:p-8"
+      className="min-h-screen bg-gray-900 text-gray-100 p-4 md:p-6 lg:p-8"
       style={{ fontFamily: "'Inter', sans-serif" }}
     >
       <DashboardHeader
@@ -228,7 +228,7 @@ const App: React.FC = () => {
       />
 
       {errorMessage && (
-        <div className="mt-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded">
+        <div className="mt-4 p-3 bg-red-900 border border-red-700 text-red-200 rounded">
           {errorMessage}
         </div>
       )}
@@ -294,16 +294,16 @@ const App: React.FC = () => {
       </main>
 
       {/* Footer for Block Numbers */}
-      <footer className="mt-8 pt-6 border-t border-gray-200">
+      <footer className="mt-8 pt-6 border-t border-gray-700">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-center md:text-left">
           <div>
-            <span className="text-sm text-gray-500">L2 Head Block</span>
+            <span className="text-sm text-gray-400">L2 Head Block</span>
             <p className="text-2xl font-semibold" style={{ color: TAΙΚΟ_PINK }}>
               {l2HeadBlock}
             </p>
           </div>
           <div>
-            <span className="text-sm text-gray-500">L1 Head Block</span>
+            <span className="text-sm text-gray-400">L1 Head Block</span>
             <p className="text-2xl font-semibold" style={{ color: TAΙΚΟ_PINK }}>
               {l1HeadBlock}
             </p>
