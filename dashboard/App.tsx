@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from "react";
 import { formatSeconds } from "./utils";
 import { DashboardHeader } from "./components/DashboardHeader";
 import { MetricCard } from "./components/MetricCard";
-import { MetricGroup } from "./components/MetricGroup";
 import { ChartCard } from "./components/ChartCard";
 import { SequencerPieChart } from "./components/SequencerPieChart";
 import { BlockTimeChart } from "./components/BlockTimeChart";
@@ -235,24 +234,9 @@ const App: React.FC = () => {
       )}
 
       <main className="mt-6">
-        <MetricGroup title="Network Health">
-          <MetricCard
-            title="Active Gateways"
-            value={findMetricValue("Active Gateways")}
-          />
-          <MetricCard title="L2 Reorgs" value={findMetricValue("L2 Reorgs")} />
-          <MetricCard
-            title="Slashing Events"
-            value={findMetricValue("Slashing Events")}
-          />
-          <MetricCard
-            title="Forced Inclusions"
-            value={findMetricValue("Forced Inclusions")}
-          />
-        </MetricGroup>
-
         {/* Metrics Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4 md:gap-6">
+          {/* Grouped Metrics */}
           <MetricCard
             title="L2 Block Cadence"
             value={findMetricValue("L2 Block Cadence")}
@@ -268,6 +252,21 @@ const App: React.FC = () => {
           <MetricCard
             title="Avg. Verify Time"
             value={findMetricValue("Avg. Verify Time")}
+          />
+
+          {/* Other Metrics */}
+          <MetricCard
+            title="Active Gateways"
+            value={findMetricValue("Active Gateways")}
+          />
+          <MetricCard title="L2 Reorgs" value={findMetricValue("L2 Reorgs")} />
+          <MetricCard
+            title="Slashing Events"
+            value={findMetricValue("Slashing Events")}
+          />
+          <MetricCard
+            title="Forced Inclusions"
+            value={findMetricValue("Forced Inclusions")}
           />
         </div>
 
