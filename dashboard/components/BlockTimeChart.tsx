@@ -18,7 +18,9 @@ interface BlockTimeChartProps {
 
 const formatTimestampToTime = (timestamp: number): string => {
   const date = new Date(timestamp);
-  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return date
+    .toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    .replace(/\s/g, "");
 };
 
 export const BlockTimeChart: React.FC<BlockTimeChartProps> = ({
