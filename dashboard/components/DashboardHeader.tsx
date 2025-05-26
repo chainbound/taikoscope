@@ -31,6 +31,14 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
           onRefreshRateChange={onRefreshRateChange}
         />
         {/* Export button removed as per request */}
+        <a
+          href="https://docs.taiko.xyz/taiko-alethia-protocol/protocol-architecture/block-states"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-sm text-gray-500 hover:underline"
+        >
+          What are verified blocks?
+        </a>
       </div>
     </header>
   );
