@@ -17,7 +17,7 @@ use hex::encode;
 use primitives::rate_limiter::RateLimiter;
 use serde::{Deserialize, Serialize};
 use std::time::Duration as StdDuration;
-use tower_http::cors::{Any, CorsLayer};
+use tower_http::cors::{AllowOrigin, Any, CorsLayer};
 use tracing::info;
 
 /// Maximum number of requests allowed during the [`RATE_PERIOD`].
@@ -453,7 +453,10 @@ fn router(state: ApiState) -> Router {
 pub async fn run(addr: SocketAddr, client: ClickhouseClient) -> Result<()> {
     let state = ApiState::new(client);
     let cors = CorsLayer::new()
-        .allow_origin(Any)
+        .allow_origin(AllowOrigin::predicate(|origin: &HeaderValue, _| match origin.to_str() {
+            Ok(origin) => origin == ALLOWED_ORIGIN || origin.ends_with(".vercel.app"),
+            Err(_) => false,
+        }))
         .allow_methods([Method::GET])
         .allow_headers(Any);
     let app = router(state).layer(cors);
