@@ -52,7 +52,7 @@ fn range_duration(range: &Option<String>) -> ChronoDuration {
     const MAX_RANGE_HOURS: i64 = 24 * 7; // maximum range of 7 days
 
     if let Some(r) = range.as_deref() {
-        let r = r.trim();
+        let r = r.trim().to_ascii_lowercase();
 
         if let Some(h) = r.strip_suffix('h') {
             if let Ok(hours) = h.parse::<i64>() {
@@ -824,5 +824,14 @@ mod tests {
     fn range_duration_clamps_negative_days() {
         let d = range_duration(&Some("-2d".to_owned()));
         assert_eq!(d.num_hours(), 0);
+    }
+
+    #[test]
+    fn range_duration_accepts_uppercase() {
+        let d = range_duration(&Some("5H".to_owned()));
+        assert_eq!(d.num_hours(), 5);
+
+        let d = range_duration(&Some("2D".to_owned()));
+        assert_eq!(d.num_hours(), 48);
     }
 }
