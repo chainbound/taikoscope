@@ -27,8 +27,6 @@ import {
   fetchForcedInclusions,
   fetchL2HeadBlock,
   fetchL1HeadBlock,
-  clearBadRequest,
-  wasBadRequest,
 } from "./services/apiService";
 
 const TAΙΚΟ_PINK = "#e81899"; // Updated Taiko Pink
@@ -54,18 +52,17 @@ const App: React.FC = () => {
 
   const fetchData = useCallback(async () => {
     const range = timeRange;
-    clearBadRequest();
     const [
-      l2Cadence,
-      batchCadence,
-      avgProve,
-      avgVerify,
-      activeGateways,
-      l2Reorgs,
-      slashings,
-      forcedInclusions,
-      l2Block,
-      l1Block,
+      l2CadenceRes,
+      batchCadenceRes,
+      avgProveRes,
+      avgVerifyRes,
+      activeGatewaysRes,
+      l2ReorgsRes,
+      slashingsRes,
+      forcedInclusionsRes,
+      l2BlockRes,
+      l1BlockRes,
     ] = await Promise.all([
       fetchL2BlockCadence(range),
       fetchBatchPostingCadence(range),
@@ -78,6 +75,29 @@ const App: React.FC = () => {
       fetchL2HeadBlock(range),
       fetchL1HeadBlock(range),
     ]);
+
+    const l2Cadence = l2CadenceRes.data;
+    const batchCadence = batchCadenceRes.data;
+    const avgProve = avgProveRes.data;
+    const avgVerify = avgVerifyRes.data;
+    const activeGateways = activeGatewaysRes.data;
+    const l2Reorgs = l2ReorgsRes.data;
+    const slashings = slashingsRes.data;
+    const forcedInclusions = forcedInclusionsRes.data;
+    const l2Block = l2BlockRes.data;
+    const l1Block = l1BlockRes.data;
+
+    const anyBadRequest =
+      l2CadenceRes.badRequest ||
+      batchCadenceRes.badRequest ||
+      avgProveRes.badRequest ||
+      avgVerifyRes.badRequest ||
+      activeGatewaysRes.badRequest ||
+      l2ReorgsRes.badRequest ||
+      slashingsRes.badRequest ||
+      forcedInclusionsRes.badRequest ||
+      l2BlockRes.badRequest ||
+      l1BlockRes.badRequest;
 
     const currentMetrics: MetricData[] = [
       {
@@ -137,9 +157,9 @@ const App: React.FC = () => {
     setL1HeadBlock(
       currentMetrics.find((m) => m.title === "L1 Head Block")?.value || "N/A",
     );
-    if (wasBadRequest()) {
+    if (anyBadRequest) {
       setErrorMessage(
-        "Invalid parameters provided. Some data may not be available."
+        "Invalid parameters provided. Some data may not be available.",
       );
     } else {
       setErrorMessage("");
