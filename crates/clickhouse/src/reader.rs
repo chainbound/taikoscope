@@ -93,6 +93,50 @@ impl ClickhouseReader {
         Ok(ts_opt)
     }
 
+    /// Get the latest L2 block number.
+    pub async fn get_last_l2_block_number(&self) -> Result<Option<u64>> {
+        #[derive(Row, Deserialize)]
+        struct MaxNumber {
+            number: u64,
+        }
+
+        let client = self.base.clone().with_database(&self.db_name);
+        let query =
+            format!("SELECT max(l2_block_number) AS number FROM {}.l2_head_events", &self.db_name);
+
+        let rows = client.query(&query).fetch_all::<MaxNumber>().await?;
+        let row = match rows.into_iter().next() {
+            Some(r) => r,
+            None => return Ok(None),
+        };
+        if row.number == 0 {
+            return Ok(None);
+        }
+        Ok(Some(row.number))
+    }
+
+    /// Get the latest L1 block number.
+    pub async fn get_last_l1_block_number(&self) -> Result<Option<u64>> {
+        #[derive(Row, Deserialize)]
+        struct MaxNumber {
+            number: u64,
+        }
+
+        let client = self.base.clone().with_database(&self.db_name);
+        let query =
+            format!("SELECT max(l1_block_number) AS number FROM {}.l1_head_events", &self.db_name);
+
+        let rows = client.query(&query).fetch_all::<MaxNumber>().await?;
+        let row = match rows.into_iter().next() {
+            Some(r) => r,
+            None => return Ok(None),
+        };
+        if row.number == 0 {
+            return Ok(None);
+        }
+        Ok(Some(row.number))
+    }
+
     /// Get timestamp of the latest `BatchProposed` event based on L1 block timestamp in UTC
     pub async fn get_last_batch_time(&self) -> Result<Option<DateTime<Utc>>> {
         let client = self.base.clone().with_database(&self.db_name);
@@ -813,5 +857,74 @@ impl ClickhouseReader {
         } else {
             Ok(None)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use clickhouse::test::{Mock, handlers};
+    use serde::Serialize;
+
+    use crate::ClickhouseReader;
+
+    #[derive(Serialize, Row)]
+    struct MaxNum {
+        number: u64,
+    }
+
+    #[tokio::test]
+    async fn test_get_last_l2_block_number_empty() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(Vec::<MaxNum>::new()));
+
+        let url = Url::parse(mock.url()).unwrap();
+        let ch =
+            ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+        let result = ch.get_last_l2_block_number().await.unwrap();
+        assert_eq!(result, None);
+    }
+
+    #[tokio::test]
+    async fn test_get_last_l2_block_number() {
+        let mock = Mock::new();
+        let expected = 42u64;
+        mock.add(handlers::provide(vec![MaxNum { number: expected }]));
+
+        let url = Url::parse(mock.url()).unwrap();
+        let ch =
+            ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+        let result = ch.get_last_l2_block_number().await.unwrap();
+        assert_eq!(result, Some(expected));
+    }
+
+    #[tokio::test]
+    async fn test_get_last_l1_block_number_empty() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(Vec::<MaxNum>::new()));
+
+        let url = Url::parse(mock.url()).unwrap();
+        let ch =
+            ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+        let result = ch.get_last_l1_block_number().await.unwrap();
+        assert_eq!(result, None);
+    }
+
+    #[tokio::test]
+    async fn test_get_last_l1_block_number() {
+        let mock = Mock::new();
+        let expected = 50u64;
+        mock.add(handlers::provide(vec![MaxNum { number: expected }]));
+
+        let url = Url::parse(mock.url()).unwrap();
+        let ch =
+            ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+        let result = ch.get_last_l1_block_number().await.unwrap();
+        assert_eq!(result, Some(expected));
     }
 }

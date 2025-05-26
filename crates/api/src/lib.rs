@@ -2,21 +2,26 @@
 
 use std::net::SocketAddr;
 
+use async_stream::stream;
 use axum::{
     Json, Router,
     extract::{Query, State},
     http::{HeaderValue, Method},
     middleware,
-    response::IntoResponse,
+    response::{
+        IntoResponse,
+        sse::{Event, KeepAlive, Sse},
+    },
     routing::get,
 };
 use chrono::{Duration as ChronoDuration, Utc};
 use clickhouse_lib::ClickhouseReader;
 use eyre::Result;
+use futures::stream::Stream;
 use hex::encode;
 use primitives::rate_limiter::RateLimiter;
 use serde::{Deserialize, Serialize};
-use std::time::Duration as StdDuration;
+use std::{convert::Infallible, time::Duration as StdDuration};
 use tower_http::{
     cors::{AllowOrigin, Any, CorsLayer},
     trace::{DefaultMakeSpan, DefaultOnRequest, DefaultOnResponse, TraceLayer},
@@ -182,6 +187,46 @@ async fn l1_head(State(state): State<ApiState>) -> Json<L1HeadResponse> {
 
     let resp = L1HeadResponse { last_l1_head_time: ts.map(|t| t.to_rfc3339()) };
     Json(resp)
+}
+
+async fn sse_l2_head(
+    State(state): State<ApiState>,
+) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
+    let mut last = state.client.get_last_l2_block_number().await.ok().flatten().unwrap_or(0);
+    let stream = stream! {
+        loop {
+            match state.client.get_last_l2_block_number().await {
+                Ok(Some(num)) if num != last => {
+                    last = num;
+                    yield Ok(Event::default().data(num.to_string()));
+                }
+                Ok(_) => {}
+                Err(e) => tracing::error!("Failed to fetch L2 head block: {}", e),
+            }
+            tokio::time::sleep(StdDuration::from_secs(1)).await;
+        }
+    };
+    Sse::new(stream).keep_alive(KeepAlive::default())
+}
+
+async fn sse_l1_head(
+    State(state): State<ApiState>,
+) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
+    let mut last = state.client.get_last_l1_block_number().await.ok().flatten().unwrap_or(0);
+    let stream = stream! {
+        loop {
+            match state.client.get_last_l1_block_number().await {
+                Ok(Some(num)) if num != last => {
+                    last = num;
+                    yield Ok(Event::default().data(num.to_string()));
+                }
+                Ok(_) => {}
+                Err(e) => tracing::error!("Failed to fetch L1 head block: {}", e),
+            }
+            tokio::time::sleep(StdDuration::from_secs(1)).await;
+        }
+    };
+    Sse::new(stream).keep_alive(KeepAlive::default())
 }
 
 async fn slashings(
@@ -446,6 +491,8 @@ fn router(state: ApiState) -> Router {
     Router::new()
         .route("/l2-head", get(l2_head))
         .route("/l1-head", get(l1_head))
+        .route("/sse/l1-head", get(sse_l1_head))
+        .route("/sse/l2-head", get(sse_l2_head))
         .route("/slashings", get(slashings))
         .route("/forced-inclusions", get(forced_inclusions))
         .route("/reorgs", get(reorgs))

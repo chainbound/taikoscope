@@ -18,6 +18,8 @@ tracing.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 tower-http.workspace = true
+async-stream = "0.3"
+futures.workspace = true
 
 [dev-dependencies]
 tower = "0.5"
