@@ -5,7 +5,6 @@ use std::net::SocketAddr;
 use axum::{
     Json, Router,
     extract::{Query, State},
-    http::{HeaderValue, Method},
     middleware,
     response::IntoResponse,
     routing::get,
@@ -17,19 +16,13 @@ use hex::encode;
 use primitives::rate_limiter::RateLimiter;
 use serde::{Deserialize, Serialize};
 use std::time::Duration as StdDuration;
-use tower_http::{
-    cors::{AllowOrigin, Any, CorsLayer},
-    trace::{DefaultMakeSpan, DefaultOnRequest, DefaultOnResponse, TraceLayer},
-};
+use tower_http::trace::{DefaultMakeSpan, DefaultOnRequest, DefaultOnResponse, TraceLayer};
 use tracing::{Level, info};
 
 /// Maximum number of requests allowed during the [`RATE_PERIOD`].
 const MAX_REQUESTS: u64 = 1000;
 /// Duration for the rate limiting window.
 const RATE_PERIOD: StdDuration = StdDuration::from_secs(60);
-
-/// Allowed CORS origin for dashboard requests.
-const ALLOWED_ORIGIN: &str = "https://taikoscope.xyz";
 
 #[derive(Clone, Debug)]
 struct ApiState {
@@ -489,18 +482,11 @@ fn router(state: ApiState) -> Router {
 /// Run the API server on the given address
 pub async fn run(addr: SocketAddr, client: ClickhouseClient) -> Result<()> {
     let state = ApiState::new(client);
-    let cors = CorsLayer::new()
-        .allow_origin(AllowOrigin::predicate(|origin: &HeaderValue, _| match origin.to_str() {
-            Ok(origin) => origin == ALLOWED_ORIGIN || origin.ends_with(".vercel.app"),
-            Err(_) => false,
-        }))
-        .allow_methods([Method::GET])
-        .allow_headers(Any);
     let trace = TraceLayer::new_for_http()
         .make_span_with(DefaultMakeSpan::new().level(Level::INFO))
         .on_request(DefaultOnRequest::new().level(Level::INFO))
         .on_response(DefaultOnResponse::new().level(Level::INFO));
-    let app = router(state).layer(cors).layer(trace);
+    let app = router(state).layer(trace);
 
     info!("Starting API server on {}", addr);
     let listener = tokio::net::TcpListener::bind(addr).await?;
