@@ -208,7 +208,8 @@ const App: React.FC = () => {
 
   const findMetricValue = (titlePart: string): string => {
     const metric = metrics.find((m) => {
-      const titleStr = typeof m.title === 'string' ? m.title : 'Avg. Verify Time';
+      const titleStr =
+        typeof m.title === "string" ? m.title : "Avg. Verify Time";
       return titleStr.toLowerCase().includes(titlePart.toLowerCase());
     });
     return metric ? metric.value : "N/A";
@@ -234,7 +235,7 @@ const App: React.FC = () => {
 
       <main className="mt-6">
         {/* Metrics Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-8 gap-4 md:gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4 md:gap-6">
           {/* Grouped Metrics */}
           <MetricCard
             title="L2 Block Cadence"
