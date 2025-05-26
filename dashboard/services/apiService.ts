@@ -3,10 +3,26 @@ export const API_BASE =
   (import.meta as any).env.API_BASE ||
   "";
 
+type RateLimitHandler = (limited: boolean) => void;
+
+let rateLimitHandler: RateLimitHandler | undefined;
+
+export const setRateLimitHandler = (handler: RateLimitHandler) => {
+  rateLimitHandler = handler;
+};
+
 const fetchJson = async <T>(url: string): Promise<T | null> => {
   try {
     const res = await fetch(url);
-    if (!res.ok) return null;
+    if (res.status === 429) {
+      rateLimitHandler?.(true);
+      return null;
+    }
+    if (!res.ok) {
+      rateLimitHandler?.(false);
+      return null;
+    }
+    rateLimitHandler?.(false);
     return (await res.json()) as T;
   } catch {
     return null;

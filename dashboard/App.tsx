@@ -27,6 +27,7 @@ import {
   fetchForcedInclusions,
   fetchL2HeadBlock,
   fetchL1HeadBlock,
+  setRateLimitHandler,
 } from "./services/apiService";
 
 const TAΙΚΟ_PINK = "#e81899"; // Updated Taiko Pink
@@ -48,6 +49,11 @@ const App: React.FC = () => {
   const [l2HeadBlock, setL2HeadBlock] = useState<string>("0");
   const [l1HeadBlock, setL1HeadBlock] = useState<string>("0");
   const [refreshRate, setRefreshRate] = useState<number>(60000);
+  const [rateLimited, setRateLimited] = useState<boolean>(false);
+
+  useEffect(() => {
+    setRateLimitHandler(setRateLimited);
+  }, []);
 
   const fetchData = useCallback(async () => {
     const range = timeRange;
@@ -159,6 +165,12 @@ const App: React.FC = () => {
         refreshRate={refreshRate}
         onRefreshRateChange={setRefreshRate}
       />
+
+      {rateLimited && (
+        <div className="bg-yellow-100 border border-yellow-300 text-yellow-800 p-2 rounded-md mt-4">
+          API rate limit exceeded. Data may be incomplete.
+        </div>
+      )}
 
       <main className="mt-6">
         {/* Metrics Grid */}
