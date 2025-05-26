@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { formatSeconds } from "./utils";
 import { DashboardHeader } from "./components/DashboardHeader";
 import { MetricCard } from "./components/MetricCard";
 import { ChartCard } from "./components/ChartCard";
@@ -122,27 +123,25 @@ const App: React.FC = () => {
     const currentMetrics: MetricData[] = [
       {
         title: "L2 Block Cadence",
-        value: l2Cadence !== null ? `${(l2Cadence / 1000).toFixed(2)}s` : "N/A",
+        value: l2Cadence !== null ? formatSeconds(l2Cadence / 1000) : "N/A",
       },
       {
         title: "Batch Posting Cadence",
         value:
-          batchCadence !== null
-            ? `${(batchCadence / 1000).toFixed(2)}s`
-            : "N/A",
+          batchCadence !== null ? formatSeconds(batchCadence / 1000) : "N/A",
       },
       {
         title: "Avg. Prove Time",
         value:
           avgProve !== null && avgProve > 0
-            ? `${(avgProve / 1000).toFixed(2)}s`
+            ? formatSeconds(avgProve / 1000)
             : "N/A",
       },
       {
         title: "Avg. Verify Time",
         value:
           avgVerify !== null && avgVerify > 0
-            ? `${(avgVerify / 1000).toFixed(2)}s`
+            ? formatSeconds(avgVerify / 1000)
             : "N/A",
       },
       {
