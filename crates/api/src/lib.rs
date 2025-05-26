@@ -21,7 +21,7 @@ use tower_http::cors::{Any, CorsLayer};
 use tracing::info;
 
 /// Maximum number of requests allowed during the [`RATE_PERIOD`].
-const MAX_REQUESTS: u64 = 60;
+const MAX_REQUESTS: u64 = 1000;
 /// Duration for the rate limiting window.
 const RATE_PERIOD: StdDuration = StdDuration::from_secs(60);
 
