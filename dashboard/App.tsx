@@ -207,9 +207,10 @@ const App: React.FC = () => {
   }, [timeRange, fetchData, refreshRate]);
 
   const findMetricValue = (titlePart: string): string => {
-    const metric = metrics.find((m) =>
-      m.title.toLowerCase().includes(titlePart.toLowerCase()),
-    );
+    const metric = metrics.find((m) => {
+      const titleStr = typeof m.title === 'string' ? m.title : 'Avg. Verify Time';
+      return titleStr.toLowerCase().includes(titlePart.toLowerCase());
+    });
     return metric ? metric.value : "N/A";
   };
 
