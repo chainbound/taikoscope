@@ -1,20 +1,35 @@
-
-import React from 'react';
-import { TimeRange } from '../types';
+import React from "react";
+import { TimeRange } from "../types";
 
 interface DashboardHeaderProps {
   timeRange: TimeRange;
   onTimeRangeChange: (range: TimeRange) => void;
+  refreshRate: number;
+  onRefreshRateChange: (rate: number) => void;
 }
 
-export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ timeRange, onTimeRangeChange }) => {
+export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
+  timeRange,
+  onTimeRangeChange,
+  refreshRate,
+  onRefreshRateChange,
+}) => {
   return (
     <header className="flex flex-col md:flex-row justify-between items-center pb-4 border-b border-gray-200">
-      <h1 className="text-3xl font-bold" style={{ color: '#e81899' }}> {/* Updated Taiko Pink */}
+      <h1 className="text-3xl font-bold" style={{ color: "#e81899" }}>
+        {" "}
+        {/* Updated Taiko Pink */}
         Taiko Masaya Testnet
       </h1>
       <div className="flex items-center space-x-2 mt-4 md:mt-0">
-        <TimeRangeSelector currentTimeRange={timeRange} onTimeRangeChange={onTimeRangeChange} />
+        <TimeRangeSelector
+          currentTimeRange={timeRange}
+          onTimeRangeChange={onTimeRangeChange}
+        />
+        <RefreshRateInput
+          refreshRate={refreshRate}
+          onRefreshRateChange={onRefreshRateChange}
+        />
         {/* Export button removed as per request */}
       </div>
     </header>
@@ -26,8 +41,11 @@ interface TimeRangeSelectorProps {
   onTimeRangeChange: (range: TimeRange) => void;
 }
 
-const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({ currentTimeRange, onTimeRangeChange }) => {
-  const ranges: TimeRange[] = ['1h', '24h'];
+const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
+  currentTimeRange,
+  onTimeRangeChange,
+}) => {
+  const ranges: TimeRange[] = ["1h", "24h"];
 
   return (
     <div className="flex space-x-1 bg-gray-200 p-0.5 rounded-md">
@@ -36,11 +54,42 @@ const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({ currentTimeRange,
           key={range}
           onClick={() => onTimeRangeChange(range)}
           className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors
-            ${currentTimeRange === range ? 'bg-white text-[#e81899] shadow-sm' : 'text-gray-600 hover:bg-gray-100'}`} /* Updated Taiko Pink for active button */
+            ${currentTimeRange === range ? "bg-white text-[#e81899] shadow-sm" : "text-gray-600 hover:bg-gray-100"}`} /* Updated Taiko Pink for active button */
         >
           {range.toUpperCase()}
         </button>
       ))}
+    </div>
+  );
+};
+
+interface RefreshRateInputProps {
+  refreshRate: number;
+  onRefreshRateChange: (rate: number) => void;
+}
+
+const RefreshRateInput: React.FC<RefreshRateInputProps> = ({
+  refreshRate,
+  onRefreshRateChange,
+}) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const seconds = Math.max(10, Number(e.target.value));
+    onRefreshRateChange(seconds * 1000);
+  };
+
+  return (
+    <div className="flex items-center space-x-1">
+      <label htmlFor="refreshRate" className="text-sm text-gray-600">
+        Refresh (s)
+      </label>
+      <input
+        id="refreshRate"
+        type="number"
+        min={10}
+        value={refreshRate / 1000}
+        onChange={handleChange}
+        className="w-20 p-1 border rounded-md text-sm"
+      />
     </div>
   );
 };
