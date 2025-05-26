@@ -17,8 +17,11 @@ use hex::encode;
 use primitives::rate_limiter::RateLimiter;
 use serde::{Deserialize, Serialize};
 use std::time::Duration as StdDuration;
-use tower_http::cors::{AllowOrigin, Any, CorsLayer};
-use tracing::info;
+use tower_http::{
+    cors::{AllowOrigin, Any, CorsLayer},
+    trace::{DefaultMakeSpan, DefaultOnRequest, DefaultOnResponse, TraceLayer},
+};
+use tracing::{Level, info};
 
 /// Maximum number of requests allowed during the [`RATE_PERIOD`].
 const MAX_REQUESTS: u64 = 1000;
@@ -459,7 +462,11 @@ pub async fn run(addr: SocketAddr, client: ClickhouseClient) -> Result<()> {
         }))
         .allow_methods([Method::GET])
         .allow_headers(Any);
-    let app = router(state).layer(cors);
+    let trace = TraceLayer::new_for_http()
+        .make_span_with(DefaultMakeSpan::new().level(Level::INFO))
+        .on_request(DefaultOnRequest::new().level(Level::INFO))
+        .on_response(DefaultOnResponse::new().level(Level::INFO));
+    let app = router(state).layer(cors).layer(trace);
 
     info!("Starting API server on {}", addr);
     let listener = tokio::net::TcpListener::bind(addr).await?;
