@@ -138,7 +138,16 @@ const App: React.FC = () => {
             : "N/A",
       },
       {
-        title: "Avg. Verify Time",
+        title: (
+          <a
+            href="https://docs.taiko.xyz/taiko-alethia-protocol/protocol-architecture/block-states"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:underline"
+          >
+            Avg. Verify Time
+          </a>
+        ),
         value:
           avgVerify !== null && avgVerify > 0
             ? formatSeconds(avgVerify / 1000)
