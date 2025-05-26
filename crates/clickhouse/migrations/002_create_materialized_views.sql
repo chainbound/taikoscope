@@ -12,14 +12,14 @@ CREATE MATERIALIZED VIEW IF NOT EXISTS ${DB}.batch_prove_times_mv
     proved_day Date MATERIALIZED toDate(proved_at)
 ) ENGINE = MergeTree()
 ORDER BY (proved_day, proved_hour, batch_id)
-AS SELECT 
+AS SELECT
     p.batch_id,
     toUnixTimestamp64Milli(p.inserted_at) - toUnixTimestamp64Milli(b.inserted_at) AS prove_time_ms,
     p.inserted_at AS proved_at
 FROM ${DB}.proved_batches p
 INNER JOIN ${DB}.batches b ON p.batch_id = b.batch_id AND p.l1_block_number = b.l1_block_number;
 
--- 2. Materialized view for batch verify times  
+-- 2. Materialized view for batch verify times
 -- Pre-computes the time difference between proof and verification
 CREATE MATERIALIZED VIEW IF NOT EXISTS ${DB}.batch_verify_times_mv
 (
@@ -30,7 +30,7 @@ CREATE MATERIALIZED VIEW IF NOT EXISTS ${DB}.batch_verify_times_mv
     verified_day Date MATERIALIZED toDate(verified_at)
 ) ENGINE = MergeTree()
 ORDER BY (verified_day, verified_hour, batch_id)
-AS SELECT 
+AS SELECT
     v.batch_id,
     toUnixTimestamp64Milli(v.inserted_at) - toUnixTimestamp64Milli(p.inserted_at) AS verify_time_ms,
     v.inserted_at AS verified_at
@@ -46,14 +46,14 @@ CREATE MATERIALIZED VIEW IF NOT EXISTS ${DB}.hourly_avg_prove_times_mv
     sample_count UInt64
 ) ENGINE = MergeTree()
 ORDER BY hour
-AS SELECT 
+AS SELECT
     proved_hour AS hour,
     avg(prove_time_ms) AS avg_prove_time_ms,
     count() AS sample_count
 FROM ${DB}.batch_prove_times_mv
 GROUP BY proved_hour;
 
--- 4. Aggregated hourly averages for verify times  
+-- 4. Aggregated hourly averages for verify times
 -- Pre-computes hourly averages to speed up range queries
 CREATE MATERIALIZED VIEW IF NOT EXISTS ${DB}.hourly_avg_verify_times_mv
 (
@@ -62,7 +62,7 @@ CREATE MATERIALIZED VIEW IF NOT EXISTS ${DB}.hourly_avg_verify_times_mv
     sample_count UInt64
 ) ENGINE = MergeTree()
 ORDER BY hour
-AS SELECT 
+AS SELECT
     verified_hour AS hour,
     avg(verify_time_ms) AS avg_verify_time_ms,
     count() AS sample_count
@@ -77,7 +77,7 @@ CREATE MATERIALIZED VIEW IF NOT EXISTS ${DB}.daily_avg_prove_times_mv
     sample_count UInt64
 ) ENGINE = MergeTree()
 ORDER BY day
-AS SELECT 
+AS SELECT
     proved_day AS day,
     avg(prove_time_ms) AS avg_prove_time_ms,
     count() AS sample_count
@@ -92,7 +92,7 @@ CREATE MATERIALIZED VIEW IF NOT EXISTS ${DB}.daily_avg_verify_times_mv
     sample_count UInt64
 ) ENGINE = MergeTree()
 ORDER BY day
-AS SELECT 
+AS SELECT
     verified_day AS day,
     avg(verify_time_ms) AS avg_verify_time_ms,
     count() AS sample_count

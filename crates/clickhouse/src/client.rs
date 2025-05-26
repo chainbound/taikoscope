@@ -107,16 +107,28 @@ impl ClickhouseClient {
 
     /// Apply materialized views migration
     async fn apply_materialized_views_migration(&self) -> Result<()> {
+        info!("Applying materialized views migration...");
         static MV_SQL: &str = include_str!("../migrations/002_create_materialized_views.sql");
-        for stmt in MV_SQL.split(';') {
+
+        let statements: Vec<&str> = MV_SQL.split(';').collect();
+        info!(statement_count = statements.len(), "Found {} SQL statements in migration", statements.len());
+
+        for (i, stmt) in statements.iter().enumerate() {
             let stmt = stmt.trim();
             if stmt.is_empty() {
                 continue;
             }
             let stmt = stmt.replace("${DB}", &self.db_name);
+
+            info!(statement_index = i, "Executing migration statement: {}", stmt.chars().take(100).collect::<String>());
+
             self.base.query(&stmt).execute().await
-                .wrap_err_with(|| format!("Failed to execute materialized view migration: {}", stmt))?;
+                .wrap_err_with(|| format!("Failed to execute materialized view migration statement {}: {}", i, stmt))?;
+
+            info!(statement_index = i, "Successfully executed migration statement");
         }
+
+        info!("✅ Materialized views migration completed");
         Ok(())
     }
 
