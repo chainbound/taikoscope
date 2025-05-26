@@ -30,21 +30,10 @@ export interface AvgTimeResponse {
 export const fetchAvgProveTime = async (
   range: "1h" | "24h" | "7d",
 ): Promise<RequestResult<number>> => {
-  const url = `${API_BASE}/prove-times?range=${range}`;
-  const res = await fetchJson<{
-    batches: { batch_id: number; seconds_to_prove: number }[];
-  }>(url);
-  
-  if (!res.data || !res.data.batches || res.data.batches.length === 0) {
-    return { data: null, badRequest: res.badRequest };
-  }
-  
-  const totalTime = res.data.batches.reduce((sum, batch) => sum + batch.seconds_to_prove, 0);
-  const avgTimeSeconds = totalTime / res.data.batches.length;
-  const avgTimeMs = avgTimeSeconds * 1000;
-  
+  const url = `${API_BASE}/avg-prove-time?range=${range}`;
+  const res = await fetchJson<{ avg_prove_time_ms?: number }>(url);
   return {
-    data: avgTimeMs,
+    data: res.data?.avg_prove_time_ms ?? null,
     badRequest: res.badRequest,
   };
 };
