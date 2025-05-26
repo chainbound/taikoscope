@@ -245,8 +245,16 @@ async fn active_gateways(
     Json(ActiveGatewaysResponse { gateways })
 }
 
-async fn avg_prove_time(State(state): State<ApiState>) -> Json<AvgProveTimeResponse> {
-    let avg = match state.client.get_avg_prove_time_last_hour().await {
+async fn avg_prove_time(
+    Query(params): Query<RangeQuery>,
+    State(state): State<ApiState>,
+) -> Json<AvgProveTimeResponse> {
+    let duration = range_duration(&params.range);
+    let avg = match if duration.num_hours() <= 1 {
+        state.client.get_avg_prove_time_last_hour().await
+    } else {
+        state.client.get_avg_prove_time_last_24_hours().await
+    } {
         Ok(val) => val,
         Err(e) => {
             tracing::error!("Failed to get avg prove time: {}", e);
@@ -256,30 +264,17 @@ async fn avg_prove_time(State(state): State<ApiState>) -> Json<AvgProveTimeRespo
     Json(AvgProveTimeResponse { avg_prove_time_ms: avg })
 }
 
-async fn avg_prove_time_24h(State(state): State<ApiState>) -> Json<AvgProveTimeResponse> {
-    let avg = match state.client.get_avg_prove_time_last_24_hours().await {
-        Ok(val) => val,
-        Err(e) => {
-            tracing::error!("Failed to get avg prove time: {}", e);
-            None
-        }
-    };
-    Json(AvgProveTimeResponse { avg_prove_time_ms: avg })
-}
 
-async fn avg_verify_time(State(state): State<ApiState>) -> Json<AvgVerifyTimeResponse> {
-    let avg = match state.client.get_avg_verify_time_last_hour().await {
-        Ok(val) => val,
-        Err(e) => {
-            tracing::error!("Failed to get avg verify time: {}", e);
-            None
-        }
-    };
-    Json(AvgVerifyTimeResponse { avg_verify_time_ms: avg })
-}
-
-async fn avg_verify_time_24h(State(state): State<ApiState>) -> Json<AvgVerifyTimeResponse> {
-    let avg = match state.client.get_avg_verify_time_last_24_hours().await {
+async fn avg_verify_time(
+    Query(params): Query<RangeQuery>,
+    State(state): State<ApiState>,
+) -> Json<AvgVerifyTimeResponse> {
+    let duration = range_duration(&params.range);
+    let avg = match if duration.num_hours() <= 1 {
+        state.client.get_avg_verify_time_last_hour().await
+    } else {
+        state.client.get_avg_verify_time_last_24_hours().await
+    } {
         Ok(val) => val,
         Err(e) => {
             tracing::error!("Failed to get avg verify time: {}", e);
@@ -289,8 +284,17 @@ async fn avg_verify_time_24h(State(state): State<ApiState>) -> Json<AvgVerifyTim
     Json(AvgVerifyTimeResponse { avg_verify_time_ms: avg })
 }
 
-async fn l2_block_cadence(State(state): State<ApiState>) -> Json<L2BlockCadenceResponse> {
-    let avg = match state.client.get_l2_block_cadence_last_hour().await {
+
+async fn l2_block_cadence(
+    Query(params): Query<RangeQuery>,
+    State(state): State<ApiState>,
+) -> Json<L2BlockCadenceResponse> {
+    let duration = range_duration(&params.range);
+    let avg = match if duration.num_hours() <= 1 {
+        state.client.get_l2_block_cadence_last_hour().await
+    } else {
+        state.client.get_l2_block_cadence_last_24_hours().await
+    } {
         Ok(val) => val,
         Err(e) => {
             tracing::error!("Failed to get L2 block cadence: {}", e);
@@ -300,32 +304,17 @@ async fn l2_block_cadence(State(state): State<ApiState>) -> Json<L2BlockCadenceR
     Json(L2BlockCadenceResponse { l2_block_cadence_ms: avg })
 }
 
-async fn l2_block_cadence_24h(State(state): State<ApiState>) -> Json<L2BlockCadenceResponse> {
-    let avg = match state.client.get_l2_block_cadence_last_24_hours().await {
-        Ok(val) => val,
-        Err(e) => {
-            tracing::error!("Failed to get L2 block cadence: {}", e);
-            None
-        }
-    };
-    Json(L2BlockCadenceResponse { l2_block_cadence_ms: avg })
-}
 
-async fn batch_posting_cadence(State(state): State<ApiState>) -> Json<BatchPostingCadenceResponse> {
-    let avg = match state.client.get_batch_posting_cadence_last_hour().await {
-        Ok(val) => val,
-        Err(e) => {
-            tracing::error!("Failed to get batch posting cadence: {}", e);
-            None
-        }
-    };
-    Json(BatchPostingCadenceResponse { batch_posting_cadence_ms: avg })
-}
-
-async fn batch_posting_cadence_24h(
+async fn batch_posting_cadence(
+    Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
 ) -> Json<BatchPostingCadenceResponse> {
-    let avg = match state.client.get_batch_posting_cadence_last_24_hours().await {
+    let duration = range_duration(&params.range);
+    let avg = match if duration.num_hours() <= 1 {
+        state.client.get_batch_posting_cadence_last_hour().await
+    } else {
+        state.client.get_batch_posting_cadence_last_24_hours().await
+    } {
         Ok(val) => val,
         Err(e) => {
             tracing::error!("Failed to get batch posting cadence: {}", e);
@@ -335,8 +324,17 @@ async fn batch_posting_cadence_24h(
     Json(BatchPostingCadenceResponse { batch_posting_cadence_ms: avg })
 }
 
-async fn avg_l2_tps(State(state): State<ApiState>) -> Json<AvgL2TpsResponse> {
-    let avg = match state.client.get_avg_l2_tps_last_hour().await {
+
+async fn avg_l2_tps(
+    Query(params): Query<RangeQuery>,
+    State(state): State<ApiState>,
+) -> Json<AvgL2TpsResponse> {
+    let duration = range_duration(&params.range);
+    let avg = match if duration.num_hours() <= 1 {
+        state.client.get_avg_l2_tps_last_hour().await
+    } else {
+        state.client.get_avg_l2_tps_last_24_hours().await
+    } {
         Ok(val) => val,
         Err(e) => {
             tracing::error!("Failed to get avg L2 TPS: {}", e);
@@ -346,16 +344,6 @@ async fn avg_l2_tps(State(state): State<ApiState>) -> Json<AvgL2TpsResponse> {
     Json(AvgL2TpsResponse { avg_tps: avg })
 }
 
-async fn avg_l2_tps_24h(State(state): State<ApiState>) -> Json<AvgL2TpsResponse> {
-    let avg = match state.client.get_avg_l2_tps_last_24_hours().await {
-        Ok(val) => val,
-        Err(e) => {
-            tracing::error!("Failed to get avg L2 TPS: {}", e);
-            None
-        }
-    };
-    Json(AvgL2TpsResponse { avg_tps: avg })
-}
 
 async fn prove_times(
     Query(params): Query<RangeQuery>,
@@ -468,15 +456,10 @@ fn router(state: ApiState) -> Router {
         .route("/reorgs", get(reorgs))
         .route("/active-gateways", get(active_gateways))
         .route("/avg-prove-time", get(avg_prove_time))
-        .route("/avg-prove-time/24h", get(avg_prove_time_24h))
         .route("/avg-verify-time", get(avg_verify_time))
-        .route("/avg-verify-time/24h", get(avg_verify_time_24h))
         .route("/l2-block-cadence", get(l2_block_cadence))
-        .route("/l2-block-cadence/24h", get(l2_block_cadence_24h))
         .route("/batch-posting-cadence", get(batch_posting_cadence))
-        .route("/batch-posting-cadence/24h", get(batch_posting_cadence_24h))
         .route("/avg-l2-tps", get(avg_l2_tps))
-        .route("/avg-l2-tps/24h", get(avg_l2_tps_24h))
         .route("/prove-times", get(prove_times))
         .route("/verify-times", get(verify_times))
         .route("/l1-block-times", get(l1_block_times))
@@ -647,7 +630,7 @@ mod tests {
         let mock = Mock::new();
         mock.add(handlers::provide(vec![AvgRowTest { avg_ms: 1500.0 }]));
         let app = build_app(mock.url());
-        let body = send_request(app, "/avg-prove-time/24h").await;
+        let body = send_request(app, "/avg-prove-time?range=24h").await;
         assert_eq!(body, json!({ "avg_prove_time_ms": 1500 }));
     }
 
@@ -665,7 +648,7 @@ mod tests {
         let mock = Mock::new();
         mock.add(handlers::provide(vec![AvgRowTest { avg_ms: 2500.0 }]));
         let app = build_app(mock.url());
-        let body = send_request(app, "/avg-verify-time/24h").await;
+        let body = send_request(app, "/avg-verify-time?range=24h").await;
         assert_eq!(body, json!({ "avg_verify_time_ms": 2500 }));
     }
 
@@ -690,7 +673,7 @@ mod tests {
         let mock = Mock::new();
         mock.add(handlers::provide(vec![CadenceRowTest { min_ts: 1000, max_ts: 4000, cnt: 4 }]));
         let app = build_app(mock.url());
-        let body = send_request(app, "/l2-block-cadence/24h").await;
+        let body = send_request(app, "/l2-block-cadence?range=24h").await;
         assert_eq!(body, json!({ "l2_block_cadence_ms": 1000 }));
     }
 
@@ -708,7 +691,7 @@ mod tests {
         let mock = Mock::new();
         mock.add(handlers::provide(vec![CadenceRowTest { min_ts: 2000, max_ts: 6000, cnt: 3 }]));
         let app = build_app(mock.url());
-        let body = send_request(app, "/batch-posting-cadence/24h").await;
+        let body = send_request(app, "/batch-posting-cadence?range=24h").await;
         assert_eq!(body, json!({ "batch_posting_cadence_ms": 2000 }));
     }
 
@@ -814,7 +797,7 @@ mod tests {
         let mock = Mock::new();
         mock.add(handlers::provide(vec![TpsRowTest { min_ts: 100, max_ts: 460, tx_sum: 720 }]));
         let app = build_app(mock.url());
-        let body = send_request(app, "/avg-l2-tps/24h").await;
+        let body = send_request(app, "/avg-l2-tps?range=24h").await;
         assert_eq!(body, json!({ "avg_tps": 2.0 }));
     }
 

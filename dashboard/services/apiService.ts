@@ -52,10 +52,7 @@ export const fetchAvgVerifyTime = async (
 export const fetchL2BlockCadence = async (
   range: "1h" | "24h" | "7d",
 ): Promise<RequestResult<number>> => {
-  const url =
-    range === "1h"
-      ? `${API_BASE}/l2-block-cadence`
-      : `${API_BASE}/l2-block-cadence/24h`;
+  const url = `${API_BASE}/l2-block-cadence?range=${range}`;
   const res = await fetchJson<{ l2_block_cadence_ms?: number }>(url);
   return {
     data: res.data?.l2_block_cadence_ms ?? null,
@@ -66,10 +63,7 @@ export const fetchL2BlockCadence = async (
 export const fetchBatchPostingCadence = async (
   range: "1h" | "24h" | "7d",
 ): Promise<RequestResult<number>> => {
-  const url =
-    range === "1h"
-      ? `${API_BASE}/batch-posting-cadence`
-      : `${API_BASE}/batch-posting-cadence/24h`;
+  const url = `${API_BASE}/batch-posting-cadence?range=${range}`;
   const res = await fetchJson<{ batch_posting_cadence_ms?: number }>(url);
   return {
     data: res.data?.batch_posting_cadence_ms ?? null,
