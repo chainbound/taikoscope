@@ -51,7 +51,10 @@ impl Driver {
             opts.clickhouse.username.clone(),
             opts.clickhouse.password.clone(),
         )?;
+
+        info!("🚀 Running database migrations...");
         clickhouse.init_db(opts.reset_db).await?;
+        info!("✅ Database migrations completed");
 
         // init extractor
         let extractor = Extractor::new(
