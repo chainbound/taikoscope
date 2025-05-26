@@ -597,19 +597,15 @@ mod tests {
 
     #[derive(Serialize, Row)]
     struct CadenceRowTest {
-        min_ts: Option<u64>,
-        max_ts: Option<u64>,
+        min_ts: u64,
+        max_ts: u64,
         cnt: u64,
     }
 
     #[tokio::test]
     async fn l2_block_cadence_endpoint() {
         let mock = Mock::new();
-        mock.add(handlers::provide(vec![CadenceRowTest {
-            min_ts: Some(1000),
-            max_ts: Some(4000),
-            cnt: 4,
-        }]));
+        mock.add(handlers::provide(vec![CadenceRowTest { min_ts: 1000, max_ts: 4000, cnt: 4 }]));
         let app = build_app(mock.url());
         let body = send_request(app, "/l2-block-cadence").await;
         assert_eq!(body, json!({ "l2_block_cadence_ms": 1000 }));
@@ -618,11 +614,7 @@ mod tests {
     #[tokio::test]
     async fn l2_block_cadence_24h_endpoint() {
         let mock = Mock::new();
-        mock.add(handlers::provide(vec![CadenceRowTest {
-            min_ts: Some(1000),
-            max_ts: Some(4000),
-            cnt: 4,
-        }]));
+        mock.add(handlers::provide(vec![CadenceRowTest { min_ts: 1000, max_ts: 4000, cnt: 4 }]));
         let app = build_app(mock.url());
         let body = send_request(app, "/l2-block-cadence/24h").await;
         assert_eq!(body, json!({ "l2_block_cadence_ms": 1000 }));
@@ -631,11 +623,7 @@ mod tests {
     #[tokio::test]
     async fn batch_posting_cadence_endpoint() {
         let mock = Mock::new();
-        mock.add(handlers::provide(vec![CadenceRowTest {
-            min_ts: Some(2000),
-            max_ts: Some(6000),
-            cnt: 3,
-        }]));
+        mock.add(handlers::provide(vec![CadenceRowTest { min_ts: 2000, max_ts: 6000, cnt: 3 }]));
         let app = build_app(mock.url());
         let body = send_request(app, "/batch-posting-cadence").await;
         assert_eq!(body, json!({ "batch_posting_cadence_ms": 2000 }));
@@ -644,11 +632,7 @@ mod tests {
     #[tokio::test]
     async fn batch_posting_cadence_24h_endpoint() {
         let mock = Mock::new();
-        mock.add(handlers::provide(vec![CadenceRowTest {
-            min_ts: Some(2000),
-            max_ts: Some(6000),
-            cnt: 3,
-        }]));
+        mock.add(handlers::provide(vec![CadenceRowTest { min_ts: 2000, max_ts: 6000, cnt: 3 }]));
         let app = build_app(mock.url());
         let body = send_request(app, "/batch-posting-cadence/24h").await;
         assert_eq!(body, json!({ "batch_posting_cadence_ms": 2000 }));
@@ -737,19 +721,15 @@ mod tests {
 
     #[derive(Serialize, Row)]
     struct TpsRowTest {
-        min_ts: Option<u64>,
-        max_ts: Option<u64>,
-        tx_sum: Option<u64>,
+        min_ts: u64,
+        max_ts: u64,
+        tx_sum: u64,
     }
 
     #[tokio::test]
     async fn avg_l2_tps_endpoint() {
         let mock = Mock::new();
-        mock.add(handlers::provide(vec![TpsRowTest {
-            min_ts: Some(10),
-            max_ts: Some(70),
-            tx_sum: Some(180),
-        }]));
+        mock.add(handlers::provide(vec![TpsRowTest { min_ts: 10, max_ts: 70, tx_sum: 180 }]));
         let app = build_app(mock.url());
         let body = send_request(app, "/avg-l2-tps").await;
         assert_eq!(body, json!({ "avg_tps": 3.0 }));
@@ -758,11 +738,7 @@ mod tests {
     #[tokio::test]
     async fn avg_l2_tps_24h_endpoint() {
         let mock = Mock::new();
-        mock.add(handlers::provide(vec![TpsRowTest {
-            min_ts: Some(100),
-            max_ts: Some(460),
-            tx_sum: Some(720),
-        }]));
+        mock.add(handlers::provide(vec![TpsRowTest { min_ts: 100, max_ts: 460, tx_sum: 720 }]));
         let app = build_app(mock.url());
         let body = send_request(app, "/avg-l2-tps/24h").await;
         assert_eq!(body, json!({ "avg_tps": 2.0 }));

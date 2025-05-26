@@ -894,8 +894,8 @@ impl ClickhouseClient {
     pub async fn get_l2_block_cadence_last_hour(&self) -> Result<Option<u64>> {
         #[derive(Row, Deserialize)]
         struct CadenceRow {
-            min_ts: Option<u64>,
-            max_ts: Option<u64>,
+            min_ts: u64,
+            max_ts: u64,
             cnt: u64,
         }
 
@@ -915,11 +915,10 @@ impl ClickhouseClient {
             None => return Ok(None),
         };
 
-        match (row.min_ts, row.max_ts) {
-            (Some(min_ts), Some(max_ts)) if row.cnt > 1 => {
-                Ok(Some((max_ts - min_ts) / (row.cnt - 1)))
-            }
-            _ => Ok(None),
+        if row.cnt > 1 && row.max_ts > row.min_ts {
+            Ok(Some((row.max_ts - row.min_ts) / (row.cnt - 1)))
+        } else {
+            Ok(None)
         }
     }
 
@@ -928,8 +927,8 @@ impl ClickhouseClient {
     pub async fn get_l2_block_cadence_last_24_hours(&self) -> Result<Option<u64>> {
         #[derive(Row, Deserialize)]
         struct CadenceRow {
-            min_ts: Option<u64>,
-            max_ts: Option<u64>,
+            min_ts: u64,
+            max_ts: u64,
             cnt: u64,
         }
 
@@ -949,11 +948,10 @@ impl ClickhouseClient {
             None => return Ok(None),
         };
 
-        match (row.min_ts, row.max_ts) {
-            (Some(min_ts), Some(max_ts)) if row.cnt > 1 => {
-                Ok(Some((max_ts - min_ts) / (row.cnt - 1)))
-            }
-            _ => Ok(None),
+        if row.cnt > 1 && row.max_ts > row.min_ts {
+            Ok(Some((row.max_ts - row.min_ts) / (row.cnt - 1)))
+        } else {
+            Ok(None)
         }
     }
 
@@ -962,8 +960,8 @@ impl ClickhouseClient {
     pub async fn get_batch_posting_cadence_last_hour(&self) -> Result<Option<u64>> {
         #[derive(Row, Deserialize)]
         struct CadenceRow {
-            min_ts: Option<u64>,
-            max_ts: Option<u64>,
+            min_ts: u64,
+            max_ts: u64,
             cnt: u64,
         }
 
@@ -983,11 +981,10 @@ impl ClickhouseClient {
             None => return Ok(None),
         };
 
-        match (row.min_ts, row.max_ts) {
-            (Some(min_ts), Some(max_ts)) if row.cnt > 1 => {
-                Ok(Some((max_ts - min_ts) / (row.cnt - 1)))
-            }
-            _ => Ok(None),
+        if row.cnt > 1 && row.max_ts > row.min_ts {
+            Ok(Some((row.max_ts - row.min_ts) / (row.cnt - 1)))
+        } else {
+            Ok(None)
         }
     }
 
@@ -996,8 +993,8 @@ impl ClickhouseClient {
     pub async fn get_batch_posting_cadence_last_24_hours(&self) -> Result<Option<u64>> {
         #[derive(Row, Deserialize)]
         struct CadenceRow {
-            min_ts: Option<u64>,
-            max_ts: Option<u64>,
+            min_ts: u64,
+            max_ts: u64,
             cnt: u64,
         }
 
@@ -1017,11 +1014,10 @@ impl ClickhouseClient {
             None => return Ok(None),
         };
 
-        match (row.min_ts, row.max_ts) {
-            (Some(min_ts), Some(max_ts)) if row.cnt > 1 => {
-                Ok(Some((max_ts - min_ts) / (row.cnt - 1)))
-            }
-            _ => Ok(None),
+        if row.cnt > 1 && row.max_ts > row.min_ts {
+            Ok(Some((row.max_ts - row.min_ts) / (row.cnt - 1)))
+        } else {
+            Ok(None)
         }
     }
 
@@ -1187,9 +1183,9 @@ impl ClickhouseClient {
     pub async fn get_avg_l2_tps_last_hour(&self) -> Result<Option<f64>> {
         #[derive(Row, Deserialize)]
         struct TpsRow {
-            min_ts: Option<u64>,
-            max_ts: Option<u64>,
-            tx_sum: Option<u64>,
+            min_ts: u64,
+            max_ts: u64,
+            tx_sum: u64,
         }
 
         let client = self.base.clone().with_database(&self.db_name);
@@ -1208,12 +1204,11 @@ impl ClickhouseClient {
             None => return Ok(None),
         };
 
-        match (row.min_ts, row.max_ts, row.tx_sum) {
-            (Some(min_ts), Some(max_ts), Some(sum)) if max_ts > min_ts && sum > 0 => {
-                let duration = (max_ts - min_ts) as f64;
-                Ok(Some(sum as f64 / duration))
-            }
-            _ => Ok(None),
+        if row.max_ts > row.min_ts && row.tx_sum > 0 {
+            let duration = (row.max_ts - row.min_ts) as f64;
+            Ok(Some(row.tx_sum as f64 / duration))
+        } else {
+            Ok(None)
         }
     }
 
@@ -1221,9 +1216,9 @@ impl ClickhouseClient {
     pub async fn get_avg_l2_tps_last_24_hours(&self) -> Result<Option<f64>> {
         #[derive(Row, Deserialize)]
         struct TpsRow {
-            min_ts: Option<u64>,
-            max_ts: Option<u64>,
-            tx_sum: Option<u64>,
+            min_ts: u64,
+            max_ts: u64,
+            tx_sum: u64,
         }
 
         let client = self.base.clone().with_database(&self.db_name);
@@ -1242,12 +1237,11 @@ impl ClickhouseClient {
             None => return Ok(None),
         };
 
-        match (row.min_ts, row.max_ts, row.tx_sum) {
-            (Some(min_ts), Some(max_ts), Some(sum)) if max_ts > min_ts && sum > 0 => {
-                let duration = (max_ts - min_ts) as f64;
-                Ok(Some(sum as f64 / duration))
-            }
-            _ => Ok(None),
+        if row.max_ts > row.min_ts && row.tx_sum > 0 {
+            let duration = (row.max_ts - row.min_ts) as f64;
+            Ok(Some(row.tx_sum as f64 / duration))
+        } else {
+            Ok(None)
         }
     }
 }
@@ -1953,19 +1947,15 @@ mod tests {
 
     #[derive(Serialize, Row)]
     struct CadenceRowTest {
-        min_ts: Option<u64>,
-        max_ts: Option<u64>,
+        min_ts: u64,
+        max_ts: u64,
         cnt: u64,
     }
 
     #[tokio::test]
     async fn test_get_l2_block_cadence_last_hour() {
         let mock = Mock::new();
-        mock.add(handlers::provide(vec![CadenceRowTest {
-            min_ts: Some(1_000),
-            max_ts: Some(4_000),
-            cnt: 4,
-        }]));
+        mock.add(handlers::provide(vec![CadenceRowTest { min_ts: 1_000, max_ts: 4_000, cnt: 4 }]));
 
         let url = Url::parse(mock.url()).unwrap();
         let client = ClickhouseClient::new(
@@ -1983,11 +1973,7 @@ mod tests {
     #[tokio::test]
     async fn test_get_l2_block_cadence_last_24_hours() {
         let mock = Mock::new();
-        mock.add(handlers::provide(vec![CadenceRowTest {
-            min_ts: Some(1_000),
-            max_ts: Some(4_000),
-            cnt: 4,
-        }]));
+        mock.add(handlers::provide(vec![CadenceRowTest { min_ts: 1_000, max_ts: 4_000, cnt: 4 }]));
 
         let url = Url::parse(mock.url()).unwrap();
         let client = ClickhouseClient::new(
@@ -2005,11 +1991,7 @@ mod tests {
     #[tokio::test]
     async fn test_get_batch_posting_cadence_last_hour() {
         let mock = Mock::new();
-        mock.add(handlers::provide(vec![CadenceRowTest {
-            min_ts: Some(2_000),
-            max_ts: Some(6_000),
-            cnt: 3,
-        }]));
+        mock.add(handlers::provide(vec![CadenceRowTest { min_ts: 2_000, max_ts: 6_000, cnt: 3 }]));
 
         let url = Url::parse(mock.url()).unwrap();
         let client = ClickhouseClient::new(
@@ -2027,11 +2009,7 @@ mod tests {
     #[tokio::test]
     async fn test_get_batch_posting_cadence_last_24_hours() {
         let mock = Mock::new();
-        mock.add(handlers::provide(vec![CadenceRowTest {
-            min_ts: Some(2_000),
-            max_ts: Some(6_000),
-            cnt: 3,
-        }]));
+        mock.add(handlers::provide(vec![CadenceRowTest { min_ts: 2_000, max_ts: 6_000, cnt: 3 }]));
 
         let url = Url::parse(mock.url()).unwrap();
         let client = ClickhouseClient::new(
@@ -2199,19 +2177,15 @@ mod tests {
 
     #[derive(Serialize, Row, Debug, PartialEq)]
     struct TpsRowTest {
-        min_ts: Option<u64>,
-        max_ts: Option<u64>,
-        tx_sum: Option<u64>,
+        min_ts: u64,
+        max_ts: u64,
+        tx_sum: u64,
     }
 
     #[tokio::test]
     async fn test_get_avg_l2_tps_last_hour() {
         let mock = Mock::new();
-        mock.add(handlers::provide(vec![TpsRowTest {
-            min_ts: Some(10),
-            max_ts: Some(70),
-            tx_sum: Some(180),
-        }]));
+        mock.add(handlers::provide(vec![TpsRowTest { min_ts: 10, max_ts: 70, tx_sum: 180 }]));
 
         let url = Url::parse(mock.url()).unwrap();
         let client = ClickhouseClient::new(
@@ -2229,11 +2203,7 @@ mod tests {
     #[tokio::test]
     async fn test_get_avg_l2_tps_last_24_hours() {
         let mock = Mock::new();
-        mock.add(handlers::provide(vec![TpsRowTest {
-            min_ts: Some(100),
-            max_ts: Some(460),
-            tx_sum: Some(720),
-        }]));
+        mock.add(handlers::provide(vec![TpsRowTest { min_ts: 100, max_ts: 460, tx_sum: 720 }]));
 
         let url = Url::parse(mock.url()).unwrap();
         let client = ClickhouseClient::new(
