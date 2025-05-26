@@ -1,9 +1,13 @@
-//! Schema definitions for ClickHouse tables
+//! Schema definitions for `ClickHouse` tables
 
 /// Table schema definition
+#[derive(Debug)]
 pub struct TableSchema {
+    /// Table name
     pub name: &'static str,
+    /// Column definitions
     pub columns: &'static str,
+    /// Order by clause
     pub order_by: &'static str,
 }
 

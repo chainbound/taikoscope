@@ -1,36 +1,25 @@
-//! Clickhouse client implementation
+//! `ClickHouse` writer functionality for taikoscope
+//! Handles database initialization, migrations, and data insertion
 
 use alloy::primitives::{Address, BlockNumber};
-use chainio::ITaikoInbox;
-use chrono::{DateTime, LocalResult, TimeZone, Utc};
-use clickhouse::{Client, Row};
+use clickhouse::Client;
+use derive_more::Debug;
 use eyre::{Context, Result};
-use serde::Deserialize;
 use tracing::info;
 use url::Url;
 
-use crate::schema::{TableSchema, TABLES, TABLE_SCHEMAS};
-use crate::models::{
-    L1HeadEvent,
-    PreconfData,
-    L2HeadEvent,
-    BatchRow,
-    ProvedBatchRow,
-    L2ReorgRow,
-    ForcedInclusionProcessedRow,
-    VerifiedBatchRow,
-    SlashingEventRow,
+use crate::{
+    L1Header,
+    models::{
+        BatchRow, ForcedInclusionProcessedRow, L1HeadEvent, L2HeadEvent, L2ReorgRow, PreconfData,
+        ProvedBatchRow, VerifiedBatchRow,
+    },
+    schema::{TABLE_SCHEMAS, TABLES, TableSchema},
 };
-use crate::{L1Header, L2Header};
 
-#[derive(Row, Deserialize)]
-struct MaxTs {
-    block_ts: u64,
-}
-
-/// Clickhouse client
+/// `ClickHouse` writer client for taikoscope (data insertion and migrations)
 #[derive(Clone, Debug)]
-pub struct ClickhouseClient {
+pub struct ClickhouseWriter {
     /// Base client
     #[debug(skip)]
     base: Client,
@@ -38,8 +27,8 @@ pub struct ClickhouseClient {
     db_name: String,
 }
 
-impl ClickhouseClient {
-    /// Create a new clickhouse client
+impl ClickhouseWriter {
+    /// Create a new `ClickHouse` writer client
     pub fn new(url: Url, db_name: String, username: String, password: String) -> Result<Self> {
         let client = Client::default()
             .with_url(url)
@@ -50,11 +39,13 @@ impl ClickhouseClient {
         Ok(Self { base: client, db_name })
     }
 
-    /// Create database and optionally drop existing tables if reset is true
     /// Create a table with the given schema
     async fn create_table(&self, schema: &TableSchema) -> Result<()> {
         let query = format!(
-            "CREATE TABLE IF NOT EXISTS {}.{} (\n                    {}\n                ) ENGINE = MergeTree()\n                ORDER BY ({})",
+            "CREATE TABLE IF NOT EXISTS {}.{} (
+                {}
+            ) ENGINE = MergeTree()
+            ORDER BY ({})",
             self.db_name, schema.name, schema.columns, schema.order_by
         );
 
@@ -76,6 +67,11 @@ impl ClickhouseClient {
 
     /// Initialize database and optionally reset
     pub async fn init_db(&self, reset: bool) -> Result<()> {
+        self.init_db_with_migrations(reset, true).await
+    }
+
+    /// Initialize database with option to skip migrations (useful for tests)
+    pub async fn init_db_with_migrations(&self, reset: bool, run_migrations: bool) -> Result<()> {
         // Create database
         self.base
             .query(&format!("CREATE DATABASE IF NOT EXISTS {}", self.db_name))
@@ -89,7 +85,9 @@ impl ClickhouseClient {
             info!(db_name = %self.db_name, "Database reset complete");
         }
 
-        self.init_schema().await?;
+        if run_migrations {
+            self.init_schema().await?;
+        }
         Ok(())
     }
 
@@ -111,7 +109,11 @@ impl ClickhouseClient {
         static MV_SQL: &str = include_str!("../migrations/002_create_materialized_views.sql");
 
         let statements: Vec<&str> = MV_SQL.split(';').collect();
-        info!(statement_count = statements.len(), "Found {} SQL statements in migration", statements.len());
+        info!(
+            statement_count = statements.len(),
+            "Found {} SQL statements in migration",
+            statements.len()
+        );
 
         for (i, stmt) in statements.iter().enumerate() {
             let stmt = stmt.trim();
@@ -120,10 +122,15 @@ impl ClickhouseClient {
             }
             let stmt = stmt.replace("${DB}", &self.db_name);
 
-            info!(statement_index = i, "Executing migration statement: {}", stmt.chars().take(100).collect::<String>());
+            info!(
+                statement_index = i,
+                "Executing migration statement: {}",
+                stmt.chars().take(100).collect::<String>()
+            );
 
-            self.base.query(&stmt).execute().await
-                .wrap_err_with(|| format!("Failed to execute materialized view migration statement {}: {}", i, stmt))?;
+            self.base.query(&stmt).execute().await.wrap_err_with(|| {
+                format!("Failed to execute materialized view migration statement {}: {}", i, stmt)
+            })?;
 
             info!(statement_index = i, "Successfully executed migration statement");
         }
@@ -250,29 +257,4 @@ impl ClickhouseClient {
         insert.end().await?;
         Ok(())
     }
-
-    /// Get last L2 head time
-    pub async fn get_last_l2_head_time(&self) -> Result<Option<DateTime<Utc>>> {
-        let client = self.base.clone().with_database(&self.db_name);
-        let query = format!("SELECT max(block_ts) AS block_ts FROM {}.l2_head_events", self.db_name);
-        let rows = client
-            .query(&query)
-            .fetch_all::<MaxTs>()
-            .await
-            .context("fetching max(block_ts) failed")?;
-        let row = match rows.into_iter().next() {
-            Some(r) => r,
-            None => return Ok(None),
-        };
-        if row.block_ts == 0 {
-            return Ok(None);
-        }
-        let ts_opt = match Utc.timestamp_opt(row.block_ts as i64, 0) {
-            LocalResult::Single(dt) => Some(dt),
-            _ => None,
-        };
-        Ok(ts_opt)
-    }
-
-    /// ... other methods remain unchanged ...
 }

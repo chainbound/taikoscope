@@ -1,9 +1,6 @@
-use crate::models::{
-    BatchRow, ForcedInclusionProcessedRow, L2HeadEvent, ProvedBatchRow, VerifiedBatchRow,
-};
+use crate::models::{BatchRow, ForcedInclusionProcessedRow, ProvedBatchRow, VerifiedBatchRow};
 use chainio::{ITaikoInbox, taiko::wrapper::ITaikoWrapper};
-use extractor::L2Header;
-use eyre::{Context, Error, Result, eyre};
+use eyre::{Error, Result, eyre};
 use std::convert::TryFrom;
 
 // Conversion from L2Header to L2HeadEvent is intentionally omitted. The

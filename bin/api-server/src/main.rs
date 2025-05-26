@@ -4,7 +4,7 @@ use std::net::SocketAddr;
 
 use api::run;
 use clap::Parser;
-use clickhouse::ClickhouseClient;
+use clickhouse::ClickhouseReader;
 use config::Opts;
 use dotenvy::dotenv;
 use primitives::shutdown::{ShutdownSignal, run_until_shutdown};
@@ -28,7 +28,7 @@ async fn main() -> eyre::Result<()> {
         )
         .init();
 
-    let client = ClickhouseClient::new(
+    let client = ClickhouseReader::new(
         opts.clickhouse.url,
         opts.clickhouse.db,
         opts.clickhouse.username,

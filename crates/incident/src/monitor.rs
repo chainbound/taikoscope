@@ -4,7 +4,7 @@ use crate::{
 };
 use async_trait::async_trait;
 use chrono::{DateTime, Duration as ChronoDuration, Utc};
-use clickhouse::ClickhouseClient;
+use clickhouse::ClickhouseReader;
 use eyre::Result;
 use serde::Serialize;
 use std::time::Duration;
@@ -108,7 +108,7 @@ pub struct InstatusL1Monitor {
 impl InstatusL1Monitor {
     /// Creates a new `InstatusL1Monitor` with the given parameters.
     pub fn new(
-        clickhouse: ClickhouseClient,
+        clickhouse: ClickhouseReader,
         client: IncidentClient,
         component_id: String,
         threshold: Duration,
@@ -284,7 +284,7 @@ impl Monitor for InstatusL1Monitor {
         &self.base.client
     }
 
-    fn get_clickhouse(&self) -> &ClickhouseClient {
+    fn get_clickhouse(&self) -> &ClickhouseReader {
         &self.base.clickhouse
     }
 }
@@ -301,7 +301,7 @@ pub struct InstatusMonitor {
 impl InstatusMonitor {
     /// Creates a new `InstatusMonitor` with the given parameters.
     pub fn new(
-        clickhouse: ClickhouseClient,
+        clickhouse: ClickhouseReader,
         client: IncidentClient,
         component_id: String,
         threshold: Duration,
@@ -448,7 +448,7 @@ impl Monitor for InstatusMonitor {
         &self.base.client
     }
 
-    fn get_clickhouse(&self) -> &ClickhouseClient {
+    fn get_clickhouse(&self) -> &ClickhouseReader {
         &self.base.clickhouse
     }
 }
@@ -466,7 +466,7 @@ pub struct BatchProofTimeoutMonitor {
 impl BatchProofTimeoutMonitor {
     /// Creates a new `BatchProofTimeoutMonitor` with the given parameters.
     pub fn new(
-        clickhouse: ClickhouseClient,
+        clickhouse: ClickhouseReader,
         client: IncidentClient,
         component_id: String,
         proof_timeout: Duration,
@@ -645,7 +645,7 @@ impl Monitor for BatchProofTimeoutMonitor {
         &self.base.client
     }
 
-    fn get_clickhouse(&self) -> &ClickhouseClient {
+    fn get_clickhouse(&self) -> &ClickhouseReader {
         &self.base.clickhouse
     }
 }
@@ -663,7 +663,7 @@ pub struct BatchVerifyTimeoutMonitor {
 impl BatchVerifyTimeoutMonitor {
     /// Creates a new `BatchVerifyTimeoutMonitor` with the given parameters.
     pub fn new(
-        clickhouse: ClickhouseClient,
+        clickhouse: ClickhouseReader,
         client: IncidentClient,
         component_id: String,
         verify_timeout: Duration,
@@ -861,7 +861,7 @@ impl Monitor for BatchVerifyTimeoutMonitor {
         &self.base.client
     }
 
-    fn get_clickhouse(&self) -> &ClickhouseClient {
+    fn get_clickhouse(&self) -> &ClickhouseReader {
         &self.base.clickhouse
     }
 }
@@ -870,7 +870,7 @@ impl Monitor for BatchVerifyTimeoutMonitor {
 mod tests {
     use super::*;
     use crate::client::Client as IncidentClient;
-    use clickhouse::ClickhouseClient as ClickhouseInternalClient;
+    use clickhouse::ClickhouseReader as ClickhouseInternalClient;
     use mockito::{Matcher, Server, ServerGuard};
     use std::time::Duration;
     use url::Url;

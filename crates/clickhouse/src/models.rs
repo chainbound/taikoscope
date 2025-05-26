@@ -116,3 +116,48 @@ pub struct SlashingEventRow {
     /// Address of the validator that was slashed
     pub validator_addr: [u8; 20],
 }
+
+/// Row representing the number of blocks produced by a sequencer
+#[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq)]
+pub struct SequencerDistributionRow {
+    /// Sequencer address
+    pub sequencer: [u8; 20],
+    /// Number of blocks produced by the sequencer
+    pub blocks: u64,
+}
+
+/// Row representing the time it took for a batch to be proven
+#[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq)]
+pub struct BatchProveTimeRow {
+    /// Batch ID
+    pub batch_id: u64,
+    /// Seconds between proposal and proof
+    pub seconds_to_prove: u64,
+}
+
+/// Row representing the time it took for a batch to be verified
+#[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq)]
+pub struct BatchVerifyTimeRow {
+    /// Batch ID
+    pub batch_id: u64,
+    /// Seconds between proof and verification
+    pub seconds_to_verify: u64,
+}
+
+/// Row representing the block number seen at a given minute
+#[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq)]
+pub struct L1BlockTimeRow {
+    /// Minute timestamp (unix seconds)
+    pub minute: u64,
+    /// Highest L1 block number within that minute
+    pub block_number: u64,
+}
+
+/// Row representing L2 block numbers per minute
+#[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq)]
+pub struct L2BlockTimeRow {
+    /// Minute timestamp
+    pub minute: u64,
+    /// Highest block number observed in that minute
+    pub block_number: u64,
+}

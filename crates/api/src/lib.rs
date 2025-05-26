@@ -11,7 +11,7 @@ use axum::{
     routing::get,
 };
 use chrono::{Duration as ChronoDuration, Utc};
-use clickhouse_lib::ClickhouseClient;
+use clickhouse_lib::ClickhouseReader;
 use eyre::Result;
 use hex::encode;
 use primitives::rate_limiter::RateLimiter;
@@ -33,12 +33,12 @@ const ALLOWED_ORIGINS: &[&str] = &["https://taikoscope.xyz", "https://www.taikos
 
 #[derive(Clone, Debug)]
 struct ApiState {
-    client: ClickhouseClient,
+    client: ClickhouseReader,
     limiter: RateLimiter,
 }
 
 impl ApiState {
-    fn new(client: ClickhouseClient) -> Self {
+    fn new(client: ClickhouseReader) -> Self {
         Self { client, limiter: RateLimiter::new(MAX_REQUESTS, RATE_PERIOD) }
     }
 }
@@ -465,7 +465,7 @@ fn router(state: ApiState) -> Router {
 }
 
 /// Run the API server on the given address
-pub async fn run(addr: SocketAddr, client: ClickhouseClient) -> Result<()> {
+pub async fn run(addr: SocketAddr, client: ClickhouseReader) -> Result<()> {
     let state = ApiState::new(client);
     let cors = CorsLayer::new()
         .allow_origin(AllowOrigin::predicate(|origin: &HeaderValue, _| match origin.to_str() {
@@ -515,7 +515,7 @@ mod tests {
     fn build_app(mock_url: &str) -> Router {
         let url = Url::parse(mock_url).unwrap();
         let client =
-            ClickhouseClient::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
+            ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
         let state = ApiState::new(client);
         router(state)
     }

@@ -4,7 +4,7 @@ use crate::{
 };
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
-use clickhouse::ClickhouseClient;
+use clickhouse::ClickhouseReader;
 use eyre::Result;
 use std::fmt::Debug;
 use tokio::task::JoinHandle;
@@ -54,14 +54,14 @@ pub trait Monitor: Send + Sync {
     fn get_client(&self) -> &IncidentClient;
 
     /// Gets a reference to the `ClickHouse` client
-    fn get_clickhouse(&self) -> &ClickhouseClient;
+    fn get_clickhouse(&self) -> &ClickhouseReader;
 }
 
 /// A base implementation for common monitor functionality
 #[derive(Debug)]
 pub struct BaseMonitor<K> {
     /// `ClickHouse` client for querying data
-    pub clickhouse: ClickhouseClient,
+    pub clickhouse: ClickhouseReader,
     /// Incident client for creating and managing incidents
     pub client: IncidentClient,
     /// Component ID for the monitored component
@@ -75,7 +75,7 @@ pub struct BaseMonitor<K> {
 impl<K: Clone + Debug + Eq + std::hash::Hash> BaseMonitor<K> {
     /// Create a new base monitor
     pub fn new(
-        clickhouse: ClickhouseClient,
+        clickhouse: ClickhouseReader,
         client: IncidentClient,
         component_id: String,
         interval: std::time::Duration,
@@ -206,7 +206,7 @@ mod tests {
     use super::*;
     use crate::client::Client as IncidentClient;
     use chrono::Utc;
-    use clickhouse::ClickhouseClient as ClickhouseInternalClient;
+    use clickhouse::ClickhouseReader as ClickhouseInternalClient;
     use mockito::{Matcher, Server, ServerGuard};
     use std::time::Duration;
     use url::Url;

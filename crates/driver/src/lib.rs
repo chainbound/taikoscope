@@ -11,7 +11,7 @@ use chainio::{
     ITaikoInbox::{BatchProposed, BatchesProved},
     taiko::wrapper::ITaikoWrapper::ForcedInclusionProcessed,
 };
-use clickhouse::ClickhouseClient;
+use clickhouse::{ClickhouseReader, ClickhouseWriter};
 use config::Opts;
 use extractor::{
     BatchProposedStream, BatchesProvedStream, BatchesVerifiedStream, Extractor,
@@ -28,7 +28,8 @@ pub const EPOCH_SLOTS: u64 = 32;
 /// Taikoscope Driver
 #[derive(Debug)]
 pub struct Driver {
-    clickhouse: ClickhouseClient,
+    clickhouse: ClickhouseWriter,
+    clickhouse_reader: ClickhouseReader,
     extractor: Extractor,
     reorg: ReorgDetector,
     incident_client: IncidentClient,
@@ -44,17 +45,32 @@ pub struct Driver {
 impl Driver {
     /// Build everything (client, extractor, detector), but don't start the event loop yet.
     pub async fn new(opts: Opts) -> Result<Self> {
+        Self::new_with_migrations(opts, true).await
+    }
+
+    /// Build everything with option to skip database migrations (useful for tests)
+    pub async fn new_with_migrations(opts: Opts, run_migrations: bool) -> Result<Self> {
         // init db client
-        let clickhouse = ClickhouseClient::new(
+        let clickhouse = ClickhouseWriter::new(
+            opts.clickhouse.url.clone(),
+            opts.clickhouse.db.clone(),
+            opts.clickhouse.username.clone(),
+            opts.clickhouse.password.clone(),
+        )?;
+
+        // init db reader for monitors
+        let clickhouse_reader = ClickhouseReader::new(
             opts.clickhouse.url,
             opts.clickhouse.db.clone(),
             opts.clickhouse.username.clone(),
             opts.clickhouse.password.clone(),
         )?;
 
-        info!("🚀 Running database migrations...");
-        clickhouse.init_db(opts.reset_db).await?;
-        info!("✅ Database migrations completed");
+        if run_migrations {
+            info!("🚀 Running database migrations...");
+            clickhouse.init_db(opts.reset_db).await?;
+            info!("✅ Database migrations completed");
+        }
 
         // init extractor
         let extractor = Extractor::new(
@@ -78,6 +94,7 @@ impl Driver {
 
         Ok(Self {
             clickhouse,
+            clickhouse_reader,
             extractor,
             reorg: ReorgDetector::new(),
             incident_client,
@@ -205,7 +222,7 @@ impl Driver {
     /// [`IncidentClient`].
     fn spawn_monitors(&self) {
         InstatusL1Monitor::new(
-            self.clickhouse.clone(),
+            self.clickhouse_reader.clone(),
             self.incident_client.clone(),
             self.instatus_batch_component_id.clone(),
             Duration::from_secs(self.instatus_monitor_threshold_secs),
@@ -214,7 +231,7 @@ impl Driver {
         .spawn();
 
         InstatusMonitor::new(
-            self.clickhouse.clone(),
+            self.clickhouse_reader.clone(),
             self.incident_client.clone(),
             self.instatus_l2_component_id.clone(),
             Duration::from_secs(self.instatus_monitor_threshold_secs),
@@ -223,7 +240,7 @@ impl Driver {
         .spawn();
 
         BatchProofTimeoutMonitor::new(
-            self.clickhouse.clone(),
+            self.clickhouse_reader.clone(),
             self.incident_client.clone(),
             self.instatus_batch_proof_timeout_component_id.clone(),
             Duration::from_secs(self.batch_proof_timeout_secs),
@@ -232,7 +249,7 @@ impl Driver {
         .spawn();
 
         BatchVerifyTimeoutMonitor::new(
-            self.clickhouse.clone(),
+            self.clickhouse_reader.clone(),
             self.incident_client.clone(),
             self.instatus_batch_verify_timeout_component_id.clone(),
             Duration::from_secs(self.batch_proof_timeout_secs),
@@ -481,10 +498,9 @@ impl Driver {
 mod tests {
     use super::*;
     use alloy_primitives::Address;
-    use clickhouse_rs::test::{Mock, handlers};
+    use clickhouse_rs::test::Mock;
     use config::{ApiOpts, ClickhouseOpts, InstatusOpts, Opts, RpcOpts, TaikoAddressOpts};
     use futures::future;
-    use http::StatusCode;
     use tokio::net::TcpListener;
     use tokio_tungstenite::accept_async;
     use url::Url;
@@ -504,11 +520,9 @@ mod tests {
 
     #[tokio::test]
     async fn new_respects_batch_proof_timeout_from_opts() {
-        // Mock ClickHouse server with enough handlers for `init_db`
+        // Mock ClickHouse server - minimal setup since we skip migrations
         let mock = Mock::new();
-        for _ in 0..16 {
-            mock.add(handlers::failure(StatusCode::OK));
-        }
+        // Just one handler since we're not actually doing any DB operations
 
         let url = Url::parse(mock.url()).unwrap();
         let (l1_url, l1_handle) = start_ws_server().await;
@@ -541,7 +555,7 @@ mod tests {
             reset_db: false,
         };
 
-        let driver = Driver::new(opts.clone()).await.unwrap();
+        let driver = Driver::new_with_migrations(opts.clone(), false).await.unwrap();
         l1_handle.abort();
         l2_handle.abort();
         assert_eq!(driver.batch_proof_timeout_secs, opts.instatus.batch_proof_timeout_secs);
