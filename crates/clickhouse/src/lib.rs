@@ -252,6 +252,15 @@ pub struct L2BlockTimeRow {
     pub block_number: u64,
 }
 
+/// Row representing the number of blocks produced by a sequencer
+#[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq)]
+pub struct SequencerDistributionRow {
+    /// Sequencer address
+    pub sequencer: [u8; 20],
+    /// Number of blocks produced by the sequencer
+    pub blocks: u64,
+}
+
 /// Clickhouse client
 #[derive(Clone, Debug)]
 pub struct ClickhouseClient {
@@ -775,6 +784,24 @@ impl ClickhouseClient {
             }
         }
         Ok(set.into_iter().collect())
+    }
+
+    /// Get the number of blocks produced by each sequencer since the given cutoff time.
+    pub async fn get_sequencer_distribution_since(
+        &self,
+        since: DateTime<Utc>,
+    ) -> Result<Vec<SequencerDistributionRow>> {
+        let client = self.base.clone().with_database(&self.db_name);
+        let query = format!(
+            "SELECT sequencer, count() AS blocks FROM {db}.l2_head_events \
+             WHERE inserted_at > toDateTime64({}, 3) \
+             GROUP BY sequencer ORDER BY blocks DESC",
+            since.timestamp_millis() as f64 / 1000.0,
+            db = self.db_name,
+        );
+
+        let rows = client.query(&query).fetch_all::<SequencerDistributionRow>().await?;
+        Ok(rows)
     }
 
     /// Get the average time in milliseconds it takes for a batch to be proven
