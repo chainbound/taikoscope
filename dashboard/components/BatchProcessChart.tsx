@@ -31,7 +31,7 @@ export const BatchProcessChart: React.FC<BatchProcessChartProps> = ({
   const showMinutes = data.some((d) => d.value >= 120);
   const formatValue = (value: number) =>
     showMinutes
-      ? `${(value / 60).toFixed(1)} minutes`
+      ? `${(value / 60).toFixed(2)} minutes`
       : `${Math.round(value)} seconds`;
 
   return (
@@ -57,7 +57,9 @@ export const BatchProcessChart: React.FC<BatchProcessChartProps> = ({
         <YAxis
           stroke="#666666"
           fontSize={12}
-          tickFormatter={(v) => (showMinutes ? (v / 60).toFixed(0) : v)}
+          tickFormatter={(v) =>
+            showMinutes ? (v / 60).toFixed(2) : v.toString()
+          }
           label={{
             value: showMinutes ? "Minutes" : "Seconds",
             angle: -90,
