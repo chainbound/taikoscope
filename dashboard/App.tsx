@@ -3,6 +3,7 @@ import { formatSeconds } from "./utils";
 import { DashboardHeader } from "./components/DashboardHeader";
 import { MetricCard } from "./components/MetricCard";
 import { ChartCard } from "./components/ChartCard";
+import { SummaryBar } from "./components/SummaryBar";
 import { SequencerPieChart } from "./components/SequencerPieChart";
 import { BlockTimeChart } from "./components/BlockTimeChart";
 import { BatchProcessChart } from "./components/BatchProcessChart";
@@ -226,6 +227,7 @@ const App: React.FC = () => {
         refreshRate={refreshRate}
         onRefreshRateChange={setRefreshRate}
       />
+      <SummaryBar l2HeadBlock={l2HeadBlock} l1HeadBlock={l1HeadBlock} />
 
       {errorMessage && (
         <div className="mt-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded">
@@ -233,56 +235,84 @@ const App: React.FC = () => {
         </div>
       )}
 
-      <main className="mt-6">
-        {/* Metrics Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4 md:gap-6">
-          {/* Grouped Metrics */}
-          <MetricCard
-            title="L2 Block Cadence"
-            value={findMetricValue("L2 Block Cadence")}
-          />
-          <MetricCard
-            title="Batch Posting Cadence"
-            value={findMetricValue("Batch Posting Cadence")}
-          />
-          <MetricCard
-            title="Avg. Prove Time"
-            value={findMetricValue("Avg. Prove Time")}
-          />
-          <MetricCard
-            title="Avg. Verify Time"
-            value={findMetricValue("Avg. Verify Time")}
-          />
+      <main className="mt-6 space-y-8">
+        {/* Cadence Metrics */}
+        <section>
+          <h2 className="mb-2 text-lg font-semibold text-gray-700">
+            Cadence Metrics
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <MetricCard
+              title="L2 Block Cadence"
+              value={findMetricValue("L2 Block Cadence")}
+            />
+            <MetricCard
+              title="Batch Posting Cadence"
+              value={findMetricValue("Batch Posting Cadence")}
+            />
+          </div>
+        </section>
 
-          {/* Other Metrics */}
-          <MetricCard
-            title="Active Gateways"
-            value={findMetricValue("Active Gateways")}
-          />
-          <MetricCard title="L2 Reorgs" value={findMetricValue("L2 Reorgs")} />
-          <MetricCard
-            title="Slashing Events"
-            value={findMetricValue("Slashing Events")}
-          />
-          <MetricCard
-            title="Forced Inclusions"
-            value={findMetricValue("Forced Inclusions")}
-          />
-        </div>
+        {/* Proof Metrics */}
+        <section>
+          <h2 className="mb-2 text-lg font-semibold text-gray-700">
+            Proof Metrics
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <MetricCard
+              title="Avg. Prove Time"
+              value={findMetricValue("Avg. Prove Time")}
+              highlight
+            />
+            <MetricCard
+              title="Avg. Verify Time"
+              value={findMetricValue("Avg. Verify Time")}
+              highlight
+            />
+          </div>
+        </section>
 
-        {/* Charts Grid - Reordered: Sequencer Pie Chart first */}
+        {/* Network Status */}
+        <section>
+          <h2 className="mb-2 text-lg font-semibold text-gray-700">
+            Network Status
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <MetricCard
+              title="Active Gateways"
+              value={findMetricValue("Active Gateways")}
+            />
+            <MetricCard
+              title="L2 Reorgs"
+              value={findMetricValue("L2 Reorgs")}
+            />
+            <MetricCard
+              title="Slashing Events"
+              value={findMetricValue("Slashing Events")}
+            />
+            <MetricCard
+              title="Forced Inclusions"
+              value={findMetricValue("Forced Inclusions")}
+            />
+          </div>
+        </section>
+
+        {/* Charts Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mt-6">
           <ChartCard title="Sequencer Distribution">
             <SequencerPieChart data={sequencerDistribution} />
           </ChartCard>
-          <ChartCard title="Prove Time">
-            <BatchProcessChart
-              data={secondsToProveData}
-              lineColor={TAΙΚΟ_PINK}
-            />
-          </ChartCard>
-          <ChartCard title="Verify Time">
-            <BatchProcessChart data={secondsToVerifyData} lineColor="#5DA5DA" />
+          <ChartCard title="Batch Processing Time">
+            <div className="space-y-4">
+              <BatchProcessChart
+                data={secondsToProveData}
+                lineColor={TAΙΚΟ_PINK}
+              />
+              <BatchProcessChart
+                data={secondsToVerifyData}
+                lineColor="#5DA5DA"
+              />
+            </div>
           </ChartCard>
           <ChartCard title="L2 Block Times">
             <BlockTimeChart data={l2BlockTimeData} lineColor="#FAA43A" />
@@ -293,24 +323,7 @@ const App: React.FC = () => {
         </div>
       </main>
 
-      {/* Footer for Block Numbers */}
-      <footer className="mt-8 pt-6 border-t border-gray-200">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-center md:text-left">
-          <div>
-            <span className="text-sm text-gray-500">L2 Head Block</span>
-            <p className="text-2xl font-semibold" style={{ color: TAΙΚΟ_PINK }}>
-              {l2HeadBlock}
-            </p>
-          </div>
-          <div>
-            <span className="text-sm text-gray-500">L1 Head Block</span>
-            <p className="text-2xl font-semibold" style={{ color: TAΙΚΟ_PINK }}>
-              {l1HeadBlock}
-            </p>
-          </div>
-        </div>
-        {/* Copyright notice removed as per request */}
-      </footer>
+      {/* Footer intentionally left empty */}
     </div>
   );
 };
