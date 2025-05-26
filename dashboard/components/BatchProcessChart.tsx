@@ -28,11 +28,19 @@ export const BatchProcessChart: React.FC<BatchProcessChartProps> = ({
     );
   }
 
-  const showMinutes = data.some((d) => d.value >= 120);
-  const formatValue = (value: number) =>
-    showMinutes
-      ? `${Number((value / 60).toFixed(2))} minutes`
-      : `${Math.round(value)} seconds`;
+  const maxSeconds = Math.max(...data.map((d) => d.value));
+  const unit =
+    maxSeconds >= 7200 ? "hours" : maxSeconds >= 120 ? "minutes" : "seconds";
+
+  const formatValue = (value: number) => {
+    if (unit === "hours") {
+      return `${Number((value / 3600).toFixed(2))} hours`;
+    }
+    if (unit === "minutes") {
+      return `${Number((value / 60).toFixed(2))} minutes`;
+    }
+    return `${Math.round(value)} seconds`;
+  };
 
   return (
     <ResponsiveContainer width="100%" height="100%">
@@ -57,11 +65,18 @@ export const BatchProcessChart: React.FC<BatchProcessChartProps> = ({
         <YAxis
           stroke="#666666"
           fontSize={12}
-          tickFormatter={(v) =>
-            showMinutes ? Number((v / 60).toFixed(2)) : v.toString()
-          }
+          tickFormatter={(v) => {
+            if (unit === "hours") return Number((v / 3600).toFixed(2));
+            if (unit === "minutes") return Number((v / 60).toFixed(2));
+            return v.toString();
+          }}
           label={{
-            value: showMinutes ? "Minutes" : "Seconds",
+            value:
+              unit === "hours"
+                ? "Hours"
+                : unit === "minutes"
+                  ? "Minutes"
+                  : "Seconds",
             angle: -90,
             position: "insideLeft",
             offset: -5,
@@ -91,7 +106,13 @@ export const BatchProcessChart: React.FC<BatchProcessChartProps> = ({
           strokeWidth={2}
           dot={{ r: 3 }}
           activeDot={{ r: 6 }}
-          name={showMinutes ? "Time (minutes)" : "Time (seconds)"}
+          name={
+            unit === "hours"
+              ? "Time (hours)"
+              : unit === "minutes"
+                ? "Time (minutes)"
+                : "Time (seconds)"
+          }
         />
       </LineChart>
     </ResponsiveContainer>
