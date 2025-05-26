@@ -72,24 +72,35 @@ const RefreshRateInput: React.FC<RefreshRateInputProps> = ({
   refreshRate,
   onRefreshRateChange,
 }) => {
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const seconds = Math.max(10, Number(e.target.value));
-    onRefreshRateChange(seconds * 1000);
+  const options = [
+    { label: "10s", value: 10_000 },
+    { label: "60s", value: 60_000 },
+    { label: "5 min", value: 5 * 60_000 },
+    { label: "10 min", value: 10 * 60_000 },
+  ];
+
+  const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = Number(e.target.value);
+    onRefreshRateChange(value);
   };
 
   return (
     <div className="flex items-center space-x-1">
       <label htmlFor="refreshRate" className="text-sm text-gray-600">
-        Refresh (s)
+        Refresh
       </label>
-      <input
+      <select
         id="refreshRate"
-        type="number"
-        min={10}
-        value={refreshRate / 1000}
+        value={refreshRate}
         onChange={handleChange}
-        className="w-20 p-1 border rounded-md text-sm"
-      />
+        className="p-1 border rounded-md text-sm"
+      >
+        {options.map(({ label, value }) => (
+          <option key={value} value={value}>
+            {label}
+          </option>
+        ))}
+      </select>
     </div>
   );
 };
