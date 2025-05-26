@@ -264,7 +264,6 @@ async fn avg_prove_time(
     Json(AvgProveTimeResponse { avg_prove_time_ms: avg })
 }
 
-
 async fn avg_verify_time(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
@@ -283,7 +282,6 @@ async fn avg_verify_time(
     };
     Json(AvgVerifyTimeResponse { avg_verify_time_ms: avg })
 }
-
 
 async fn l2_block_cadence(
     Query(params): Query<RangeQuery>,
@@ -304,7 +302,6 @@ async fn l2_block_cadence(
     Json(L2BlockCadenceResponse { l2_block_cadence_ms: avg })
 }
 
-
 async fn batch_posting_cadence(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
@@ -324,7 +321,6 @@ async fn batch_posting_cadence(
     Json(BatchPostingCadenceResponse { batch_posting_cadence_ms: avg })
 }
 
-
 async fn avg_l2_tps(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
@@ -343,7 +339,6 @@ async fn avg_l2_tps(
     };
     Json(AvgL2TpsResponse { avg_tps: avg })
 }
-
 
 async fn prove_times(
     Query(params): Query<RangeQuery>,

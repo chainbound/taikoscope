@@ -544,17 +544,22 @@ impl ClickhouseClient {
         Ok(ts_opt)
     }
 
-    /// Get timestamp of the latest `BatchProposed` event insertion in UTC.
+    /// Get timestamp of the latest `BatchProposed` event based on L1 block timestamp in UTC.
     pub async fn get_last_batch_time(&self) -> Result<Option<DateTime<Utc>>> {
         let client = self.base.clone().with_database(&self.db_name);
-        let query =
-            format!("SELECT toUInt64(max(inserted_at)) AS block_ts FROM {}.batches", &self.db_name);
+        let query = format!(
+            "SELECT max(l1_events.block_ts) AS block_ts
+             FROM {db}.batches b
+             INNER JOIN {db}.l1_head_events l1_events
+               ON b.l1_block_number = l1_events.l1_block_number",
+            db = &self.db_name
+        );
 
         let rows = client
             .query(&query)
             .fetch_all::<MaxTs>()
             .await
-            .context("fetching max(inserted_at) failed")?;
+            .context("fetching max batch L1 block timestamp failed")?;
 
         let row = match rows.into_iter().next() {
             Some(r) => r,
@@ -564,7 +569,8 @@ impl ClickhouseClient {
         if row.block_ts == 0 {
             return Ok(None);
         }
-        let ts_opt = match Utc.timestamp_millis_opt(row.block_ts as i64) {
+
+        let ts_opt = match Utc.timestamp_opt(row.block_ts as i64, 0) {
             LocalResult::Single(dt) => Some(dt),
             _ => None,
         };
@@ -1719,7 +1725,7 @@ mod tests {
     #[tokio::test]
     async fn test_get_last_batch_time() {
         let mock = Mock::new();
-        let expected_ts = 77_000u64; // milliseconds since epoch
+        let expected_ts = 77u64; // seconds since epoch (L1 block timestamp)
         mock.add(handlers::provide(vec![MaxRow { block_ts: expected_ts }]));
 
         let url = Url::parse(mock.url()).unwrap();
@@ -1727,7 +1733,7 @@ mod tests {
             ClickhouseClient::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
 
         let result = ch.get_last_batch_time().await.unwrap();
-        let expected = Utc.timestamp_millis_opt(expected_ts as i64).single().unwrap();
+        let expected = Utc.timestamp_opt(expected_ts as i64, 0).single().unwrap();
         assert_eq!(result, Some(expected));
     }
 

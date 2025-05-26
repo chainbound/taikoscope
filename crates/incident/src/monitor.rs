@@ -134,6 +134,20 @@ impl InstatusL1Monitor {
             "Batch event status"
         );
 
+        // Add startup grace period check - don't create incidents if data is too old (system just
+        // started)
+        let startup_grace_period = Duration::from_secs(3600); // 1 hour grace period
+        let batch_very_old = age_batch > startup_grace_period;
+        let l2_very_old = age_l2 > startup_grace_period;
+
+        if batch_very_old || l2_very_old {
+            debug!(
+                batch_very_old,
+                l2_very_old, "Skipping incident creation due to startup grace period"
+            );
+            return Ok(());
+        }
+
         let has_active = !self.base.active_incidents.is_empty();
 
         match (has_active, batch_healthy, l2_healthy) {
@@ -174,15 +188,31 @@ impl InstatusL1Monitor {
 
         match (batch_res, l2_res) {
             (Ok(Some(batch_ts)), Ok(Some(l2_ts))) => {
+                // Additional validation: ensure we have sufficient data before monitoring
+                let now = Utc::now();
+                let batch_age = now.signed_duration_since(batch_ts).to_std()?;
+                let l2_age = now.signed_duration_since(l2_ts).to_std()?;
+
+                // Skip monitoring if timestamps are suspiciously old (indicates incomplete data)
+                let max_reasonable_age = Duration::from_secs(86400); // 24 hours
+                if batch_age > max_reasonable_age || l2_age > max_reasonable_age {
+                    debug!(
+                        batch_age_hours = batch_age.as_secs() / 3600,
+                        l2_age_hours = l2_age.as_secs() / 3600,
+                        "Skipping monitoring due to suspiciously old timestamps - insufficient data"
+                    );
+                    return Ok(());
+                }
+
                 if let Err(e) = self.handle(batch_ts, l2_ts).await {
                     error!(%e, "handling new batch event status");
                 }
             }
             (Ok(None), Ok(Some(_))) => {
-                warn!("no batch event timestamp available this tick for batch monitor")
+                debug!("no batch event timestamp available this tick for batch monitor - skipping")
             }
             (_, Ok(None)) => {
-                warn!("no L2 head timestamp available this tick for batch monitor")
+                debug!("no L2 head timestamp available this tick for batch monitor - skipping")
             }
             (Err(e), _) => error!(%e, "failed to query last batch time"),
             (_, Err(e)) => error!(%e, "failed to query last L2 head time for batch monitor"),
