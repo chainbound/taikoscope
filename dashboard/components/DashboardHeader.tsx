@@ -45,7 +45,7 @@ const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
   currentTimeRange,
   onTimeRangeChange,
 }) => {
-  const ranges: TimeRange[] = ["1h", "24h"];
+  const ranges: TimeRange[] = ["1h", "24h", "7d"];
 
   return (
     <div className="flex space-x-1 bg-gray-200 p-0.5 rounded-md">
