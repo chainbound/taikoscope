@@ -15,7 +15,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   onRefreshRateChange,
 }) => {
   return (
-    <header className="flex flex-col md:flex-row justify-between items-center pb-4 border-b border-gray-200">
+    <header className="flex flex-col md:flex-row justify-between items-center pb-4 border-b border-gray-700">
       <h1 className="text-3xl font-bold" style={{ color: "#e81899" }}>
         {" "}
         {/* Updated Taiko Pink */}
@@ -48,13 +48,13 @@ const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
   const ranges: TimeRange[] = ["1h", "24h", "7d"];
 
   return (
-    <div className="flex space-x-1 bg-gray-200 p-0.5 rounded-md">
+    <div className="flex space-x-1 bg-gray-700 p-0.5 rounded-md">
       {ranges.map((range) => (
         <button
           key={range}
           onClick={() => onTimeRangeChange(range)}
           className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors
-            ${currentTimeRange === range ? "bg-white text-[#e81899] shadow-sm" : "text-gray-600 hover:bg-gray-100"}`} /* Updated Taiko Pink for active button */
+            ${currentTimeRange === range ? "bg-gray-900 text-[#e81899] shadow-sm" : "text-gray-300 hover:bg-gray-800"}`} /* Updated Taiko Pink for active button */
         >
           {range.toUpperCase()}
         </button>
@@ -86,14 +86,14 @@ const RefreshRateInput: React.FC<RefreshRateInputProps> = ({
 
   return (
     <div className="flex items-center space-x-1">
-      <label htmlFor="refreshRate" className="text-sm text-gray-600">
+      <label htmlFor="refreshRate" className="text-sm text-gray-300">
         Refresh
       </label>
       <select
         id="refreshRate"
         value={refreshRate}
         onChange={handleChange}
-        className="p-1 border rounded-md text-sm"
+        className="p-1 border rounded-md text-sm bg-gray-900 border-gray-700"
       >
         {options.map(({ label, value }) => (
           <option key={value} value={value}>

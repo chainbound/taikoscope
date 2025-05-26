@@ -217,7 +217,7 @@ const App: React.FC = () => {
 
   return (
     <div
-      className="min-h-screen bg-white text-gray-800 p-4 md:p-6 lg:p-8"
+      className="min-h-screen bg-gray-900 text-gray-100 p-4 md:p-6 lg:p-8"
       style={{ fontFamily: "'Inter', sans-serif" }}
     >
       <DashboardHeader
@@ -228,7 +228,7 @@ const App: React.FC = () => {
       />
 
       {errorMessage && (
-        <div className="mt-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded">
+        <div className="mt-4 p-3 bg-red-900 border border-red-700 text-red-100 rounded">
           {errorMessage}
         </div>
       )}
