@@ -138,7 +138,16 @@ const App: React.FC = () => {
             : "N/A",
       },
       {
-        title: "Avg. Verify Time",
+        title: (
+          <a
+            href="https://docs.taiko.xyz/taiko-alethia-protocol/protocol-architecture/block-states"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:underline"
+          >
+            Avg. Verify Time
+          </a>
+        ),
         value:
           avgVerify !== null && avgVerify > 0
             ? formatSeconds(avgVerify / 1000)
@@ -198,9 +207,10 @@ const App: React.FC = () => {
   }, [timeRange, fetchData, refreshRate]);
 
   const findMetricValue = (titlePart: string): string => {
-    const metric = metrics.find((m) =>
-      m.title.toLowerCase().includes(titlePart.toLowerCase()),
-    );
+    const metric = metrics.find((m) => {
+      const titleStr = typeof m.title === 'string' ? m.title : 'Avg. Verify Time';
+      return titleStr.toLowerCase().includes(titlePart.toLowerCase());
+    });
     return metric ? metric.value : "N/A";
   };
 

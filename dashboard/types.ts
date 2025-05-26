@@ -12,9 +12,11 @@ export interface PieChartDataItem {
   fill?: string; // Color fill is now optional, can be assigned by the chart component
 }
 
+import type { ReactNode } from "react";
+
 export interface MetricData {
-  title: string;
+  title: ReactNode;
   value: string;
   unit?: string; // e.g., '1h', '24h', or specific units like 'ms'
-  description?: string;
+  description?: ReactNode;
 }
