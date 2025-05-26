@@ -19,7 +19,7 @@ export interface AvgTimeResponse {
 }
 
 export const fetchAvgProveTime = async (
-  range: "1h" | "24h",
+  range: "1h" | "24h" | "7d",
 ): Promise<number | null> => {
   const url =
     range === "1h"
@@ -30,7 +30,7 @@ export const fetchAvgProveTime = async (
 };
 
 export const fetchAvgVerifyTime = async (
-  range: "1h" | "24h",
+  range: "1h" | "24h" | "7d",
 ): Promise<number | null> => {
   const url =
     range === "1h"
@@ -41,7 +41,7 @@ export const fetchAvgVerifyTime = async (
 };
 
 export const fetchL2BlockCadence = async (
-  range: "1h" | "24h",
+  range: "1h" | "24h" | "7d",
 ): Promise<number | null> => {
   const url =
     range === "1h"
@@ -52,7 +52,7 @@ export const fetchL2BlockCadence = async (
 };
 
 export const fetchBatchPostingCadence = async (
-  range: "1h" | "24h",
+  range: "1h" | "24h" | "7d",
 ): Promise<number | null> => {
   const url =
     range === "1h"
@@ -63,7 +63,7 @@ export const fetchBatchPostingCadence = async (
 };
 
 export const fetchActiveGateways = async (
-  range: "1h" | "24h",
+  range: "1h" | "24h" | "7d",
 ): Promise<number | null> => {
   const url = `${API_BASE}/active-gateways?range=${range}`;
   const data = await fetchJson<{ gateways: string[] }>(url);
@@ -71,7 +71,7 @@ export const fetchActiveGateways = async (
 };
 
 export const fetchL2Reorgs = async (
-  range: "1h" | "24h",
+  range: "1h" | "24h" | "7d",
 ): Promise<number | null> => {
   const url = `${API_BASE}/reorgs?range=${range}`;
   const data = await fetchJson<{ events: unknown[] }>(url);
@@ -79,7 +79,7 @@ export const fetchL2Reorgs = async (
 };
 
 export const fetchSlashingEvents = async (
-  range: "1h" | "24h",
+  range: "1h" | "24h" | "7d",
 ): Promise<number | null> => {
   const url = `${API_BASE}/slashings?range=${range}`;
   const data = await fetchJson<{ events: unknown[] }>(url);
@@ -87,7 +87,7 @@ export const fetchSlashingEvents = async (
 };
 
 export const fetchForcedInclusions = async (
-  range: "1h" | "24h",
+  range: "1h" | "24h" | "7d",
 ): Promise<number | null> => {
   const url = `${API_BASE}/forced-inclusions?range=${range}`;
   const data = await fetchJson<{ events: unknown[] }>(url);
@@ -95,7 +95,7 @@ export const fetchForcedInclusions = async (
 };
 
 export const fetchL2HeadBlock = async (
-  range: "1h" | "24h",
+  range: "1h" | "24h" | "7d",
 ): Promise<number | null> => {
   const url = `${API_BASE}/l2-block-times?range=${range}`;
   const data = await fetchJson<{ blocks: { block_number: number }[] }>(url);
@@ -105,7 +105,7 @@ export const fetchL2HeadBlock = async (
 };
 
 export const fetchL1HeadBlock = async (
-  range: "1h" | "24h",
+  range: "1h" | "24h" | "7d",
 ): Promise<number | null> => {
   const url = `${API_BASE}/l1-block-times?range=${range}`;
   const data = await fetchJson<{ blocks: { block_number: number }[] }>(url);
