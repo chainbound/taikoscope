@@ -147,6 +147,17 @@ struct L2BlockTimesResponse {
     blocks: Vec<clickhouse_lib::L2BlockTimeRow>,
 }
 
+#[derive(Debug, Serialize)]
+struct SequencerDistributionItem {
+    address: String,
+    blocks: u64,
+}
+
+#[derive(Debug, Serialize)]
+struct SequencerDistributionResponse {
+    sequencers: Vec<SequencerDistributionItem>,
+}
+
 async fn l2_head(State(state): State<ApiState>) -> Json<L2HeadResponse> {
     let ts = match state.client.get_last_l2_head_time().await {
         Ok(time) => time,
@@ -414,6 +425,28 @@ async fn l2_block_times(
     Json(L2BlockTimesResponse { blocks })
 }
 
+async fn sequencer_distribution(
+    Query(params): Query<RangeQuery>,
+    State(state): State<ApiState>,
+) -> Json<SequencerDistributionResponse> {
+    let since = Utc::now() - range_duration(&params.range);
+    let rows = match state.client.get_sequencer_distribution_since(since).await {
+        Ok(r) => r,
+        Err(e) => {
+            tracing::error!("Failed to get sequencer distribution: {}", e);
+            Vec::new()
+        }
+    };
+    let sequencers = rows
+        .into_iter()
+        .map(|r| SequencerDistributionItem {
+            address: format!("0x{}", encode(r.sequencer)),
+            blocks: r.blocks,
+        })
+        .collect();
+    Json(SequencerDistributionResponse { sequencers })
+}
+
 async fn rate_limit(
     State(state): State<ApiState>,
     req: axum::http::Request<axum::body::Body>,
@@ -448,6 +481,7 @@ fn router(state: ApiState) -> Router {
         .route("/verify-times", get(verify_times))
         .route("/l1-block-times", get(l1_block_times))
         .route("/l2-block-times", get(l2_block_times))
+        .route("/sequencer-distribution", get(sequencer_distribution))
         .layer(middleware::from_fn_with_state(state.clone(), rate_limit))
         .with_state(state)
 }
@@ -782,5 +816,23 @@ mod tests {
         let app = build_app(mock.url());
         let body = send_request(app, "/avg-l2-tps/24h").await;
         assert_eq!(body, json!({ "avg_tps": 2.0 }));
+    }
+
+    #[derive(Serialize, Row)]
+    struct SequencerRowTest {
+        sequencer: [u8; 20],
+        blocks: u64,
+    }
+
+    #[tokio::test]
+    async fn sequencer_distribution_endpoint() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(vec![SequencerRowTest { sequencer: [1u8; 20], blocks: 5 }]));
+        let app = build_app(mock.url());
+        let body = send_request(app, "/sequencer-distribution?range=1h").await;
+        assert_eq!(
+            body,
+            json!({ "sequencers": [ { "address": "0x0101010101010101010101010101010101010101", "blocks": 5 } ] })
+        );
     }
 }

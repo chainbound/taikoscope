@@ -3,6 +3,8 @@ export const API_BASE =
   (import.meta as any).env.API_BASE ||
   "";
 
+import type { TimeSeriesData, PieChartDataItem } from "../types";
+
 export interface RequestResult<T> {
   data: T | null;
   badRequest: boolean;
@@ -147,4 +149,93 @@ export const fetchL1HeadBlock = async (
       ? res.data.blocks[res.data.blocks.length - 1].block_number
       : null;
   return { data: value, badRequest: res.badRequest };
+};
+
+export const fetchProveTimes = async (
+  range: "1h" | "24h" | "7d",
+): Promise<RequestResult<TimeSeriesData[]>> => {
+  const url = `${API_BASE}/prove-times?range=${range}`;
+  const res = await fetchJson<{
+    batches: { batch_id: number; seconds_to_prove: number }[];
+  }>(url);
+  return {
+    data: res.data
+      ? res.data.batches.map((b) => ({
+          name: b.batch_id.toString(),
+          value: b.seconds_to_prove,
+          timestamp: 0,
+        }))
+      : null,
+    badRequest: res.badRequest,
+  };
+};
+
+export const fetchVerifyTimes = async (
+  range: "1h" | "24h" | "7d",
+): Promise<RequestResult<TimeSeriesData[]>> => {
+  const url = `${API_BASE}/verify-times?range=${range}`;
+  const res = await fetchJson<{
+    batches: { batch_id: number; seconds_to_verify: number }[];
+  }>(url);
+  return {
+    data: res.data
+      ? res.data.batches.map((b) => ({
+          name: b.batch_id.toString(),
+          value: b.seconds_to_verify,
+          timestamp: 0,
+        }))
+      : null,
+    badRequest: res.badRequest,
+  };
+};
+
+export const fetchL1BlockTimes = async (
+  range: "1h" | "24h" | "7d",
+): Promise<RequestResult<TimeSeriesData[]>> => {
+  const url = `${API_BASE}/l1-block-times?range=${range}`;
+  const res = await fetchJson<{
+    blocks: { minute: number; block_number: number }[];
+  }>(url);
+  return {
+    data: res.data
+      ? res.data.blocks.map((b) => ({
+          timestamp: b.minute * 1000,
+          value: b.block_number,
+        }))
+      : null,
+    badRequest: res.badRequest,
+  };
+};
+
+export const fetchL2BlockTimes = async (
+  range: "1h" | "24h" | "7d",
+): Promise<RequestResult<TimeSeriesData[]>> => {
+  const url = `${API_BASE}/l2-block-times?range=${range}`;
+  const res = await fetchJson<{
+    blocks: { minute: number; block_number: number }[];
+  }>(url);
+  return {
+    data: res.data
+      ? res.data.blocks.map((b) => ({
+          timestamp: b.minute * 1000,
+          value: b.block_number,
+        }))
+      : null,
+    badRequest: res.badRequest,
+  };
+};
+
+export const fetchSequencerDistribution = async (
+  range: "1h" | "24h" | "7d",
+): Promise<RequestResult<PieChartDataItem[]>> => {
+  const url = `${API_BASE}/sequencer-distribution?range=${range}`;
+  const res = await fetchJson<{
+    sequencers: { address: string; blocks: number }[];
+  }>(url);
+  return {
+    data: res.data
+      ? res.data.sequencers.map((s) => ({ name: s.address, value: s.blocks }))
+      : null,
+    badRequest: res.badRequest,
+  };
 };

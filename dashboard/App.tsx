@@ -12,11 +12,6 @@ import {
   MetricData,
 } from "./types";
 import {
-  generateMockBlockTimeData,
-  generateMockBatchProcessData,
-  generateMockSequencerData,
-} from "./services/mockDataService";
-import {
   fetchAvgProveTime,
   fetchAvgVerifyTime,
   fetchL2BlockCadence,
@@ -27,6 +22,11 @@ import {
   fetchForcedInclusions,
   fetchL2HeadBlock,
   fetchL1HeadBlock,
+  fetchProveTimes,
+  fetchVerifyTimes,
+  fetchL1BlockTimes,
+  fetchL2BlockTimes,
+  fetchSequencerDistribution,
 } from "./services/apiService";
 
 const TAΙΚΟ_PINK = "#e81899"; // Updated Taiko Pink
@@ -63,6 +63,11 @@ const App: React.FC = () => {
       forcedInclusionsRes,
       l2BlockRes,
       l1BlockRes,
+      proveTimesRes,
+      verifyTimesRes,
+      l1TimesRes,
+      l2TimesRes,
+      sequencerDistRes,
     ] = await Promise.all([
       fetchL2BlockCadence(range),
       fetchBatchPostingCadence(range),
@@ -74,6 +79,11 @@ const App: React.FC = () => {
       fetchForcedInclusions(range),
       fetchL2HeadBlock(range),
       fetchL1HeadBlock(range),
+      fetchProveTimes(range),
+      fetchVerifyTimes(range),
+      fetchL1BlockTimes(range),
+      fetchL2BlockTimes(range),
+      fetchSequencerDistribution(range),
     ]);
 
     const l2Cadence = l2CadenceRes.data;
@@ -86,6 +96,11 @@ const App: React.FC = () => {
     const forcedInclusions = forcedInclusionsRes.data;
     const l2Block = l2BlockRes.data;
     const l1Block = l1BlockRes.data;
+    const proveTimes = proveTimesRes.data || [];
+    const verifyTimes = verifyTimesRes.data || [];
+    const l1Times = l1TimesRes.data || [];
+    const l2Times = l2TimesRes.data || [];
+    const sequencerDist = sequencerDistRes.data || [];
 
     const anyBadRequest =
       l2CadenceRes.badRequest ||
@@ -97,7 +112,12 @@ const App: React.FC = () => {
       slashingsRes.badRequest ||
       forcedInclusionsRes.badRequest ||
       l2BlockRes.badRequest ||
-      l1BlockRes.badRequest;
+      l1BlockRes.badRequest ||
+      proveTimesRes.badRequest ||
+      verifyTimesRes.badRequest ||
+      l1TimesRes.badRequest ||
+      l2TimesRes.badRequest ||
+      sequencerDistRes.badRequest;
 
     const currentMetrics: MetricData[] = [
       {
@@ -113,11 +133,17 @@ const App: React.FC = () => {
       },
       {
         title: "Avg. Prove Time",
-        value: avgProve !== null && avgProve > 0 ? `${(avgProve / 1000).toFixed(2)}s` : "N/A",
+        value:
+          avgProve !== null && avgProve > 0
+            ? `${(avgProve / 1000).toFixed(2)}s`
+            : "N/A",
       },
       {
         title: "Avg. Verify Time",
-        value: avgVerify !== null && avgVerify > 0 ? `${(avgVerify / 1000).toFixed(2)}s` : "N/A",
+        value:
+          avgVerify !== null && avgVerify > 0
+            ? `${(avgVerify / 1000).toFixed(2)}s`
+            : "N/A",
       },
       {
         title: "Active Gateways",
@@ -146,11 +172,11 @@ const App: React.FC = () => {
     ];
 
     setMetrics(currentMetrics);
-    setSecondsToProveData(generateMockBatchProcessData(timeRange, "prove"));
-    setSecondsToVerifyData(generateMockBatchProcessData(timeRange, "verify"));
-    setL2BlockTimeData(generateMockBlockTimeData(timeRange, "L2"));
-    setL1BlockTimeData(generateMockBlockTimeData(timeRange, "L1"));
-    setSequencerDistribution(generateMockSequencerData());
+    setSecondsToProveData(proveTimes);
+    setSecondsToVerifyData(verifyTimes);
+    setL2BlockTimeData(l2Times);
+    setL1BlockTimeData(l1Times);
+    setSequencerDistribution(sequencerDist);
     setL2HeadBlock(
       currentMetrics.find((m) => m.title === "L2 Head Block")?.value || "N/A",
     );
