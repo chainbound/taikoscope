@@ -782,13 +782,13 @@ impl ClickhouseClient {
     pub async fn get_avg_prove_time_last_hour(&self) -> Result<Option<u64>> {
         #[derive(Row, Deserialize)]
         struct AvgRow {
-            avg_ms: Option<f64>,
+            avg_ms: f64,
         }
 
         let client = self.base.clone().with_database(&self.db_name);
         let query = format!(
-            "SELECT avg(toUnixTimestamp64Milli(p.inserted_at) - \
-                    toUnixTimestamp64Milli(b.inserted_at)) AS avg_ms \
+            "SELECT COALESCE(avg(toUnixTimestamp64Milli(p.inserted_at) - \
+                    toUnixTimestamp64Milli(b.inserted_at)), 0) AS avg_ms \
              FROM {db}.proved_batches p \
              INNER JOIN {db}.batches b \
              ON p.l1_block_number = b.l1_block_number AND p.batch_id = b.batch_id \
@@ -802,7 +802,7 @@ impl ClickhouseClient {
             None => return Ok(None),
         };
 
-        Ok(row.avg_ms.map(|ms| ms.round() as u64))
+        if row.avg_ms == 0.0 { Ok(None) } else { Ok(Some(row.avg_ms.round() as u64)) }
     }
 
     /// Get the average time in milliseconds it takes for a batch to be proven
@@ -810,13 +810,13 @@ impl ClickhouseClient {
     pub async fn get_avg_prove_time_last_24_hours(&self) -> Result<Option<u64>> {
         #[derive(Row, Deserialize)]
         struct AvgRow {
-            avg_ms: Option<f64>,
+            avg_ms: f64,
         }
 
         let client = self.base.clone().with_database(&self.db_name);
         let query = format!(
-            "SELECT avg(toUnixTimestamp64Milli(p.inserted_at) - \
-                    toUnixTimestamp64Milli(b.inserted_at)) AS avg_ms \
+            "SELECT COALESCE(avg(toUnixTimestamp64Milli(p.inserted_at) - \
+                    toUnixTimestamp64Milli(b.inserted_at)), 0) AS avg_ms \
              FROM {db}.proved_batches p \
              INNER JOIN {db}.batches b \
              ON p.l1_block_number = b.l1_block_number AND p.batch_id = b.batch_id \
@@ -830,7 +830,7 @@ impl ClickhouseClient {
             None => return Ok(None),
         };
 
-        Ok(row.avg_ms.map(|ms| ms.round() as u64))
+        if row.avg_ms == 0.0 { Ok(None) } else { Ok(Some(row.avg_ms.round() as u64)) }
     }
 
     /// Get the average time in milliseconds it takes for a batch to be verified
@@ -838,13 +838,13 @@ impl ClickhouseClient {
     pub async fn get_avg_verify_time_last_hour(&self) -> Result<Option<u64>> {
         #[derive(Row, Deserialize)]
         struct AvgRow {
-            avg_ms: Option<f64>,
+            avg_ms: f64,
         }
 
         let client = self.base.clone().with_database(&self.db_name);
         let query = format!(
-            "SELECT avg(toUnixTimestamp64Milli(v.inserted_at) - \
-                    toUnixTimestamp64Milli(p.inserted_at)) AS avg_ms \
+            "SELECT COALESCE(avg(toUnixTimestamp64Milli(v.inserted_at) - \
+                    toUnixTimestamp64Milli(p.inserted_at)), 0) AS avg_ms \
              FROM {db}.verified_batches v \
              INNER JOIN {db}.proved_batches p \
              ON v.l1_block_number = p.l1_block_number AND v.batch_id = p.batch_id \
@@ -858,7 +858,7 @@ impl ClickhouseClient {
             None => return Ok(None),
         };
 
-        Ok(row.avg_ms.map(|ms| ms.round() as u64))
+        if row.avg_ms == 0.0 { Ok(None) } else { Ok(Some(row.avg_ms.round() as u64)) }
     }
 
     /// Get the average time in milliseconds it takes for a batch to be verified
@@ -866,13 +866,13 @@ impl ClickhouseClient {
     pub async fn get_avg_verify_time_last_24_hours(&self) -> Result<Option<u64>> {
         #[derive(Row, Deserialize)]
         struct AvgRow {
-            avg_ms: Option<f64>,
+            avg_ms: f64,
         }
 
         let client = self.base.clone().with_database(&self.db_name);
         let query = format!(
-            "SELECT avg(toUnixTimestamp64Milli(v.inserted_at) - \
-                    toUnixTimestamp64Milli(p.inserted_at)) AS avg_ms \
+            "SELECT COALESCE(avg(toUnixTimestamp64Milli(v.inserted_at) - \
+                    toUnixTimestamp64Milli(p.inserted_at)), 0) AS avg_ms \
              FROM {db}.verified_batches v \
              INNER JOIN {db}.proved_batches p \
              ON v.l1_block_number = p.l1_block_number AND v.batch_id = p.batch_id \
@@ -886,7 +886,7 @@ impl ClickhouseClient {
             None => return Ok(None),
         };
 
-        Ok(row.avg_ms.map(|ms| ms.round() as u64))
+        if row.avg_ms == 0.0 { Ok(None) } else { Ok(Some(row.avg_ms.round() as u64)) }
     }
 
     /// Get the average interval in milliseconds between consecutive L2 blocks
@@ -1794,14 +1794,14 @@ mod tests {
 
     #[derive(Serialize, Row)]
     struct AvgRowTest {
-        avg_ms: Option<f64>,
+        avg_ms: f64,
     }
 
     #[tokio::test]
     async fn test_get_avg_prove_time_last_hour() {
         let mock = Mock::new();
         let expected = 1500.0f64;
-        mock.add(handlers::provide(vec![AvgRowTest { avg_ms: Some(expected) }]));
+        mock.add(handlers::provide(vec![AvgRowTest { avg_ms: expected }]));
 
         let url = Url::parse(mock.url()).unwrap();
         let client = ClickhouseClient::new(
@@ -1820,7 +1820,7 @@ mod tests {
     async fn test_get_avg_prove_time_last_24_hours() {
         let mock = Mock::new();
         let expected = 1500.0f64;
-        mock.add(handlers::provide(vec![AvgRowTest { avg_ms: Some(expected) }]));
+        mock.add(handlers::provide(vec![AvgRowTest { avg_ms: expected }]));
 
         let url = Url::parse(mock.url()).unwrap();
         let client = ClickhouseClient::new(
@@ -1875,7 +1875,7 @@ mod tests {
     async fn test_get_avg_verify_time_last_hour() {
         let mock = Mock::new();
         let expected = 2500.0f64;
-        mock.add(handlers::provide(vec![AvgRowTest { avg_ms: Some(expected) }]));
+        mock.add(handlers::provide(vec![AvgRowTest { avg_ms: expected }]));
 
         let url = Url::parse(mock.url()).unwrap();
         let client = ClickhouseClient::new(
@@ -1894,7 +1894,7 @@ mod tests {
     async fn test_get_avg_verify_time_last_24_hours() {
         let mock = Mock::new();
         let expected = 2500.0f64;
-        mock.add(handlers::provide(vec![AvgRowTest { avg_ms: Some(expected) }]));
+        mock.add(handlers::provide(vec![AvgRowTest { avg_ms: expected }]));
 
         let url = Url::parse(mock.url()).unwrap();
         let client = ClickhouseClient::new(

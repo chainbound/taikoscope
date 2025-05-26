@@ -487,7 +487,7 @@ mod tests {
 
     #[derive(Serialize, Row)]
     struct AvgRowTest {
-        avg_ms: Option<f64>,
+        avg_ms: f64,
     }
 
     fn build_app(mock_url: &str) -> Router {
@@ -592,7 +592,7 @@ mod tests {
     #[tokio::test]
     async fn avg_prove_time_endpoint() {
         let mock = Mock::new();
-        mock.add(handlers::provide(vec![AvgRowTest { avg_ms: Some(1500.0) }]));
+        mock.add(handlers::provide(vec![AvgRowTest { avg_ms: 1500.0 }]));
         let app = build_app(mock.url());
         let body = send_request(app, "/avg-prove-time").await;
         assert_eq!(body, json!({ "avg_prove_time_ms": 1500 }));
@@ -601,7 +601,7 @@ mod tests {
     #[tokio::test]
     async fn avg_prove_time_24h_endpoint() {
         let mock = Mock::new();
-        mock.add(handlers::provide(vec![AvgRowTest { avg_ms: Some(1500.0) }]));
+        mock.add(handlers::provide(vec![AvgRowTest { avg_ms: 1500.0 }]));
         let app = build_app(mock.url());
         let body = send_request(app, "/avg-prove-time/24h").await;
         assert_eq!(body, json!({ "avg_prove_time_ms": 1500 }));
@@ -610,7 +610,7 @@ mod tests {
     #[tokio::test]
     async fn avg_verify_time_endpoint() {
         let mock = Mock::new();
-        mock.add(handlers::provide(vec![AvgRowTest { avg_ms: Some(2500.0) }]));
+        mock.add(handlers::provide(vec![AvgRowTest { avg_ms: 2500.0 }]));
         let app = build_app(mock.url());
         let body = send_request(app, "/avg-verify-time").await;
         assert_eq!(body, json!({ "avg_verify_time_ms": 2500 }));
@@ -619,7 +619,7 @@ mod tests {
     #[tokio::test]
     async fn avg_verify_time_24h_endpoint() {
         let mock = Mock::new();
-        mock.add(handlers::provide(vec![AvgRowTest { avg_ms: Some(2500.0) }]));
+        mock.add(handlers::provide(vec![AvgRowTest { avg_ms: 2500.0 }]));
         let app = build_app(mock.url());
         let body = send_request(app, "/avg-verify-time/24h").await;
         assert_eq!(body, json!({ "avg_verify_time_ms": 2500 }));
