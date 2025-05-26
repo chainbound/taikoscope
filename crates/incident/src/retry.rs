@@ -110,4 +110,15 @@ mod tests {
         let err = client.get(url).send().await.unwrap().error_for_status().unwrap_err();
         assert!(!super::is_retryable(&Report::from(err)));
     }
+
+    #[tokio::test]
+    async fn is_retryable_returns_false_for_http_400() {
+        let mut server = Server::new_async().await;
+        let _mock = server.mock("GET", "/").with_status(400).create_async().await;
+
+        let client = Client::new();
+        let url = server.url();
+        let err = client.get(url).send().await.unwrap().error_for_status().unwrap_err();
+        assert!(!super::is_retryable(&Report::from(err)));
+    }
 }
