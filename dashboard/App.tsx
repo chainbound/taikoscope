@@ -143,6 +143,16 @@ const App: React.FC = () => {
           avgVerify !== null && avgVerify > 0
             ? formatSeconds(avgVerify / 1000)
             : "N/A",
+        description: (
+          <a
+            href="https://docs.taiko.xyz/taiko-alethia-protocol/protocol-architecture/block-states"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:underline"
+          >
+            What are verified blocks?
+          </a>
+        ),
       },
       {
         title: "Active Gateways",
