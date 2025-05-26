@@ -506,7 +506,7 @@ mod tests {
     async fn new_respects_batch_proof_timeout_from_opts() {
         // Mock ClickHouse server with enough handlers for `init_db`
         let mock = Mock::new();
-        for _ in 0..10 {
+        for _ in 0..16 {
             mock.add(handlers::failure(StatusCode::OK));
         }
 
