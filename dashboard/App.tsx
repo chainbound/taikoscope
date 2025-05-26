@@ -37,6 +37,7 @@ const App: React.FC = () => {
   >([]);
   const [l2HeadBlock, setL2HeadBlock] = useState<string>("0");
   const [l1HeadBlock, setL1HeadBlock] = useState<string>("0");
+  const [refreshRate, setRefreshRate] = useState<number>(60000);
 
   const fetchData = useCallback(async () => {
     const currentMetrics = generateMockMetrics(timeRange);
@@ -76,9 +77,9 @@ const App: React.FC = () => {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 30000); // Refresh data every 30 seconds
+    const interval = setInterval(fetchData, Math.max(refreshRate, 10000));
     return () => clearInterval(interval);
-  }, [timeRange, fetchData]);
+  }, [timeRange, fetchData, refreshRate]);
 
   const findMetricValue = (titlePart: string): string => {
     const metric = metrics.find((m) =>
@@ -92,7 +93,12 @@ const App: React.FC = () => {
       className="min-h-screen bg-white text-gray-800 p-4 md:p-6 lg:p-8"
       style={{ fontFamily: "'Inter', sans-serif" }}
     >
-      <DashboardHeader timeRange={timeRange} onTimeRangeChange={setTimeRange} />
+      <DashboardHeader
+        timeRange={timeRange}
+        onTimeRangeChange={setTimeRange}
+        refreshRate={refreshRate}
+        onRefreshRateChange={setRefreshRate}
+      />
 
       <main className="mt-6">
         {/* Metrics Grid */}
