@@ -56,14 +56,14 @@ fn range_duration(range: &Option<String>) -> ChronoDuration {
 
         if let Some(h) = r.strip_suffix('h') {
             if let Ok(hours) = h.parse::<i64>() {
-                let hours = hours.min(MAX_RANGE_HOURS);
+                let hours = hours.clamp(0, MAX_RANGE_HOURS);
                 return ChronoDuration::hours(hours);
             }
         }
 
         if let Some(d) = r.strip_suffix('d') {
             if let Ok(days) = d.parse::<i64>() {
-                let hours = (days * 24).min(MAX_RANGE_HOURS);
+                let hours = (days * 24).clamp(0, MAX_RANGE_HOURS);
                 return ChronoDuration::hours(hours);
             }
         }
@@ -812,5 +812,17 @@ mod tests {
             body,
             json!({ "sequencers": [ { "address": "0x0101010101010101010101010101010101010101", "blocks": 5 } ] })
         );
+    }
+
+    #[test]
+    fn range_duration_clamps_negative_hours() {
+        let d = range_duration(&Some("-5h".to_owned()));
+        assert_eq!(d.num_hours(), 0);
+    }
+
+    #[test]
+    fn range_duration_clamps_negative_days() {
+        let d = range_duration(&Some("-2d".to_owned()));
+        assert_eq!(d.num_hours(), 0);
     }
 }
