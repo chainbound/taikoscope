@@ -27,6 +27,8 @@ import {
   fetchForcedInclusions,
   fetchL2HeadBlock,
   fetchL1HeadBlock,
+  clearBadRequest,
+  wasBadRequest,
 } from "./services/apiService";
 
 const TAΙΚΟ_PINK = "#e81899"; // Updated Taiko Pink
@@ -48,9 +50,11 @@ const App: React.FC = () => {
   const [l2HeadBlock, setL2HeadBlock] = useState<string>("0");
   const [l1HeadBlock, setL1HeadBlock] = useState<string>("0");
   const [refreshRate, setRefreshRate] = useState<number>(60000);
+  const [errorMessage, setErrorMessage] = useState<string>("");
 
   const fetchData = useCallback(async () => {
     const range = timeRange;
+    clearBadRequest();
     const [
       l2Cadence,
       batchCadence,
@@ -133,6 +137,13 @@ const App: React.FC = () => {
     setL1HeadBlock(
       currentMetrics.find((m) => m.title === "L1 Head Block")?.value || "N/A",
     );
+    if (wasBadRequest()) {
+      setErrorMessage(
+        "Invalid parameters provided. Some data may not be available."
+      );
+    } else {
+      setErrorMessage("");
+    }
   }, [timeRange]);
 
   useEffect(() => {
@@ -159,6 +170,12 @@ const App: React.FC = () => {
         refreshRate={refreshRate}
         onRefreshRateChange={setRefreshRate}
       />
+
+      {errorMessage && (
+        <div className="mt-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded">
+          {errorMessage}
+        </div>
+      )}
 
       <main className="mt-6">
         {/* Metrics Grid */}

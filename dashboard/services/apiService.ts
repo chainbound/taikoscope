@@ -3,10 +3,23 @@ export const API_BASE =
   (import.meta as any).env.API_BASE ||
   "";
 
+let badRequest = false;
+
+export const clearBadRequest = () => {
+  badRequest = false;
+};
+
+export const wasBadRequest = () => badRequest;
+
 const fetchJson = async <T>(url: string): Promise<T | null> => {
   try {
     const res = await fetch(url);
-    if (!res.ok) return null;
+    if (!res.ok) {
+      if (res.status === 400) {
+        badRequest = true;
+      }
+      return null;
+    }
     return (await res.json()) as T;
   } catch {
     return null;
