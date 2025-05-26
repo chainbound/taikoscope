@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { formatSeconds } from "./utils";
 import { DashboardHeader } from "./components/DashboardHeader";
 import { MetricCard } from "./components/MetricCard";
+import { MetricSection } from "./components/MetricSection";
 import { ChartCard } from "./components/ChartCard";
 import { SequencerPieChart } from "./components/SequencerPieChart";
 import { BlockTimeChart } from "./components/BlockTimeChart";
@@ -124,11 +125,13 @@ const App: React.FC = () => {
       {
         title: "L2 Block Cadence",
         value: l2Cadence !== null ? formatSeconds(l2Cadence / 1000) : "N/A",
+        description: "Average time between L2 blocks",
       },
       {
         title: "Batch Posting Cadence",
         value:
           batchCadence !== null ? formatSeconds(batchCadence / 1000) : "N/A",
+        description: "Average time between batches posted to L1",
       },
       {
         title: "Avg. Prove Time",
@@ -136,6 +139,7 @@ const App: React.FC = () => {
           avgProve !== null && avgProve > 0
             ? formatSeconds(avgProve / 1000)
             : "N/A",
+        description: "Mean duration of proving",
       },
       {
         title: (
@@ -152,22 +156,27 @@ const App: React.FC = () => {
           avgVerify !== null && avgVerify > 0
             ? formatSeconds(avgVerify / 1000)
             : "N/A",
+        description: "Mean duration of verification",
       },
       {
         title: "Active Gateways",
         value: activeGateways !== null ? activeGateways.toString() : "N/A",
+        description: "Gateways active in period",
       },
       {
         title: "L2 Reorgs",
         value: l2Reorgs !== null ? l2Reorgs.toString() : "N/A",
+        description: "Number of reorg events",
       },
       {
         title: "Slashing Events",
         value: slashings !== null ? slashings.toString() : "N/A",
+        description: "Number of slashings",
       },
       {
         title: "Forced Inclusions",
         value: forcedInclusions !== null ? forcedInclusions.toString() : "N/A",
+        description: "Forced transaction inclusions",
       },
       {
         title: "L2 Head Block",
@@ -235,8 +244,7 @@ const App: React.FC = () => {
 
       <main className="mt-6">
         {/* Metrics Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4 md:gap-6">
-          {/* Grouped Metrics */}
+        <MetricSection title="Block Cadence">
           <MetricCard
             title="L2 Block Cadence"
             value={findMetricValue("L2 Block Cadence")}
@@ -245,6 +253,9 @@ const App: React.FC = () => {
             title="Batch Posting Cadence"
             value={findMetricValue("Batch Posting Cadence")}
           />
+        </MetricSection>
+
+        <MetricSection title="Average Processing Time">
           <MetricCard
             title="Avg. Prove Time"
             value={findMetricValue("Avg. Prove Time")}
@@ -253,8 +264,9 @@ const App: React.FC = () => {
             title="Avg. Verify Time"
             value={findMetricValue("Avg. Verify Time")}
           />
+        </MetricSection>
 
-          {/* Other Metrics */}
+        <MetricSection title="Network Health">
           <MetricCard
             title="Active Gateways"
             value={findMetricValue("Active Gateways")}
@@ -268,7 +280,7 @@ const App: React.FC = () => {
             title="Forced Inclusions"
             value={findMetricValue("Forced Inclusions")}
           />
-        </div>
+        </MetricSection>
 
         {/* Charts Grid - Reordered: Sequencer Pie Chart first */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mt-6">
