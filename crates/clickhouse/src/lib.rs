@@ -1210,7 +1210,7 @@ impl ClickhouseClient {
     pub async fn get_l2_block_times_last_hour(&self) -> Result<Vec<L2BlockTimeRow>> {
         let client = self.base.clone().with_database(&self.db_name);
         let query = format!(
-            "SELECT intDiv(block_ts, 60) * 60000 AS minute, \
+            "SELECT toUInt64(toStartOfMinute(fromUnixTimestamp(block_ts))) AS minute, \
                     max(l2_block_number) AS block_number \
              FROM {db}.l2_head_events \
              WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL 1 HOUR) \
@@ -1227,7 +1227,7 @@ impl ClickhouseClient {
     pub async fn get_l2_block_times_last_24_hours(&self) -> Result<Vec<L2BlockTimeRow>> {
         let client = self.base.clone().with_database(&self.db_name);
         let query = format!(
-            "SELECT intDiv(block_ts, 60) * 60000 AS minute, \
+            "SELECT toUInt64(toStartOfMinute(fromUnixTimestamp(block_ts))) AS minute, \
                     max(l2_block_number) AS block_number \
              FROM {db}.l2_head_events \
              WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL 24 HOUR) \
