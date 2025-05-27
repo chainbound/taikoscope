@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { formatSeconds, findMetricValue } from "./utils";
+import { findMetricValue } from "./utils";
 import { createMetrics, hasBadRequest } from "./helpers";
 import { DashboardHeader } from "./components/DashboardHeader";
 import { MetricCard } from "./components/MetricCard";
