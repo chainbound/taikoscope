@@ -31,6 +31,9 @@ jobs:
       - name: Type check
         run: npm run check
         working-directory: dashboard
+      - name: Run tests
+        run: npm test
+        working-directory: dashboard
       - name: Build dashboard
         run: npm run build
         working-directory: dashboard

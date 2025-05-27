@@ -31,7 +31,8 @@ import {
   fetchSequencerDistribution,
 } from "./services/apiService";
 
-const TAΙΚΟ_PINK = "#e81899"; // Updated Taiko Pink
+// Updated Taiko Pink
+const TAIKO_PINK = "#e81899";
 
 const App: React.FC = () => {
   const [timeRange, setTimeRange] = useState<TimeRange>("1h");
@@ -308,7 +309,7 @@ const App: React.FC = () => {
           <ChartCard title="Prove Time">
             <BatchProcessChart
               data={secondsToProveData}
-              lineColor={TAΙΚΟ_PINK}
+              lineColor={TAIKO_PINK}
             />
           </ChartCard>
           <ChartCard title="Verify Time">
@@ -328,13 +329,13 @@ const App: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-center md:text-left">
           <div>
             <span className="text-sm text-gray-500">L2 Head Block</span>
-            <p className="text-2xl font-semibold" style={{ color: TAΙΚΟ_PINK }}>
+            <p className="text-2xl font-semibold" style={{ color: TAIKO_PINK }}>
               {l2HeadBlock}
             </p>
           </div>
           <div>
             <span className="text-sm text-gray-500">L1 Head Block</span>
-            <p className="text-2xl font-semibold" style={{ color: TAΙΚΟ_PINK }}>
+            <p className="text-2xl font-semibold" style={{ color: TAIKO_PINK }}>
               {l1HeadBlock}
             </p>
           </div>
