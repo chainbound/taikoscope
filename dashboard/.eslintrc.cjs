@@ -7,6 +7,9 @@ module.exports = {
     'plugin:react/recommended',
     'prettier'
   ],
+  rules: {
+    quotes: ['error', 'single', { avoidEscape: true }]
+  },
   settings: {
     react: {
       version: 'detect'

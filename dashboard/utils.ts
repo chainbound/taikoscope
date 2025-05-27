@@ -46,10 +46,10 @@ export const findMetricValue = (
   titlePart: string,
 ) => {
   const metric = metrics.find((m) => {
-    const titleStr = typeof m.title === "string" ? m.title : "";
+    const titleStr = typeof m.title === 'string' ? m.title : '';
     return titleStr.toLowerCase().includes(titlePart.toLowerCase());
   });
-  return metric ? metric.value : "N/A";
+  return metric ? metric.value : 'N/A';
 };
 
 export const formatSequencerTooltip = (
@@ -57,6 +57,6 @@ export const formatSequencerTooltip = (
   value: number,
 ) => {
   const total = data.reduce((acc, curr) => acc + curr.value, 0);
-  const percentage = total > 0 ? ((value / total) * 100).toFixed(2) : "0";
+  const percentage = total > 0 ? ((value / total) * 100).toFixed(2) : '0';
   return `${value} blocks (${percentage}%)`;
 };

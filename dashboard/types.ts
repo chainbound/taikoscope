@@ -1,4 +1,4 @@
-export type TimeRange = "1h" | "24h" | "7d";
+export type TimeRange = '1h' | '24h' | '7d';
 
 export interface TimeSeriesData {
   timestamp: number; // Unix timestamp (ms)
@@ -12,7 +12,7 @@ export interface PieChartDataItem {
   fill?: string; // Color fill is now optional, can be assigned by the chart component
 }
 
-import type { ReactNode } from "react";
+import type { ReactNode } from 'react';
 
 export interface MetricData {
   title: ReactNode;
