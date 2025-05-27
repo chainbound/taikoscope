@@ -1,5 +1,5 @@
-import assert from "assert";
-import { createMetrics, hasBadRequest } from "../helpers.js";
+import assert from 'assert';
+import { createMetrics, hasBadRequest } from '../helpers.js';
 
 const metrics = createMetrics({
   l2Cadence: 60000,
@@ -14,16 +14,16 @@ const metrics = createMetrics({
   l1Block: 50,
 });
 
-assert.strictEqual(metrics[0].value, "60.0s");
-assert.strictEqual(metrics[1].value, "N/A");
-assert.strictEqual(metrics[2].value, "1.20s");
-assert.strictEqual(metrics[3].value, "N/A");
-assert.strictEqual(metrics[4].value, "2");
-assert.strictEqual(metrics[5].value, "1");
-assert.strictEqual(metrics[6].value, "N/A");
-assert.strictEqual(metrics[7].value, "0");
-assert.strictEqual(metrics[8].value, "100");
-assert.strictEqual(metrics[9].value, "50");
+assert.strictEqual(metrics[0].value, '60.0s');
+assert.strictEqual(metrics[1].value, 'N/A');
+assert.strictEqual(metrics[2].value, '1.20s');
+assert.strictEqual(metrics[3].value, 'N/A');
+assert.strictEqual(metrics[4].value, '2');
+assert.strictEqual(metrics[5].value, '1');
+assert.strictEqual(metrics[6].value, 'N/A');
+assert.strictEqual(metrics[7].value, '0');
+assert.strictEqual(metrics[8].value, '100');
+assert.strictEqual(metrics[9].value, '50');
 
 const results = [
   { badRequest: false, data: null },
@@ -32,4 +32,28 @@ const results = [
 assert.strictEqual(hasBadRequest(results), true);
 assert.strictEqual(hasBadRequest([{ badRequest: false, data: null }]), false);
 
-console.log("Helper tests passed.");
+const metricsAllNull = createMetrics({
+  l2Cadence: null,
+  batchCadence: null,
+  avgProve: null,
+  avgVerify: null,
+  activeGateways: null,
+  l2Reorgs: null,
+  slashings: null,
+  forcedInclusions: null,
+  l2Block: null,
+  l1Block: null,
+});
+for (const metric of metricsAllNull) {
+  assert.strictEqual(metric.value, 'N/A');
+}
+
+assert.strictEqual(
+  hasBadRequest([
+    { badRequest: false, data: null },
+    { badRequest: false, data: null },
+  ]),
+  false,
+);
+
+console.log('Helper tests passed.');
