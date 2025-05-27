@@ -975,15 +975,15 @@ impl ClickhouseReader {
         struct RawRow {
             l2_block_number: u64,
             block_time: u64,
-            seconds_since_prev_block: Option<u64>,
+            ms_since_prev_block: Option<u64>,
         }
 
         let client = self.base.clone().with_database(&self.db_name);
         let query = format!(
             "SELECT l2_block_number, \
                     block_ts AS block_time, \
-                    toUInt64OrNull(toString(block_ts - lagInFrame(block_ts) OVER (ORDER BY l2_block_number))) \
-                        AS seconds_since_prev_block \
+                    toUInt64OrNull(toUnixTimestamp64Milli(inserted_at) - lagInFrame(toUnixTimestamp64Milli(inserted_at)) OVER (ORDER BY l2_block_number)) \
+                        AS ms_since_prev_block \
              FROM {db}.l2_head_events \
              WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL 1 HOUR) \
              ORDER BY l2_block_number",
@@ -994,10 +994,10 @@ impl ClickhouseReader {
             .into_iter()
             .filter_map(|r| {
                 let dt = Utc.timestamp_opt(r.block_time as i64, 0).single()?;
-                r.seconds_since_prev_block.map(|secs| L2BlockTimeRow {
+                r.ms_since_prev_block.map(|ms| L2BlockTimeRow {
                     l2_block_number: r.l2_block_number,
                     block_time: dt,
-                    seconds_since_prev_block: Some(secs),
+                    seconds_since_prev_block: Some(ms as f64 / 1000.0),
                 })
             })
             .collect())
@@ -1009,15 +1009,15 @@ impl ClickhouseReader {
         struct RawRow {
             l2_block_number: u64,
             block_time: u64,
-            seconds_since_prev_block: Option<u64>,
+            ms_since_prev_block: Option<u64>,
         }
 
         let client = self.base.clone().with_database(&self.db_name);
         let query = format!(
             "SELECT l2_block_number, \
                     block_ts AS block_time, \
-                    toUInt64OrNull(toString(block_ts - lagInFrame(block_ts) OVER (ORDER BY l2_block_number))) \
-                        AS seconds_since_prev_block \
+                    toUInt64OrNull(toUnixTimestamp64Milli(inserted_at) - lagInFrame(toUnixTimestamp64Milli(inserted_at)) OVER (ORDER BY l2_block_number)) \
+                        AS ms_since_prev_block \
              FROM {db}.l2_head_events \
              WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL 24 HOUR) \
              ORDER BY l2_block_number",
@@ -1028,10 +1028,10 @@ impl ClickhouseReader {
             .into_iter()
             .filter_map(|r| {
                 let dt = Utc.timestamp_opt(r.block_time as i64, 0).single()?;
-                r.seconds_since_prev_block.map(|secs| L2BlockTimeRow {
+                r.ms_since_prev_block.map(|ms| L2BlockTimeRow {
                     l2_block_number: r.l2_block_number,
                     block_time: dt,
-                    seconds_since_prev_block: Some(secs),
+                    seconds_since_prev_block: Some(ms as f64 / 1000.0),
                 })
             })
             .collect())
@@ -1043,15 +1043,15 @@ impl ClickhouseReader {
         struct RawRow {
             l2_block_number: u64,
             block_time: u64,
-            seconds_since_prev_block: Option<u64>,
+            ms_since_prev_block: Option<u64>,
         }
 
         let client = self.base.clone().with_database(&self.db_name);
         let query = format!(
             "SELECT l2_block_number, \
                     block_ts AS block_time, \
-                    toUInt64OrNull(toString(block_ts - lagInFrame(block_ts) OVER (ORDER BY l2_block_number))) \
-                        AS seconds_since_prev_block \
+                    toUInt64OrNull(toUnixTimestamp64Milli(inserted_at) - lagInFrame(toUnixTimestamp64Milli(inserted_at)) OVER (ORDER BY l2_block_number)) \
+                        AS ms_since_prev_block \
              FROM {db}.l2_head_events \
              WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL 7 DAY) \
              ORDER BY l2_block_number",
@@ -1062,10 +1062,10 @@ impl ClickhouseReader {
             .into_iter()
             .filter_map(|r| {
                 let dt = Utc.timestamp_opt(r.block_time as i64, 0).single()?;
-                r.seconds_since_prev_block.map(|secs| L2BlockTimeRow {
+                r.ms_since_prev_block.map(|ms| L2BlockTimeRow {
                     l2_block_number: r.l2_block_number,
                     block_time: dt,
-                    seconds_since_prev_block: Some(secs),
+                    seconds_since_prev_block: Some(ms as f64 / 1000.0),
                 })
             })
             .collect())

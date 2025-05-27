@@ -155,12 +155,12 @@ pub struct L1BlockTimeRow {
 }
 
 /// Row representing the time between consecutive L2 blocks
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct L2BlockTimeRow {
     /// L2 block number
     pub l2_block_number: u64,
     /// Timestamp of the L2 block
     pub block_time: DateTime<Utc>,
     /// Seconds since the previous block
-    pub seconds_since_prev_block: Option<u64>,
+    pub seconds_since_prev_block: Option<f64>,
 }
