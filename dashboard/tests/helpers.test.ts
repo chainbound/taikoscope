@@ -37,7 +37,9 @@ assert.strictEqual(metrics[8].group, 'Network Health & Security');
 assert.strictEqual(metrics[9].value, '0');
 assert.strictEqual(metrics[9].group, 'Network Health & Security');
 assert.strictEqual(metrics[10].value, '100');
+assert.strictEqual(metrics[10].group, 'Block Information');
 assert.strictEqual(metrics[11].value, '50');
+assert.strictEqual(metrics[11].group, 'Block Information');
 
 const results = [
   { badRequest: false, data: null },
@@ -73,6 +75,8 @@ assert.strictEqual(metricsAllNull[6].group, 'Operators');
 assert.strictEqual(metricsAllNull[7].group, 'Network Health & Security');
 assert.strictEqual(metricsAllNull[8].group, 'Network Health & Security');
 assert.strictEqual(metricsAllNull[9].group, 'Network Health & Security');
+assert.strictEqual(metricsAllNull[10].group, 'Block Information');
+assert.strictEqual(metricsAllNull[11].group, 'Block Information');
 
 assert.strictEqual(
   hasBadRequest([

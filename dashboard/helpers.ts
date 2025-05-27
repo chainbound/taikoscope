@@ -89,6 +89,16 @@ export const createMetrics = (data: MetricInputData): MetricData[] => [
       data.forcedInclusions != null ? data.forcedInclusions.toString() : 'N/A',
     group: 'Network Health & Security',
   },
+  {
+    title: 'L2 Block',
+    value: data.l2Block != null ? data.l2Block.toString() : 'N/A',
+    group: 'Block Information',
+  },
+  {
+    title: 'L1 Block',
+    value: data.l1Block != null ? data.l1Block.toString() : 'N/A',
+    group: 'Block Information',
+  },
 ];
 
 export const hasBadRequest = (results: RequestResult<unknown>[]): boolean =>
