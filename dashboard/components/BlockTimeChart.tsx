@@ -10,7 +10,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { TimeSeriesData } from "../types";
-import { formatDecimal, formatInterval } from "../utils";
+import { formatDecimal, formatInterval, shouldShowMinutes } from "../utils";
 
 interface BlockTimeChartProps {
   data: TimeSeriesData[];
@@ -28,7 +28,7 @@ export const BlockTimeChart: React.FC<BlockTimeChartProps> = ({
       </div>
     );
   }
-  const showMinutes = data.some((d) => d.timestamp >= 120000);
+  const showMinutes = shouldShowMinutes(data);
   return (
     <ResponsiveContainer width="100%" height="100%">
       <LineChart

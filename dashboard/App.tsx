@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { formatSeconds } from "./utils";
+import { formatSeconds, findMetricValue } from "./utils";
 import { DashboardHeader } from "./components/DashboardHeader";
 import { MetricCard } from "./components/MetricCard";
 import { ChartCard } from "./components/ChartCard";
@@ -237,15 +237,6 @@ const App: React.FC = () => {
     return () => clearInterval(interval);
   }, [timeRange, fetchData, refreshRate]);
 
-  const findMetricValue = (titlePart: string): string => {
-    const metric = metrics.find((m) => {
-      const titleStr =
-        typeof m.title === "string" ? m.title : "Avg. Verify Time";
-      return titleStr.toLowerCase().includes(titlePart.toLowerCase());
-    });
-    return metric ? metric.value : "N/A";
-  };
-
   return (
     <div
       className="min-h-screen bg-white text-gray-800 p-4 md:p-6 lg:p-8"
@@ -270,34 +261,37 @@ const App: React.FC = () => {
           {/* Grouped Metrics */}
           <MetricCard
             title="L2 Block Cadence"
-            value={findMetricValue("L2 Block Cadence")}
+            value={findMetricValue(metrics, "L2 Block Cadence")}
           />
           <MetricCard
             title="Batch Posting Cadence"
-            value={findMetricValue("Batch Posting Cadence")}
+            value={findMetricValue(metrics, "Batch Posting Cadence")}
           />
           <MetricCard
             title="Avg. Prove Time"
-            value={findMetricValue("Avg. Prove Time")}
+            value={findMetricValue(metrics, "Avg. Prove Time")}
           />
           <MetricCard
             title="Avg. Verify Time"
-            value={findMetricValue("Avg. Verify Time")}
+            value={findMetricValue(metrics, "Avg. Verify Time")}
           />
 
           {/* Other Metrics */}
           <MetricCard
             title="Active Gateways"
-            value={findMetricValue("Active Gateways")}
+            value={findMetricValue(metrics, "Active Gateways")}
           />
-          <MetricCard title="L2 Reorgs" value={findMetricValue("L2 Reorgs")} />
+          <MetricCard
+            title="L2 Reorgs"
+            value={findMetricValue(metrics, "L2 Reorgs")}
+          />
           <MetricCard
             title="Slashing Events"
-            value={findMetricValue("Slashing Events")}
+            value={findMetricValue(metrics, "Slashing Events")}
           />
           <MetricCard
             title="Forced Inclusions"
-            value={findMetricValue("Forced Inclusions")}
+            value={findMetricValue(metrics, "Forced Inclusions")}
           />
         </div>
 

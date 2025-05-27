@@ -8,6 +8,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { PieChartDataItem } from "../types";
+import { formatSequencerTooltip } from "../utils";
 
 interface SequencerPieChartProps {
   data: PieChartDataItem[];
@@ -65,12 +66,9 @@ export const SequencerPieChart: React.FC<SequencerPieChartProps> = ({
           })}
         </Pie>
         <Tooltip
-          formatter={(_value: number, name: string, item: any) => {
-            const total = data.reduce((acc, curr) => acc + curr.value, 0);
+          formatter={(value: number, name: string, item: any) => {
             const payload = item.payload as PieChartDataItem;
-            const percentage =
-              total > 0 ? ((payload.value / total) * 100).toFixed(2) : 0;
-            return [`${payload.value} blocks (${percentage}%)`, name];
+            return [formatSequencerTooltip(data, payload.value), name];
           }}
         />
         <Legend verticalAlign="bottom" wrapperStyle={{ paddingTop: "10px" }} />
