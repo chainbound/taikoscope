@@ -1175,6 +1175,7 @@ impl ClickhouseReader {
 mod tests {
     use super::*;
 
+    use chrono::Utc;
     use clickhouse::test::{Mock, handlers};
     use serde::Serialize;
 
@@ -1183,6 +1184,11 @@ mod tests {
     #[derive(Serialize, Row)]
     struct MaxNum {
         number: u64,
+    }
+
+    #[derive(Serialize, Row)]
+    struct MaxTsRow {
+        block_ts: u64,
     }
 
     #[tokio::test]
@@ -1273,5 +1279,117 @@ mod tests {
 
         let result = ch.get_last_next_operator().await.unwrap();
         assert_eq!(result, Some(addr));
+    }
+
+    #[tokio::test]
+    async fn test_get_last_l2_head_time_empty() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(Vec::<MaxTsRow>::new()));
+
+        let url = Url::parse(mock.url()).unwrap();
+        let ch =
+            ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+        let result = ch.get_last_l2_head_time().await.unwrap();
+        assert_eq!(result, None);
+    }
+
+    #[tokio::test]
+    async fn test_get_last_l2_head_time() {
+        let mock = Mock::new();
+        let ts = 42u64;
+        mock.add(handlers::provide(vec![MaxTsRow { block_ts: ts }]));
+
+        let url = Url::parse(mock.url()).unwrap();
+        let ch =
+            ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+        let expected = Utc.timestamp_opt(ts as i64, 0).single().unwrap();
+        let result = ch.get_last_l2_head_time().await.unwrap();
+        assert_eq!(result, Some(expected));
+    }
+
+    #[tokio::test]
+    async fn test_get_last_l1_head_time_empty() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(Vec::<MaxTsRow>::new()));
+
+        let url = Url::parse(mock.url()).unwrap();
+        let ch =
+            ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+        let result = ch.get_last_l1_head_time().await.unwrap();
+        assert_eq!(result, None);
+    }
+
+    #[tokio::test]
+    async fn test_get_last_l1_head_time() {
+        let mock = Mock::new();
+        let ts = 24u64;
+        mock.add(handlers::provide(vec![MaxTsRow { block_ts: ts }]));
+
+        let url = Url::parse(mock.url()).unwrap();
+        let ch =
+            ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+        let expected = Utc.timestamp_opt(ts as i64, 0).single().unwrap();
+        let result = ch.get_last_l1_head_time().await.unwrap();
+        assert_eq!(result, Some(expected));
+    }
+
+    #[tokio::test]
+    async fn test_get_last_batch_time_empty() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(Vec::<MaxTsRow>::new()));
+
+        let url = Url::parse(mock.url()).unwrap();
+        let ch =
+            ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+        let result = ch.get_last_batch_time().await.unwrap();
+        assert_eq!(result, None);
+    }
+
+    #[tokio::test]
+    async fn test_get_last_batch_time() {
+        let mock = Mock::new();
+        let ts = 100u64;
+        mock.add(handlers::provide(vec![MaxTsRow { block_ts: ts }]));
+
+        let url = Url::parse(mock.url()).unwrap();
+        let ch =
+            ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+        let expected = Utc.timestamp_opt(ts as i64, 0).single().unwrap();
+        let result = ch.get_last_batch_time().await.unwrap();
+        assert_eq!(result, Some(expected));
+    }
+
+    #[tokio::test]
+    async fn test_get_last_verified_batch_time_empty() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(Vec::<MaxTsRow>::new()));
+
+        let url = Url::parse(mock.url()).unwrap();
+        let ch =
+            ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+        let result = ch.get_last_verified_batch_time().await.unwrap();
+        assert_eq!(result, None);
+    }
+
+    #[tokio::test]
+    async fn test_get_last_verified_batch_time() {
+        let mock = Mock::new();
+        let ts = 1500u64;
+        mock.add(handlers::provide(vec![MaxTsRow { block_ts: ts }]));
+
+        let url = Url::parse(mock.url()).unwrap();
+        let ch =
+            ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+        let expected = Utc.timestamp_millis_opt(ts as i64).single().unwrap();
+        let result = ch.get_last_verified_batch_time().await.unwrap();
+        assert_eq!(result, Some(expected));
     }
 }
