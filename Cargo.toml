@@ -21,7 +21,7 @@ alloy-network-primitives = "1.0.6"
 alloy-sol-types = "1.1.2"
 alloy-sol-macro = "1.1.2"
 async-trait = "0.1"
-chrono = "0.4.41"
+chrono = { version = "0.4.41", features = ["serde"] }
 clap = { version = "4.5.38", features = ["derive", "env"] }
 clickhouse = { version = "0.13.2", features = ["native-tls", "test-util"] }
 derive_more = { version = "1.0.0", features = ["debug", "deref"] }

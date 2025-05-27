@@ -10,7 +10,7 @@ repository.workspace = true
 clickhouse = { path = "../clickhouse" }
 
 async-trait.workspace = true
-chrono.workspace = true
+chrono = { workspace = true, features = ["serde"] }
 eyre.workspace = true
 reqwest.workspace = true
 serde.workspace = true
