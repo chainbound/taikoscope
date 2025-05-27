@@ -258,3 +258,87 @@ impl ClickhouseWriter {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use alloy::primitives::B256;
+    use clickhouse::test::{Mock, handlers};
+
+    #[tokio::test]
+    async fn create_table_generates_correct_query() {
+        let mock = Mock::new();
+        let ctl = mock.add(handlers::record_ddl());
+        let url = Url::parse(mock.url()).unwrap();
+        let writer =
+            ClickhouseWriter::new(url, "db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+        writer.create_table(&TABLE_SCHEMAS[0]).await.unwrap();
+        let query = ctl.query().await;
+        assert!(query.contains("CREATE TABLE IF NOT EXISTS db.l1_head_events"));
+    }
+
+    #[tokio::test]
+    async fn insert_l1_header_writes_expected_row() {
+        let mock = Mock::new();
+        let ctl = mock.add(handlers::record::<L1HeadEvent>());
+
+        let url = Url::parse(mock.url()).unwrap();
+        let writer =
+            ClickhouseWriter::new(url, "db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+        let header = L1Header { number: 1, hash: B256::repeat_byte(1), slot: 2, timestamp: 42 };
+
+        writer.insert_l1_header(&header).await.unwrap();
+
+        let rows: Vec<L1HeadEvent> = ctl.collect().await;
+        let expected =
+            L1HeadEvent { l1_block_number: 1, block_hash: [1u8; 32], slot: 2, block_ts: 42 };
+        assert_eq!(rows, vec![expected]);
+    }
+
+    #[tokio::test]
+    async fn insert_preconf_data_writes_expected_row() {
+        let mock = Mock::new();
+        let ctl = mock.add(handlers::record::<PreconfData>());
+
+        let url = Url::parse(mock.url()).unwrap();
+        let writer =
+            ClickhouseWriter::new(url, "db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+        let candidates = vec![Address::repeat_byte(1), Address::repeat_byte(2)];
+        writer
+            .insert_preconf_data(5, candidates.clone(), Some(Address::repeat_byte(3)), None)
+            .await
+            .unwrap();
+
+        let rows: Vec<PreconfData> = ctl.collect().await;
+        let expected = PreconfData {
+            slot: 5,
+            candidates: vec![
+                Address::repeat_byte(1).into_array(),
+                Address::repeat_byte(2).into_array(),
+            ],
+            current_operator: Some(Address::repeat_byte(3).into_array()),
+            next_operator: None,
+        };
+        assert_eq!(rows, vec![expected]);
+    }
+
+    #[tokio::test]
+    async fn insert_l2_reorg_writes_expected_row() {
+        let mock = Mock::new();
+        let ctl = mock.add(handlers::record::<L2ReorgRow>());
+
+        let url = Url::parse(mock.url()).unwrap();
+        let writer =
+            ClickhouseWriter::new(url, "db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+        writer.insert_l2_reorg(10, 3).await.unwrap();
+
+        let rows: Vec<L2ReorgRow> = ctl.collect().await;
+        let expected = L2ReorgRow { l2_block_number: 10, depth: 3 };
+        assert_eq!(rows, vec![expected]);
+    }
+}
