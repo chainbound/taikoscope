@@ -203,17 +203,17 @@ const App: React.FC = () => {
     const currentMetrics: MetricData[] = [
       {
         title: "L2 Block Cadence",
-        value: l2Cadence !== null ? formatSeconds(l2Cadence / 1000) : "N/A",
+        value: l2Cadence != null ? formatSeconds(l2Cadence / 1000) : "N/A",
       },
       {
         title: "Batch Posting Cadence",
         value:
-          batchCadence !== null ? formatSeconds(batchCadence / 1000) : "N/A",
+          batchCadence != null ? formatSeconds(batchCadence / 1000) : "N/A",
       },
       {
         title: "Avg. Prove Time",
         value:
-          avgProve !== null && avgProve > 0
+          avgProve != null && avgProve > 0
             ? formatSeconds(avgProve / 1000)
             : "N/A",
       },
@@ -229,33 +229,33 @@ const App: React.FC = () => {
           </a>
         ),
         value:
-          avgVerify !== null && avgVerify > 0
+          avgVerify != null && avgVerify > 0
             ? formatSeconds(avgVerify / 1000)
             : "N/A",
       },
       {
         title: "Active Gateways",
-        value: activeGateways !== null ? activeGateways.toString() : "N/A",
+        value: activeGateways != null ? activeGateways.toString() : "N/A",
       },
       {
         title: "L2 Reorgs",
-        value: l2Reorgs !== null ? l2Reorgs.toString() : "N/A",
+        value: l2Reorgs != null ? l2Reorgs.toString() : "N/A",
       },
       {
         title: "Slashing Events",
-        value: slashings !== null ? slashings.toString() : "N/A",
+        value: slashings != null ? slashings.toString() : "N/A",
       },
       {
         title: "Forced Inclusions",
-        value: forcedInclusions !== null ? forcedInclusions.toString() : "N/A",
+        value: forcedInclusions != null ? forcedInclusions.toString() : "N/A",
       },
       {
         title: "L2 Head Block",
-        value: l2Block !== null ? l2Block.toLocaleString() : "N/A",
+        value: l2Block != null ? l2Block.toLocaleString() : "N/A",
       },
       {
         title: "L1 Head Block",
-        value: l1Block !== null ? l1Block.toLocaleString() : "N/A",
+        value: l1Block != null ? l1Block.toLocaleString() : "N/A",
       },
     ];
 
