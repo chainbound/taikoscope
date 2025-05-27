@@ -201,6 +201,38 @@ impl ClickhouseReader {
         Ok(ts_opt)
     }
 
+    /// Get the last observed current operator
+    pub async fn get_last_current_operator(&self) -> Result<Option<[u8; 20]>> {
+        #[derive(Row, Deserialize)]
+        struct OpRow {
+            current_operator: Option<[u8; 20]>,
+        }
+
+        let client = self.base.clone().with_database(&self.db_name);
+        let query = format!(
+            "SELECT current_operator FROM {}.preconf_data ORDER BY inserted_at DESC LIMIT 1",
+            self.db_name
+        );
+        let rows = client.query(&query).fetch_all::<OpRow>().await?;
+        Ok(rows.into_iter().next().and_then(|r| r.current_operator))
+    }
+
+    /// Get the last observed next operator
+    pub async fn get_last_next_operator(&self) -> Result<Option<[u8; 20]>> {
+        #[derive(Row, Deserialize)]
+        struct OpRow {
+            next_operator: Option<[u8; 20]>,
+        }
+
+        let client = self.base.clone().with_database(&self.db_name);
+        let query = format!(
+            "SELECT next_operator FROM {}.preconf_data ORDER BY inserted_at DESC LIMIT 1",
+            self.db_name
+        );
+        let rows = client.query(&query).fetch_all::<OpRow>().await?;
+        Ok(rows.into_iter().next().and_then(|r| r.next_operator))
+    }
+
     /// Get all batches that have not been proven and are older than the given cutoff time
     pub async fn get_unproved_batches_older_than(
         &self,
@@ -1205,5 +1237,41 @@ mod tests {
 
         let result = ch.get_last_l1_block_number().await.unwrap();
         assert_eq!(result, Some(expected));
+    }
+
+    #[tokio::test]
+    async fn test_get_last_current_operator() {
+        let mock = Mock::new();
+        let addr = [1u8; 20];
+        #[derive(Serialize, Row)]
+        struct CurrentRowTest {
+            current_operator: Option<[u8; 20]>,
+        }
+        mock.add(handlers::provide(vec![CurrentRowTest { current_operator: Some(addr) }]));
+
+        let url = Url::parse(mock.url()).unwrap();
+        let ch =
+            ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+        let result = ch.get_last_current_operator().await.unwrap();
+        assert_eq!(result, Some(addr));
+    }
+
+    #[tokio::test]
+    async fn test_get_last_next_operator() {
+        let mock = Mock::new();
+        let addr = [2u8; 20];
+        #[derive(Serialize, Row)]
+        struct NextRowTest {
+            next_operator: Option<[u8; 20]>,
+        }
+        mock.add(handlers::provide(vec![NextRowTest { next_operator: Some(addr) }]));
+
+        let url = Url::parse(mock.url()).unwrap();
+        let ch =
+            ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+        let result = ch.get_last_next_operator().await.unwrap();
+        assert_eq!(result, Some(addr));
     }
 }
