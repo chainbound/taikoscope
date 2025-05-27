@@ -2,7 +2,7 @@
 -- This migration creates materialized views to pre-compute expensive average calculations
 
 -- 1. Materialized view for batch prove times
--- Pre-computes the time difference between batch proposal and proof
+-- Pre-computes the time difference between batch proposal and proof using L1 block timestamps
 CREATE MATERIALIZED VIEW IF NOT EXISTS ${DB}.batch_prove_times_mv
 (
     batch_id UInt64,
@@ -14,13 +14,15 @@ CREATE MATERIALIZED VIEW IF NOT EXISTS ${DB}.batch_prove_times_mv
 ORDER BY (proved_day, proved_hour, batch_id)
 AS SELECT
     p.batch_id,
-    toUnixTimestamp64Milli(p.inserted_at) - toUnixTimestamp64Milli(b.inserted_at) AS prove_time_ms,
-    p.inserted_at AS proved_at
+    (l1_proved.block_ts - l1_proposed.block_ts) * 1000 AS prove_time_ms,
+    fromUnixTimestamp(l1_proved.block_ts) AS proved_at
 FROM ${DB}.proved_batches p
-INNER JOIN ${DB}.batches b ON p.batch_id = b.batch_id AND p.l1_block_number = b.l1_block_number;
+INNER JOIN ${DB}.batches b ON p.batch_id = b.batch_id AND p.l1_block_number = b.l1_block_number
+INNER JOIN ${DB}.l1_head_events l1_proposed ON b.l1_block_number = l1_proposed.l1_block_number
+INNER JOIN ${DB}.l1_head_events l1_proved ON p.l1_block_number = l1_proved.l1_block_number;
 
 -- 2. Materialized view for batch verify times
--- Pre-computes the time difference between proof and verification
+-- Pre-computes the time difference between proof and verification using L1 block timestamps
 CREATE MATERIALIZED VIEW IF NOT EXISTS ${DB}.batch_verify_times_mv
 (
     batch_id UInt64,
@@ -32,10 +34,12 @@ CREATE MATERIALIZED VIEW IF NOT EXISTS ${DB}.batch_verify_times_mv
 ORDER BY (verified_day, verified_hour, batch_id)
 AS SELECT
     v.batch_id,
-    toUnixTimestamp64Milli(v.inserted_at) - toUnixTimestamp64Milli(p.inserted_at) AS verify_time_ms,
-    v.inserted_at AS verified_at
+    (l1_verified.block_ts - l1_proved.block_ts) * 1000 AS verify_time_ms,
+    fromUnixTimestamp(l1_verified.block_ts) AS verified_at
 FROM ${DB}.verified_batches v
-INNER JOIN ${DB}.proved_batches p ON v.batch_id = p.batch_id AND v.l1_block_number = p.l1_block_number;
+INNER JOIN ${DB}.proved_batches p ON v.batch_id = p.batch_id AND v.block_hash = p.block_hash
+INNER JOIN ${DB}.l1_head_events l1_proved ON p.l1_block_number = l1_proved.l1_block_number
+INNER JOIN ${DB}.l1_head_events l1_verified ON v.l1_block_number = l1_verified.l1_block_number;
 
 -- 3. Aggregated hourly averages for prove times
 -- Pre-computes hourly averages to speed up range queries
