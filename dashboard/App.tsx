@@ -35,7 +35,11 @@ const TAΙΚΟ_PINK = "#e81899"; // Updated Taiko Pink
 
 const App: React.FC = () => {
   const [timeRange, setTimeRange] = useState<TimeRange>("1h");
-  const [metrics, setMetrics] = useState<MetricData[]>([]);
+  const [metrics, setMetrics] = useState<MetricData[]>([
+    // Initialize with SSE-managed metrics
+    { title: "L1 Head Block", value: "Loading..." },
+    { title: "L2 Head Block", value: "Loading..." },
+  ]);
   const [secondsToProveData, setSecondsToProveData] = useState<
     TimeSeriesData[]
   >([]);
@@ -199,28 +203,27 @@ const App: React.FC = () => {
         title: "Forced Inclusions",
         value: forcedInclusions !== null ? forcedInclusions.toString() : "N/A",
       },
-      {
-        title: "L2 Head Block",
-        value: l2Block !== null ? l2Block.toLocaleString() : "N/A",
-      },
-      {
-        title: "L1 Head Block",
-        value: l1Block !== null ? l1Block.toLocaleString() : "N/A",
-      },
+      // L2 Head Block and L1 Head Block are intentionally omitted here
+      // as they are updated by their respective SSE handlers and initialized above.
     ];
 
-    setMetrics(currentMetrics);
+    setMetrics(prevMetrics => {
+      // Preserve the existing L1 and L2 Head Block metrics that are updated by SSE
+      const sseManagedMetrics = prevMetrics.filter(
+        m => m.title === "L1 Head Block" || m.title === "L2 Head Block"
+      );
+      // Combine with the other metrics fetched
+      return [...sseManagedMetrics, ...currentMetrics];
+    });
     setSecondsToProveData(proveTimes);
     setSecondsToVerifyData(verifyTimes);
     setL2BlockTimeData(l2Times);
     setL1BlockTimeData(l1Times);
     setSequencerDistribution(sequencerDist);
-    setL2HeadBlock(
-      currentMetrics.find((m) => m.title === "L2 Head Block")?.value || "N/A",
-    );
-    setL1HeadBlock(
-      currentMetrics.find((m) => m.title === "L1 Head Block")?.value || "N/A",
-    );
+    // The setL2HeadBlock and setL1HeadBlock calls that directly used currentMetrics
+    // are removed as these state variables are now primarily updated by their
+    // respective SSE handlers. The l2HeadBlock and l1HeadBlock state variables
+    // themselves are still updated by SSE handlers.
     if (anyBadRequest) {
       setErrorMessage(
         "Invalid parameters provided. Some data may not be available.",
