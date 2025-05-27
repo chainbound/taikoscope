@@ -997,7 +997,7 @@ impl ClickhouseReader {
                 r.ms_since_prev_block.map(|ms| L2BlockTimeRow {
                     l2_block_number: r.l2_block_number,
                     block_time: dt,
-                    seconds_since_prev_block: Some(ms as f64 / 1000.0),
+                    ms_since_prev_block: Some(ms),
                 })
             })
             .collect())
@@ -1031,7 +1031,7 @@ impl ClickhouseReader {
                 r.ms_since_prev_block.map(|ms| L2BlockTimeRow {
                     l2_block_number: r.l2_block_number,
                     block_time: dt,
-                    seconds_since_prev_block: Some(ms as f64 / 1000.0),
+                    ms_since_prev_block: Some(ms),
                 })
             })
             .collect())
@@ -1065,7 +1065,7 @@ impl ClickhouseReader {
                 r.ms_since_prev_block.map(|ms| L2BlockTimeRow {
                     l2_block_number: r.l2_block_number,
                     block_time: dt,
-                    seconds_since_prev_block: Some(ms as f64 / 1000.0),
+                    ms_since_prev_block: Some(ms),
                 })
             })
             .collect())

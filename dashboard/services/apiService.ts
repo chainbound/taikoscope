@@ -241,7 +241,7 @@ export const fetchL2BlockTimes = async (
 ): Promise<RequestResult<TimeSeriesData[]>> => {
   const url = `${API_BASE}/l2-block-times?range=${range}`;
   const res = await fetchJson<{
-    blocks: { l2_block_number: number; seconds_since_prev_block: number }[];
+    blocks: { l2_block_number: number; ms_since_prev_block: number }[];
   }>(url);
   if (!res.data) {
     return { data: null, badRequest: res.badRequest };
@@ -250,7 +250,7 @@ export const fetchL2BlockTimes = async (
   const data = res.data.blocks.slice(1).map(
     (b): TimeSeriesData => ({
       value: b.l2_block_number,
-      timestamp: b.seconds_since_prev_block * 1000,
+      timestamp: b.ms_since_prev_block,
     }),
   );
 
