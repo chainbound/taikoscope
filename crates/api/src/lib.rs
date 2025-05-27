@@ -194,6 +194,8 @@ async fn sse_l2_head(
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
     let mut last = state.client.get_last_l2_block_number().await.ok().flatten().unwrap_or(0);
     let stream = stream! {
+        // send current head immediately
+        yield Ok(Event::default().data(last.to_string()));
         loop {
             match state.client.get_last_l2_block_number().await {
                 Ok(Some(num)) if num != last => {
@@ -214,6 +216,8 @@ async fn sse_l1_head(
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
     let mut last = state.client.get_last_l1_block_number().await.ok().flatten().unwrap_or(0);
     let stream = stream! {
+        // send current head immediately
+        yield Ok(Event::default().data(last.to_string()));
         loop {
             match state.client.get_last_l1_block_number().await {
                 Ok(Some(num)) if num != last => {
