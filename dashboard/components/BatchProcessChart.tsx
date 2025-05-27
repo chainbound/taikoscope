@@ -10,7 +10,11 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { TimeSeriesData } from "../types";
-import { formatDecimal, formatBatchDuration } from "../utils";
+import {
+  formatDecimal,
+  formatBatchDuration,
+  computeBatchDurationFlags,
+} from "../utils";
 
 interface BatchProcessChartProps {
   data: TimeSeriesData[];
@@ -29,8 +33,7 @@ export const BatchProcessChart: React.FC<BatchProcessChartProps> = ({
     );
   }
 
-  const showHours = data.some((d) => d.value >= 120 * 60);
-  const showMinutes = !showHours && data.some((d) => d.value >= 120);
+  const { showHours, showMinutes } = computeBatchDurationFlags(data);
   const formatValue = (value: number) =>
     formatBatchDuration(value, showHours, showMinutes);
 
