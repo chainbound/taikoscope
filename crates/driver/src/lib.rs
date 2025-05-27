@@ -83,6 +83,10 @@ impl Driver {
         .await?;
 
         // init incident client and component IDs
+        if !opts.instatus.enabled() {
+            return Err(eyre::eyre!("missing Instatus configuration"));
+        }
+
         let instatus_batch_component_id = opts.instatus.batch_component_id.clone();
         let instatus_batch_proof_timeout_component_id =
             opts.instatus.batch_proof_timeout_component_id.clone();
@@ -544,10 +548,10 @@ mod tests {
             instatus: InstatusOpts {
                 api_key: "key".into(),
                 page_id: "page".into(),
-                batch_component_id: String::new(),
-                batch_proof_timeout_component_id: String::new(),
-                batch_verify_timeout_component_id: String::new(),
-                l2_component_id: String::new(),
+                batch_component_id: "batch".into(),
+                batch_proof_timeout_component_id: "proof".into(),
+                batch_verify_timeout_component_id: "verify".into(),
+                l2_component_id: "l2".into(),
                 monitor_poll_interval_secs: 30,
                 monitor_threshold_secs: 96,
                 batch_proof_timeout_secs: 999,
