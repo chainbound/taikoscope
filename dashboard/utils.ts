@@ -12,3 +12,21 @@ export const formatSeconds = (seconds: number): string => {
   }
   return `${formatDecimal(seconds)}s`;
 };
+
+export const formatInterval = (ms: number, showMinutes: boolean): string => {
+  return showMinutes
+    ? `${formatDecimal(ms / 60000)} minutes`
+    : `${Number(formatDecimal(ms / 1000))} seconds`;
+};
+
+export const formatBatchDuration = (
+  value: number,
+  showHours: boolean,
+  showMinutes: boolean,
+): string => {
+  return showHours
+    ? `${formatDecimal(value / 3600)} hours`
+    : showMinutes
+      ? `${formatDecimal(value / 60)} minutes`
+      : `${Math.round(value)} seconds`;
+};

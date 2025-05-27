@@ -10,18 +10,12 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { TimeSeriesData } from "../types";
-import { formatDecimal } from "../utils";
+import { formatDecimal, formatInterval } from "../utils";
 
 interface BlockTimeChartProps {
   data: TimeSeriesData[];
   lineColor: string;
 }
-
-const formatInterval = (ms: number, showMinutes: boolean): string => {
-  return showMinutes
-    ? `${formatDecimal(ms / 60000)} minutes`
-    : `${Number(formatDecimal(ms / 1000))} seconds`;
-};
 
 export const BlockTimeChart: React.FC<BlockTimeChartProps> = ({
   data,
