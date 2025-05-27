@@ -30,8 +30,22 @@ export interface AvgTimeResponse {
 export const fetchAvgProveTime = async (
   range: "1h" | "24h" | "7d",
 ): Promise<RequestResult<number>> => {
-  const url = `${API_BASE}/avg-prove-time?range=${range}`;
-  const res = await fetchJson<{ avg_prove_time_ms?: number }>(url);
+  const url = `${API_BASE}/prove-times?range=${range}`;
+  const res = await fetchJson<{
+    batches: { batch_id: number; seconds_to_prove: number }[];
+  }>(url);
+
+  if (!res.data || !res.data.batches || res.data.batches.length === 0) {
+    return { data: null, badRequest: res.badRequest };
+  }
+
+  const totalTime = res.data.batches.reduce(
+    (sum, batch) => sum + batch.seconds_to_prove,
+    0,
+  );
+  const avgTimeSeconds = totalTime / res.data.batches.length;
+  const avgTimeMs = avgTimeSeconds * 1000;
+
   return {
     data: res.data?.avg_prove_time_ms ?? null,
     badRequest: res.badRequest,
@@ -149,10 +163,10 @@ export const fetchProveTimes = async (
   return {
     data: res.data
       ? res.data.batches.map((b) => ({
-          name: b.batch_id.toString(),
-          value: b.seconds_to_prove,
-          timestamp: 0,
-        }))
+        name: b.batch_id.toString(),
+        value: b.seconds_to_prove,
+        timestamp: 0,
+      }))
       : null,
     badRequest: res.badRequest,
   };
@@ -168,10 +182,10 @@ export const fetchVerifyTimes = async (
   return {
     data: res.data
       ? res.data.batches.map((b) => ({
-          name: b.batch_id.toString(),
-          value: b.seconds_to_verify,
-          timestamp: 0,
-        }))
+        name: b.batch_id.toString(),
+        value: b.seconds_to_verify,
+        timestamp: 0,
+      }))
       : null,
     badRequest: res.badRequest,
   };
@@ -184,15 +198,27 @@ export const fetchL1BlockTimes = async (
   const res = await fetchJson<{
     blocks: { minute: number; block_number: number }[];
   }>(url);
-  return {
-    data: res.data
-      ? res.data.blocks.map((b) => ({
-          timestamp: b.minute * 1000,
-          value: b.block_number,
-        }))
-      : null,
-    badRequest: res.badRequest,
-  };
+  if (!res.data) {
+    return { data: null, badRequest: res.badRequest };
+  }
+
+  const blocks = res.data.blocks.map((b) => ({
+    ts: b.minute * 1000,
+    block: b.block_number,
+  }));
+
+  const data = blocks.map((b, i) => {
+    if (i === 0) {
+      return { timestamp: 0, value: b.block };
+    }
+    const prev = blocks[i - 1];
+    const deltaBlocks = b.block - prev.block;
+    const deltaTimeMs = b.ts - prev.ts;
+    const interval = deltaBlocks > 0 ? deltaTimeMs / deltaBlocks : deltaTimeMs;
+    return { timestamp: interval, value: b.block };
+  });
+
+  return { data, badRequest: res.badRequest };
 };
 
 export const fetchL2BlockTimes = async (
@@ -202,15 +228,27 @@ export const fetchL2BlockTimes = async (
   const res = await fetchJson<{
     blocks: { minute: number; block_number: number }[];
   }>(url);
-  return {
-    data: res.data
-      ? res.data.blocks.map((b) => ({
-          timestamp: b.minute * 1000,
-          value: b.block_number,
-        }))
-      : null,
-    badRequest: res.badRequest,
-  };
+  if (!res.data) {
+    return { data: null, badRequest: res.badRequest };
+  }
+
+  const blocks = res.data.blocks.map((b) => ({
+    ts: b.minute * 1000,
+    block: b.block_number,
+  }));
+
+  const data = blocks.map((b, i) => {
+    if (i === 0) {
+      return { timestamp: 0, value: b.block };
+    }
+    const prev = blocks[i - 1];
+    const deltaBlocks = b.block - prev.block;
+    const deltaTimeMs = b.ts - prev.ts;
+    const interval = deltaBlocks > 0 ? deltaTimeMs / deltaBlocks : deltaTimeMs;
+    return { timestamp: interval, value: b.block };
+  });
+
+  return { data, badRequest: res.badRequest };
 };
 
 export const fetchSequencerDistribution = async (
