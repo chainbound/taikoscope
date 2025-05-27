@@ -100,6 +100,9 @@ pub struct ApiOpts {
     /// API server port
     #[clap(long = "api-port", env = "API_PORT", default_value = "3000")]
     pub port: u16,
+    /// Additional allowed CORS origins (comma separated)
+    #[clap(long = "allowed-origin", env = "ALLOWED_ORIGINS", value_delimiter = ',')]
+    pub allowed_origins: Vec<String>,
 }
 
 /// CLI options for taikoscope
@@ -191,6 +194,7 @@ mod tests {
         assert_eq!(opts.instatus.batch_proof_timeout_secs, 10800);
         assert_eq!(opts.api.host, "127.0.0.1");
         assert_eq!(opts.api.port, 3000);
+        assert!(opts.api.allowed_origins.is_empty());
         assert!(!opts.reset_db);
     }
 
@@ -202,6 +206,7 @@ mod tests {
             env::set_var("INSTATUS_MONITOR_POLL_INTERVAL_SECS", "42");
             env::set_var("INSTATUS_MONITOR_THRESHOLD_SECS", "33");
             env::set_var("BATCH_PROOF_TIMEOUT_SECS", "99");
+            env::set_var("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:5173");
         }
 
         let mut args = base_args();
@@ -214,12 +219,17 @@ mod tests {
         assert_eq!(opts.instatus.batch_proof_timeout_secs, 99);
         assert_eq!(opts.api.host, "127.0.0.1");
         assert_eq!(opts.api.port, 3000);
+        assert_eq!(
+            opts.api.allowed_origins,
+            vec!["http://localhost:3000", "http://localhost:5173",]
+        );
         assert!(opts.reset_db);
 
         unsafe {
             env::remove_var("INSTATUS_MONITOR_POLL_INTERVAL_SECS");
             env::remove_var("INSTATUS_MONITOR_THRESHOLD_SECS");
             env::remove_var("BATCH_PROOF_TIMEOUT_SECS");
+            env::remove_var("ALLOWED_ORIGINS");
         }
     }
 }
