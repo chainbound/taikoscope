@@ -95,4 +95,35 @@ mod tests {
         }
         assert_eq!(success.load(Ordering::SeqCst), 5);
     }
+
+    #[tokio::test]
+    async fn zero_capacity_always_denies() {
+        let limiter = RateLimiter::new(0, Duration::from_millis(5));
+        assert!(!limiter.try_acquire());
+        sleep(Duration::from_millis(10)).await;
+        // After a period elapses, the limiter resets its counter, allowing a single request
+        assert!(limiter.try_acquire());
+    }
+
+    #[tokio::test]
+    #[allow(clippy::redundant_clone)]
+    async fn shared_state_across_clones() {
+        let limiter = RateLimiter::new(2, Duration::from_millis(50));
+        assert!(limiter.try_acquire());
+        let clone = limiter.clone();
+        assert!(clone.try_acquire());
+        assert!(!limiter.try_acquire());
+    }
+
+    #[tokio::test]
+    async fn multiple_periods_reset() {
+        let limiter = RateLimiter::new(1, Duration::from_millis(10));
+        assert!(limiter.try_acquire());
+        assert!(!limiter.try_acquire());
+        sleep(Duration::from_millis(15)).await;
+        assert!(limiter.try_acquire());
+        assert!(!limiter.try_acquire());
+        sleep(Duration::from_millis(15)).await;
+        assert!(limiter.try_acquire());
+    }
 }
