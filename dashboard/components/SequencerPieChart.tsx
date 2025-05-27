@@ -66,7 +66,7 @@ export const SequencerPieChart: React.FC<SequencerPieChartProps> = ({
           })}
         </Pie>
         <Tooltip
-          formatter={(value: number, name: string, item: any) => {
+          formatter={(_, name: string, item: any) => {
             const payload = item.payload as PieChartDataItem;
             return [formatSequencerTooltip(data, payload.value), name];
           }}
