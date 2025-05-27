@@ -13,6 +13,7 @@ import {
   MetricData,
 } from "./types";
 import {
+  API_BASE,
   fetchAvgProveTime,
   fetchAvgVerifyTime,
   fetchL2BlockCadence,
@@ -50,6 +51,19 @@ const App: React.FC = () => {
   const [l1HeadBlock, setL1HeadBlock] = useState<string>("0");
   const [refreshRate, setRefreshRate] = useState<number>(60000);
   const [errorMessage, setErrorMessage] = useState<string>("");
+
+  useEffect(() => {
+    const l1Source = new EventSource(`${API_BASE}/sse/l1-head`);
+    const l2Source = new EventSource(`${API_BASE}/sse/l2-head`);
+
+    l1Source.onmessage = (e) => setL1HeadBlock(Number(e.data).toLocaleString());
+    l2Source.onmessage = (e) => setL2HeadBlock(Number(e.data).toLocaleString());
+
+    return () => {
+      l1Source.close();
+      l2Source.close();
+    };
+  }, []);
 
   const fetchData = useCallback(async () => {
     const range = timeRange;

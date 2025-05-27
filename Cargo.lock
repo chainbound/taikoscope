@@ -727,11 +727,13 @@ dependencies = [
 name = "api"
 version = "0.1.0"
 dependencies = [
+ "async-stream",
  "axum",
  "chrono",
  "clickhouse 0.1.0",
  "clickhouse 0.13.2",
  "eyre",
+ "futures",
  "hex",
  "primitives",
  "serde",
