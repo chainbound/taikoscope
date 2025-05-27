@@ -297,8 +297,10 @@ async fn avg_prove_time(
     let duration = range_duration(&params.range);
     let avg = match if duration.num_hours() <= 1 {
         state.client.get_avg_prove_time_last_hour().await
-    } else {
+    } else if duration.num_hours() <= 24 {
         state.client.get_avg_prove_time_last_24_hours().await
+    } else {
+        state.client.get_avg_prove_time_last_7_days().await
     } {
         Ok(val) => val,
         Err(e) => {
@@ -316,8 +318,10 @@ async fn avg_verify_time(
     let duration = range_duration(&params.range);
     let avg = match if duration.num_hours() <= 1 {
         state.client.get_avg_verify_time_last_hour().await
-    } else {
+    } else if duration.num_hours() <= 24 {
         state.client.get_avg_verify_time_last_24_hours().await
+    } else {
+        state.client.get_avg_verify_time_last_7_days().await
     } {
         Ok(val) => val,
         Err(e) => {
@@ -335,8 +339,10 @@ async fn l2_block_cadence(
     let duration = range_duration(&params.range);
     let avg = match if duration.num_hours() <= 1 {
         state.client.get_l2_block_cadence_last_hour().await
-    } else {
+    } else if duration.num_hours() <= 24 {
         state.client.get_l2_block_cadence_last_24_hours().await
+    } else {
+        state.client.get_l2_block_cadence_last_7_days().await
     } {
         Ok(val) => val,
         Err(e) => {
@@ -354,8 +360,10 @@ async fn batch_posting_cadence(
     let duration = range_duration(&params.range);
     let avg = match if duration.num_hours() <= 1 {
         state.client.get_batch_posting_cadence_last_hour().await
-    } else {
+    } else if duration.num_hours() <= 24 {
         state.client.get_batch_posting_cadence_last_24_hours().await
+    } else {
+        state.client.get_batch_posting_cadence_last_7_days().await
     } {
         Ok(val) => val,
         Err(e) => {
@@ -373,8 +381,10 @@ async fn avg_l2_tps(
     let duration = range_duration(&params.range);
     let avg = match if duration.num_hours() <= 1 {
         state.client.get_avg_l2_tps_last_hour().await
-    } else {
+    } else if duration.num_hours() <= 24 {
         state.client.get_avg_l2_tps_last_24_hours().await
+    } else {
+        state.client.get_avg_l2_tps_last_7_days().await
     } {
         Ok(val) => val,
         Err(e) => {
@@ -391,6 +401,7 @@ async fn prove_times(
 ) -> Json<ProveTimesResponse> {
     let batches = match match params.range.as_deref() {
         Some("24h") => state.client.get_prove_times_last_24_hours().await,
+        Some("7d") => state.client.get_prove_times_last_7_days().await,
         _ => state.client.get_prove_times_last_hour().await,
     } {
         Ok(rows) => rows,
@@ -408,6 +419,7 @@ async fn verify_times(
 ) -> Json<VerifyTimesResponse> {
     let batches = match match params.range.as_deref() {
         Some("24h") => state.client.get_verify_times_last_24_hours().await,
+        Some("7d") => state.client.get_verify_times_last_7_days().await,
         _ => state.client.get_verify_times_last_hour().await,
     } {
         Ok(rows) => rows,
@@ -425,6 +437,7 @@ async fn l1_block_times(
 ) -> Json<L1BlockTimesResponse> {
     let blocks = match match params.range.as_deref() {
         Some("24h") => state.client.get_l1_block_times_last_24_hours().await,
+        Some("7d") => state.client.get_l1_block_times_last_7_days().await,
         _ => state.client.get_l1_block_times_last_hour().await,
     } {
         Ok(rows) => rows,
@@ -442,6 +455,7 @@ async fn l2_block_times(
 ) -> Json<L2BlockTimesResponse> {
     let blocks = match match params.range.as_deref() {
         Some("24h") => state.client.get_l2_block_times_last_24_hours().await,
+        Some("7d") => state.client.get_l2_block_times_last_7_days().await,
         _ => state.client.get_l2_block_times_last_hour().await,
     } {
         Ok(rows) => rows,
@@ -677,6 +691,15 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn avg_prove_time_7d_endpoint() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(vec![AvgRowTest { avg_ms: 1500.0 }]));
+        let app = build_app(mock.url());
+        let body = send_request(app, "/avg-prove-time?range=7d").await;
+        assert_eq!(body, json!({ "avg_prove_time_ms": 1500 }));
+    }
+
+    #[tokio::test]
     async fn avg_verify_time_endpoint() {
         let mock = Mock::new();
         mock.add(handlers::provide(vec![AvgRowTest { avg_ms: 2500.0 }]));
@@ -691,6 +714,15 @@ mod tests {
         mock.add(handlers::provide(vec![AvgRowTest { avg_ms: 2500.0 }]));
         let app = build_app(mock.url());
         let body = send_request(app, "/avg-verify-time?range=24h").await;
+        assert_eq!(body, json!({ "avg_verify_time_ms": 2500 }));
+    }
+
+    #[tokio::test]
+    async fn avg_verify_time_7d_endpoint() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(vec![AvgRowTest { avg_ms: 2500.0 }]));
+        let app = build_app(mock.url());
+        let body = send_request(app, "/avg-verify-time?range=7d").await;
         assert_eq!(body, json!({ "avg_verify_time_ms": 2500 }));
     }
 
@@ -720,6 +752,15 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn l2_block_cadence_7d_endpoint() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(vec![CadenceRowTest { min_ts: 1000, max_ts: 4000, cnt: 4 }]));
+        let app = build_app(mock.url());
+        let body = send_request(app, "/l2-block-cadence?range=7d").await;
+        assert_eq!(body, json!({ "l2_block_cadence_ms": 1000 }));
+    }
+
+    #[tokio::test]
     async fn batch_posting_cadence_endpoint() {
         let mock = Mock::new();
         mock.add(handlers::provide(vec![CadenceRowTest { min_ts: 2000, max_ts: 6000, cnt: 3 }]));
@@ -734,6 +775,15 @@ mod tests {
         mock.add(handlers::provide(vec![CadenceRowTest { min_ts: 2000, max_ts: 6000, cnt: 3 }]));
         let app = build_app(mock.url());
         let body = send_request(app, "/batch-posting-cadence?range=24h").await;
+        assert_eq!(body, json!({ "batch_posting_cadence_ms": 2000 }));
+    }
+
+    #[tokio::test]
+    async fn batch_posting_cadence_7d_endpoint() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(vec![CadenceRowTest { min_ts: 2000, max_ts: 6000, cnt: 3 }]));
+        let app = build_app(mock.url());
+        let body = send_request(app, "/batch-posting-cadence?range=7d").await;
         assert_eq!(body, json!({ "batch_posting_cadence_ms": 2000 }));
     }
 
@@ -761,6 +811,15 @@ mod tests {
         assert_eq!(body, json!({ "batches": [ { "batch_id": 1, "seconds_to_prove": 10 } ] }));
     }
 
+    #[tokio::test]
+    async fn prove_times_last_week_endpoint() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(vec![ProveRowTest { batch_id: 1, seconds_to_prove: 10 }]));
+        let app = build_app(mock.url());
+        let body = send_request(app, "/prove-times?range=7d").await;
+        assert_eq!(body, json!({ "batches": [ { "batch_id": 1, "seconds_to_prove": 10 } ] }));
+    }
+
     #[derive(Serialize, Row)]
     struct VerifyRowTest {
         batch_id: u64,
@@ -785,6 +844,15 @@ mod tests {
         assert_eq!(body, json!({ "batches": [ { "batch_id": 2, "seconds_to_verify": 120 } ] }));
     }
 
+    #[tokio::test]
+    async fn verify_times_last_week_endpoint() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(vec![VerifyRowTest { batch_id: 2, seconds_to_verify: 120 }]));
+        let app = build_app(mock.url());
+        let body = send_request(app, "/verify-times?range=7d").await;
+        assert_eq!(body, json!({ "batches": [ { "batch_id": 2, "seconds_to_verify": 120 } ] }));
+    }
+
     #[derive(Serialize, Row)]
     struct BlockTimeRowTest {
         minute: u64,
@@ -797,6 +865,15 @@ mod tests {
         mock.add(handlers::provide(vec![BlockTimeRowTest { minute: 1, block_number: 2 }]));
         let app = build_app(mock.url());
         let body = send_request(app, "/l1-block-times?range=1h").await;
+        assert_eq!(body, json!({ "blocks": [ { "minute": 1, "block_number": 2 } ] }));
+    }
+
+    #[tokio::test]
+    async fn l1_block_times_last_week_endpoint() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(vec![BlockTimeRowTest { minute: 1, block_number: 2 }]));
+        let app = build_app(mock.url());
+        let body = send_request(app, "/l1-block-times?range=7d").await;
         assert_eq!(body, json!({ "blocks": [ { "minute": 1, "block_number": 2 } ] }));
     }
 
@@ -815,6 +892,15 @@ mod tests {
         mock.add(handlers::provide(vec![BlockTimeRowTest { minute: 0, block_number: 1 }]));
         let app = build_app(mock.url());
         let body = send_request(app, "/l2-block-times?range=24h").await;
+        assert_eq!(body, json!({ "blocks": [ { "minute": 0, "block_number": 1 } ] }));
+    }
+
+    #[tokio::test]
+    async fn l2_block_times_last_week_endpoint() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(vec![BlockTimeRowTest { minute: 0, block_number: 1 }]));
+        let app = build_app(mock.url());
+        let body = send_request(app, "/l2-block-times?range=7d").await;
         assert_eq!(body, json!({ "blocks": [ { "minute": 0, "block_number": 1 } ] }));
     }
 
@@ -840,6 +926,15 @@ mod tests {
         mock.add(handlers::provide(vec![TpsRowTest { min_ts: 100, max_ts: 460, tx_sum: 720 }]));
         let app = build_app(mock.url());
         let body = send_request(app, "/avg-l2-tps?range=24h").await;
+        assert_eq!(body, json!({ "avg_tps": 2.0 }));
+    }
+
+    #[tokio::test]
+    async fn avg_l2_tps_7d_endpoint() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(vec![TpsRowTest { min_ts: 100, max_ts: 460, tx_sum: 720 }]));
+        let app = build_app(mock.url());
+        let body = send_request(app, "/avg-l2-tps?range=7d").await;
         assert_eq!(body, json!({ "avg_tps": 2.0 }));
     }
 

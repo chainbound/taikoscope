@@ -453,6 +453,31 @@ impl ClickhouseReader {
         if row.avg_ms == 0.0 { Ok(None) } else { Ok(Some(row.avg_ms.round() as u64)) }
     }
 
+    /// Get the average time in milliseconds it takes for a batch to be proven
+    /// for proofs submitted within the last 7 days
+    pub async fn get_avg_prove_time_last_7_days(&self) -> Result<Option<u64>> {
+        #[derive(Row, Deserialize)]
+        struct AvgRow {
+            avg_ms: f64,
+        }
+
+        let client = self.base.clone().with_database(&self.db_name);
+        let query = format!(
+            "SELECT COALESCE(avg(prove_time_ms), 0) AS avg_ms \
+             FROM {db}.batch_prove_times_mv \
+             WHERE proved_at >= now64() - INTERVAL 7 DAY",
+            db = self.db_name
+        );
+
+        let rows = client.query(&query).fetch_all::<AvgRow>().await?;
+        let row = match rows.into_iter().next() {
+            Some(r) => r,
+            None => return Ok(None),
+        };
+
+        if row.avg_ms == 0.0 { Ok(None) } else { Ok(Some(row.avg_ms.round() as u64)) }
+    }
+
     /// Get the average time in milliseconds it takes for a batch to be verified
     /// for verifications submitted within the last hour
     pub async fn get_avg_verify_time_last_hour(&self) -> Result<Option<u64>> {
@@ -491,6 +516,31 @@ impl ClickhouseReader {
             "SELECT COALESCE(avg(verify_time_ms), 0) AS avg_ms \
              FROM {db}.batch_verify_times_mv \
              WHERE verified_at >= now64() - INTERVAL 24 HOUR",
+            db = self.db_name
+        );
+
+        let rows = client.query(&query).fetch_all::<AvgRow>().await?;
+        let row = match rows.into_iter().next() {
+            Some(r) => r,
+            None => return Ok(None),
+        };
+
+        if row.avg_ms == 0.0 { Ok(None) } else { Ok(Some(row.avg_ms.round() as u64)) }
+    }
+
+    /// Get the average time in milliseconds it takes for a batch to be verified
+    /// for verifications submitted within the last 7 days
+    pub async fn get_avg_verify_time_last_7_days(&self) -> Result<Option<u64>> {
+        #[derive(Row, Deserialize)]
+        struct AvgRow {
+            avg_ms: f64,
+        }
+
+        let client = self.base.clone().with_database(&self.db_name);
+        let query = format!(
+            "SELECT COALESCE(avg(verify_time_ms), 0) AS avg_ms \
+             FROM {db}.batch_verify_times_mv \
+             WHERE verified_at >= now64() - INTERVAL 7 DAY",
             db = self.db_name
         );
 
@@ -553,6 +603,39 @@ impl ClickhouseReader {
                     count() as cnt \
              FROM {db}.l2_head_events \
              WHERE inserted_at >= now64() - INTERVAL 24 HOUR",
+            db = self.db_name
+        );
+
+        let rows = client.query(&query).fetch_all::<CadenceRow>().await?;
+        let row = match rows.into_iter().next() {
+            Some(r) => r,
+            None => return Ok(None),
+        };
+
+        if row.cnt > 1 && row.max_ts > row.min_ts {
+            Ok(Some((row.max_ts - row.min_ts) / (row.cnt - 1)))
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Get the average interval in milliseconds between consecutive L2 blocks
+    /// observed within the last 7 days
+    pub async fn get_l2_block_cadence_last_7_days(&self) -> Result<Option<u64>> {
+        #[derive(Row, Deserialize)]
+        struct CadenceRow {
+            min_ts: u64,
+            max_ts: u64,
+            cnt: u64,
+        }
+
+        let client = self.base.clone().with_database(&self.db_name);
+        let query = format!(
+            "SELECT toUInt64(min(toUnixTimestamp64Milli(inserted_at))) AS min_ts, \
+                    toUInt64(max(toUnixTimestamp64Milli(inserted_at))) AS max_ts, \
+                    count() as cnt \
+             FROM {db}.l2_head_events \
+             WHERE inserted_at >= now64() - INTERVAL 7 DAY",
             db = self.db_name
         );
 
@@ -635,6 +718,39 @@ impl ClickhouseReader {
         }
     }
 
+    /// Get the average interval in milliseconds between consecutive batch
+    /// proposals observed within the last 7 days
+    pub async fn get_batch_posting_cadence_last_7_days(&self) -> Result<Option<u64>> {
+        #[derive(Row, Deserialize)]
+        struct CadenceRow {
+            min_ts: u64,
+            max_ts: u64,
+            cnt: u64,
+        }
+
+        let client = self.base.clone().with_database(&self.db_name);
+        let query = format!(
+            "SELECT toUInt64(min(toUnixTimestamp64Milli(inserted_at))) AS min_ts, \
+                    toUInt64(max(toUnixTimestamp64Milli(inserted_at))) AS max_ts, \
+                    count() as cnt \
+             FROM {db}.batches \
+             WHERE inserted_at >= now64() - INTERVAL 7 DAY",
+            db = self.db_name
+        );
+
+        let rows = client.query(&query).fetch_all::<CadenceRow>().await?;
+        let row = match rows.into_iter().next() {
+            Some(r) => r,
+            None => return Ok(None),
+        };
+
+        if row.cnt > 1 && row.max_ts > row.min_ts {
+            Ok(Some((row.max_ts - row.min_ts) / (row.cnt - 1)))
+        } else {
+            Ok(None)
+        }
+    }
+
     /// Get prove times in seconds for batches proved within the last hour
     pub async fn get_prove_times_last_hour(&self) -> Result<Vec<BatchProveTimeRow>> {
         let client = self.base.clone().with_database(&self.db_name);
@@ -669,6 +785,27 @@ impl ClickhouseReader {
              JOIN {db}.l1_head_events l1_proved \
                ON pb.l1_block_number = l1_proved.l1_block_number \
              WHERE l1_proved.block_ts >= (toUInt64(now()) - 86400) \
+             ORDER BY b.batch_id ASC",
+            db = self.db_name
+        );
+
+        let rows = client.query(&query).fetch_all::<BatchProveTimeRow>().await?;
+        Ok(rows)
+    }
+
+    /// Get prove times in seconds for batches proved within the last 7 days
+    pub async fn get_prove_times_last_7_days(&self) -> Result<Vec<BatchProveTimeRow>> {
+        let client = self.base.clone().with_database(&self.db_name);
+        let query = format!(
+            "SELECT b.batch_id AS batch_id, \
+                    (l1_proved.block_ts - l1_proposed.block_ts) AS seconds_to_prove \
+             FROM {db}.batches b \
+             JOIN {db}.proved_batches pb ON b.batch_id = pb.batch_id \
+             JOIN {db}.l1_head_events l1_proposed \
+               ON b.l1_block_number = l1_proposed.l1_block_number \
+             JOIN {db}.l1_head_events l1_proved \
+               ON pb.l1_block_number = l1_proved.l1_block_number \
+             WHERE l1_proved.block_ts >= (toUInt64(now()) - 604800) \
              ORDER BY b.batch_id ASC",
             db = self.db_name
         );
@@ -725,6 +862,30 @@ impl ClickhouseReader {
         Ok(rows)
     }
 
+    /// Get verify times in seconds for batches verified within the last 7 days
+    pub async fn get_verify_times_last_7_days(&self) -> Result<Vec<BatchVerifyTimeRow>> {
+        let client = self.base.clone().with_database(&self.db_name);
+        let query = format!(
+            "SELECT pb.batch_id AS batch_id, \
+                    (l1_verified.block_ts - l1_proved.block_ts) AS seconds_to_verify \
+             FROM {db}.proved_batches pb \
+             INNER JOIN {db}.verified_batches vb \
+                ON pb.batch_id = vb.batch_id AND pb.block_hash = vb.block_hash \
+             INNER JOIN {db}.l1_head_events l1_proved \
+                ON pb.l1_block_number = l1_proved.l1_block_number \
+             INNER JOIN {db}.l1_head_events l1_verified \
+                ON vb.l1_block_number = l1_verified.l1_block_number \
+             WHERE l1_verified.block_ts >= (toUInt64(now()) - 604800) \
+               AND l1_verified.block_ts > l1_proved.block_ts \
+               AND (l1_verified.block_ts - l1_proved.block_ts) > 60 \
+             ORDER BY pb.batch_id ASC",
+            db = self.db_name
+        );
+
+        let rows = client.query(&query).fetch_all::<BatchVerifyTimeRow>().await?;
+        Ok(rows)
+    }
+
     /// Get L1 block numbers grouped by minute for the last hour
     pub async fn get_l1_block_times_last_hour(&self) -> Result<Vec<L1BlockTimeRow>> {
         let client = self.base.clone().with_database(&self.db_name);
@@ -759,6 +920,23 @@ impl ClickhouseReader {
         Ok(rows)
     }
 
+    /// Get L1 block numbers grouped by minute for the last 7 days
+    pub async fn get_l1_block_times_last_7_days(&self) -> Result<Vec<L1BlockTimeRow>> {
+        let client = self.base.clone().with_database(&self.db_name);
+        let query = format!(
+            "SELECT toUInt64(toStartOfMinute(fromUnixTimestamp64Milli(block_ts * 1000))) AS minute, \
+                    max(l1_block_number) AS block_number \
+             FROM {db}.l1_head_events \
+             WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL 7 DAY) \
+             GROUP BY minute \
+             ORDER BY minute",
+            db = self.db_name
+        );
+
+        let rows = client.query(&query).fetch_all::<L1BlockTimeRow>().await?;
+        Ok(rows)
+    }
+
     /// Get max L2 block number for each minute in the last hour
     pub async fn get_l2_block_times_last_hour(&self) -> Result<Vec<L2BlockTimeRow>> {
         let client = self.base.clone().with_database(&self.db_name);
@@ -784,6 +962,23 @@ impl ClickhouseReader {
                     max(l2_block_number) AS block_number \
              FROM {db}.l2_head_events \
              WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL 24 HOUR) \
+             GROUP BY minute \
+             ORDER BY minute",
+            db = self.db_name
+        );
+
+        let rows = client.query(&query).fetch_all::<L2BlockTimeRow>().await?;
+        Ok(rows)
+    }
+
+    /// Get max L2 block number for each minute in the last 7 days
+    pub async fn get_l2_block_times_last_7_days(&self) -> Result<Vec<L2BlockTimeRow>> {
+        let client = self.base.clone().with_database(&self.db_name);
+        let query = format!(
+            "SELECT toUInt64(toStartOfMinute(fromUnixTimestamp(block_ts))) AS minute, \
+                    max(l2_block_number) AS block_number \
+             FROM {db}.l2_head_events \
+             WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL 7 DAY) \
              GROUP BY minute \
              ORDER BY minute",
             db = self.db_name
@@ -842,6 +1037,39 @@ impl ClickhouseReader {
                     sum(sum_tx) AS tx_sum \
              FROM {db}.l2_head_events \
              WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL 24 HOUR)",
+            db = self.db_name
+        );
+
+        let rows = client.query(&query).fetch_all::<TpsRow>().await?;
+        let row = match rows.into_iter().next() {
+            Some(r) => r,
+            None => return Ok(None),
+        };
+
+        if row.max_ts > row.min_ts && row.tx_sum > 0 {
+            let duration = (row.max_ts - row.min_ts) as f64;
+            Ok(Some(row.tx_sum as f64 / duration))
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Get the average number of L2 transactions per second for the last 7 days
+    pub async fn get_avg_l2_tps_last_7_days(&self) -> Result<Option<f64>> {
+        #[derive(Row, Deserialize)]
+        struct TpsRow {
+            min_ts: u64,
+            max_ts: u64,
+            tx_sum: u64,
+        }
+
+        let client = self.base.clone().with_database(&self.db_name);
+        let query = format!(
+            "SELECT toUInt64(min(block_ts)) AS min_ts, \
+                    toUInt64(max(block_ts)) AS max_ts, \
+                    sum(sum_tx) AS tx_sum \
+             FROM {db}.l2_head_events \
+             WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL 7 DAY)",
             db = self.db_name
         );
 
