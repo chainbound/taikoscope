@@ -80,7 +80,8 @@ pub struct InstatusOpts {
 
 impl InstatusOpts {
     /// Returns `true` if all required values are set.
-    pub const fn enabled(&self) -> bool {
+    #[allow(clippy::missing_const_for_fn)]
+    pub fn enabled(&self) -> bool {
         !(self.api_key.is_empty() ||
             self.page_id.is_empty() ||
             self.batch_component_id.is_empty() ||
