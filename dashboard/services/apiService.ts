@@ -47,7 +47,7 @@ export const fetchAvgProveTime = async (
   const avgTimeMs = avgTimeSeconds * 1000;
 
   return {
-    data: res.data?.avg_prove_time_ms ?? null,
+    data: avgTimeMs,
     badRequest: res.badRequest,
   };
 };
@@ -163,10 +163,10 @@ export const fetchProveTimes = async (
   return {
     data: res.data
       ? res.data.batches.map((b) => ({
-        name: b.batch_id.toString(),
-        value: b.seconds_to_prove,
-        timestamp: 0,
-      }))
+          name: b.batch_id.toString(),
+          value: b.seconds_to_prove,
+          timestamp: 0,
+        }))
       : null,
     badRequest: res.badRequest,
   };
@@ -182,10 +182,10 @@ export const fetchVerifyTimes = async (
   return {
     data: res.data
       ? res.data.batches.map((b) => ({
-        name: b.batch_id.toString(),
-        value: b.seconds_to_verify,
-        timestamp: 0,
-      }))
+          name: b.batch_id.toString(),
+          value: b.seconds_to_verify,
+          timestamp: 0,
+        }))
       : null,
     badRequest: res.badRequest,
   };
