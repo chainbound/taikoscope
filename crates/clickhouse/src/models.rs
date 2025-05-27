@@ -164,3 +164,12 @@ pub struct L2BlockTimeRow {
     /// Milliseconds since the previous block
     pub ms_since_prev_block: Option<u64>,
 }
+
+/// Row representing the gas used in each L2 block
+#[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq)]
+pub struct L2GasUsedRow {
+    /// L2 block number
+    pub l2_block_number: u64,
+    /// Total gas used in the block
+    pub gas_used: u64,
+}

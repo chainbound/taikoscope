@@ -7,6 +7,7 @@ import { DataTable } from './components/DataTable';
 import { SequencerPieChart } from './components/SequencerPieChart';
 import { BlockTimeChart } from './components/BlockTimeChart';
 import { BatchProcessChart } from './components/BatchProcessChart';
+import { GasUsedChart } from './components/GasUsedChart';
 import {
   TimeRange,
   TimeSeriesData,
@@ -40,6 +41,7 @@ import {
   fetchVerifyTimes,
   fetchL1BlockTimes,
   fetchL2BlockTimes,
+  fetchL2GasUsed,
   fetchSequencerDistribution,
 } from './services/apiService';
 
@@ -56,6 +58,7 @@ const App: React.FC = () => {
     TimeSeriesData[]
   >([]);
   const [l2BlockTimeData, setL2BlockTimeData] = useState<TimeSeriesData[]>([]);
+  const [l2GasUsedData, setL2GasUsedData] = useState<TimeSeriesData[]>([]);
   const [l1BlockTimeData, setL1BlockTimeData] = useState<TimeSeriesData[]>([]);
   const [sequencerDistribution, setSequencerDistribution] = useState<
     PieChartDataItem[]
@@ -173,6 +176,7 @@ const App: React.FC = () => {
       verifyTimesRes,
       l1TimesRes,
       l2TimesRes,
+      l2GasUsedRes,
       sequencerDistRes,
     ] = await Promise.all([
       fetchL2BlockCadence(range),
@@ -194,6 +198,7 @@ const App: React.FC = () => {
       fetchVerifyTimes(range),
       fetchL1BlockTimes(range),
       fetchL2BlockTimes(range),
+      fetchL2GasUsed(range),
       fetchSequencerDistribution(range),
     ]);
 
@@ -216,6 +221,7 @@ const App: React.FC = () => {
     const verifyTimes = verifyTimesRes.data || [];
     const l1Times = l1TimesRes.data || [];
     const l2Times = l2TimesRes.data || [];
+    const l2Gas = l2GasUsedRes.data || [];
     const sequencerDist = sequencerDistRes.data || [];
 
     const anyBadRequest = hasBadRequest([
@@ -236,6 +242,7 @@ const App: React.FC = () => {
       verifyTimesRes,
       l1TimesRes,
       l2TimesRes,
+      l2GasUsedRes,
       sequencerDistRes,
     ]);
 
@@ -258,6 +265,7 @@ const App: React.FC = () => {
     setSecondsToProveData(proveTimes);
     setSecondsToVerifyData(verifyTimes);
     setL2BlockTimeData(l2Times);
+    setL2GasUsedData(l2Gas);
     setL1BlockTimeData(l1Times);
     setSequencerDistribution(sequencerDist);
     setSlashingEvents(slashingEventsData);
@@ -354,47 +362,47 @@ const App: React.FC = () => {
                     onMore={
                       typeof m.title === 'string' && m.title === 'L2 Reorgs'
                         ? () =>
+                          openTable(
+                            'L2 Reorgs',
+                            [
+                              {
+                                key: 'l2_block_number',
+                                label: 'Block Number',
+                              },
+                              { key: 'depth', label: 'Depth' },
+                            ],
+                            l2ReorgEvents as unknown as Record<
+                              string,
+                              string | number
+                            >[],
+                          )
+                        : typeof m.title === 'string' &&
+                          m.title === 'Slashing Events'
+                          ? () =>
                             openTable(
-                              'L2 Reorgs',
+                              'Slashing Events',
                               [
                                 {
-                                  key: 'l2_block_number',
-                                  label: 'Block Number',
+                                  key: 'l1_block_number',
+                                  label: 'L1 Block',
                                 },
-                                { key: 'depth', label: 'Depth' },
+                                { key: 'validator_addr', label: 'Validator' },
                               ],
-                              l2ReorgEvents as unknown as Record<
-                                string,
-                                string | number
-                              >[],
+                              slashingEvents.map((e) => ({
+                                l1_block_number: e.l1_block_number,
+                                validator_addr: bytesToHex(e.validator_addr),
+                              })) as Record<string, string | number>[],
                             )
-                        : typeof m.title === 'string' &&
-                            m.title === 'Slashing Events'
-                          ? () =>
+                          : typeof m.title === 'string' &&
+                            m.title === 'Forced Inclusions'
+                            ? () =>
                               openTable(
-                                'Slashing Events',
-                                [
-                                  {
-                                    key: 'l1_block_number',
-                                    label: 'L1 Block',
-                                  },
-                                  { key: 'validator_addr', label: 'Validator' },
-                                ],
-                                slashingEvents.map((e) => ({
-                                  l1_block_number: e.l1_block_number,
-                                  validator_addr: bytesToHex(e.validator_addr),
+                                'Forced Inclusions',
+                                [{ key: 'blob_hash', label: 'Blob Hash' }],
+                                forcedInclusionEvents.map((e) => ({
+                                  blob_hash: bytesToHex(e.blob_hash),
                                 })) as Record<string, string | number>[],
                               )
-                          : typeof m.title === 'string' &&
-                              m.title === 'Forced Inclusions'
-                            ? () =>
-                                openTable(
-                                  'Forced Inclusions',
-                                  [{ key: 'blob_hash', label: 'Blob Hash' }],
-                                  forcedInclusionEvents.map((e) => ({
-                                    blob_hash: bytesToHex(e.blob_hash),
-                                  })) as Record<string, string | number>[],
-                                )
                             : undefined
                     }
                   />
@@ -462,6 +470,9 @@ const App: React.FC = () => {
             }
           >
             <BatchProcessChart data={secondsToVerifyData} lineColor="#5DA5DA" />
+          </ChartCard>
+          <ChartCard title="Gas Used Per Block">
+            <GasUsedChart data={l2GasUsedData} lineColor="#E573B5" />
           </ChartCard>
           <ChartCard
             title="L2 Block Times"
