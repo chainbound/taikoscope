@@ -994,7 +994,7 @@ mod tests {
         let body = send_request(app, "/l2-block-times?range=1h").await;
         assert_eq!(
             body,
-            json!({ "blocks": [ { "l2_block_number": 1, "block_time": "1970-01-01T00:00:02Z", "seconds_since_prev_block": 2.0 } ] })
+            json!({ "blocks": [ { "l2_block_number": 1, "block_time": "1970-01-01T00:00:02Z", "ms_since_prev_block": 2000 } ] })
         );
     }
 
@@ -1013,7 +1013,7 @@ mod tests {
         let body = send_request(app, "/l2-block-times?range=24h").await;
         assert_eq!(
             body,
-            json!({ "blocks": [ { "l2_block_number": 1, "block_time": "1970-01-01T00:00:02Z", "seconds_since_prev_block": 2.0 } ] })
+            json!({ "blocks": [ { "l2_block_number": 1, "block_time": "1970-01-01T00:00:02Z", "ms_since_prev_block": 2000 } ] })
         );
     }
 
@@ -1032,7 +1032,7 @@ mod tests {
         let body = send_request(app, "/l2-block-times?range=7d").await;
         assert_eq!(
             body,
-            json!({ "blocks": [ { "l2_block_number": 1, "block_time": "1970-01-01T00:00:02Z", "seconds_since_prev_block": 2.0 } ] })
+            json!({ "blocks": [ { "l2_block_number": 1, "block_time": "1970-01-01T00:00:02Z", "ms_since_prev_block": 2000 } ] })
         );
     }
 
