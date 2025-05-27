@@ -253,8 +253,21 @@ const App: React.FC = () => {
     return () => clearInterval(interval);
   }, [timeRange, fetchData, refreshRate]);
 
-  const operatorMetrics = metrics.filter((m) => m.group === 'Operators');
-  const otherMetrics = metrics.filter((m) => m.group !== 'Operators');
+  const groupedMetrics = metrics.reduce<Record<string, MetricData[]>>(
+    (acc, m) => {
+      const group = m.group ?? 'Other';
+      if (!acc[group]) acc[group] = [];
+      acc[group].push(m);
+      return acc;
+    },
+    {},
+  );
+  const groupOrder = [
+    'Network Performance',
+    'Network Health & Security',
+    'Operators',
+    'Other',
+  ];
 
   return (
     <div
@@ -276,20 +289,23 @@ const App: React.FC = () => {
 
       <main className="mt-6">
         {/* Metrics Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4 md:gap-6">
-          {otherMetrics.map((m, idx) => (
-            <MetricCard key={`other-${idx}`} title={m.title} value={m.value} />
-          ))}
-        </div>
-        {operatorMetrics.length > 0 && (
-          <>
-            <h2 className="mt-6 mb-2 text-lg font-semibold">Operators</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4 md:gap-6">
-              {operatorMetrics.map((m, idx) => (
-                <MetricCard key={`op-${idx}`} title={m.title} value={m.value} />
-              ))}
-            </div>
-          </>
+        {groupOrder.map((group) =>
+          groupedMetrics[group] && groupedMetrics[group].length > 0 ? (
+            <React.Fragment key={group}>
+              {group !== 'Other' && (
+                <h2 className="mt-6 mb-2 text-lg font-semibold">{group}</h2>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4 md:gap-6">
+                {groupedMetrics[group].map((m, idx) => (
+                  <MetricCard
+                    key={`${group}-${idx}`}
+                    title={m.title}
+                    value={m.value}
+                  />
+                ))}
+              </div>
+            </React.Fragment>
+          ) : null,
         )}
 
         {/* Charts Grid - Reordered: Sequencer Pie Chart first */}
