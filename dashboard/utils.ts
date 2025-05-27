@@ -4,7 +4,11 @@ export const formatDecimal = (value: number): string => {
 };
 
 export const formatSeconds = (seconds: number): string => {
-  return seconds >= 120
-    ? `${Number(formatDecimal(seconds / 60))}m`
-    : `${formatDecimal(seconds)}s`;
+  if (seconds >= 120 * 60) {
+    return `${Number(formatDecimal(seconds / 3600))}h`;
+  }
+  if (seconds >= 120) {
+    return `${Number(formatDecimal(seconds / 60))}m`;
+  }
+  return `${formatDecimal(seconds)}s`;
 };

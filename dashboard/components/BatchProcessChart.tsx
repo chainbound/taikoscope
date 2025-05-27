@@ -29,11 +29,14 @@ export const BatchProcessChart: React.FC<BatchProcessChartProps> = ({
     );
   }
 
-  const showMinutes = data.some((d) => d.value >= 120);
+  const showHours = data.some((d) => d.value >= 120 * 60);
+  const showMinutes = !showHours && data.some((d) => d.value >= 120);
   const formatValue = (value: number) =>
-    showMinutes
-      ? `${formatDecimal(value / 60)} minutes`
-      : `${Math.round(value)} seconds`;
+    showHours
+      ? `${formatDecimal(value / 3600)} hours`
+      : showMinutes
+        ? `${formatDecimal(value / 60)} minutes`
+        : `${Math.round(value)} seconds`;
 
   return (
     <ResponsiveContainer width="100%" height="100%">
@@ -59,10 +62,14 @@ export const BatchProcessChart: React.FC<BatchProcessChartProps> = ({
           stroke="#666666"
           fontSize={12}
           tickFormatter={(v) =>
-            showMinutes ? Number(formatDecimal(v / 60)) : v.toString()
+            showHours
+              ? Number(formatDecimal(v / 3600))
+              : showMinutes
+                ? Number(formatDecimal(v / 60))
+                : v.toString()
           }
           label={{
-            value: showMinutes ? "Minutes" : "Seconds",
+            value: showHours ? "Hours" : showMinutes ? "Minutes" : "Seconds",
             angle: -90,
             position: "insideLeft",
             offset: -5,
@@ -92,7 +99,13 @@ export const BatchProcessChart: React.FC<BatchProcessChartProps> = ({
           strokeWidth={2}
           dot={{ r: 3 }}
           activeDot={{ r: 6 }}
-          name={showMinutes ? "Time (minutes)" : "Time (seconds)"}
+          name={
+            showHours
+              ? "Time (hours)"
+              : showMinutes
+                ? "Time (minutes)"
+                : "Time (seconds)"
+          }
         />
       </LineChart>
     </ResponsiveContainer>
