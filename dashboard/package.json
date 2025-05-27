@@ -8,7 +8,9 @@
     "build": "vite build",
     "preview": "vite preview",
     "check": "tsc --noEmit",
-    "test": "tsc -p tsconfig.tests.json && node tests-build/tests/utils.test.js && node tests-build/tests/helpers.test.js"
+    "test": "tsc -p tsconfig.tests.json && node tests-build/tests/utils.test.js && node tests-build/tests/helpers.test.js",
+    "format": "prettier --write .",
+    "lint": "eslint . --ext .ts,.tsx"
   },
   "dependencies": {
     "react": "^19.1.0",
@@ -23,6 +25,12 @@
     "vite": "^6.2.0",
     "tailwindcss": "^3.4.4",
     "postcss": "^8.4.38",
-    "autoprefixer": "^10.4.19"
+    "autoprefixer": "^10.4.19",
+    "prettier": "^3.2.5",
+    "eslint": "^8.57.0",
+    "@typescript-eslint/parser": "^7.7.0",
+    "@typescript-eslint/eslint-plugin": "^7.7.0",
+    "eslint-plugin-react": "^7.33.2",
+    "eslint-config-prettier": "^9.1.0"
   }
 }
