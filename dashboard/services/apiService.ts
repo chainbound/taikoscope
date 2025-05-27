@@ -139,6 +139,18 @@ export const fetchL1HeadBlock = async (
   return { data: value, badRequest: res.badRequest };
 };
 
+export const fetchL2HeadNumber = async (): Promise<RequestResult<number>> => {
+  const url = `${API_BASE}/l2-head-block`;
+  const res = await fetchJson<{ l2_head_block?: number }>(url);
+  return { data: res.data?.l2_head_block ?? null, badRequest: res.badRequest };
+};
+
+export const fetchL1HeadNumber = async (): Promise<RequestResult<number>> => {
+  const url = `${API_BASE}/l1-head-block`;
+  const res = await fetchJson<{ l1_head_block?: number }>(url);
+  return { data: res.data?.l1_head_block ?? null, badRequest: res.badRequest };
+};
+
 export const fetchProveTimes = async (
   range: "1h" | "24h" | "7d",
 ): Promise<RequestResult<TimeSeriesData[]>> => {
