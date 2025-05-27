@@ -958,7 +958,7 @@ mod tests {
     struct L2BlockTimeRowTest {
         l2_block_number: u64,
         block_time: u64,
-        seconds_since_prev_block: Option<u64>,
+        ms_since_prev_block: Option<u64>,
     }
 
     #[tokio::test]
@@ -983,22 +983,18 @@ mod tests {
     async fn l2_block_times_last_hour_endpoint() {
         let mock = Mock::new();
         mock.add(handlers::provide(vec![
-            L2BlockTimeRowTest {
-                l2_block_number: 0,
-                block_time: 0,
-                seconds_since_prev_block: None,
-            },
+            L2BlockTimeRowTest { l2_block_number: 0, block_time: 0, ms_since_prev_block: None },
             L2BlockTimeRowTest {
                 l2_block_number: 1,
                 block_time: 2,
-                seconds_since_prev_block: Some(2),
+                ms_since_prev_block: Some(2000),
             },
         ]));
         let app = build_app(mock.url());
         let body = send_request(app, "/l2-block-times?range=1h").await;
         assert_eq!(
             body,
-            json!({ "blocks": [ { "l2_block_number": 1, "block_time": "1970-01-01T00:00:02Z", "seconds_since_prev_block": 2 } ] })
+            json!({ "blocks": [ { "l2_block_number": 1, "block_time": "1970-01-01T00:00:02Z", "seconds_since_prev_block": 2.0 } ] })
         );
     }
 
@@ -1006,22 +1002,18 @@ mod tests {
     async fn l2_block_times_last_day_endpoint() {
         let mock = Mock::new();
         mock.add(handlers::provide(vec![
-            L2BlockTimeRowTest {
-                l2_block_number: 0,
-                block_time: 0,
-                seconds_since_prev_block: None,
-            },
+            L2BlockTimeRowTest { l2_block_number: 0, block_time: 0, ms_since_prev_block: None },
             L2BlockTimeRowTest {
                 l2_block_number: 1,
                 block_time: 2,
-                seconds_since_prev_block: Some(2),
+                ms_since_prev_block: Some(2000),
             },
         ]));
         let app = build_app(mock.url());
         let body = send_request(app, "/l2-block-times?range=24h").await;
         assert_eq!(
             body,
-            json!({ "blocks": [ { "l2_block_number": 1, "block_time": "1970-01-01T00:00:02Z", "seconds_since_prev_block": 2 } ] })
+            json!({ "blocks": [ { "l2_block_number": 1, "block_time": "1970-01-01T00:00:02Z", "seconds_since_prev_block": 2.0 } ] })
         );
     }
 
@@ -1029,22 +1021,18 @@ mod tests {
     async fn l2_block_times_last_week_endpoint() {
         let mock = Mock::new();
         mock.add(handlers::provide(vec![
-            L2BlockTimeRowTest {
-                l2_block_number: 0,
-                block_time: 0,
-                seconds_since_prev_block: None,
-            },
+            L2BlockTimeRowTest { l2_block_number: 0, block_time: 0, ms_since_prev_block: None },
             L2BlockTimeRowTest {
                 l2_block_number: 1,
                 block_time: 2,
-                seconds_since_prev_block: Some(2),
+                ms_since_prev_block: Some(2000),
             },
         ]));
         let app = build_app(mock.url());
         let body = send_request(app, "/l2-block-times?range=7d").await;
         assert_eq!(
             body,
-            json!({ "blocks": [ { "l2_block_number": 1, "block_time": "1970-01-01T00:00:02Z", "seconds_since_prev_block": 2 } ] })
+            json!({ "blocks": [ { "l2_block_number": 1, "block_time": "1970-01-01T00:00:02Z", "seconds_since_prev_block": 2.0 } ] })
         );
     }
 
