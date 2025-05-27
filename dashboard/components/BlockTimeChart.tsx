@@ -20,7 +20,7 @@ interface BlockTimeChartProps {
 const formatInterval = (ms: number, showMinutes: boolean): string => {
   return showMinutes
     ? `${formatDecimal(ms / 60000)} minutes`
-    : `${Math.round(ms / 1000)} seconds`;
+    : `${Number(formatDecimal(ms / 1000))} seconds`;
 };
 
 export const BlockTimeChart: React.FC<BlockTimeChartProps> = ({
@@ -62,8 +62,8 @@ export const BlockTimeChart: React.FC<BlockTimeChartProps> = ({
           domain={["auto", "auto"]}
           tickFormatter={(v) =>
             showMinutes
-              ? formatDecimal(v / 60000)
-              : Math.round(v / 1000).toString()
+              ? String(Number(formatDecimal(v / 60000)))
+              : String(Number(formatDecimal(v / 1000)))
           }
           label={{
             value: showMinutes ? "Minutes" : "Seconds",
