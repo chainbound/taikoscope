@@ -24,7 +24,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
       {/* Removed {unit && `(${unit})`} from here */}
       <h3 className="text-sm font-medium text-gray-500 truncate">{title}</h3>
       <p
-        className={`mt-1 font-semibold text-gray-900 ${isAddress ? 'text-sm whitespace-nowrap' : 'text-3xl break-all'}`}
+        className={`mt-1 font-semibold text-gray-900 ${isAddress ? 'text-lg whitespace-nowrap' : 'text-3xl break-all'}`}
       >
         {value}
       </p>
