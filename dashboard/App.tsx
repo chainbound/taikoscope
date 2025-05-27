@@ -56,8 +56,24 @@ const App: React.FC = () => {
     const l1Source = new EventSource(`${API_BASE}/sse/l1-head`);
     const l2Source = new EventSource(`${API_BASE}/sse/l2-head`);
 
-    l1Source.onmessage = (e) => setL1HeadBlock(Number(e.data).toLocaleString());
-    l2Source.onmessage = (e) => setL2HeadBlock(Number(e.data).toLocaleString());
+    l1Source.onmessage = (e) => {
+      const value = Number(e.data).toLocaleString();
+      setL1HeadBlock(value);
+      setMetrics((m) =>
+        m.map((metric) =>
+          metric.title === "L1 Head Block" ? { ...metric, value } : metric,
+        ),
+      );
+    };
+    l2Source.onmessage = (e) => {
+      const value = Number(e.data).toLocaleString();
+      setL2HeadBlock(value);
+      setMetrics((m) =>
+        m.map((metric) =>
+          metric.title === "L2 Head Block" ? { ...metric, value } : metric,
+        ),
+      );
+    };
 
     return () => {
       l1Source.close();
