@@ -163,6 +163,16 @@ struct SequencerDistributionResponse {
     sequencers: Vec<SequencerDistributionItem>,
 }
 
+#[derive(Debug, Serialize)]
+struct L2HeadBlockResponse {
+    l2_head_block: Option<u64>,
+}
+
+#[derive(Debug, Serialize)]
+struct L1HeadBlockResponse {
+    l1_head_block: Option<u64>,
+}
+
 async fn l2_head(State(state): State<ApiState>) -> Json<L2HeadResponse> {
     let ts = match state.client.get_last_l2_head_time().await {
         Ok(time) => time,
@@ -187,6 +197,28 @@ async fn l1_head(State(state): State<ApiState>) -> Json<L1HeadResponse> {
 
     let resp = L1HeadResponse { last_l1_head_time: ts.map(|t| t.to_rfc3339()) };
     Json(resp)
+}
+
+async fn l2_head_block(State(state): State<ApiState>) -> Json<L2HeadBlockResponse> {
+    let num = match state.client.get_last_l2_block_number().await {
+        Ok(num) => num,
+        Err(e) => {
+            tracing::error!("Failed to get L2 head block number: {}", e);
+            None
+        }
+    };
+    Json(L2HeadBlockResponse { l2_head_block: num })
+}
+
+async fn l1_head_block(State(state): State<ApiState>) -> Json<L1HeadBlockResponse> {
+    let num = match state.client.get_last_l1_block_number().await {
+        Ok(num) => num,
+        Err(e) => {
+            tracing::error!("Failed to get L1 head block number: {}", e);
+            None
+        }
+    };
+    Json(L1HeadBlockResponse { l1_head_block: num })
 }
 
 async fn sse_l2_head(
@@ -509,6 +541,8 @@ fn router(state: ApiState) -> Router {
     Router::new()
         .route("/l2-head", get(l2_head))
         .route("/l1-head", get(l1_head))
+        .route("/l2-head-block", get(l2_head_block))
+        .route("/l1-head-block", get(l1_head_block))
         .route("/sse/l1-head", get(sse_l1_head))
         .route("/sse/l2-head", get(sse_l2_head))
         .route("/slashings", get(slashings))
@@ -577,6 +611,11 @@ mod tests {
         avg_ms: f64,
     }
 
+    #[derive(Serialize, Row)]
+    struct MaxNum {
+        number: u64,
+    }
+
     fn build_app(mock_url: &str) -> Router {
         let url = Url::parse(mock_url).unwrap();
         let client =
@@ -613,6 +652,24 @@ mod tests {
         let body = send_request(app, "/l1-head").await;
         let expected = Utc.timestamp_opt(ts as i64, 0).single().unwrap().to_rfc3339();
         assert_eq!(body, json!({ "last_l1_head_time": expected }));
+    }
+
+    #[tokio::test]
+    async fn l2_head_block_endpoint() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(vec![MaxNum { number: 1 }]));
+        let app = build_app(mock.url());
+        let body = send_request(app, "/l2-head-block").await;
+        assert_eq!(body, json!({ "l2_head_block": 1 }));
+    }
+
+    #[tokio::test]
+    async fn l1_head_block_endpoint() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(vec![MaxNum { number: 2 }]));
+        let app = build_app(mock.url());
+        let body = send_request(app, "/l1-head-block").await;
+        assert_eq!(body, json!({ "l1_head_block": 2 }));
     }
 
     #[tokio::test]

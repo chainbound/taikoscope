@@ -24,6 +24,8 @@ import {
   fetchForcedInclusions,
   fetchL2HeadBlock,
   fetchL1HeadBlock,
+  fetchL2HeadNumber,
+  fetchL1HeadNumber,
   fetchProveTimes,
   fetchVerifyTimes,
   fetchL1BlockTimes,
@@ -54,6 +56,43 @@ const App: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState<string>("");
 
   useEffect(() => {
+    let pollId: NodeJS.Timeout | null = null;
+
+    const updateHeads = async () => {
+      const [l1, l2] = await Promise.all([
+        fetchL1HeadNumber(),
+        fetchL2HeadNumber(),
+      ]);
+      if (l1.data !== null) {
+        const value = l1.data.toLocaleString();
+        setL1HeadBlock(value);
+        setMetrics((m) =>
+          m.map((metric) =>
+            metric.title === "L1 Head Block" ? { ...metric, value } : metric,
+          ),
+        );
+      }
+      if (l2.data !== null) {
+        const value = l2.data.toLocaleString();
+        setL2HeadBlock(value);
+        setMetrics((m) =>
+          m.map((metric) =>
+            metric.title === "L2 Head Block" ? { ...metric, value } : metric,
+          ),
+        );
+      }
+    };
+
+    const startPolling = () => {
+      if (!pollId) {
+        setErrorMessage(
+          "Realtime updates unavailable, falling back to polling.",
+        );
+        updateHeads();
+        pollId = setInterval(updateHeads, 10000);
+      }
+    };
+
     const l1Source = new EventSource(`${API_BASE}/sse/l1-head`);
     const l2Source = new EventSource(`${API_BASE}/sse/l2-head`);
 
@@ -76,9 +115,19 @@ const App: React.FC = () => {
       );
     };
 
+    const handleError = () => {
+      l1Source.close();
+      l2Source.close();
+      startPolling();
+    };
+
+    l1Source.onerror = handleError;
+    l2Source.onerror = handleError;
+
     return () => {
       l1Source.close();
       l2Source.close();
+      if (pollId) clearInterval(pollId);
     };
   }, []);
 
