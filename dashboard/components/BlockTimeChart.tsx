@@ -62,8 +62,8 @@ export const BlockTimeChart: React.FC<BlockTimeChartProps> = ({
           domain={["auto", "auto"]}
           tickFormatter={(v) =>
             showMinutes
-              ? Number(formatDecimal(v / 60000))
-              : Math.round(v / 1000)
+              ? formatDecimal(v / 60000)
+              : Math.round(v / 1000).toString()
           }
           label={{
             value: showMinutes ? "Minutes" : "Seconds",

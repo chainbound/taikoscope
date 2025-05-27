@@ -47,7 +47,7 @@ export const fetchAvgProveTime = async (
   const avgTimeMs = avgTimeSeconds * 1000;
 
   return {
-    data: res.data?.avg_prove_time_ms ?? null,
+    data: avgTimeMs,
     badRequest: res.badRequest,
   };
 };
