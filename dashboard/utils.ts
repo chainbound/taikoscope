@@ -46,7 +46,7 @@ export const findMetricValue = (
   titlePart: string,
 ) => {
   const metric = metrics.find((m) => {
-    const titleStr = typeof m.title === "string" ? m.title : "Avg. Verify Time";
+    const titleStr = typeof m.title === "string" ? m.title : "";
     return titleStr.toLowerCase().includes(titlePart.toLowerCase());
   });
   return metric ? metric.value : "N/A";
