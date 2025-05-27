@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use clickhouse::Row;
 use derive_more::Debug;
 use serde::{Deserialize, Serialize};
@@ -153,11 +154,13 @@ pub struct L1BlockTimeRow {
     pub block_number: u64,
 }
 
-/// Row representing L2 block numbers per minute
-#[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq)]
+/// Row representing the time between consecutive L2 blocks
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct L2BlockTimeRow {
-    /// Minute timestamp
-    pub minute: u64,
-    /// Highest block number observed in that minute
-    pub block_number: u64,
+    /// L2 block number
+    pub l2_block_number: u64,
+    /// Timestamp of the L2 block
+    pub block_time: DateTime<Utc>,
+    /// Seconds since the previous block
+    pub seconds_since_prev_block: Option<u64>,
 }

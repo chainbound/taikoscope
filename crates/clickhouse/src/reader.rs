@@ -937,55 +937,106 @@ impl ClickhouseReader {
         Ok(rows)
     }
 
-    /// Get max L2 block number for each minute in the last hour
+    /// Get the time between consecutive L2 blocks for the last hour
     pub async fn get_l2_block_times_last_hour(&self) -> Result<Vec<L2BlockTimeRow>> {
+        #[derive(Row, Deserialize)]
+        struct RawRow {
+            l2_block_number: u64,
+            block_time: u64,
+            seconds_since_prev_block: Option<u64>,
+        }
+
         let client = self.base.clone().with_database(&self.db_name);
         let query = format!(
-            "SELECT toUInt64(toStartOfMinute(fromUnixTimestamp(block_ts))) AS minute, \
-                    max(l2_block_number) AS block_number \
+            "SELECT l2_block_number, \
+                    block_ts AS block_time, \
+                    toUInt64OrNull(block_ts - lagInFrame(block_ts) OVER (ORDER BY l2_block_number)) \
+                        AS seconds_since_prev_block \
              FROM {db}.l2_head_events \
              WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL 1 HOUR) \
-             GROUP BY minute \
-             ORDER BY minute",
+             ORDER BY l2_block_number",
             db = self.db_name
         );
-
-        let rows = client.query(&query).fetch_all::<L2BlockTimeRow>().await?;
-        Ok(rows)
+        let rows = client.query(&query).fetch_all::<RawRow>().await?;
+        Ok(rows
+            .into_iter()
+            .filter_map(|r| {
+                let dt = Utc.timestamp_opt(r.block_time as i64, 0).single()?;
+                r.seconds_since_prev_block.map(|secs| L2BlockTimeRow {
+                    l2_block_number: r.l2_block_number,
+                    block_time: dt,
+                    seconds_since_prev_block: Some(secs),
+                })
+            })
+            .collect())
     }
 
-    /// Get max L2 block number for each minute in the last 24 hours
+    /// Get the time between consecutive L2 blocks for the last 24 hours
     pub async fn get_l2_block_times_last_24_hours(&self) -> Result<Vec<L2BlockTimeRow>> {
+        #[derive(Row, Deserialize)]
+        struct RawRow {
+            l2_block_number: u64,
+            block_time: u64,
+            seconds_since_prev_block: Option<u64>,
+        }
+
         let client = self.base.clone().with_database(&self.db_name);
         let query = format!(
-            "SELECT toUInt64(toStartOfMinute(fromUnixTimestamp(block_ts))) AS minute, \
-                    max(l2_block_number) AS block_number \
+            "SELECT l2_block_number, \
+                    block_ts AS block_time, \
+                    toUInt64OrNull(block_ts - lagInFrame(block_ts) OVER (ORDER BY l2_block_number)) \
+                        AS seconds_since_prev_block \
              FROM {db}.l2_head_events \
              WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL 24 HOUR) \
-             GROUP BY minute \
-             ORDER BY minute",
+             ORDER BY l2_block_number",
             db = self.db_name
         );
-
-        let rows = client.query(&query).fetch_all::<L2BlockTimeRow>().await?;
-        Ok(rows)
+        let rows = client.query(&query).fetch_all::<RawRow>().await?;
+        Ok(rows
+            .into_iter()
+            .filter_map(|r| {
+                let dt = Utc.timestamp_opt(r.block_time as i64, 0).single()?;
+                r.seconds_since_prev_block.map(|secs| L2BlockTimeRow {
+                    l2_block_number: r.l2_block_number,
+                    block_time: dt,
+                    seconds_since_prev_block: Some(secs),
+                })
+            })
+            .collect())
     }
 
-    /// Get max L2 block number for each minute in the last 7 days
+    /// Get the time between consecutive L2 blocks for the last 7 days
     pub async fn get_l2_block_times_last_7_days(&self) -> Result<Vec<L2BlockTimeRow>> {
+        #[derive(Row, Deserialize)]
+        struct RawRow {
+            l2_block_number: u64,
+            block_time: u64,
+            seconds_since_prev_block: Option<u64>,
+        }
+
         let client = self.base.clone().with_database(&self.db_name);
         let query = format!(
-            "SELECT toUInt64(toStartOfMinute(fromUnixTimestamp(block_ts))) AS minute, \
-                    max(l2_block_number) AS block_number \
+            "SELECT l2_block_number, \
+                    block_ts AS block_time, \
+                    toUInt64OrNull(block_ts - lagInFrame(block_ts) OVER (ORDER BY l2_block_number)) \
+                        AS seconds_since_prev_block \
              FROM {db}.l2_head_events \
              WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL 7 DAY) \
-             GROUP BY minute \
-             ORDER BY minute",
+             ORDER BY l2_block_number",
             db = self.db_name
         );
-
-        let rows = client.query(&query).fetch_all::<L2BlockTimeRow>().await?;
-        Ok(rows)
+        let rows = client.query(&query).fetch_all::<RawRow>().await?;
+        Ok(rows
+            .into_iter()
+            .filter_map(|r| {
+                let dt = Utc.timestamp_opt(r.block_time as i64, 0).single()?;
+                r.seconds_since_prev_block.map(|secs| L2BlockTimeRow {
+                    l2_block_number: r.l2_block_number,
+                    block_time: dt,
+                    seconds_since_prev_block: Some(secs),
+                })
+            })
+            .collect())
     }
 
     /// Get the average number of L2 transactions per second for the last hour

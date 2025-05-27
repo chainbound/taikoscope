@@ -11,7 +11,7 @@ chainio = { path = "../chainio" }
 extractor = { version = "0.1.0", path = "../extractor" }
 
 alloy.workspace = true
-chrono.workspace = true
+chrono = { workspace = true, features = ["serde"] }
 clickhouse.workspace = true
 derive_more.workspace = true
 eyre.workspace = true
