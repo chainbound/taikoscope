@@ -99,13 +99,7 @@ export const BatchProcessChart: React.FC<BatchProcessChartProps> = ({
           strokeWidth={2}
           dot={{ r: 3 }}
           activeDot={{ r: 6 }}
-          name={
-            showHours
-              ? "Time (hours)"
-              : showMinutes
-                ? "Time (minutes)"
-                : "Time (seconds)"
-          }
+          name="Time"
         />
       </LineChart>
     </ResponsiveContainer>
