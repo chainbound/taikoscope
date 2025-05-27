@@ -57,14 +57,17 @@ export const createMetrics = (data: MetricInputData): MetricData[] => [
   {
     title: 'Active Gateways',
     value: data.activeGateways != null ? data.activeGateways.toString() : 'N/A',
+    group: 'Operators',
   },
   {
     title: 'Current Operator',
     value: data.currentOperator ?? 'N/A',
+    group: 'Operators',
   },
   {
     title: 'Next Operator',
     value: data.nextOperator ?? 'N/A',
+    group: 'Operators',
   },
   {
     title: 'L2 Reorgs',

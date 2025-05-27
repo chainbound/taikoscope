@@ -19,4 +19,5 @@ export interface MetricData {
   value: string;
   unit?: string; // e.g., '1h', '24h', or specific units like 'ms'
   description?: ReactNode;
+  group?: string;
 }

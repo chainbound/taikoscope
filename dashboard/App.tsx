@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { findMetricValue } from './utils';
 import { createMetrics, hasBadRequest } from './helpers';
 import { DashboardHeader } from './components/DashboardHeader';
 import { MetricCard } from './components/MetricCard';
@@ -254,6 +253,9 @@ const App: React.FC = () => {
     return () => clearInterval(interval);
   }, [timeRange, fetchData, refreshRate]);
 
+  const operatorMetrics = metrics.filter((m) => m.group === 'Operators');
+  const otherMetrics = metrics.filter((m) => m.group !== 'Operators');
+
   return (
     <div
       className="min-h-screen bg-white text-gray-800 p-4 md:p-6 lg:p-8"
@@ -275,50 +277,20 @@ const App: React.FC = () => {
       <main className="mt-6">
         {/* Metrics Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4 md:gap-6">
-          {/* Grouped Metrics */}
-          <MetricCard
-            title="L2 Block Cadence"
-            value={findMetricValue(metrics, 'L2 Block Cadence')}
-          />
-          <MetricCard
-            title="Batch Posting Cadence"
-            value={findMetricValue(metrics, 'Batch Posting Cadence')}
-          />
-          <MetricCard
-            title="Avg. Prove Time"
-            value={findMetricValue(metrics, 'Avg. Prove Time')}
-          />
-          <MetricCard
-            title="Avg. Verify Time"
-            value={findMetricValue(metrics, 'Avg. Verify Time')}
-          />
-
-          {/* Other Metrics */}
-          <MetricCard
-            title="Active Gateways"
-            value={findMetricValue(metrics, 'Active Gateways')}
-          />
-          <MetricCard
-            title="Current Operator"
-            value={findMetricValue(metrics, 'Current Operator')}
-          />
-          <MetricCard
-            title="Next Operator"
-            value={findMetricValue(metrics, 'Next Operator')}
-          />
-          <MetricCard
-            title="L2 Reorgs"
-            value={findMetricValue(metrics, 'L2 Reorgs')}
-          />
-          <MetricCard
-            title="Slashing Events"
-            value={findMetricValue(metrics, 'Slashing Events')}
-          />
-          <MetricCard
-            title="Forced Inclusions"
-            value={findMetricValue(metrics, 'Forced Inclusions')}
-          />
+          {otherMetrics.map((m, idx) => (
+            <MetricCard key={`other-${idx}`} title={m.title} value={m.value} />
+          ))}
         </div>
+        {operatorMetrics.length > 0 && (
+          <>
+            <h2 className="mt-6 mb-2 text-lg font-semibold">Operators</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4 md:gap-6">
+              {operatorMetrics.map((m, idx) => (
+                <MetricCard key={`op-${idx}`} title={m.title} value={m.value} />
+              ))}
+            </div>
+          </>
+        )}
 
         {/* Charts Grid - Reordered: Sequencer Pie Chart first */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mt-6">
