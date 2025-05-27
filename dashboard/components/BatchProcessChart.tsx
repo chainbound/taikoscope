@@ -1,4 +1,4 @@
-import React from "react";
+import React from 'react';
 import {
   LineChart,
   Line,
@@ -8,13 +8,13 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-} from "recharts";
-import { TimeSeriesData } from "../types";
+} from 'recharts';
+import { TimeSeriesData } from '../types';
 import {
   formatDecimal,
   formatBatchDuration,
   computeBatchDurationFlags,
-} from "../utils";
+} from '../utils';
 
 interface BatchProcessChartProps {
   data: TimeSeriesData[];
@@ -49,11 +49,11 @@ export const BatchProcessChart: React.FC<BatchProcessChartProps> = ({
           stroke="#666666"
           fontSize={12}
           label={{
-            value: "Batch ID",
-            position: "insideBottom",
+            value: 'Batch ID',
+            position: 'insideBottom',
             offset: -10,
             fontSize: 10,
-            fill: "#666666",
+            fill: '#666666',
           }}
           padding={{ left: 10, right: 10 }}
         />
@@ -68,23 +68,23 @@ export const BatchProcessChart: React.FC<BatchProcessChartProps> = ({
                 : v.toString()
           }
           label={{
-            value: showHours ? "Hours" : showMinutes ? "Minutes" : "Seconds",
+            value: showHours ? 'Hours' : showMinutes ? 'Minutes' : 'Seconds',
             angle: -90,
-            position: "insideLeft",
+            position: 'insideLeft',
             offset: -5,
             fontSize: 10,
-            fill: "#666666",
+            fill: '#666666',
           }}
         />
         <Tooltip
           formatter={(value: number) => [formatValue(value)]}
           labelFormatter={(label) => `Batch ${label}`}
           contentStyle={{
-            backgroundColor: "rgba(255, 255, 255, 0.9)",
+            backgroundColor: 'rgba(255, 255, 255, 0.9)',
             borderColor: lineColor,
-            borderRadius: "4px",
+            borderRadius: '4px',
           }}
-          labelStyle={{ color: "#333", fontWeight: "bold" }}
+          labelStyle={{ color: '#333', fontWeight: 'bold' }}
         />
         <Legend
           verticalAlign="bottom"

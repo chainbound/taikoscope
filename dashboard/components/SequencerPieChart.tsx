@@ -1,4 +1,4 @@
-import React from "react";
+import React from 'react';
 import {
   PieChart,
   Pie,
@@ -6,9 +6,9 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-} from "recharts";
-import { PieChartDataItem } from "../types";
-import { formatSequencerTooltip } from "../utils";
+} from 'recharts';
+import { PieChartDataItem } from '../types';
+import { formatSequencerTooltip } from '../utils';
 
 interface SequencerPieChartProps {
   data: PieChartDataItem[];
@@ -16,23 +16,23 @@ interface SequencerPieChartProps {
 
 // Updated colors as per request
 const SEQUENCER_COLORS: { [key: string]: string } = {
-  Nethermind: "#0288d1",
-  Titan: "#00d992",
-  Chainbound: "#ffc837",
+  Nethermind: '#0288d1',
+  Titan: '#00d992',
+  Chainbound: '#ffc837',
 };
 
-const TAIKO_PINK = "#e81899"; // Updated Taiko Pink
+const TAIKO_PINK = '#e81899'; // Updated Taiko Pink
 const FALLBACK_COLORS = [
   TAIKO_PINK,
-  "#E573B5",
-  "#5DA5DA",
-  "#FAA43A",
-  "#60BD68",
-  "#F17CB0",
-  "#B2912F",
-  "#B276B2",
-  "#DECF3F",
-  "#F15854",
+  '#E573B5',
+  '#5DA5DA',
+  '#FAA43A',
+  '#60BD68',
+  '#F17CB0',
+  '#B2912F',
+  '#B276B2',
+  '#DECF3F',
+  '#F15854',
 ];
 
 export const SequencerPieChart: React.FC<SequencerPieChartProps> = ({
@@ -71,7 +71,7 @@ export const SequencerPieChart: React.FC<SequencerPieChartProps> = ({
             return [formatSequencerTooltip(data, payload.value), name];
           }}
         />
-        <Legend verticalAlign="bottom" wrapperStyle={{ paddingTop: "10px" }} />
+        <Legend verticalAlign="bottom" wrapperStyle={{ paddingTop: '10px' }} />
       </PieChart>
     </ResponsiveContainer>
   );

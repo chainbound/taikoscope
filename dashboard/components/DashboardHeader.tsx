@@ -1,5 +1,5 @@
-import React from "react";
-import { TimeRange } from "../types";
+import React from 'react';
+import { TimeRange } from '../types';
 
 interface DashboardHeaderProps {
   timeRange: TimeRange;
@@ -16,8 +16,8 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
 }) => {
   return (
     <header className="flex flex-col md:flex-row justify-between items-center pb-4 border-b border-gray-200">
-      <h1 className="text-3xl font-bold" style={{ color: "#e81899" }}>
-        {" "}
+      <h1 className="text-3xl font-bold" style={{ color: '#e81899' }}>
+        {' '}
         {/* Updated Taiko Pink */}
         Taiko Masaya Testnet
       </h1>
@@ -45,7 +45,7 @@ const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
   currentTimeRange,
   onTimeRangeChange,
 }) => {
-  const ranges: TimeRange[] = ["1h", "24h", "7d"];
+  const ranges: TimeRange[] = ['1h', '24h', '7d'];
 
   return (
     <div className="flex space-x-1 bg-gray-200 p-0.5 rounded-md">
@@ -54,7 +54,7 @@ const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
           key={range}
           onClick={() => onTimeRangeChange(range)}
           className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors
-            ${currentTimeRange === range ? "bg-white text-[#e81899] shadow-sm" : "text-gray-600 hover:bg-gray-100"}`} /* Updated Taiko Pink for active button */
+            ${currentTimeRange === range ? 'bg-white text-[#e81899] shadow-sm' : 'text-gray-600 hover:bg-gray-100'}`} /* Updated Taiko Pink for active button */
         >
           {range.toUpperCase()}
         </button>
@@ -73,10 +73,10 @@ const RefreshRateInput: React.FC<RefreshRateInputProps> = ({
   onRefreshRateChange,
 }) => {
   const options = [
-    { label: "10s", value: 10_000 },
-    { label: "60s", value: 60_000 },
-    { label: "5 min", value: 5 * 60_000 },
-    { label: "10 min", value: 10 * 60_000 },
+    { label: '10s', value: 10_000 },
+    { label: '60s', value: 60_000 },
+    { label: '5 min', value: 5 * 60_000 },
+    { label: '10 min', value: 10 * 60_000 },
   ];
 
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {

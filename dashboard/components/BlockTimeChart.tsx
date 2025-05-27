@@ -1,4 +1,4 @@
-import React from "react";
+import React from 'react';
 import {
   LineChart,
   Line,
@@ -8,9 +8,9 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-} from "recharts";
-import { TimeSeriesData } from "../types";
-import { formatDecimal, formatInterval, shouldShowMinutes } from "../utils";
+} from 'recharts';
+import { TimeSeriesData } from '../types';
+import { formatDecimal, formatInterval, shouldShowMinutes } from '../utils';
 
 interface BlockTimeChartProps {
   data: TimeSeriesData[];
@@ -42,40 +42,40 @@ export const BlockTimeChart: React.FC<BlockTimeChartProps> = ({
           stroke="#666666"
           fontSize={12}
           label={{
-            value: "Block Number",
-            position: "insideBottom",
+            value: 'Block Number',
+            position: 'insideBottom',
             offset: -10,
             fontSize: 10,
-            fill: "#666666",
+            fill: '#666666',
           }}
           padding={{ left: 10, right: 10 }}
         />
         <YAxis
           stroke="#666666"
           fontSize={12}
-          domain={["auto", "auto"]}
+          domain={['auto', 'auto']}
           tickFormatter={(v) =>
             showMinutes
               ? String(Number(formatDecimal(v / 60000)))
               : String(Number(formatDecimal(v / 1000)))
           }
           label={{
-            value: showMinutes ? "Minutes" : "Seconds",
+            value: showMinutes ? 'Minutes' : 'Seconds',
             angle: -90,
-            position: "insideLeft",
+            position: 'insideLeft',
             offset: -16,
             fontSize: 10,
-            fill: "#666666",
+            fill: '#666666',
           }}
         />
         <Tooltip
           labelFormatter={(label: number) => `Block ${label.toLocaleString()}`}
           formatter={(value: number) => [formatInterval(value, showMinutes)]}
           contentStyle={{
-            backgroundColor: "rgba(255, 255, 255, 0.8)",
+            backgroundColor: 'rgba(255, 255, 255, 0.8)',
             borderColor: lineColor,
           }}
-          labelStyle={{ color: "#333" }}
+          labelStyle={{ color: '#333' }}
         />
         <Legend
           verticalAlign="bottom"
