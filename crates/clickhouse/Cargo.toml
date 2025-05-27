@@ -8,12 +8,12 @@ repository.workspace = true
 
 [dependencies]
 chainio = { path = "../chainio" }
+extractor = { version = "0.1.0", path = "../extractor" }
 
 alloy.workspace = true
 chrono.workspace = true
 clickhouse.workspace = true
 derive_more.workspace = true
-extractor = { version = "0.1.0", path = "../extractor" }
 eyre.workspace = true
 serde.workspace = true
 tracing.workspace = true
