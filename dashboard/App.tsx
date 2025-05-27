@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { formatSeconds, findMetricValue } from "./utils";
+import { findMetricValue } from "./utils";
+import { createMetrics, hasBadRequest } from "./helpers";
 import { DashboardHeader } from "./components/DashboardHeader";
 import { MetricCard } from "./components/MetricCard";
 import { ChartCard } from "./components/ChartCard";
@@ -183,81 +184,36 @@ const App: React.FC = () => {
     const l2Times = l2TimesRes.data || [];
     const sequencerDist = sequencerDistRes.data || [];
 
-    const anyBadRequest =
-      l2CadenceRes.badRequest ||
-      batchCadenceRes.badRequest ||
-      avgProveRes.badRequest ||
-      avgVerifyRes.badRequest ||
-      activeGatewaysRes.badRequest ||
-      l2ReorgsRes.badRequest ||
-      slashingsRes.badRequest ||
-      forcedInclusionsRes.badRequest ||
-      l2BlockRes.badRequest ||
-      l1BlockRes.badRequest ||
-      proveTimesRes.badRequest ||
-      verifyTimesRes.badRequest ||
-      l1TimesRes.badRequest ||
-      l2TimesRes.badRequest ||
-      sequencerDistRes.badRequest;
+    const anyBadRequest = hasBadRequest([
+      l2CadenceRes,
+      batchCadenceRes,
+      avgProveRes,
+      avgVerifyRes,
+      activeGatewaysRes,
+      l2ReorgsRes,
+      slashingsRes,
+      forcedInclusionsRes,
+      l2BlockRes,
+      l1BlockRes,
+      proveTimesRes,
+      verifyTimesRes,
+      l1TimesRes,
+      l2TimesRes,
+      sequencerDistRes,
+    ]);
 
-    const currentMetrics: MetricData[] = [
-      {
-        title: "L2 Block Cadence",
-        value: l2Cadence != null ? formatSeconds(l2Cadence / 1000) : "N/A",
-      },
-      {
-        title: "Batch Posting Cadence",
-        value:
-          batchCadence != null ? formatSeconds(batchCadence / 1000) : "N/A",
-      },
-      {
-        title: "Avg. Prove Time",
-        value:
-          avgProve != null && avgProve > 0
-            ? formatSeconds(avgProve / 1000)
-            : "N/A",
-      },
-      {
-        title: (
-          <a
-            href="https://docs.taiko.xyz/taiko-alethia-protocol/protocol-architecture/block-states"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:underline"
-          >
-            Avg. Verify Time
-          </a>
-        ),
-        value:
-          avgVerify != null && avgVerify > 0
-            ? formatSeconds(avgVerify / 1000)
-            : "N/A",
-      },
-      {
-        title: "Active Gateways",
-        value: activeGateways != null ? activeGateways.toString() : "N/A",
-      },
-      {
-        title: "L2 Reorgs",
-        value: l2Reorgs != null ? l2Reorgs.toString() : "N/A",
-      },
-      {
-        title: "Slashing Events",
-        value: slashings != null ? slashings.toString() : "N/A",
-      },
-      {
-        title: "Forced Inclusions",
-        value: forcedInclusions != null ? forcedInclusions.toString() : "N/A",
-      },
-      {
-        title: "L2 Head Block",
-        value: l2Block != null ? l2Block.toLocaleString() : "N/A",
-      },
-      {
-        title: "L1 Head Block",
-        value: l1Block != null ? l1Block.toLocaleString() : "N/A",
-      },
-    ];
+    const currentMetrics: MetricData[] = createMetrics({
+      l2Cadence,
+      batchCadence,
+      avgProve,
+      avgVerify,
+      activeGateways,
+      l2Reorgs,
+      slashings,
+      forcedInclusions,
+      l2Block,
+      l1Block,
+    });
 
     setMetrics(currentMetrics);
     setSecondsToProveData(proveTimes);
