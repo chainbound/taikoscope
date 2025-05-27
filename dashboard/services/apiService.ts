@@ -1,9 +1,9 @@
 export const API_BASE =
   (import.meta as any).env.VITE_API_BASE ||
   (import.meta as any).env.API_BASE ||
-  "";
+  '';
 
-import type { TimeSeriesData, PieChartDataItem } from "../types";
+import type { TimeSeriesData, PieChartDataItem } from '../types';
 
 export interface RequestResult<T> {
   data: T | null;
@@ -28,7 +28,7 @@ export interface AvgTimeResponse {
 }
 
 export const fetchAvgProveTime = async (
-  range: "1h" | "24h" | "7d",
+  range: '1h' | '24h' | '7d',
 ): Promise<RequestResult<number>> => {
   const url = `${API_BASE}/avg-prove-time?range=${range}`;
   const res = await fetchJson<{ avg_prove_time_ms?: number }>(url);
@@ -39,7 +39,7 @@ export const fetchAvgProveTime = async (
 };
 
 export const fetchAvgVerifyTime = async (
-  range: "1h" | "24h" | "7d",
+  range: '1h' | '24h' | '7d',
 ): Promise<RequestResult<number>> => {
   const url = `${API_BASE}/avg-verify-time?range=${range}`;
   const res = await fetchJson<{ avg_verify_time_ms?: number }>(url);
@@ -50,7 +50,7 @@ export const fetchAvgVerifyTime = async (
 };
 
 export const fetchL2BlockCadence = async (
-  range: "1h" | "24h" | "7d",
+  range: '1h' | '24h' | '7d',
 ): Promise<RequestResult<number>> => {
   const url = `${API_BASE}/l2-block-cadence?range=${range}`;
   const res = await fetchJson<{ l2_block_cadence_ms?: number }>(url);
@@ -61,7 +61,7 @@ export const fetchL2BlockCadence = async (
 };
 
 export const fetchBatchPostingCadence = async (
-  range: "1h" | "24h" | "7d",
+  range: '1h' | '24h' | '7d',
 ): Promise<RequestResult<number>> => {
   const url = `${API_BASE}/batch-posting-cadence?range=${range}`;
   const res = await fetchJson<{ batch_posting_cadence_ms?: number }>(url);
@@ -72,7 +72,7 @@ export const fetchBatchPostingCadence = async (
 };
 
 export const fetchActiveGateways = async (
-  range: "1h" | "24h" | "7d",
+  range: '1h' | '24h' | '7d',
 ): Promise<RequestResult<number>> => {
   const url = `${API_BASE}/active-gateways?range=${range}`;
   const res = await fetchJson<{ gateways: string[] }>(url);
@@ -83,7 +83,7 @@ export const fetchActiveGateways = async (
 };
 
 export const fetchL2Reorgs = async (
-  range: "1h" | "24h" | "7d",
+  range: '1h' | '24h' | '7d',
 ): Promise<RequestResult<number>> => {
   const url = `${API_BASE}/reorgs?range=${range}`;
   const res = await fetchJson<{ events: unknown[] }>(url);
@@ -94,7 +94,7 @@ export const fetchL2Reorgs = async (
 };
 
 export const fetchSlashingEvents = async (
-  range: "1h" | "24h" | "7d",
+  range: '1h' | '24h' | '7d',
 ): Promise<RequestResult<number>> => {
   const url = `${API_BASE}/slashings?range=${range}`;
   const res = await fetchJson<{ events: unknown[] }>(url);
@@ -105,7 +105,7 @@ export const fetchSlashingEvents = async (
 };
 
 export const fetchForcedInclusions = async (
-  range: "1h" | "24h" | "7d",
+  range: '1h' | '24h' | '7d',
 ): Promise<RequestResult<number>> => {
   const url = `${API_BASE}/forced-inclusions?range=${range}`;
   const res = await fetchJson<{ events: unknown[] }>(url);
@@ -116,7 +116,7 @@ export const fetchForcedInclusions = async (
 };
 
 export const fetchL2HeadBlock = async (
-  range: "1h" | "24h" | "7d",
+  range: '1h' | '24h' | '7d',
 ): Promise<RequestResult<number>> => {
   const url = `${API_BASE}/l2-block-times?range=${range}`;
   const res = await fetchJson<{ blocks: { l2_block_number: number }[] }>(url);
@@ -128,7 +128,7 @@ export const fetchL2HeadBlock = async (
 };
 
 export const fetchL1HeadBlock = async (
-  range: "1h" | "24h" | "7d",
+  range: '1h' | '24h' | '7d',
 ): Promise<RequestResult<number>> => {
   const url = `${API_BASE}/l1-block-times?range=${range}`;
   const res = await fetchJson<{ blocks: { block_number: number }[] }>(url);
@@ -152,7 +152,7 @@ export const fetchL1HeadNumber = async (): Promise<RequestResult<number>> => {
 };
 
 export const fetchProveTimes = async (
-  range: "1h" | "24h" | "7d",
+  range: '1h' | '24h' | '7d',
 ): Promise<RequestResult<TimeSeriesData[]>> => {
   const url = `${API_BASE}/prove-times?range=${range}`;
   const res = await fetchJson<{
@@ -171,7 +171,7 @@ export const fetchProveTimes = async (
 };
 
 export const fetchVerifyTimes = async (
-  range: "1h" | "24h" | "7d",
+  range: '1h' | '24h' | '7d',
 ): Promise<RequestResult<TimeSeriesData[]>> => {
   const url = `${API_BASE}/verify-times?range=${range}`;
   const res = await fetchJson<{
@@ -190,7 +190,7 @@ export const fetchVerifyTimes = async (
 };
 
 export const fetchL1BlockTimes = async (
-  range: "1h" | "24h" | "7d",
+  range: '1h' | '24h' | '7d',
 ): Promise<RequestResult<TimeSeriesData[]>> => {
   const url = `${API_BASE}/l1-block-times?range=${range}`;
   const res = await fetchJson<{
@@ -223,7 +223,7 @@ export const fetchL1BlockTimes = async (
 };
 
 export const fetchL2BlockTimes = async (
-  range: "1h" | "24h" | "7d",
+  range: '1h' | '24h' | '7d',
 ): Promise<RequestResult<TimeSeriesData[]>> => {
   const url = `${API_BASE}/l2-block-times?range=${range}`;
   const res = await fetchJson<{
@@ -233,7 +233,7 @@ export const fetchL2BlockTimes = async (
     return { data: null, badRequest: res.badRequest };
   }
 
-  const data = res.data.blocks.map(
+  const data = res.data.blocks.slice(1).map(
     (b): TimeSeriesData => ({
       value: b.l2_block_number,
       timestamp: b.seconds_since_prev_block * 1000,
@@ -244,7 +244,7 @@ export const fetchL2BlockTimes = async (
 };
 
 export const fetchSequencerDistribution = async (
-  range: "1h" | "24h" | "7d",
+  range: '1h' | '24h' | '7d',
 ): Promise<RequestResult<PieChartDataItem[]>> => {
   const url = `${API_BASE}/sequencer-distribution?range=${range}`;
   const res = await fetchJson<{
