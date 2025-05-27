@@ -264,7 +264,7 @@ const App: React.FC = () => {
   );
   const groupOrder = [
     'Network Performance',
-    'Network Health & Security',
+    'Network Health',
     'Operators',
     'Other',
   ];

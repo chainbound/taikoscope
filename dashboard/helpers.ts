@@ -76,18 +76,18 @@ export const createMetrics = (data: MetricInputData): MetricData[] => [
   {
     title: 'L2 Reorgs',
     value: data.l2Reorgs != null ? data.l2Reorgs.toString() : 'N/A',
-    group: 'Network Health & Security',
+    group: 'Network Health',
   },
   {
     title: 'Slashing Events',
     value: data.slashings != null ? data.slashings.toString() : 'N/A',
-    group: 'Network Health & Security',
+    group: 'Network Health',
   },
   {
     title: 'Forced Inclusions',
     value:
       data.forcedInclusions != null ? data.forcedInclusions.toString() : 'N/A',
-    group: 'Network Health & Security',
+    group: 'Network Health',
   },
   {
     title: 'L2 Block',
