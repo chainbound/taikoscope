@@ -49,22 +49,22 @@ pub struct TaikoAddressOpts {
 #[derive(Debug, Clone, Parser)]
 pub struct InstatusOpts {
     /// Instatus API key
-    #[clap(long, env = "INSTATUS_API_KEY")]
+    #[clap(long, env = "INSTATUS_API_KEY", default_value = "")]
     pub api_key: String,
     /// Instatus page ID
-    #[clap(long, env = "INSTATUS_PAGE_ID")]
+    #[clap(long, env = "INSTATUS_PAGE_ID", default_value = "")]
     pub page_id: String,
     /// Instatus component ID for batch proposals monitor
-    #[clap(long, env = "INSTATUS_BATCH_COMPONENT_ID")]
+    #[clap(long, env = "INSTATUS_BATCH_COMPONENT_ID", default_value = "")]
     pub batch_component_id: String,
     /// Instatus component ID for batch proof timeout monitor
-    #[clap(long, env = "INSTATUS_BATCH_PROOF_TIMEOUT_COMPONENT_ID")]
+    #[clap(long, env = "INSTATUS_BATCH_PROOF_TIMEOUT_COMPONENT_ID", default_value = "")]
     pub batch_proof_timeout_component_id: String,
     /// Instatus component ID for batch verify timeout monitor
-    #[clap(long, env = "INSTATUS_BATCH_VERIFY_TIMEOUT_COMPONENT_ID")]
+    #[clap(long, env = "INSTATUS_BATCH_VERIFY_TIMEOUT_COMPONENT_ID", default_value = "")]
     pub batch_verify_timeout_component_id: String,
     /// Instatus component ID for L2 head monitor
-    #[clap(long, env = "INSTATUS_L2_COMPONENT_ID")]
+    #[clap(long, env = "INSTATUS_L2_COMPONENT_ID", default_value = "")]
     pub l2_component_id: String,
     /// Instatus monitor poll interval in seconds
     #[clap(long, env = "INSTATUS_MONITOR_POLL_INTERVAL_SECS", default_value = "30")]
@@ -76,6 +76,19 @@ pub struct InstatusOpts {
     /// Batch proof timeout threshold in seconds (default 3 hours)
     #[clap(long, env = "BATCH_PROOF_TIMEOUT_SECS", default_value = "10800")]
     pub batch_proof_timeout_secs: u64,
+}
+
+impl InstatusOpts {
+    /// Returns `true` if all required values are set.
+    #[allow(clippy::missing_const_for_fn)]
+    pub fn enabled(&self) -> bool {
+        !(self.api_key.is_empty() ||
+            self.page_id.is_empty() ||
+            self.batch_component_id.is_empty() ||
+            self.batch_proof_timeout_component_id.is_empty() ||
+            self.batch_verify_timeout_component_id.is_empty() ||
+            self.l2_component_id.is_empty())
+    }
 }
 
 /// API server configuration options
