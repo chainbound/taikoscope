@@ -88,8 +88,8 @@ export const BlockTimeChart: React.FC<BlockTimeChartProps> = ({
           dataKey="timestamp"
           stroke={lineColor}
           strokeWidth={2}
-          dot={{ r: 3 }}
-          activeDot={{ r: 6 }}
+          dot={data.length > 100 ? false : { r: 3 }}
+          activeDot={data.length > 100 ? false : { r: 6 }}
           name="Time"
         />
       </LineChart>
