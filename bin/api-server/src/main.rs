@@ -44,7 +44,7 @@ async fn main() -> eyre::Result<()> {
         info!("👋 API server shutting down...");
     };
 
-    let run_server = async { run(addr, client).await };
+    let run_server = async { run(addr, client, opts.api.allowed_origins).await };
 
     run_until_shutdown(run_server, shutdown_signal, on_shutdown).await
 }

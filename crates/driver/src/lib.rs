@@ -539,7 +539,7 @@ mod tests {
                 password: "pass".into(),
             },
             rpc: RpcOpts { l1_url, l2_url },
-            api: ApiOpts { host: "127.0.0.1".into(), port: 3000 },
+            api: ApiOpts { host: "127.0.0.1".into(), port: 3000, allowed_origins: Vec::new() },
             taiko_addresses: TaikoAddressOpts {
                 inbox_address: Address::ZERO,
                 preconf_whitelist_address: Address::ZERO,

@@ -598,12 +598,26 @@ fn router(state: ApiState) -> Router {
 }
 
 /// Run the API server on the given address
-pub async fn run(addr: SocketAddr, client: ClickhouseReader) -> Result<()> {
+pub async fn run(
+    addr: SocketAddr,
+    client: ClickhouseReader,
+    extra_origins: Vec<String>,
+) -> Result<()> {
+    use std::sync::Arc;
+
     let state = ApiState::new(client);
+    let extra = Arc::new(extra_origins);
     let cors = CorsLayer::new()
-        .allow_origin(AllowOrigin::predicate(|origin: &HeaderValue, _| match origin.to_str() {
-            Ok(origin) => ALLOWED_ORIGINS.contains(&origin) || origin.ends_with(".vercel.app"),
-            Err(_) => false,
+        .allow_origin(AllowOrigin::predicate({
+            let extra = Arc::clone(&extra);
+            move |origin: &HeaderValue, _| match origin.to_str() {
+                Ok(origin) => {
+                    ALLOWED_ORIGINS.contains(&origin) ||
+                        origin.ends_with(".vercel.app") ||
+                        extra.iter().any(|o| o == origin)
+                }
+                Err(_) => false,
+            }
         }))
         .allow_methods([Method::GET])
         .allow_headers(Any);
