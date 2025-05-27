@@ -193,13 +193,19 @@ export const fetchL1BlockTimes = async (
     block: b.block_number,
   }));
 
-  const data = blocks.slice(1).map((b, i) => {
-    const prev = blocks[i];
-    const deltaBlocks = b.block - prev.block;
-    const deltaTimeMs = b.ts - prev.ts;
-    const interval = deltaBlocks > 0 ? deltaTimeMs / deltaBlocks : deltaTimeMs;
-    return { timestamp: interval, value: b.block };
-  });
+  const data = blocks
+    .slice(1)
+    .map((b, i): TimeSeriesData | null => {
+      const prev = blocks[i];
+      const deltaBlocks = b.block - prev.block;
+      if (deltaBlocks <= 0) {
+        return null;
+      }
+      const deltaTimeMs = b.ts - prev.ts;
+      const interval = deltaTimeMs / deltaBlocks;
+      return { timestamp: interval, value: b.block };
+    })
+    .filter((d): d is TimeSeriesData => d !== null);
 
   return { data, badRequest: res.badRequest };
 };
@@ -220,13 +226,19 @@ export const fetchL2BlockTimes = async (
     block: b.block_number,
   }));
 
-  const data = blocks.slice(1).map((b, i) => {
-    const prev = blocks[i];
-    const deltaBlocks = b.block - prev.block;
-    const deltaTimeMs = b.ts - prev.ts;
-    const interval = deltaBlocks > 0 ? deltaTimeMs / deltaBlocks : deltaTimeMs;
-    return { timestamp: interval, value: b.block };
-  });
+  const data = blocks
+    .slice(1)
+    .map((b, i): TimeSeriesData | null => {
+      const prev = blocks[i];
+      const deltaBlocks = b.block - prev.block;
+      if (deltaBlocks <= 0) {
+        return null;
+      }
+      const deltaTimeMs = b.ts - prev.ts;
+      const interval = deltaTimeMs / deltaBlocks;
+      return { timestamp: interval, value: b.block };
+    })
+    .filter((d): d is TimeSeriesData => d !== null);
 
   return { data, badRequest: res.badRequest };
 };
