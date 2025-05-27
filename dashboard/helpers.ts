@@ -23,6 +23,7 @@ export const createMetrics = (data: MetricInputData): MetricData[] => [
     title: 'L2 Block Cadence',
     value:
       data.l2Cadence != null ? formatSeconds(data.l2Cadence / 1000) : 'N/A',
+    group: 'Network Performance',
   },
   {
     title: 'Batch Posting Cadence',
@@ -30,6 +31,7 @@ export const createMetrics = (data: MetricInputData): MetricData[] => [
       data.batchCadence != null
         ? formatSeconds(data.batchCadence / 1000)
         : 'N/A',
+    group: 'Network Performance',
   },
   {
     title: 'Avg. Prove Time',
@@ -37,6 +39,7 @@ export const createMetrics = (data: MetricInputData): MetricData[] => [
       data.avgProve != null && data.avgProve > 0
         ? formatSeconds(data.avgProve / 1000)
         : 'N/A',
+    group: 'Network Performance',
   },
   {
     title: React.createElement(
@@ -53,6 +56,7 @@ export const createMetrics = (data: MetricInputData): MetricData[] => [
       data.avgVerify != null && data.avgVerify > 0
         ? formatSeconds(data.avgVerify / 1000)
         : 'N/A',
+    group: 'Network Performance',
   },
   {
     title: 'Active Gateways',
@@ -72,15 +76,18 @@ export const createMetrics = (data: MetricInputData): MetricData[] => [
   {
     title: 'L2 Reorgs',
     value: data.l2Reorgs != null ? data.l2Reorgs.toString() : 'N/A',
+    group: 'Network Health & Security',
   },
   {
     title: 'Slashing Events',
     value: data.slashings != null ? data.slashings.toString() : 'N/A',
+    group: 'Network Health & Security',
   },
   {
     title: 'Forced Inclusions',
     value:
       data.forcedInclusions != null ? data.forcedInclusions.toString() : 'N/A',
+    group: 'Network Health & Security',
   },
   {
     title: 'L2 Head Block',
