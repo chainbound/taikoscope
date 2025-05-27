@@ -119,10 +119,10 @@ export const fetchL2HeadBlock = async (
   range: "1h" | "24h" | "7d",
 ): Promise<RequestResult<number>> => {
   const url = `${API_BASE}/l2-block-times?range=${range}`;
-  const res = await fetchJson<{ blocks: { block_number: number }[] }>(url);
+  const res = await fetchJson<{ blocks: { l2_block_number: number }[] }>(url);
   const value =
     res.data && res.data.blocks.length > 0
-      ? res.data.blocks[res.data.blocks.length - 1].block_number
+      ? res.data.blocks[res.data.blocks.length - 1].l2_block_number
       : null;
   return { data: value, badRequest: res.badRequest };
 };
@@ -227,30 +227,18 @@ export const fetchL2BlockTimes = async (
 ): Promise<RequestResult<TimeSeriesData[]>> => {
   const url = `${API_BASE}/l2-block-times?range=${range}`;
   const res = await fetchJson<{
-    blocks: { minute: number; block_number: number }[];
+    blocks: { l2_block_number: number; seconds_since_prev_block: number }[];
   }>(url);
   if (!res.data) {
     return { data: null, badRequest: res.badRequest };
   }
 
-  const blocks = res.data.blocks.map((b) => ({
-    ts: b.minute * 1000,
-    block: b.block_number,
-  }));
-
-  const data = blocks
-    .slice(1)
-    .map((b, i): TimeSeriesData | null => {
-      const prev = blocks[i];
-      const deltaBlocks = b.block - prev.block;
-      if (deltaBlocks <= 0) {
-        return null;
-      }
-      const deltaTimeMs = b.ts - prev.ts;
-      const interval = deltaTimeMs / deltaBlocks;
-      return { timestamp: interval, value: b.block };
-    })
-    .filter((d): d is TimeSeriesData => d !== null);
+  const data = res.data.blocks.map(
+    (b): TimeSeriesData => ({
+      value: b.l2_block_number,
+      timestamp: b.seconds_since_prev_block * 1000,
+    }),
+  );
 
   return { data, badRequest: res.badRequest };
 };
