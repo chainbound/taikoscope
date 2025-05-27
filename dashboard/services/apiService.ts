@@ -163,10 +163,10 @@ export const fetchProveTimes = async (
   return {
     data: res.data
       ? res.data.batches.map((b) => ({
-        name: b.batch_id.toString(),
-        value: b.seconds_to_prove,
-        timestamp: 0,
-      }))
+          name: b.batch_id.toString(),
+          value: b.seconds_to_prove,
+          timestamp: 0,
+        }))
       : null,
     badRequest: res.badRequest,
   };
@@ -182,10 +182,10 @@ export const fetchVerifyTimes = async (
   return {
     data: res.data
       ? res.data.batches.map((b) => ({
-        name: b.batch_id.toString(),
-        value: b.seconds_to_verify,
-        timestamp: 0,
-      }))
+          name: b.batch_id.toString(),
+          value: b.seconds_to_verify,
+          timestamp: 0,
+        }))
       : null,
     badRequest: res.badRequest,
   };
@@ -207,11 +207,8 @@ export const fetchL1BlockTimes = async (
     block: b.block_number,
   }));
 
-  const data = blocks.map((b, i) => {
-    if (i === 0) {
-      return { timestamp: 0, value: b.block };
-    }
-    const prev = blocks[i - 1];
+  const data = blocks.slice(1).map((b, i) => {
+    const prev = blocks[i];
     const deltaBlocks = b.block - prev.block;
     const deltaTimeMs = b.ts - prev.ts;
     const interval = deltaBlocks > 0 ? deltaTimeMs / deltaBlocks : deltaTimeMs;
@@ -237,11 +234,8 @@ export const fetchL2BlockTimes = async (
     block: b.block_number,
   }));
 
-  const data = blocks.map((b, i) => {
-    if (i === 0) {
-      return { timestamp: 0, value: b.block };
-    }
-    const prev = blocks[i - 1];
+  const data = blocks.slice(1).map((b, i) => {
+    const prev = blocks[i];
     const deltaBlocks = b.block - prev.block;
     const deltaTimeMs = b.ts - prev.ts;
     const interval = deltaBlocks > 0 ? deltaTimeMs / deltaBlocks : deltaTimeMs;
