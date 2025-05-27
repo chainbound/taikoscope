@@ -16,7 +16,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
     <div className="bg-white p-4 rounded-lg border border-gray-200 transition-shadow duration-200">
       {/* Removed {unit && `(${unit})`} from here */}
       <h3 className="text-sm font-medium text-gray-500 truncate">{title}</h3>
-      <p className="mt-1 text-3xl font-semibold text-gray-900 break-all">
+      <p className="mt-1 text-3xl font-semibold text-gray-900 truncate">
         {value}
       </p>
       {description && (
