@@ -163,7 +163,7 @@ dashboard-install:
 
 # start the dashboard dev server
 dashboard-dev:
-    cd dashboard && npm run dev
+    cd dashboard && VITE_API_BASE="https://api.taikoscope.xyz" npm run dev
 
 # build the dashboard for production
 dashboard-build:
