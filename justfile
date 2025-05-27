@@ -154,3 +154,21 @@ deploy-logs-api-remote-hekla:
     @just logs-api-remote-hekla
 status-api-remote-hekla:
     ssh {{ssh_alias}} "docker ps -f name={{api_container}}"
+
+# --- Dashboard ---
+
+# install dashboard dependencies
+dashboard-install:
+    cd dashboard && npm install
+
+# start the dashboard dev server
+dashboard-dev:
+    cd dashboard && npm run dev
+
+# build the dashboard for production
+dashboard-build:
+    cd dashboard && npm run build
+
+# run TypeScript type checks
+dashboard-check:
+    cd dashboard && npm run check

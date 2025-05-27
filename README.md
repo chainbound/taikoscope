@@ -25,6 +25,16 @@ Run API server locally
 just dev-api
 ```
 
+Run dashboard locally
+```
+just dashboard-dev
+```
+
+Build dashboard
+```
+just dashboard-build
+```
+
 Or deploy to cloud
 
 First, create SSH config alias
