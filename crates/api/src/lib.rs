@@ -108,6 +108,16 @@ struct ActiveGatewaysResponse {
 }
 
 #[derive(Debug, Serialize)]
+struct CurrentOperatorResponse {
+    operator: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct NextOperatorResponse {
+    operator: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
 struct AvgProveTimeResponse {
     avg_prove_time_ms: Option<u64>,
 }
@@ -324,6 +334,28 @@ async fn active_gateways(
     };
     let gateways = gateways.into_iter().map(|a| format!("0x{}", encode(a))).collect();
     Json(ActiveGatewaysResponse { gateways })
+}
+
+async fn current_operator(State(state): State<ApiState>) -> Json<CurrentOperatorResponse> {
+    let op = match state.client.get_last_current_operator().await {
+        Ok(o) => o.map(|a| format!("0x{}", encode(a))),
+        Err(e) => {
+            tracing::error!("Failed to get current operator: {}", e);
+            None
+        }
+    };
+    Json(CurrentOperatorResponse { operator: op })
+}
+
+async fn next_operator(State(state): State<ApiState>) -> Json<NextOperatorResponse> {
+    let op = match state.client.get_last_next_operator().await {
+        Ok(o) => o.map(|a| format!("0x{}", encode(a))),
+        Err(e) => {
+            tracing::error!("Failed to get next operator: {}", e);
+            None
+        }
+    };
+    Json(NextOperatorResponse { operator: op })
 }
 
 async fn avg_prove_time(
@@ -549,6 +581,8 @@ fn router(state: ApiState) -> Router {
         .route("/forced-inclusions", get(forced_inclusions))
         .route("/reorgs", get(reorgs))
         .route("/active-gateways", get(active_gateways))
+        .route("/current-operator", get(current_operator))
+        .route("/next-operator", get(next_operator))
         .route("/avg-prove-time", get(avg_prove_time))
         .route("/avg-verify-time", get(avg_verify_time))
         .route("/l2-block-cadence", get(l2_block_cadence))
@@ -1054,6 +1088,16 @@ mod tests {
         blocks: u64,
     }
 
+    #[derive(Serialize, Row)]
+    struct CurrentRowTest {
+        current_operator: Option<[u8; 20]>,
+    }
+
+    #[derive(Serialize, Row)]
+    struct NextRowTest {
+        next_operator: Option<[u8; 20]>,
+    }
+
     #[tokio::test]
     async fn sequencer_distribution_endpoint() {
         let mock = Mock::new();
@@ -1085,5 +1129,27 @@ mod tests {
 
         let d = range_duration(&Some("2D".to_owned()));
         assert_eq!(d.num_hours(), 48);
+    }
+
+    #[tokio::test]
+    async fn current_operator_endpoint() {
+        let mock = Mock::new();
+        let addr = [1u8; 20];
+        mock.add(handlers::provide(vec![CurrentRowTest { current_operator: Some(addr) }]));
+
+        let app = build_app(mock.url());
+        let body = send_request(app, "/current-operator").await;
+        assert_eq!(body, json!({ "operator": format!("0x{}", hex::encode(addr)) }));
+    }
+
+    #[tokio::test]
+    async fn next_operator_endpoint() {
+        let mock = Mock::new();
+        let addr = [2u8; 20];
+        mock.add(handlers::provide(vec![NextRowTest { next_operator: Some(addr) }]));
+
+        let app = build_app(mock.url());
+        let body = send_request(app, "/next-operator").await;
+        assert_eq!(body, json!({ "operator": format!("0x{}", hex::encode(addr)) }));
     }
 }

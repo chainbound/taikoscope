@@ -1,18 +1,18 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { findMetricValue } from "./utils";
-import { createMetrics, hasBadRequest } from "./helpers";
-import { DashboardHeader } from "./components/DashboardHeader";
-import { MetricCard } from "./components/MetricCard";
-import { ChartCard } from "./components/ChartCard";
-import { SequencerPieChart } from "./components/SequencerPieChart";
-import { BlockTimeChart } from "./components/BlockTimeChart";
-import { BatchProcessChart } from "./components/BatchProcessChart";
+import React, { useState, useEffect, useCallback } from 'react';
+import { findMetricValue } from './utils';
+import { createMetrics, hasBadRequest } from './helpers';
+import { DashboardHeader } from './components/DashboardHeader';
+import { MetricCard } from './components/MetricCard';
+import { ChartCard } from './components/ChartCard';
+import { SequencerPieChart } from './components/SequencerPieChart';
+import { BlockTimeChart } from './components/BlockTimeChart';
+import { BatchProcessChart } from './components/BatchProcessChart';
 import {
   TimeRange,
   TimeSeriesData,
   PieChartDataItem,
   MetricData,
-} from "./types";
+} from './types';
 import {
   API_BASE,
   fetchAvgProveTime,
@@ -23,6 +23,8 @@ import {
   fetchL2Reorgs,
   fetchSlashingEvents,
   fetchForcedInclusions,
+  fetchCurrentOperator,
+  fetchNextOperator,
   fetchL2HeadBlock,
   fetchL1HeadBlock,
   fetchL2HeadNumber,
@@ -32,13 +34,13 @@ import {
   fetchL1BlockTimes,
   fetchL2BlockTimes,
   fetchSequencerDistribution,
-} from "./services/apiService";
+} from './services/apiService';
 
 // Updated Taiko Pink
-const TAIKO_PINK = "#e81899";
+const TAIKO_PINK = '#e81899';
 
 const App: React.FC = () => {
-  const [timeRange, setTimeRange] = useState<TimeRange>("1h");
+  const [timeRange, setTimeRange] = useState<TimeRange>('1h');
   const [metrics, setMetrics] = useState<MetricData[]>([]);
   const [secondsToProveData, setSecondsToProveData] = useState<
     TimeSeriesData[]
@@ -51,10 +53,10 @@ const App: React.FC = () => {
   const [sequencerDistribution, setSequencerDistribution] = useState<
     PieChartDataItem[]
   >([]);
-  const [l2HeadBlock, setL2HeadBlock] = useState<string>("0");
-  const [l1HeadBlock, setL1HeadBlock] = useState<string>("0");
+  const [l2HeadBlock, setL2HeadBlock] = useState<string>('0');
+  const [l1HeadBlock, setL1HeadBlock] = useState<string>('0');
   const [refreshRate, setRefreshRate] = useState<number>(60000);
-  const [errorMessage, setErrorMessage] = useState<string>("");
+  const [errorMessage, setErrorMessage] = useState<string>('');
 
   useEffect(() => {
     let pollId: NodeJS.Timeout | null = null;
@@ -69,7 +71,7 @@ const App: React.FC = () => {
         setL1HeadBlock(value);
         setMetrics((m) =>
           m.map((metric) =>
-            metric.title === "L1 Head Block" ? { ...metric, value } : metric,
+            metric.title === 'L1 Head Block' ? { ...metric, value } : metric,
           ),
         );
       }
@@ -78,7 +80,7 @@ const App: React.FC = () => {
         setL2HeadBlock(value);
         setMetrics((m) =>
           m.map((metric) =>
-            metric.title === "L2 Head Block" ? { ...metric, value } : metric,
+            metric.title === 'L2 Head Block' ? { ...metric, value } : metric,
           ),
         );
       }
@@ -87,7 +89,7 @@ const App: React.FC = () => {
     const startPolling = () => {
       if (!pollId) {
         setErrorMessage(
-          "Realtime updates unavailable, falling back to polling.",
+          'Realtime updates unavailable, falling back to polling.',
         );
         updateHeads();
         pollId = setInterval(updateHeads, 10000);
@@ -102,7 +104,7 @@ const App: React.FC = () => {
       setL1HeadBlock(value);
       setMetrics((m) =>
         m.map((metric) =>
-          metric.title === "L1 Head Block" ? { ...metric, value } : metric,
+          metric.title === 'L1 Head Block' ? { ...metric, value } : metric,
         ),
       );
     };
@@ -111,7 +113,7 @@ const App: React.FC = () => {
       setL2HeadBlock(value);
       setMetrics((m) =>
         m.map((metric) =>
-          metric.title === "L2 Head Block" ? { ...metric, value } : metric,
+          metric.title === 'L2 Head Block' ? { ...metric, value } : metric,
         ),
       );
     };
@@ -140,6 +142,8 @@ const App: React.FC = () => {
       avgProveRes,
       avgVerifyRes,
       activeGatewaysRes,
+      currentOperatorRes,
+      nextOperatorRes,
       l2ReorgsRes,
       slashingsRes,
       forcedInclusionsRes,
@@ -156,6 +160,8 @@ const App: React.FC = () => {
       fetchAvgProveTime(range),
       fetchAvgVerifyTime(range),
       fetchActiveGateways(range),
+      fetchCurrentOperator(),
+      fetchNextOperator(),
       fetchL2Reorgs(range),
       fetchSlashingEvents(range),
       fetchForcedInclusions(range),
@@ -173,6 +179,8 @@ const App: React.FC = () => {
     const avgProve = avgProveRes.data;
     const avgVerify = avgVerifyRes.data;
     const activeGateways = activeGatewaysRes.data;
+    const currentOperator = currentOperatorRes.data;
+    const nextOperator = nextOperatorRes.data;
     const l2Reorgs = l2ReorgsRes.data;
     const slashings = slashingsRes.data;
     const forcedInclusions = forcedInclusionsRes.data;
@@ -190,6 +198,8 @@ const App: React.FC = () => {
       avgProveRes,
       avgVerifyRes,
       activeGatewaysRes,
+      currentOperatorRes,
+      nextOperatorRes,
       l2ReorgsRes,
       slashingsRes,
       forcedInclusionsRes,
@@ -208,6 +218,8 @@ const App: React.FC = () => {
       avgProve,
       avgVerify,
       activeGateways,
+      currentOperator,
+      nextOperator,
       l2Reorgs,
       slashings,
       forcedInclusions,
@@ -222,17 +234,17 @@ const App: React.FC = () => {
     setL1BlockTimeData(l1Times);
     setSequencerDistribution(sequencerDist);
     setL2HeadBlock(
-      currentMetrics.find((m) => m.title === "L2 Head Block")?.value || "N/A",
+      currentMetrics.find((m) => m.title === 'L2 Head Block')?.value || 'N/A',
     );
     setL1HeadBlock(
-      currentMetrics.find((m) => m.title === "L1 Head Block")?.value || "N/A",
+      currentMetrics.find((m) => m.title === 'L1 Head Block')?.value || 'N/A',
     );
     if (anyBadRequest) {
       setErrorMessage(
-        "Invalid parameters provided. Some data may not be available.",
+        'Invalid parameters provided. Some data may not be available.',
       );
     } else {
-      setErrorMessage("");
+      setErrorMessage('');
     }
   }, [timeRange]);
 
@@ -266,37 +278,45 @@ const App: React.FC = () => {
           {/* Grouped Metrics */}
           <MetricCard
             title="L2 Block Cadence"
-            value={findMetricValue(metrics, "L2 Block Cadence")}
+            value={findMetricValue(metrics, 'L2 Block Cadence')}
           />
           <MetricCard
             title="Batch Posting Cadence"
-            value={findMetricValue(metrics, "Batch Posting Cadence")}
+            value={findMetricValue(metrics, 'Batch Posting Cadence')}
           />
           <MetricCard
             title="Avg. Prove Time"
-            value={findMetricValue(metrics, "Avg. Prove Time")}
+            value={findMetricValue(metrics, 'Avg. Prove Time')}
           />
           <MetricCard
             title="Avg. Verify Time"
-            value={findMetricValue(metrics, "Avg. Verify Time")}
+            value={findMetricValue(metrics, 'Avg. Verify Time')}
           />
 
           {/* Other Metrics */}
           <MetricCard
             title="Active Gateways"
-            value={findMetricValue(metrics, "Active Gateways")}
+            value={findMetricValue(metrics, 'Active Gateways')}
+          />
+          <MetricCard
+            title="Current Operator"
+            value={findMetricValue(metrics, 'Current Operator')}
+          />
+          <MetricCard
+            title="Next Operator"
+            value={findMetricValue(metrics, 'Next Operator')}
           />
           <MetricCard
             title="L2 Reorgs"
-            value={findMetricValue(metrics, "L2 Reorgs")}
+            value={findMetricValue(metrics, 'L2 Reorgs')}
           />
           <MetricCard
             title="Slashing Events"
-            value={findMetricValue(metrics, "Slashing Events")}
+            value={findMetricValue(metrics, 'Slashing Events')}
           />
           <MetricCard
             title="Forced Inclusions"
-            value={findMetricValue(metrics, "Forced Inclusions")}
+            value={findMetricValue(metrics, 'Forced Inclusions')}
           />
         </div>
 

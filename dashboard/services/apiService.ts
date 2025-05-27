@@ -139,6 +139,20 @@ export const fetchL1HeadBlock = async (
   return { data: value, badRequest: res.badRequest };
 };
 
+export const fetchCurrentOperator = async (): Promise<
+  RequestResult<string>
+> => {
+  const url = `${API_BASE}/current-operator`;
+  const res = await fetchJson<{ operator?: string }>(url);
+  return { data: res.data?.operator ?? null, badRequest: res.badRequest };
+};
+
+export const fetchNextOperator = async (): Promise<RequestResult<string>> => {
+  const url = `${API_BASE}/next-operator`;
+  const res = await fetchJson<{ operator?: string }>(url);
+  return { data: res.data?.operator ?? null, badRequest: res.badRequest };
+};
+
 export const fetchL2HeadNumber = async (): Promise<RequestResult<number>> => {
   const url = `${API_BASE}/l2-head-block`;
   const res = await fetchJson<{ l2_head_block?: number }>(url);
