@@ -4,6 +4,7 @@ import fs from 'fs/promises';
 let fetchAvgProveTime: typeof import('../services/apiService.js').fetchAvgProveTime;
 let fetchActiveGateways: typeof import('../services/apiService.js').fetchActiveGateways;
 let fetchL2BlockTimes: typeof import('../services/apiService.js').fetchL2BlockTimes;
+let fetchBlockTransactions: typeof import('../services/apiService.js').fetchBlockTransactions;
 
 const originalFetch = globalThis.fetch;
 
@@ -33,6 +34,7 @@ describe('apiService', () => {
     fetchAvgProveTime = service.fetchAvgProveTime;
     fetchActiveGateways = service.fetchActiveGateways;
     fetchL2BlockTimes = service.fetchL2BlockTimes;
+    fetchBlockTransactions = service.fetchBlockTransactions;
   });
 
   afterAll(() => {
@@ -68,5 +70,15 @@ describe('apiService', () => {
     });
     const blockTimes = await fetchL2BlockTimes('1h');
     expect(blockTimes.data).toStrictEqual([{ value: 2, timestamp: 20 }]);
+  });
+
+  it('transforms block transactions', async () => {
+    globalThis.fetch = mockFetch({
+      blocks: [
+        { block: 1, txs: 3, sequencer: '0xabc' },
+      ],
+    });
+    const txs = await fetchBlockTransactions('1h');
+    expect(txs.data).toStrictEqual([{ block: 1, txs: 3, sequencer: '0xabc' }]);
   });
 });

@@ -343,3 +343,17 @@ export const fetchSequencerBlocks = async (
   )?.blocks;
   return { data: blocks ?? null, badRequest: res.badRequest };
 };
+
+export interface BlockTransaction {
+  block: number;
+  txs: number;
+  sequencer: string;
+}
+
+export const fetchBlockTransactions = async (
+  range: '1h' | '24h' | '7d',
+): Promise<RequestResult<BlockTransaction[]>> => {
+  const url = `${API_BASE}/block-transactions?range=${range}`;
+  const res = await fetchJson<{ blocks: BlockTransaction[] }>(url);
+  return { data: res.data?.blocks ?? null, badRequest: res.badRequest };
+};

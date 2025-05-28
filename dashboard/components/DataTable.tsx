@@ -11,6 +11,7 @@ interface DataTableProps {
   rows: Array<Record<string, string | number>>;
   onBack: () => void;
   onRowClick?: (row: Record<string, string | number>) => void;
+  extraAction?: { label: string; onClick: () => void };
 }
 
 export const DataTable: React.FC<DataTableProps> = ({
@@ -19,6 +20,7 @@ export const DataTable: React.FC<DataTableProps> = ({
   rows,
   onBack,
   onRowClick,
+  extraAction,
 }) => {
   return (
     <div className="p-4">
@@ -29,6 +31,14 @@ export const DataTable: React.FC<DataTableProps> = ({
         <span>&larr;</span>
         <span>Back</span>
       </button>
+      {extraAction && (
+        <button
+          onClick={extraAction.onClick}
+          className="ml-4 mb-4 text-[#e81899]"
+        >
+          {extraAction.label}
+        </button>
+      )}
       <h2 className="text-xl font-semibold mb-2">{title}</h2>
       <div className="overflow-x-auto">
         <table className="min-w-full border divide-y divide-gray-200">
