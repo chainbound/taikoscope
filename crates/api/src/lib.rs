@@ -2,6 +2,7 @@
 
 use std::net::SocketAddr;
 
+use api_types::*;
 use async_stream::stream;
 use axum::{
     Json, Router,
@@ -20,7 +21,7 @@ use eyre::Result;
 use futures::stream::Stream;
 use hex::encode;
 use primitives::rate_limiter::RateLimiter;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::{convert::Infallible, time::Duration as StdDuration};
 use tower_http::{
     cors::{AllowOrigin, Any, CorsLayer},
@@ -81,140 +82,6 @@ fn range_duration(range: &Option<String>) -> ChronoDuration {
     }
 
     ChronoDuration::hours(1)
-}
-
-#[derive(Debug, Serialize)]
-struct L2HeadResponse {
-    last_l2_head_time: Option<String>,
-}
-
-#[derive(Debug, Serialize)]
-struct L1HeadResponse {
-    last_l1_head_time: Option<String>,
-}
-
-#[derive(Debug, Serialize)]
-struct SlashingEventsResponse {
-    events: Vec<clickhouse_lib::SlashingEventRow>,
-}
-
-#[derive(Debug, Serialize)]
-struct ForcedInclusionEventsResponse {
-    events: Vec<clickhouse_lib::ForcedInclusionProcessedRow>,
-}
-
-#[derive(Debug, Serialize)]
-struct ReorgEventsResponse {
-    events: Vec<clickhouse_lib::L2ReorgRow>,
-}
-
-#[derive(Debug, Serialize)]
-struct ActiveGatewaysResponse {
-    gateways: Vec<String>,
-}
-
-#[derive(Debug, Serialize)]
-struct CurrentOperatorResponse {
-    operator: Option<String>,
-}
-
-#[derive(Debug, Serialize)]
-struct NextOperatorResponse {
-    operator: Option<String>,
-}
-
-#[derive(Debug, Serialize)]
-struct AvgProveTimeResponse {
-    avg_prove_time_ms: Option<u64>,
-}
-
-#[derive(Debug, Serialize)]
-struct AvgVerifyTimeResponse {
-    avg_verify_time_ms: Option<u64>,
-}
-
-#[derive(Debug, Serialize)]
-struct L2BlockCadenceResponse {
-    l2_block_cadence_ms: Option<u64>,
-}
-
-#[derive(Debug, Serialize)]
-struct BatchPostingCadenceResponse {
-    batch_posting_cadence_ms: Option<u64>,
-}
-
-#[derive(Debug, Serialize)]
-struct AvgL2TpsResponse {
-    avg_tps: Option<f64>,
-}
-
-#[derive(Debug, Serialize)]
-struct ProveTimesResponse {
-    batches: Vec<clickhouse_lib::BatchProveTimeRow>,
-}
-
-#[derive(Debug, Serialize)]
-struct VerifyTimesResponse {
-    batches: Vec<clickhouse_lib::BatchVerifyTimeRow>,
-}
-
-#[derive(Debug, Serialize)]
-struct L1BlockTimesResponse {
-    blocks: Vec<clickhouse_lib::L1BlockTimeRow>,
-}
-
-#[derive(Debug, Serialize)]
-struct L2BlockTimesResponse {
-    blocks: Vec<clickhouse_lib::L2BlockTimeRow>,
-}
-
-#[derive(Debug, Serialize)]
-struct L2GasUsedResponse {
-    blocks: Vec<clickhouse_lib::L2GasUsedRow>,
-}
-
-#[derive(Debug, Serialize)]
-struct SequencerDistributionItem {
-    address: String,
-    blocks: u64,
-}
-
-#[derive(Debug, Serialize)]
-struct SequencerDistributionResponse {
-    sequencers: Vec<SequencerDistributionItem>,
-}
-
-#[derive(Debug, Serialize)]
-struct SequencerBlocksItem {
-    address: String,
-    blocks: Vec<u64>,
-}
-
-#[derive(Debug, Serialize)]
-struct SequencerBlocksResponse {
-    sequencers: Vec<SequencerBlocksItem>,
-}
-
-#[derive(Debug, Serialize)]
-struct BlockTransactionsItem {
-    block: u64,
-    txs: u32,
-    sequencer: String,
-}
-
-#[derive(Debug, Serialize)]
-struct BlockTransactionsResponse {
-    blocks: Vec<BlockTransactionsItem>,
-}
-
-#[derive(Debug, Serialize)]
-struct L2HeadBlockResponse {
-    l2_head_block: Option<u64>,
-}
-
-#[derive(Debug, Serialize)]
-struct L1HeadBlockResponse {
-    l1_head_block: Option<u64>,
 }
 
 async fn l2_head(State(state): State<ApiState>) -> Json<L2HeadResponse> {

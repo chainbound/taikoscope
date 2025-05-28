@@ -1,0 +1,14 @@
+[package]
+name = "api-types"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+exclude.workspace = true
+repository.workspace = true
+
+[dependencies]
+serde.workspace = true
+clickhouse_lib = { path = "../clickhouse", package = "clickhouse" }
+
+[lints]
+workspace = true
