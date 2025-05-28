@@ -10,6 +10,7 @@ interface DataTableProps {
   columns: Column[];
   rows: Array<Record<string, string | number>>;
   onBack: () => void;
+  onRowClick?: (row: Record<string, string | number>) => void;
 }
 
 export const DataTable: React.FC<DataTableProps> = ({
@@ -17,6 +18,7 @@ export const DataTable: React.FC<DataTableProps> = ({
   columns,
   rows,
   onBack,
+  onRowClick,
 }) => {
   return (
     <div className="p-4">
@@ -41,7 +43,11 @@ export const DataTable: React.FC<DataTableProps> = ({
           </thead>
           <tbody>
             {rows.map((row, idx) => (
-              <tr key={idx} className="border-t">
+              <tr
+                key={idx}
+                className="border-t hover:bg-gray-50 cursor-pointer"
+                onClick={onRowClick ? () => onRowClick(row) : undefined}
+              >
                 {columns.map((col) => (
                   <td key={col.key} className="px-2 py-1">
                     {row[col.key] as React.ReactNode}

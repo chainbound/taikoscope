@@ -127,6 +127,15 @@ pub struct SequencerDistributionRow {
     pub blocks: u64,
 }
 
+/// Row representing a single block proposed by a sequencer
+#[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq)]
+pub struct SequencerBlockRow {
+    /// Sequencer address
+    pub sequencer: [u8; 20],
+    /// L2 block number proposed by the sequencer
+    pub l2_block_number: u64,
+}
+
 /// Row representing the time it took for a batch to be proven
 #[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq)]
 pub struct BatchProveTimeRow {

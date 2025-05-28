@@ -53,6 +53,12 @@ struct RangeQuery {
     range: Option<String>,
 }
 
+#[derive(Debug, Deserialize)]
+struct SequencerBlocksQuery {
+    range: Option<String>,
+    address: Option<String>,
+}
+
 fn range_duration(range: &Option<String>) -> ChronoDuration {
     const MAX_RANGE_HOURS: i64 = 24 * 7; // maximum range of 7 days
 
@@ -176,6 +182,17 @@ struct SequencerDistributionItem {
 #[derive(Debug, Serialize)]
 struct SequencerDistributionResponse {
     sequencers: Vec<SequencerDistributionItem>,
+}
+
+#[derive(Debug, Serialize)]
+struct SequencerBlocksItem {
+    address: String,
+    blocks: Vec<u64>,
+}
+
+#[derive(Debug, Serialize)]
+struct SequencerBlocksResponse {
+    sequencers: Vec<SequencerBlocksItem>,
 }
 
 #[derive(Debug, Serialize)]
@@ -596,6 +613,45 @@ async fn sequencer_distribution(
     Json(SequencerDistributionResponse { sequencers })
 }
 
+async fn sequencer_blocks(
+    Query(params): Query<SequencerBlocksQuery>,
+    State(state): State<ApiState>,
+) -> Json<SequencerBlocksResponse> {
+    let since = Utc::now() - range_duration(&params.range);
+    let rows = match state.client.get_sequencer_blocks_since(since).await {
+        Ok(r) => r,
+        Err(e) => {
+            tracing::error!(error = %e, "Failed to get sequencer blocks");
+            Vec::new()
+        }
+    };
+
+    let filter = if let Some(addr) = params.address.as_deref() {
+        let trimmed = addr.trim_start_matches("0x");
+        if let Ok(v) = hex::decode(trimmed) { <[u8; 20]>::try_from(v).ok() } else { None }
+    } else {
+        None
+    };
+
+    use std::collections::BTreeMap;
+    let mut map: BTreeMap<[u8; 20], Vec<u64>> = BTreeMap::new();
+    for r in rows {
+        if let Some(addr) = filter {
+            if r.sequencer != addr {
+                continue;
+            }
+        }
+        map.entry(r.sequencer).or_default().push(r.l2_block_number);
+    }
+
+    let sequencers: Vec<SequencerBlocksItem> = map
+        .into_iter()
+        .map(|(seq, blocks)| SequencerBlocksItem { address: format!("0x{}", encode(seq)), blocks })
+        .collect();
+    tracing::info!(count = sequencers.len(), "Returning sequencer blocks");
+    Json(SequencerBlocksResponse { sequencers })
+}
+
 async fn rate_limit(
     State(state): State<ApiState>,
     req: axum::http::Request<axum::body::Body>,
@@ -633,6 +689,7 @@ fn router(state: ApiState) -> Router {
         .route("/l2-block-times", get(l2_block_times))
         .route("/l2-gas-used", get(l2_gas_used))
         .route("/sequencer-distribution", get(sequencer_distribution))
+        .route("/sequencer-blocks", get(sequencer_blocks))
         .layer(middleware::from_fn_with_state(state.clone(), rate_limit))
         .with_state(state)
 }
@@ -1191,6 +1248,26 @@ mod tests {
         assert_eq!(
             body,
             json!({ "sequencers": [ { "address": "0x0101010101010101010101010101010101010101", "blocks": 5 } ] })
+        );
+    }
+
+    #[tokio::test]
+    async fn sequencer_blocks_endpoint() {
+        let mock = Mock::new();
+        #[derive(Serialize, Row)]
+        struct SeqBlockRowTest {
+            sequencer: [u8; 20],
+            l2_block_number: u64,
+        }
+        mock.add(handlers::provide(vec![SeqBlockRowTest {
+            sequencer: [1u8; 20],
+            l2_block_number: 42,
+        }]));
+        let app = build_app(mock.url());
+        let body = send_request(app, "/sequencer-blocks?range=1h").await;
+        assert_eq!(
+            body,
+            json!({ "sequencers": [ { "address": "0x0101010101010101010101010101010101010101", "blocks": [42] } ] })
         );
     }
 
