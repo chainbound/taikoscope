@@ -982,7 +982,7 @@ impl ClickhouseReader {
         let query = format!(
             "SELECT l2_block_number, \
                     block_ts AS block_time, \
-                    toUInt64OrNull((block_ts - lagInFrame(block_ts) OVER (ORDER BY l2_block_number)) * 1000) \
+                    toUInt64OrNull(toString((block_ts - lagInFrame(block_ts) OVER (ORDER BY l2_block_number)) * 1000)) \
                         AS ms_since_prev_block \
              FROM {db}.l2_head_events \
              WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL 1 HOUR) \
@@ -1016,7 +1016,7 @@ impl ClickhouseReader {
         let query = format!(
             "SELECT l2_block_number, \
                     block_ts AS block_time, \
-                    toUInt64OrNull((block_ts - lagInFrame(block_ts) OVER (ORDER BY l2_block_number)) * 1000) \
+                    toUInt64OrNull(toString((block_ts - lagInFrame(block_ts) OVER (ORDER BY l2_block_number)) * 1000)) \
                         AS ms_since_prev_block \
              FROM {db}.l2_head_events \
              WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL 24 HOUR) \
@@ -1050,7 +1050,7 @@ impl ClickhouseReader {
         let query = format!(
             "SELECT l2_block_number, \
                     block_ts AS block_time, \
-                    toUInt64OrNull((block_ts - lagInFrame(block_ts) OVER (ORDER BY l2_block_number)) * 1000) \
+                    toUInt64OrNull(toString((block_ts - lagInFrame(block_ts) OVER (ORDER BY l2_block_number)) * 1000)) \
                         AS ms_since_prev_block \
              FROM {db}.l2_head_events \
              WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL 7 DAY) \
