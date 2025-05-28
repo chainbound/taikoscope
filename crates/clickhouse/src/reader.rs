@@ -503,6 +503,28 @@ impl ClickhouseReader {
         Ok(rows)
     }
 
+    /// Get transactions per block since the given cutoff time with pagination
+    pub async fn get_block_transactions_since_paginated(
+        &self,
+        since: DateTime<Utc>,
+        limit: u64,
+        offset: u64,
+    ) -> Result<Vec<BlockTransactionRow>> {
+        let client = self.base.clone().with_database(&self.db_name);
+        let query = format!(
+            "SELECT sequencer, l2_block_number, sum_tx FROM {db}.l2_head_events \
+             WHERE inserted_at > toDateTime64({}, 3) \
+             ORDER BY l2_block_number LIMIT {} OFFSET {}",
+            since.timestamp_millis() as f64 / 1000.0,
+            limit,
+            offset,
+            db = self.db_name,
+        );
+
+        let rows = client.query(&query).fetch_all::<BlockTransactionRow>().await?;
+        Ok(rows)
+    }
+
     /// Get the average time in milliseconds it takes for a batch to be proven
     /// for proofs submitted within the given time range
     pub async fn get_avg_prove_time(&self, range: TimeRange) -> Result<Option<u64>> {

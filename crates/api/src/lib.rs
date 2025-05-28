@@ -59,6 +59,13 @@ struct SequencerBlocksQuery {
     address: Option<String>,
 }
 
+#[derive(Debug, Deserialize)]
+struct BlockTransactionsQuery {
+    range: Option<String>,
+    limit: Option<u64>,
+    offset: Option<u64>,
+}
+
 fn range_duration(range: &Option<String>) -> ChronoDuration {
     const MAX_RANGE_HOURS: i64 = 24 * 7; // maximum range of 7 days
 
@@ -665,11 +672,14 @@ async fn sequencer_blocks(
 }
 
 async fn block_transactions(
-    Query(params): Query<RangeQuery>,
+    Query(params): Query<BlockTransactionsQuery>,
     State(state): State<ApiState>,
 ) -> Json<BlockTransactionsResponse> {
     let since = Utc::now() - range_duration(&params.range);
-    let rows = match state.client.get_block_transactions_since(since).await {
+    let limit = params.limit.unwrap_or(50);
+    let offset = params.offset.unwrap_or(0);
+    let rows = match state.client.get_block_transactions_since_paginated(since, limit, offset).await
+    {
         Ok(r) => r,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get block transactions");
