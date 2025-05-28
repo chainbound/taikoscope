@@ -1466,11 +1466,7 @@ mod tests {
         let mock = Mock::new();
         let block_time = 1640995200u64;
         let test_data = vec![
-            L2BlockTimeTestRow {
-                l2_block_number: 200,
-                block_time,
-                ms_since_prev_block: None,
-            },
+            L2BlockTimeTestRow { l2_block_number: 200, block_time, ms_since_prev_block: None },
             L2BlockTimeTestRow {
                 l2_block_number: 201,
                 block_time: block_time + 15,
@@ -1507,11 +1503,7 @@ mod tests {
         let mock = Mock::new();
         let block_time = 1640995200u64;
         let test_data = vec![
-            L2BlockTimeTestRow {
-                l2_block_number: 300,
-                block_time,
-                ms_since_prev_block: None,
-            },
+            L2BlockTimeTestRow { l2_block_number: 300, block_time, ms_since_prev_block: None },
             L2BlockTimeTestRow {
                 l2_block_number: 301,
                 block_time: block_time + 20,
@@ -1555,8 +1547,9 @@ mod tests {
     #[tokio::test]
     async fn test_clickhouse_type_conversion_regression() {
         // Test that the queries can be constructed without syntax errors
-        // The specific regression was: toUInt64OrNull((calculation)) instead of toUInt64OrNull(toString((calculation)))
-        
+        // The specific regression was: toUInt64OrNull((calculation)) instead of
+        // toUInt64OrNull(toString((calculation)))
+
         let mock = Mock::new();
         // Add multiple handlers for different queries that will be called
         mock.add(handlers::provide(Vec::<L2BlockTimeTestRow>::new())); // hour
@@ -1572,7 +1565,7 @@ mod tests {
         let _ = ch.get_l2_block_times_last_hour().await;
         let _ = ch.get_l2_block_times_last_24_hours().await;
         let _ = ch.get_l2_block_times_last_7_days().await;
-        
+
         // If the toString() wrapper is missing, these would fail with:
         // "Illegal type Int64 of first argument of function toUInt64OrNull"
     }
@@ -1583,7 +1576,7 @@ mod tests {
     async fn test_to_uint64_or_null_with_calculation() {
         // This test would fail if someone removes the toString() wrapper
         // from the lagInFrame calculation in L2 block time queries
-        
+
         let mock = Mock::new();
         let test_data = vec![
             L2BlockTimeTestRow {
@@ -1605,11 +1598,11 @@ mod tests {
 
         // This should work without ClickHouse type errors
         let result = ch.get_l2_block_times_last_hour().await.unwrap();
-        
+
         // Verify the calculation result is properly converted
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].ms_since_prev_block, Some(12000));
-        
+
         // The key test: ensure no ClickHouse "Illegal type Int64" errors occur
         // If the toString() wrapper is removed, this test would fail during the query execution
     }
