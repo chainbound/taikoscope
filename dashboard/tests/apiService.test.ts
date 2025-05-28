@@ -1,4 +1,4 @@
-import assert from 'assert';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import fs from 'fs/promises';
 
 let fetchAvgProveTime: typeof import('../services/apiService.js').fetchAvgProveTime;
@@ -27,39 +27,46 @@ function mockFetch(data: unknown, status = 200, ok = true) {
     }) as Response;
 }
 
-(async () => {
-  const service = await loadService();
-  fetchAvgProveTime = service.fetchAvgProveTime;
-  fetchActiveGateways = service.fetchActiveGateways;
-  fetchL2BlockTimes = service.fetchL2BlockTimes;
-  // success case for fetchAvgProveTime
-  globalThis.fetch = mockFetch({ avg_prove_time_ms: 42 });
-  const prove = await fetchAvgProveTime('1h');
-  assert.strictEqual(prove.badRequest, false);
-  assert.strictEqual(prove.data, 42);
-
-  // bad request handling for fetchAvgProveTime
-  globalThis.fetch = mockFetch({}, 400, false);
-  const badProve = await fetchAvgProveTime('1h');
-  assert.strictEqual(badProve.badRequest, true);
-  assert.strictEqual(badProve.data, null);
-
-  // transformation for fetchActiveGateways
-  globalThis.fetch = mockFetch({ gateways: ['a', 'b'] });
-  const gateways = await fetchActiveGateways('1h');
-  assert.strictEqual(gateways.data, 2);
-
-  // l2 block times transformation
-  globalThis.fetch = mockFetch({
-    blocks: [
-      { l2_block_number: 1, ms_since_prev_block: 10 },
-      { l2_block_number: 2, ms_since_prev_block: 20 },
-    ],
+describe('apiService', () => {
+  beforeAll(async () => {
+    const service = await loadService();
+    fetchAvgProveTime = service.fetchAvgProveTime;
+    fetchActiveGateways = service.fetchActiveGateways;
+    fetchL2BlockTimes = service.fetchL2BlockTimes;
   });
-  const blockTimes = await fetchL2BlockTimes('1h');
-  assert.deepStrictEqual(blockTimes.data, [{ value: 2, timestamp: 20 }]);
 
-  // clean up
-  globalThis.fetch = originalFetch;
-  console.log('apiService tests passed.');
-})();
+  afterAll(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  it('fetchAvgProveTime succeeds', async () => {
+    globalThis.fetch = mockFetch({ avg_prove_time_ms: 42 });
+    const prove = await fetchAvgProveTime('1h');
+    expect(prove.badRequest).toBe(false);
+    expect(prove.data).toBe(42);
+  });
+
+  it('handles bad request for fetchAvgProveTime', async () => {
+    globalThis.fetch = mockFetch({}, 400, false);
+    const badProve = await fetchAvgProveTime('1h');
+    expect(badProve.badRequest).toBe(true);
+    expect(badProve.data).toBeNull();
+  });
+
+  it('transforms active gateways', async () => {
+    globalThis.fetch = mockFetch({ gateways: ['a', 'b'] });
+    const gateways = await fetchActiveGateways('1h');
+    expect(gateways.data).toBe(2);
+  });
+
+  it('transforms block times', async () => {
+    globalThis.fetch = mockFetch({
+      blocks: [
+        { l2_block_number: 1, ms_since_prev_block: 10 },
+        { l2_block_number: 2, ms_since_prev_block: 20 },
+      ],
+    });
+    const blockTimes = await fetchL2BlockTimes('1h');
+    expect(blockTimes.data).toStrictEqual([{ value: 2, timestamp: 20 }]);
+  });
+});

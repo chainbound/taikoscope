@@ -1,20 +1,24 @@
-import assert from 'assert';
+import { describe, it, expect } from 'vitest';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MetricCard } from '../components/MetricCard.js';
 
-const addressValue = '0x1234567890123456789012345678901234567890';
-const htmlAddress = renderToStaticMarkup(
-  React.createElement(MetricCard, { title: 'Operator', value: addressValue }),
-);
-assert(htmlAddress.includes('min-w-0 w-full sm:col-span-2'));
-assert(htmlAddress.includes('text-lg whitespace-nowrap'));
+describe('MetricCard', () => {
+  it('renders addresses with special classes', () => {
+    const addressValue = '0x1234567890123456789012345678901234567890';
+    const htmlAddress = renderToStaticMarkup(
+      React.createElement(MetricCard, { title: 'Operator', value: addressValue }),
+    );
+    expect(htmlAddress.includes('min-w-0 w-full sm:col-span-2')).toBe(true);
+    expect(htmlAddress.includes('text-lg whitespace-nowrap')).toBe(true);
+  });
 
-const htmlNormal = renderToStaticMarkup(
-  React.createElement(MetricCard, { title: 'Blocks', value: '42' }),
-);
-assert(!htmlNormal.includes('min-w-0 w-full'));
-assert(htmlNormal.includes('text-3xl break-all'));
-assert(htmlNormal.includes('42'));
-
-console.log('MetricCard tests passed.');
+  it('renders normal values', () => {
+    const htmlNormal = renderToStaticMarkup(
+      React.createElement(MetricCard, { title: 'Blocks', value: '42' }),
+    );
+    expect(htmlNormal.includes('min-w-0 w-full')).toBe(false);
+    expect(htmlNormal.includes('text-3xl break-all')).toBe(true);
+    expect(htmlNormal.includes('42')).toBe(true);
+  });
+});
