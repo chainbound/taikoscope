@@ -9,9 +9,11 @@ repository.workspace = true
 [dependencies]
 alloy.workspace = true
 alloy-json-rpc.workspace = true
+alloy-primitives.workspace = true
 futures.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+alloy-network-primitives.workspace = true
 tokio = { workspace = true, features = [
     "macros",
     "rt-multi-thread",
