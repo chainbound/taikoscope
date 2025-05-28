@@ -727,6 +727,7 @@ dependencies = [
 name = "api"
 version = "0.1.0"
 dependencies = [
+ "api-types",
  "async-stream",
  "axum",
  "chrono",
@@ -759,6 +760,14 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "api-types"
+version = "0.1.0"
+dependencies = [
+ "clickhouse 0.1.0",
+ "serde",
 ]
 
 [[package]]
