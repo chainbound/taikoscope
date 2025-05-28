@@ -78,6 +78,7 @@ const App: React.FC = () => {
   const [l1HeadBlock, setL1HeadBlock] = useState<string>('0');
   const [refreshRate, setRefreshRate] = useState<number>(60000);
   const [errorMessage, setErrorMessage] = useState<string>('');
+  const [seqDistTxPage, setSeqDistTxPage] = useState<number>(0);
   const [tableView, setTableView] = useState<null | {
     title: string;
     columns: { key: string; label: string }[];
@@ -341,6 +342,13 @@ const App: React.FC = () => {
       columns: { key: string; label: string }[];
       rows: Record<string, string | number>[];
       onRowClick?: (row: Record<string, string | number>) => void;
+      pagination?: {
+        page: number;
+        onNext: () => void;
+        onPrev: () => void;
+        disableNext?: boolean;
+        disablePrev?: boolean;
+      };
     },
     range?: TimeRange,
     onRangeChange?: (range: TimeRange) => void,
@@ -368,12 +376,18 @@ const App: React.FC = () => {
     );
   };
 
-  const openSequencerDistributionTable = async (range: TimeRange) => {
+  const openSequencerDistributionTable = async (
+    range: TimeRange,
+    page = seqDistTxPage,
+  ) => {
     setTimeRange(range);
+    setSeqDistTxPage(page);
     const [distRes, txRes] = await Promise.all([
       fetchSequencerDistribution(range),
-      fetchBlockTransactions(range),
+      fetchBlockTransactions(range, page),
     ]);
+    const disablePrev = page === 0;
+    const disableNext = (txRes.data?.length ?? 0) < 50;
     openTable(
       'Sequencer Distribution',
       [
@@ -394,9 +408,16 @@ const App: React.FC = () => {
           string,
           string | number
         >[],
+        pagination: {
+          page,
+          onPrev: () => openSequencerDistributionTable(range, page - 1),
+          onNext: () => openSequencerDistributionTable(range, page + 1),
+          disablePrev,
+          disableNext,
+        },
       },
       range,
-      openSequencerDistributionTable,
+      (r) => openSequencerDistributionTable(r, 0),
     );
   };
 
@@ -452,53 +473,53 @@ const App: React.FC = () => {
                     onMore={
                       typeof m.title === 'string' && m.title === 'L2 Reorgs'
                         ? () =>
-                          openTable(
-                            'L2 Reorgs',
-                            [
-                              {
-                                key: 'l2_block_number',
-                                label: 'Block Number',
-                              },
-                              { key: 'depth', label: 'Depth' },
-                            ],
-                            l2ReorgEvents as unknown as Record<
-                              string,
-                              string | number
-                            >[],
-                            undefined,
-                            undefined,
-                            undefined,
-                            undefined,
-                            undefined,
-                            <ReorgDepthChart data={l2ReorgEvents} />,
-                          )
-                        : typeof m.title === 'string' &&
-                          m.title === 'Slashing Events'
-                          ? () =>
                             openTable(
-                              'Slashing Events',
+                              'L2 Reorgs',
                               [
                                 {
-                                  key: 'l1_block_number',
-                                  label: 'L1 Block',
+                                  key: 'l2_block_number',
+                                  label: 'Block Number',
                                 },
-                                { key: 'validator_addr', label: 'Validator' },
+                                { key: 'depth', label: 'Depth' },
                               ],
-                              slashingEvents.map((e) => ({
-                                l1_block_number: e.l1_block_number,
-                                validator_addr: bytesToHex(e.validator_addr),
-                              })) as Record<string, string | number>[],
+                              l2ReorgEvents as unknown as Record<
+                                string,
+                                string | number
+                              >[],
+                              undefined,
+                              undefined,
+                              undefined,
+                              undefined,
+                              undefined,
+                              <ReorgDepthChart data={l2ReorgEvents} />,
                             )
-                          : typeof m.title === 'string' &&
-                            m.title === 'Forced Inclusions'
-                            ? () =>
+                        : typeof m.title === 'string' &&
+                            m.title === 'Slashing Events'
+                          ? () =>
                               openTable(
-                                'Forced Inclusions',
-                                [{ key: 'blob_hash', label: 'Blob Hash' }],
-                                forcedInclusionEvents.map((e) => ({
-                                  blob_hash: bytesToHex(e.blob_hash),
+                                'Slashing Events',
+                                [
+                                  {
+                                    key: 'l1_block_number',
+                                    label: 'L1 Block',
+                                  },
+                                  { key: 'validator_addr', label: 'Validator' },
+                                ],
+                                slashingEvents.map((e) => ({
+                                  l1_block_number: e.l1_block_number,
+                                  validator_addr: bytesToHex(e.validator_addr),
                                 })) as Record<string, string | number>[],
                               )
+                          : typeof m.title === 'string' &&
+                              m.title === 'Forced Inclusions'
+                            ? () =>
+                                openTable(
+                                  'Forced Inclusions',
+                                  [{ key: 'blob_hash', label: 'Blob Hash' }],
+                                  forcedInclusionEvents.map((e) => ({
+                                    blob_hash: bytesToHex(e.blob_hash),
+                                  })) as Record<string, string | number>[],
+                                )
                             : undefined
                     }
                   />
