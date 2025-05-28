@@ -82,7 +82,7 @@ status-remote-hekla:
 
 # View the logs of the service
 logs-remote-hekla:
-    ssh {{ssh_alias}} "docker logs -f {{container}}"
+    ssh {{ssh_alias}} "docker logs --tail 1000 -f {{container}}"
 
 # Deploy and tail logs
 deploy-logs-remote-hekla:
@@ -146,7 +146,7 @@ start-api-remote-hekla:
     @echo "API server started."
 
 logs-api-remote-hekla:
-    ssh {{ssh_alias}} "docker logs -f {{api_container}}"
+    ssh {{ssh_alias}} "docker logs --tail 1000 -f {{api_container}}"
 
 # Deploy and tail logs for the API server
 deploy-logs-api-remote-hekla:
