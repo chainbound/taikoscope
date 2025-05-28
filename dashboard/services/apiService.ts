@@ -271,3 +271,16 @@ export const fetchSequencerDistribution = async (
     badRequest: res.badRequest,
   };
 };
+
+export interface ProposerDistributionItem {
+  address: string;
+  blocks: number;
+}
+
+export const fetchSequencerProposals = async (
+  range: '1h' | '24h' | '7d',
+): Promise<RequestResult<ProposerDistributionItem[]>> => {
+  const url = `${API_BASE}/sequencer-proposals?range=${range}`;
+  const res = await fetchJson<{ sequencers: ProposerDistributionItem[] }>(url);
+  return { data: res.data?.sequencers ?? null, badRequest: res.badRequest };
+};

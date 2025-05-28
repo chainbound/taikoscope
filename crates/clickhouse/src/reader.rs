@@ -10,7 +10,8 @@ use url::Url;
 
 use crate::models::{
     BatchProveTimeRow, BatchVerifyTimeRow, ForcedInclusionProcessedRow, L1BlockTimeRow,
-    L2BlockTimeRow, L2ReorgRow, SequencerDistributionRow, SlashingEventRow,
+    L2BlockTimeRow, L2ReorgRow, ProposerDistributionRow, SequencerDistributionRow,
+    SlashingEventRow,
 };
 
 #[derive(Row, Deserialize, Serialize)]
@@ -432,6 +433,24 @@ impl ClickhouseReader {
         );
 
         let rows = client.query(&query).fetch_all::<SequencerDistributionRow>().await?;
+        Ok(rows)
+    }
+
+    /// Get the number of blocks proposed by each sequencer since the given cutoff time
+    pub async fn get_proposer_distribution_since(
+        &self,
+        since: DateTime<Utc>,
+    ) -> Result<Vec<ProposerDistributionRow>> {
+        let client = self.base.clone().with_database(&self.db_name);
+        let query = format!(
+            "SELECT proposer_addr AS proposer, count() AS blocks FROM {db}.batches \
+             WHERE inserted_at > toDateTime64({}, 3) \
+             GROUP BY proposer_addr ORDER BY blocks DESC",
+            since.timestamp_millis() as f64 / 1000.0,
+            db = self.db_name,
+        );
+
+        let rows = client.query(&query).fetch_all::<ProposerDistributionRow>().await?;
         Ok(rows)
     }
 

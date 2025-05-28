@@ -174,6 +174,17 @@ struct SequencerDistributionResponse {
 }
 
 #[derive(Debug, Serialize)]
+struct ProposerDistributionItem {
+    address: String,
+    blocks: u64,
+}
+
+#[derive(Debug, Serialize)]
+struct ProposerDistributionResponse {
+    sequencers: Vec<ProposerDistributionItem>,
+}
+
+#[derive(Debug, Serialize)]
 struct L2HeadBlockResponse {
     l2_head_block: Option<u64>,
 }
@@ -573,6 +584,29 @@ async fn sequencer_distribution(
     Json(SequencerDistributionResponse { sequencers })
 }
 
+async fn proposer_distribution(
+    Query(params): Query<RangeQuery>,
+    State(state): State<ApiState>,
+) -> Json<ProposerDistributionResponse> {
+    let since = Utc::now() - range_duration(&params.range);
+    let rows = match state.client.get_proposer_distribution_since(since).await {
+        Ok(r) => r,
+        Err(e) => {
+            tracing::error!(error = %e, "Failed to get proposer distribution");
+            Vec::new()
+        }
+    };
+    let sequencers: Vec<ProposerDistributionItem> = rows
+        .into_iter()
+        .map(|r| ProposerDistributionItem {
+            address: format!("0x{}", encode(r.proposer)),
+            blocks: r.blocks,
+        })
+        .collect();
+    tracing::info!(count = sequencers.len(), "Returning proposer distribution");
+    Json(ProposerDistributionResponse { sequencers })
+}
+
 async fn rate_limit(
     State(state): State<ApiState>,
     req: axum::http::Request<axum::body::Body>,
@@ -609,6 +643,7 @@ fn router(state: ApiState) -> Router {
         .route("/l1-block-times", get(l1_block_times))
         .route("/l2-block-times", get(l2_block_times))
         .route("/sequencer-distribution", get(sequencer_distribution))
+        .route("/sequencer-proposals", get(proposer_distribution))
         .layer(middleware::from_fn_with_state(state.clone(), rate_limit))
         .with_state(state)
 }
@@ -1125,6 +1160,24 @@ mod tests {
         assert_eq!(
             body,
             json!({ "sequencers": [ { "address": "0x0101010101010101010101010101010101010101", "blocks": 5 } ] })
+        );
+    }
+
+    #[derive(Serialize, Row)]
+    struct ProposerRowTest {
+        proposer: [u8; 20],
+        blocks: u64,
+    }
+
+    #[tokio::test]
+    async fn proposer_distribution_endpoint() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(vec![ProposerRowTest { proposer: [2u8; 20], blocks: 3 }]));
+        let app = build_app(mock.url());
+        let body = send_request(app, "/sequencer-proposals?range=1h").await;
+        assert_eq!(
+            body,
+            json!({ "sequencers": [ { "address": "0x0202020202020202020202020202020202020202", "blocks": 3 } ] })
         );
     }
 

@@ -34,6 +34,8 @@ import {
   fetchL1BlockTimes,
   fetchL2BlockTimes,
   fetchSequencerDistribution,
+  fetchSequencerProposals,
+  type ProposerDistributionItem,
 } from './services/apiService';
 
 // Updated Taiko Pink
@@ -52,6 +54,9 @@ const App: React.FC = () => {
   const [l1BlockTimeData, setL1BlockTimeData] = useState<TimeSeriesData[]>([]);
   const [sequencerDistribution, setSequencerDistribution] = useState<
     PieChartDataItem[]
+  >([]);
+  const [sequencerProposals, setSequencerProposals] = useState<
+    ProposerDistributionItem[]
   >([]);
   const [l2HeadBlock, setL2HeadBlock] = useState<string>('0');
   const [l1HeadBlock, setL1HeadBlock] = useState<string>('0');
@@ -159,6 +164,7 @@ const App: React.FC = () => {
       l1TimesRes,
       l2TimesRes,
       sequencerDistRes,
+      sequencerPropRes,
     ] = await Promise.all([
       fetchL2BlockCadence(range),
       fetchBatchPostingCadence(range),
@@ -177,6 +183,7 @@ const App: React.FC = () => {
       fetchL1BlockTimes(range),
       fetchL2BlockTimes(range),
       fetchSequencerDistribution(range),
+      fetchSequencerProposals(range),
     ]);
 
     const l2Cadence = l2CadenceRes.data;
@@ -196,6 +203,7 @@ const App: React.FC = () => {
     const l1Times = l1TimesRes.data || [];
     const l2Times = l2TimesRes.data || [];
     const sequencerDist = sequencerDistRes.data || [];
+    const sequencerProp = sequencerPropRes.data || [];
 
     const anyBadRequest = hasBadRequest([
       l2CadenceRes,
@@ -215,6 +223,7 @@ const App: React.FC = () => {
       l1TimesRes,
       l2TimesRes,
       sequencerDistRes,
+      sequencerPropRes,
     ]);
 
     const currentMetrics: MetricData[] = createMetrics({
@@ -238,6 +247,7 @@ const App: React.FC = () => {
     setL2BlockTimeData(l2Times);
     setL1BlockTimeData(l1Times);
     setSequencerDistribution(sequencerDist);
+    setSequencerProposals(sequencerProp);
     setL2HeadBlock(
       currentMetrics.find((m) => m.title === 'L2 Head Block')?.value || 'N/A',
     );
@@ -343,11 +353,15 @@ const App: React.FC = () => {
                 [
                   { key: 'name', label: 'Address' },
                   { key: 'value', label: 'Blocks' },
+                  { key: 'proposed', label: 'Proposed' },
                 ],
-                sequencerDistribution as unknown as Record<
-                  string,
-                  string | number
-                >[],
+                sequencerDistribution.map((d) => ({
+                  name: d.name,
+                  value: d.value,
+                  proposed:
+                    sequencerProposals.find((p) => p.address === d.name)
+                      ?.blocks ?? 0,
+                })),
               )
             }
           >
