@@ -19,6 +19,37 @@ struct MaxTs {
     block_ts: u64,
 }
 
+/// Supported time ranges for analytics queries
+#[derive(Copy, Clone, Debug)]
+pub enum TimeRange {
+    /// Data from the last hour
+    LastHour,
+    /// Data from the last 24 hours
+    Last24Hours,
+    /// Data from the last 7 days
+    Last7Days,
+}
+
+impl TimeRange {
+    /// Return the `ClickHouse` interval string for this range
+    const fn interval(self) -> &'static str {
+        match self {
+            Self::LastHour => "1 HOUR",
+            Self::Last24Hours => "24 HOUR",
+            Self::Last7Days => "7 DAY",
+        }
+    }
+
+    /// Return the duration in seconds for this range
+    const fn seconds(self) -> u64 {
+        match self {
+            Self::LastHour => 3600,
+            Self::Last24Hours => 86400,
+            Self::Last7Days => 604800,
+        }
+    }
+}
+
 /// `ClickHouse` reader client for API (read-only operations)
 #[derive(Clone, Debug)]
 pub struct ClickhouseReader {
@@ -455,144 +486,69 @@ impl ClickhouseReader {
     }
 
     /// Get the average time in milliseconds it takes for a batch to be proven
-    /// for proofs submitted within the last hour
+    /// for proofs submitted within the given time range
+    pub async fn get_avg_prove_time(&self, range: TimeRange) -> Result<Option<u64>> {
+        #[derive(Row, Deserialize)]
+        struct AvgRow {
+            avg_ms: f64,
+        }
+
+        let client = self.base.clone().with_database(&self.db_name);
+
+        // First try the materialized view
+        let mv_query = format!(
+            "SELECT avg(prove_time_ms) AS avg_ms \
+             FROM {db}.batch_prove_times_mv \
+             WHERE proved_at >= now64() - INTERVAL {}",
+            range.interval(),
+            db = self.db_name
+        );
+
+        let rows = client.query(&mv_query).fetch_all::<AvgRow>().await?;
+        if let Some(row) = rows.into_iter().next() {
+            if !row.avg_ms.is_nan() {
+                return Ok(Some(row.avg_ms.round() as u64));
+            }
+        }
+
+        // Fallback to raw data if materialized view is empty
+        let fallback_query = format!(
+            "SELECT avg((l1_proved.block_ts - l1_proposed.block_ts) * 1000) AS avg_ms \
+             FROM {db}.batches b \
+             JOIN {db}.proved_batches pb ON b.batch_id = pb.batch_id \
+             JOIN {db}.l1_head_events l1_proposed \
+               ON b.l1_block_number = l1_proposed.l1_block_number \
+             JOIN {db}.l1_head_events l1_proved \
+               ON pb.l1_block_number = l1_proved.l1_block_number \
+             WHERE l1_proved.block_ts >= (toUInt64(now()) - {})",
+            range.seconds(),
+            db = self.db_name
+        );
+
+        let rows = client.query(&fallback_query).fetch_all::<AvgRow>().await?;
+        let row = match rows.into_iter().next() {
+            Some(r) => r,
+            None => return Ok(None),
+        };
+
+        if row.avg_ms.is_nan() { Ok(None) } else { Ok(Some(row.avg_ms.round() as u64)) }
+    }
+
+    /// Get the average time in milliseconds it takes for a batch to be proven within the last hour
     pub async fn get_avg_prove_time_last_hour(&self) -> Result<Option<u64>> {
-        #[derive(Row, Deserialize)]
-        struct AvgRow {
-            avg_ms: f64,
-        }
-
-        let client = self.base.clone().with_database(&self.db_name);
-
-        // First try the materialized view
-        let mv_query = format!(
-            "SELECT avg(prove_time_ms) AS avg_ms \
-             FROM {db}.batch_prove_times_mv \
-             WHERE proved_at >= now64() - INTERVAL 1 HOUR",
-            db = self.db_name
-        );
-
-        let rows = client.query(&mv_query).fetch_all::<AvgRow>().await?;
-        if let Some(row) = rows.into_iter().next() {
-            if !row.avg_ms.is_nan() {
-                return Ok(Some(row.avg_ms.round() as u64));
-            }
-        }
-
-        // Fallback to raw data if materialized view is empty
-        let fallback_query = format!(
-            "SELECT avg((l1_proved.block_ts - l1_proposed.block_ts) * 1000) AS avg_ms \
-             FROM {db}.batches b \
-             JOIN {db}.proved_batches pb ON b.batch_id = pb.batch_id \
-             JOIN {db}.l1_head_events l1_proposed \
-               ON b.l1_block_number = l1_proposed.l1_block_number \
-             JOIN {db}.l1_head_events l1_proved \
-               ON pb.l1_block_number = l1_proved.l1_block_number \
-             WHERE l1_proved.block_ts >= (toUInt64(now()) - 3600)",
-            db = self.db_name
-        );
-
-        let rows = client.query(&fallback_query).fetch_all::<AvgRow>().await?;
-        let row = match rows.into_iter().next() {
-            Some(r) => r,
-            None => return Ok(None),
-        };
-
-        if row.avg_ms.is_nan() { Ok(None) } else { Ok(Some(row.avg_ms.round() as u64)) }
+        self.get_avg_prove_time(TimeRange::LastHour).await
     }
 
-    /// Get the average time in milliseconds it takes for a batch to be proven
-    /// for proofs submitted within the last 24 hours
+    /// Get the average time in milliseconds it takes for a batch to be proven within the last 24
+    /// hours
     pub async fn get_avg_prove_time_last_24_hours(&self) -> Result<Option<u64>> {
-        #[derive(Row, Deserialize)]
-        struct AvgRow {
-            avg_ms: f64,
-        }
-
-        let client = self.base.clone().with_database(&self.db_name);
-
-        // First try the materialized view
-        let mv_query = format!(
-            "SELECT avg(prove_time_ms) AS avg_ms \
-             FROM {db}.batch_prove_times_mv \
-             WHERE proved_at >= now64() - INTERVAL 24 HOUR",
-            db = self.db_name
-        );
-
-        let rows = client.query(&mv_query).fetch_all::<AvgRow>().await?;
-        if let Some(row) = rows.into_iter().next() {
-            if !row.avg_ms.is_nan() {
-                return Ok(Some(row.avg_ms.round() as u64));
-            }
-        }
-
-        // Fallback to raw data if materialized view is empty
-        let fallback_query = format!(
-            "SELECT avg((l1_proved.block_ts - l1_proposed.block_ts) * 1000) AS avg_ms \
-             FROM {db}.batches b \
-             JOIN {db}.proved_batches pb ON b.batch_id = pb.batch_id \
-             JOIN {db}.l1_head_events l1_proposed \
-               ON b.l1_block_number = l1_proposed.l1_block_number \
-             JOIN {db}.l1_head_events l1_proved \
-               ON pb.l1_block_number = l1_proved.l1_block_number \
-             WHERE l1_proved.block_ts >= (toUInt64(now()) - 86400)",
-            db = self.db_name
-        );
-
-        let rows = client.query(&fallback_query).fetch_all::<AvgRow>().await?;
-        let row = match rows.into_iter().next() {
-            Some(r) => r,
-            None => return Ok(None),
-        };
-
-        if row.avg_ms.is_nan() { Ok(None) } else { Ok(Some(row.avg_ms.round() as u64)) }
+        self.get_avg_prove_time(TimeRange::Last24Hours).await
     }
 
-    /// Get the average time in milliseconds it takes for a batch to be proven
-    /// for proofs submitted within the last 7 days
+    /// Get the average time in milliseconds it takes for a batch to be proven within the last 7
+    /// days
     pub async fn get_avg_prove_time_last_7_days(&self) -> Result<Option<u64>> {
-        #[derive(Row, Deserialize)]
-        struct AvgRow {
-            avg_ms: f64,
-        }
-
-        let client = self.base.clone().with_database(&self.db_name);
-
-        // First try the materialized view
-        let mv_query = format!(
-            "SELECT avg(prove_time_ms) AS avg_ms \
-             FROM {db}.batch_prove_times_mv \
-             WHERE proved_at >= now64() - INTERVAL 7 DAY",
-            db = self.db_name
-        );
-
-        let rows = client.query(&mv_query).fetch_all::<AvgRow>().await?;
-        if let Some(row) = rows.into_iter().next() {
-            if !row.avg_ms.is_nan() {
-                return Ok(Some(row.avg_ms.round() as u64));
-            }
-        }
-
-        // Fallback to raw data if materialized view is empty
-        let fallback_query = format!(
-            "SELECT avg((l1_proved.block_ts - l1_proposed.block_ts) * 1000) AS avg_ms \
-             FROM {db}.batches b \
-             JOIN {db}.proved_batches pb ON b.batch_id = pb.batch_id \
-             JOIN {db}.l1_head_events l1_proposed \
-               ON b.l1_block_number = l1_proposed.l1_block_number \
-             JOIN {db}.l1_head_events l1_proved \
-               ON pb.l1_block_number = l1_proved.l1_block_number \
-             WHERE l1_proved.block_ts >= (toUInt64(now()) - 604800)",
-            db = self.db_name
-        );
-
-        let rows = client.query(&fallback_query).fetch_all::<AvgRow>().await?;
-        let row = match rows.into_iter().next() {
-            Some(r) => r,
-            None => return Ok(None),
-        };
-
-        if row.avg_ms.is_nan() { Ok(None) } else { Ok(Some(row.avg_ms.round() as u64)) }
+        self.get_avg_prove_time(TimeRange::Last7Days).await
     }
 
     /// Get the average time in milliseconds it takes for a batch to be verified
