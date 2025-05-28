@@ -7,12 +7,13 @@
 - Run single test: `cargo nextest run <test_name>` or `cargo test <test_name>`
 - Linting: `just lint` or `cargo clippy --examples --tests --benches --all-features`
 - Format code: `just fmt` or `cargo +nightly fmt --all`
-- Run CI checks: `just ci` (runs fmt, lint, test)
-- Always run all CI checks after any changes (except for changes in the dashboard dir)
+- Run CI checks: `just ci` (runs fmt, lint, test, check-dashboard, test-dashboard)
+- Always run `just ci` after any changes
 - Dashboard install dependencies: `just install-dashboard`
 - Dashboard dev server: `just dev-dashboard`
 - Dashboard build: `just build-dashboard`
 - Dashboard type checks: `just check-dashboard`
+- Dashboard tests: `just test-dashboard`
 
 ## Code Style Guidelines
 - Use Rust 2024 edition

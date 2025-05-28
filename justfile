@@ -30,7 +30,7 @@ masaya-api:
 
 # run all recipes required to pass CI workflows
 ci:
-    @just fmt lint test
+    @just fmt lint test check-dashboard test-dashboard
 
 # run tests
 test:
