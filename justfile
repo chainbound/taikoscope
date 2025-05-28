@@ -172,3 +172,7 @@ dashboard-build:
 # run TypeScript type checks
 dashboard-check:
     cd dashboard && npm run check
+
+# run dashboard tests
+dashboard-test:
+    cd dashboard && npm run test
