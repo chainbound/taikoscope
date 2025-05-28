@@ -20,6 +20,11 @@ tokio = { workspace = true, features = [
 ] }
 tokio-retry.workspace = true
 tracing.workspace = true
+eyre.workspace = true
+reqwest.workspace = true
+
+[dev-dependencies]
+mockito.workspace = true
 
 [lints]
 workspace = true
