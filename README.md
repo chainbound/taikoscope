@@ -27,12 +27,12 @@ just dev-api
 
 Run dashboard locally
 ```
-just dashboard-dev
+just dev-dashboard
 ```
 
 Build dashboard
 ```
-just dashboard-build
+just build-dashboard
 ```
 
 Or deploy to cloud
