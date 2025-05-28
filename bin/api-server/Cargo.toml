@@ -6,6 +6,7 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+server = { path = "../../crates/server" }
 api = { path = "../../crates/api" }
 clickhouse = { path = "../../crates/clickhouse" }
 config = { path = "../../crates/config" }
