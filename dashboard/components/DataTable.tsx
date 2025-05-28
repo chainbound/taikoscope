@@ -12,6 +12,13 @@ interface ExtraTable {
   columns: Column[];
   rows: Array<Record<string, string | number>>;
   onRowClick?: (row: Record<string, string | number>) => void;
+  pagination?: {
+    page: number;
+    onNext: () => void;
+    onPrev: () => void;
+    disableNext?: boolean;
+    disablePrev?: boolean;
+  };
 }
 
 interface DataTableProps {
@@ -127,6 +134,25 @@ export const DataTable: React.FC<DataTableProps> = ({
               </tbody>
             </table>
           </div>
+          {extraTable.pagination && (
+            <div className="flex items-center justify-between mt-2">
+              <button
+                onClick={extraTable.pagination.onPrev}
+                disabled={extraTable.pagination.disablePrev}
+                className="text-[#e81899] disabled:text-gray-400"
+              >
+                Prev
+              </button>
+              <span>Page {extraTable.pagination.page + 1}</span>
+              <button
+                onClick={extraTable.pagination.onNext}
+                disabled={extraTable.pagination.disableNext}
+                className="text-[#e81899] disabled:text-gray-400"
+              >
+                Next
+              </button>
+            </div>
+          )}
         </div>
       ) : null}
     </div>
