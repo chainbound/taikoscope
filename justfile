@@ -158,21 +158,21 @@ status-api-remote-hekla:
 # --- Dashboard ---
 
 # install dashboard dependencies
-dashboard-install:
+install-dashboard:
     cd dashboard && npm install
 
 # start the dashboard dev server
-dashboard-dev:
+dev-dashboard:
     cd dashboard && VITE_API_BASE="http://localhost:3000" npm run dev
 
 # build the dashboard for production
-dashboard-build:
+build-dashboard:
     cd dashboard && npm run build
 
 # run TypeScript type checks
-dashboard-check:
+check-dashboard:
     cd dashboard && npm run check
 
 # run dashboard tests
-dashboard-test:
+test-dashboard:
     cd dashboard && npm run test

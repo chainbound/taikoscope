@@ -9,10 +9,10 @@
 - Format code: `just fmt` or `cargo +nightly fmt --all`
 - Run CI checks: `just ci` (runs fmt, lint, test)
 - Always run all CI checks after any changes (except for changes in the dashboard dir)
-- Dashboard install dependencies: `just dashboard-install`
-- Dashboard dev server: `just dashboard-dev`
-- Dashboard build: `just dashboard-build`
-- Dashboard type checks: `just dashboard-check`
+- Dashboard install dependencies: `just install-dashboard`
+- Dashboard dev server: `just dev-dashboard`
+- Dashboard build: `just build-dashboard`
+- Dashboard type checks: `just check-dashboard`
 
 ## Code Style Guidelines
 - Use Rust 2024 edition
