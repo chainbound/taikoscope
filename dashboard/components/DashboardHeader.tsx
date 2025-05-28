@@ -36,12 +36,12 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   );
 };
 
-interface TimeRangeSelectorProps {
+export interface TimeRangeSelectorProps {
   currentTimeRange: TimeRange;
   onTimeRangeChange: (range: TimeRange) => void;
 }
 
-const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
+export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
   currentTimeRange,
   onTimeRangeChange,
 }) => {
