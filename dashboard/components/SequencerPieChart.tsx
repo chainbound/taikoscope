@@ -8,7 +8,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { PieChartDataItem } from '../types';
-import { formatSequencerTooltip } from '../utils';
+import { formatSequencerTooltip } from '../utils.js';
 
 interface SequencerPieChartProps {
   data: PieChartDataItem[];

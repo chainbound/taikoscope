@@ -14,7 +14,7 @@ import {
   formatDecimal,
   formatBatchDuration,
   computeBatchDurationFlags,
-} from '../utils';
+} from '../utils.js';
 
 interface BatchProcessChartProps {
   data: TimeSeriesData[];

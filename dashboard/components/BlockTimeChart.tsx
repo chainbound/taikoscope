@@ -10,7 +10,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { TimeSeriesData } from '../types';
-import { formatDecimal, formatInterval, shouldShowMinutes } from '../utils';
+import { formatDecimal, formatInterval, shouldShowMinutes } from '../utils.js';
 
 interface BlockTimeChartProps {
   data: TimeSeriesData[];
