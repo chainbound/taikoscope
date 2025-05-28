@@ -757,6 +757,7 @@ dependencies = [
  "dotenvy",
  "eyre",
  "primitives",
+ "server",
  "tokio",
  "tracing",
  "tracing-subscriber",
@@ -3666,6 +3667,19 @@ checksum = "a84f14a19e9a014bb9f4512488d9829a68e04ecabffb0f9904cd1ace94598177"
 dependencies = [
  "base16ct",
  "serde",
+]
+
+[[package]]
+name = "server"
+version = "0.1.0"
+dependencies = [
+ "api",
+ "axum",
+ "clickhouse 0.1.0",
+ "eyre",
+ "tokio",
+ "tower-http",
+ "tracing",
 ]
 
 [[package]]

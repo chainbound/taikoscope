@@ -1,13 +1,10 @@
 //! Thin HTTP API for accessing `ClickHouse` data
 
-use std::net::SocketAddr;
-
 use api_types::*;
 use async_stream::stream;
 use axum::{
     Json, Router,
     extract::{Query, State},
-    http::{HeaderValue, Method},
     middleware,
     response::{
         IntoResponse,
@@ -17,34 +14,27 @@ use axum::{
 };
 use chrono::{Duration as ChronoDuration, Utc};
 use clickhouse_lib::ClickhouseReader;
-use eyre::Result;
 use futures::stream::Stream;
 use hex::encode;
 use primitives::rate_limiter::RateLimiter;
 use serde::Deserialize;
 use std::{convert::Infallible, time::Duration as StdDuration};
-use tower_http::{
-    cors::{AllowOrigin, Any, CorsLayer},
-    trace::{DefaultMakeSpan, DefaultOnRequest, DefaultOnResponse, TraceLayer},
-};
-use tracing::{Level, info};
 
 /// Maximum number of requests allowed during the [`RATE_PERIOD`].
 const MAX_REQUESTS: u64 = 1000;
 /// Duration for the rate limiting window.
 const RATE_PERIOD: StdDuration = StdDuration::from_secs(60);
 
-/// Allowed CORS origins for dashboard requests.
-const ALLOWED_ORIGINS: &[&str] = &["https://taikoscope.xyz", "https://www.taikoscope.xyz"];
-
+/// Shared state for API handlers.
 #[derive(Clone, Debug)]
-struct ApiState {
+pub struct ApiState {
     client: ClickhouseReader,
     limiter: RateLimiter,
 }
 
 impl ApiState {
-    fn new(client: ClickhouseReader) -> Self {
+    /// Create a new [`ApiState`].
+    pub fn new(client: ClickhouseReader) -> Self {
         Self { client, limiter: RateLimiter::new(MAX_REQUESTS, RATE_PERIOD) }
     }
 }
@@ -579,7 +569,8 @@ async fn rate_limit(
     }
 }
 
-fn router(state: ApiState) -> Router {
+/// Build the router with all API endpoints.
+pub fn router(state: ApiState) -> Router {
     Router::new()
         .route("/l2-head", get(l2_head))
         .route("/l1-head", get(l1_head))
@@ -608,42 +599,6 @@ fn router(state: ApiState) -> Router {
         .route("/block-transactions", get(block_transactions))
         .layer(middleware::from_fn_with_state(state.clone(), rate_limit))
         .with_state(state)
-}
-
-/// Run the API server on the given address
-pub async fn run(
-    addr: SocketAddr,
-    client: ClickhouseReader,
-    extra_origins: Vec<String>,
-) -> Result<()> {
-    use std::sync::Arc;
-
-    let state = ApiState::new(client);
-    let extra = Arc::new(extra_origins);
-    let cors = CorsLayer::new()
-        .allow_origin(AllowOrigin::predicate({
-            let extra = Arc::clone(&extra);
-            move |origin: &HeaderValue, _| match origin.to_str() {
-                Ok(origin) => {
-                    ALLOWED_ORIGINS.contains(&origin) ||
-                        origin.ends_with(".vercel.app") ||
-                        extra.iter().any(|o| o == origin)
-                }
-                Err(_) => false,
-            }
-        }))
-        .allow_methods([Method::GET])
-        .allow_headers(Any);
-    let trace = TraceLayer::new_for_http()
-        .make_span_with(DefaultMakeSpan::new().level(Level::INFO))
-        .on_request(DefaultOnRequest::new().level(Level::INFO))
-        .on_response(DefaultOnResponse::new().level(Level::INFO));
-    let app = router(state).layer(cors).layer(trace);
-
-    info!("Starting API server on {}", addr);
-    let listener = tokio::net::TcpListener::bind(addr).await?;
-    axum::serve(listener, app).await?;
-    Ok(())
 }
 #[cfg(test)]
 mod tests {

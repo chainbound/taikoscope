@@ -9,7 +9,7 @@ use serde::Serialize;
 use tokio::time::sleep;
 use url::Url;
 
-use api::run;
+use server::run;
 use clickhouse_lib::ClickhouseReader;
 
 #[derive(Serialize, Row)]
