@@ -444,20 +444,42 @@ impl ClickhouseReader {
         }
 
         let client = self.base.clone().with_database(&self.db_name);
-        let query = format!(
-            "SELECT COALESCE(avg(prove_time_ms), 0) AS avg_ms \
+
+        // First try the materialized view
+        let mv_query = format!(
+            "SELECT avg(prove_time_ms) AS avg_ms \
              FROM {db}.batch_prove_times_mv \
              WHERE proved_at >= now64() - INTERVAL 1 HOUR",
             db = self.db_name
         );
 
-        let rows = client.query(&query).fetch_all::<AvgRow>().await?;
+        let rows = client.query(&mv_query).fetch_all::<AvgRow>().await?;
+        if let Some(row) = rows.into_iter().next() {
+            if !row.avg_ms.is_nan() {
+                return Ok(Some(row.avg_ms.round() as u64));
+            }
+        }
+
+        // Fallback to raw data if materialized view is empty
+        let fallback_query = format!(
+            "SELECT avg((l1_proved.block_ts - l1_proposed.block_ts) * 1000) AS avg_ms \
+             FROM {db}.batches b \
+             JOIN {db}.proved_batches pb ON b.batch_id = pb.batch_id \
+             JOIN {db}.l1_head_events l1_proposed \
+               ON b.l1_block_number = l1_proposed.l1_block_number \
+             JOIN {db}.l1_head_events l1_proved \
+               ON pb.l1_block_number = l1_proved.l1_block_number \
+             WHERE l1_proved.block_ts >= (toUInt64(now()) - 3600)",
+            db = self.db_name
+        );
+
+        let rows = client.query(&fallback_query).fetch_all::<AvgRow>().await?;
         let row = match rows.into_iter().next() {
             Some(r) => r,
             None => return Ok(None),
         };
 
-        if row.avg_ms == 0.0 { Ok(None) } else { Ok(Some(row.avg_ms.round() as u64)) }
+        if row.avg_ms.is_nan() { Ok(None) } else { Ok(Some(row.avg_ms.round() as u64)) }
     }
 
     /// Get the average time in milliseconds it takes for a batch to be proven
@@ -469,20 +491,42 @@ impl ClickhouseReader {
         }
 
         let client = self.base.clone().with_database(&self.db_name);
-        let query = format!(
-            "SELECT COALESCE(avg(prove_time_ms), 0) AS avg_ms \
+
+        // First try the materialized view
+        let mv_query = format!(
+            "SELECT avg(prove_time_ms) AS avg_ms \
              FROM {db}.batch_prove_times_mv \
              WHERE proved_at >= now64() - INTERVAL 24 HOUR",
             db = self.db_name
         );
 
-        let rows = client.query(&query).fetch_all::<AvgRow>().await?;
+        let rows = client.query(&mv_query).fetch_all::<AvgRow>().await?;
+        if let Some(row) = rows.into_iter().next() {
+            if !row.avg_ms.is_nan() {
+                return Ok(Some(row.avg_ms.round() as u64));
+            }
+        }
+
+        // Fallback to raw data if materialized view is empty
+        let fallback_query = format!(
+            "SELECT avg((l1_proved.block_ts - l1_proposed.block_ts) * 1000) AS avg_ms \
+             FROM {db}.batches b \
+             JOIN {db}.proved_batches pb ON b.batch_id = pb.batch_id \
+             JOIN {db}.l1_head_events l1_proposed \
+               ON b.l1_block_number = l1_proposed.l1_block_number \
+             JOIN {db}.l1_head_events l1_proved \
+               ON pb.l1_block_number = l1_proved.l1_block_number \
+             WHERE l1_proved.block_ts >= (toUInt64(now()) - 86400)",
+            db = self.db_name
+        );
+
+        let rows = client.query(&fallback_query).fetch_all::<AvgRow>().await?;
         let row = match rows.into_iter().next() {
             Some(r) => r,
             None => return Ok(None),
         };
 
-        if row.avg_ms == 0.0 { Ok(None) } else { Ok(Some(row.avg_ms.round() as u64)) }
+        if row.avg_ms.is_nan() { Ok(None) } else { Ok(Some(row.avg_ms.round() as u64)) }
     }
 
     /// Get the average time in milliseconds it takes for a batch to be proven
@@ -494,20 +538,42 @@ impl ClickhouseReader {
         }
 
         let client = self.base.clone().with_database(&self.db_name);
-        let query = format!(
-            "SELECT COALESCE(avg(prove_time_ms), 0) AS avg_ms \
+
+        // First try the materialized view
+        let mv_query = format!(
+            "SELECT avg(prove_time_ms) AS avg_ms \
              FROM {db}.batch_prove_times_mv \
              WHERE proved_at >= now64() - INTERVAL 7 DAY",
             db = self.db_name
         );
 
-        let rows = client.query(&query).fetch_all::<AvgRow>().await?;
+        let rows = client.query(&mv_query).fetch_all::<AvgRow>().await?;
+        if let Some(row) = rows.into_iter().next() {
+            if !row.avg_ms.is_nan() {
+                return Ok(Some(row.avg_ms.round() as u64));
+            }
+        }
+
+        // Fallback to raw data if materialized view is empty
+        let fallback_query = format!(
+            "SELECT avg((l1_proved.block_ts - l1_proposed.block_ts) * 1000) AS avg_ms \
+             FROM {db}.batches b \
+             JOIN {db}.proved_batches pb ON b.batch_id = pb.batch_id \
+             JOIN {db}.l1_head_events l1_proposed \
+               ON b.l1_block_number = l1_proposed.l1_block_number \
+             JOIN {db}.l1_head_events l1_proved \
+               ON pb.l1_block_number = l1_proved.l1_block_number \
+             WHERE l1_proved.block_ts >= (toUInt64(now()) - 604800)",
+            db = self.db_name
+        );
+
+        let rows = client.query(&fallback_query).fetch_all::<AvgRow>().await?;
         let row = match rows.into_iter().next() {
             Some(r) => r,
             None => return Ok(None),
         };
 
-        if row.avg_ms == 0.0 { Ok(None) } else { Ok(Some(row.avg_ms.round() as u64)) }
+        if row.avg_ms.is_nan() { Ok(None) } else { Ok(Some(row.avg_ms.round() as u64)) }
     }
 
     /// Get the average time in milliseconds it takes for a batch to be verified
@@ -1605,5 +1671,98 @@ mod tests {
 
         // The key test: ensure no ClickHouse "Illegal type Int64" errors occur
         // If the toString() wrapper is removed, this test would fail during the query execution
+    }
+
+    #[derive(Serialize, Row)]
+    struct AvgProveTimeTestRow {
+        avg_ms: f64,
+    }
+
+    /// Test for avg prove time materialized view fallback when MV is empty
+    #[tokio::test]
+    async fn test_avg_prove_time_fallback_to_raw_data() {
+        let mock = Mock::new();
+
+        // First query returns NaN (empty materialized view)
+        mock.add(handlers::provide(vec![AvgProveTimeTestRow { avg_ms: f64::NAN }]));
+
+        // Fallback query returns actual average
+        mock.add(handlers::provide(vec![AvgProveTimeTestRow { avg_ms: 1500.0 }]));
+
+        let url = Url::parse(mock.url()).unwrap();
+        let ch =
+            ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+        let result = ch.get_avg_prove_time_last_hour().await.unwrap();
+        assert_eq!(result, Some(1500));
+    }
+
+    /// Test for avg prove time when materialized view has data
+    #[tokio::test]
+    async fn test_avg_prove_time_uses_materialized_view() {
+        let mock = Mock::new();
+
+        // Materialized view returns valid data
+        mock.add(handlers::provide(vec![AvgProveTimeTestRow { avg_ms: 2500.0 }]));
+
+        let url = Url::parse(mock.url()).unwrap();
+        let ch =
+            ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+        let result = ch.get_avg_prove_time_last_24_hours().await.unwrap();
+        assert_eq!(result, Some(2500));
+    }
+
+    /// Test for avg prove time when no data exists at all
+    #[tokio::test]
+    async fn test_avg_prove_time_no_data() {
+        let mock = Mock::new();
+
+        // Both queries return NaN (no data)
+        mock.add(handlers::provide(vec![AvgProveTimeTestRow { avg_ms: f64::NAN }]));
+        mock.add(handlers::provide(vec![AvgProveTimeTestRow { avg_ms: f64::NAN }]));
+
+        let url = Url::parse(mock.url()).unwrap();
+        let ch =
+            ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+        let result = ch.get_avg_prove_time_last_7_days().await.unwrap();
+        assert_eq!(result, None);
+    }
+
+    /// Regression test for the avg_prove_time_ms=0 bug
+    /// This test verifies that valid averages are returned instead of 0/None
+    #[tokio::test]
+    async fn test_avg_prove_time_regression_zero_bug() {
+        let mock = Mock::new();
+
+        // Test all three time ranges to ensure the fix works for all
+
+        // Hour query - MV empty, fallback has data
+        mock.add(handlers::provide(vec![AvgProveTimeTestRow { avg_ms: f64::NAN }]));
+        mock.add(handlers::provide(vec![AvgProveTimeTestRow { avg_ms: 800.5 }]));
+
+        // 24h query - MV has data
+        mock.add(handlers::provide(vec![AvgProveTimeTestRow { avg_ms: 1200.7 }]));
+
+        // 7d query - MV empty, fallback has data
+        mock.add(handlers::provide(vec![AvgProveTimeTestRow { avg_ms: f64::NAN }]));
+        mock.add(handlers::provide(vec![AvgProveTimeTestRow { avg_ms: 950.2 }]));
+
+        let url = Url::parse(mock.url()).unwrap();
+        let ch =
+            ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+        // Test hour query uses fallback
+        let result_hour = ch.get_avg_prove_time_last_hour().await.unwrap();
+        assert_eq!(result_hour, Some(801)); // Rounded from 800.5
+
+        // Test 24h query uses materialized view
+        let result_24h = ch.get_avg_prove_time_last_24_hours().await.unwrap();
+        assert_eq!(result_24h, Some(1201)); // Rounded from 1200.7
+
+        // Test 7d query uses fallback
+        let result_7d = ch.get_avg_prove_time_last_7_days().await.unwrap();
+        assert_eq!(result_7d, Some(950)); // Rounded from 950.2
     }
 }
