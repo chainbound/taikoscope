@@ -1,4 +1,4 @@
-import assert from 'assert';
+import { it, expect } from 'vitest';
 import {
   fetchAvgProveTime,
   fetchAvgVerifyTime,
@@ -24,7 +24,7 @@ import {
   fetchL2GasUsed,
   fetchSequencerDistribution,
   API_BASE,
-} from '../services/apiService.js';
+} from '../services/apiService.ts';
 import { createMetrics, hasBadRequest } from '../helpers.js';
 import type { MetricData } from '../types.js';
 
@@ -322,7 +322,7 @@ function setupSSE(state: State) {
   return { l1Source, l2Source };
 }
 
-(async () => {
+it('app integration', async () => {
   const state: State = {
     metrics: [],
     secondsToProveData: [],
@@ -340,20 +340,17 @@ function setupSSE(state: State) {
   };
 
   await fetchData('1h', state);
-  assert.strictEqual(state.metrics.length > 0, true);
-  assert.strictEqual(state.secondsToProveData.length, 1);
-  assert.strictEqual(state.l2GasUsedData.length, 1);
+  expect(state.metrics.length > 0).toBe(true);
+  expect(state.secondsToProveData.length).toBe(1);
+  expect(state.l2GasUsedData.length).toBe(1);
 
   const { l1Source } = setupSSE(state);
   (l1Source as unknown as MockEventSource).emitError();
-  assert.strictEqual(
-    state.errorMessage.includes('falling back to polling'),
-    true,
-  );
-  assert.strictEqual(intervals.length, 1);
+  expect(state.errorMessage.includes('falling back to polling')).toBe(true);
+  expect(intervals.length).toBe(1);
   await (intervals[0].fn as any)();
-  assert.strictEqual(state.l1HeadBlock, '456');
-  assert.strictEqual(state.l2HeadBlock, '123');
+  expect(state.l1HeadBlock).toBe('456');
+  expect(state.l2HeadBlock).toBe('123');
 
   const grouped = state.metrics.reduce<Record<string, MetricData[]>>(
     (acc, m) => {
@@ -372,7 +369,7 @@ function setupSSE(state: State) {
   ];
   const visible = groupOrder.filter((g) => grouped[g] && grouped[g].length > 0);
   const expected = ['Network Performance', 'Network Health', 'Operators'];
-  assert.deepStrictEqual(visible, expected);
+  expect(visible).toStrictEqual(expected);
 
   console.log('App integration tests passed.');
-})();
+});
