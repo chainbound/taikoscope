@@ -43,6 +43,7 @@ import {
   fetchL2BlockTimes,
   fetchL2GasUsed,
   fetchSequencerDistribution,
+  fetchSequencerBlocks,
 } from './services/apiService';
 
 // Updated Taiko Pink
@@ -76,6 +77,7 @@ const App: React.FC = () => {
     title: string;
     columns: { key: string; label: string }[];
     rows: Record<string, string | number>[];
+    onRowClick?: (row: Record<string, string | number>) => void;
   }>(null);
 
   useEffect(() => {
@@ -312,8 +314,18 @@ const App: React.FC = () => {
     title: string,
     columns: { key: string; label: string }[],
     rows: Record<string, string | number>[],
+    onRowClick?: (row: Record<string, string | number>) => void,
   ) => {
-    setTableView({ title, columns, rows });
+    setTableView({ title, columns, rows, onRowClick });
+  };
+
+  const openSequencerBlocks = async (address: string) => {
+    const blocksRes = await fetchSequencerBlocks(timeRange, address);
+    openTable(
+      `Blocks proposed by ${address}`,
+      [{ key: 'block', label: 'Block Number' }],
+      (blocksRes.data || []).map((b) => ({ block: b })),
+    );
   };
 
   if (tableView) {
@@ -323,6 +335,7 @@ const App: React.FC = () => {
         columns={tableView.columns}
         rows={tableView.rows}
         onBack={() => setTableView(null)}
+        onRowClick={tableView.onRowClick}
       />
     );
   }
@@ -427,6 +440,7 @@ const App: React.FC = () => {
                   string,
                   string | number
                 >[],
+                (row) => openSequencerBlocks(row.name as string),
               )
             }
           >

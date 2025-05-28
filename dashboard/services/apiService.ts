@@ -331,3 +331,17 @@ export const fetchSequencerDistribution = async (
     badRequest: res.badRequest,
   };
 };
+
+export const fetchSequencerBlocks = async (
+  range: '1h' | '24h' | '7d',
+  address: string,
+): Promise<RequestResult<number[]>> => {
+  const url = `${API_BASE}/sequencer-blocks?range=${range}&address=${address}`;
+  const res = await fetchJson<{
+    sequencers: { address: string; blocks: number[] }[];
+  }>(url);
+  const blocks = res.data?.sequencers.find(
+    (s) => s.address.toLowerCase() === address.toLowerCase(),
+  )?.blocks;
+  return { data: blocks ?? null, badRequest: res.badRequest };
+};

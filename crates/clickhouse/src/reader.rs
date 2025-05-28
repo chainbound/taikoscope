@@ -10,7 +10,8 @@ use url::Url;
 
 use crate::models::{
     BatchProveTimeRow, BatchVerifyTimeRow, ForcedInclusionProcessedRow, L1BlockTimeRow,
-    L2BlockTimeRow, L2GasUsedRow, L2ReorgRow, SequencerDistributionRow, SlashingEventRow,
+    L2BlockTimeRow, L2GasUsedRow, L2ReorgRow, SequencerBlockRow, SequencerDistributionRow,
+    SlashingEventRow,
 };
 
 #[derive(Row, Deserialize, Serialize)]
@@ -432,6 +433,24 @@ impl ClickhouseReader {
         );
 
         let rows = client.query(&query).fetch_all::<SequencerDistributionRow>().await?;
+        Ok(rows)
+    }
+
+    /// Get the list of block numbers proposed by each sequencer since the given cutoff time
+    pub async fn get_sequencer_blocks_since(
+        &self,
+        since: DateTime<Utc>,
+    ) -> Result<Vec<SequencerBlockRow>> {
+        let client = self.base.clone().with_database(&self.db_name);
+        let query = format!(
+            "SELECT sequencer, l2_block_number FROM {db}.l2_head_events \
+             WHERE inserted_at > toDateTime64({}, 3) \
+             ORDER BY sequencer, l2_block_number",
+            since.timestamp_millis() as f64 / 1000.0,
+            db = self.db_name,
+        );
+
+        let rows = client.query(&query).fetch_all::<SequencerBlockRow>().await?;
         Ok(rows)
     }
 
@@ -1669,7 +1688,7 @@ mod tests {
         let mock = Mock::new();
         // Add handlers for all three queries
         mock.add(handlers::provide(Vec::<L2BlockTimeTestRow>::new())); // hour
-        mock.add(handlers::provide(Vec::<L2BlockTimeTestRow>::new())); // 24 hours  
+        mock.add(handlers::provide(Vec::<L2BlockTimeTestRow>::new())); // 24 hours
         mock.add(handlers::provide(Vec::<L2BlockTimeTestRow>::new())); // 7 days
 
         let url = Url::parse(mock.url()).unwrap();
