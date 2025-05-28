@@ -3,7 +3,13 @@ export const API_BASE =
   (import.meta as any).env.API_BASE ||
   '';
 
-import type { TimeSeriesData, PieChartDataItem, L2ReorgEvent } from '../types';
+import type {
+  TimeSeriesData,
+  PieChartDataItem,
+  L2ReorgEvent,
+  SlashingEvent,
+  ForcedInclusionEvent,
+} from '../types';
 
 export interface RequestResult<T> {
   data: T | null;
@@ -104,7 +110,7 @@ export const fetchL2ReorgEvents = async (
   };
 };
 
-export const fetchSlashingEvents = async (
+export const fetchSlashingEventCount = async (
   range: '1h' | '24h' | '7d',
 ): Promise<RequestResult<number>> => {
   const url = `${API_BASE}/slashings?range=${range}`;
@@ -115,13 +121,35 @@ export const fetchSlashingEvents = async (
   };
 };
 
-export const fetchForcedInclusions = async (
+export const fetchForcedInclusionCount = async (
   range: '1h' | '24h' | '7d',
 ): Promise<RequestResult<number>> => {
   const url = `${API_BASE}/forced-inclusions?range=${range}`;
   const res = await fetchJson<{ events: unknown[] }>(url);
   return {
     data: res.data ? res.data.events.length : null,
+    badRequest: res.badRequest,
+  };
+};
+
+export const fetchSlashingEvents = async (
+  range: '1h' | '24h' | '7d',
+): Promise<RequestResult<SlashingEvent[]>> => {
+  const url = `${API_BASE}/slashings?range=${range}`;
+  const res = await fetchJson<{ events: SlashingEvent[] }>(url);
+  return {
+    data: res.data ? res.data.events : null,
+    badRequest: res.badRequest,
+  };
+};
+
+export const fetchForcedInclusionEvents = async (
+  range: '1h' | '24h' | '7d',
+): Promise<RequestResult<ForcedInclusionEvent[]>> => {
+  const url = `${API_BASE}/forced-inclusions?range=${range}`;
+  const res = await fetchJson<{ events: ForcedInclusionEvent[] }>(url);
+  return {
+    data: res.data ? res.data.events : null,
     badRequest: res.badRequest,
   };
 };
