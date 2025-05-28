@@ -18,8 +18,9 @@ import {
   ForcedInclusionEvent,
 } from './types';
 import { bytesToHex } from './utils';
+import { groupMetrics, GROUP_ORDER } from './groupMetrics.js';
+import { setupBlockNumberUpdates } from './headUpdates.js';
 import {
-  API_BASE,
   fetchAvgProveTime,
   fetchAvgVerifyTime,
   fetchL2BlockCadence,
@@ -79,8 +80,6 @@ const App: React.FC = () => {
   }>(null);
 
   useEffect(() => {
-    let pollId: NodeJS.Timeout | null = null;
-
     const updateHeads = async () => {
       const [l1, l2] = await Promise.all([
         fetchL1HeadNumber(),
@@ -106,52 +105,26 @@ const App: React.FC = () => {
       }
     };
 
-    const startPolling = () => {
-      if (!pollId) {
-        setErrorMessage(
-          'Realtime updates unavailable, falling back to polling.',
+    return setupBlockNumberUpdates({
+      onL1Message: (value) => {
+        setL1HeadBlock(value);
+        setMetrics((m) =>
+          m.map((metric) =>
+            metric.title === 'L1 Head Block' ? { ...metric, value } : metric,
+          ),
         );
-        updateHeads();
-        pollId = setInterval(updateHeads, 10000);
-      }
-    };
-
-    const l1Source = new EventSource(`${API_BASE}/sse/l1-head`);
-    const l2Source = new EventSource(`${API_BASE}/sse/l2-head`);
-
-    l1Source.onmessage = (e) => {
-      const value = Number(e.data).toLocaleString();
-      setL1HeadBlock(value);
-      setMetrics((m) =>
-        m.map((metric) =>
-          metric.title === 'L1 Head Block' ? { ...metric, value } : metric,
-        ),
-      );
-    };
-    l2Source.onmessage = (e) => {
-      const value = Number(e.data).toLocaleString();
-      setL2HeadBlock(value);
-      setMetrics((m) =>
-        m.map((metric) =>
-          metric.title === 'L2 Head Block' ? { ...metric, value } : metric,
-        ),
-      );
-    };
-
-    const handleError = () => {
-      l1Source.close();
-      l2Source.close();
-      startPolling();
-    };
-
-    l1Source.onerror = handleError;
-    l2Source.onerror = handleError;
-
-    return () => {
-      l1Source.close();
-      l2Source.close();
-      if (pollId) clearInterval(pollId);
-    };
+      },
+      onL2Message: (value) => {
+        setL2HeadBlock(value);
+        setMetrics((m) =>
+          m.map((metric) =>
+            metric.title === 'L2 Head Block' ? { ...metric, value } : metric,
+          ),
+        );
+      },
+      updateHeads,
+      setErrorMessage,
+    });
   }, []);
 
   const fetchData = useCallback(async () => {
@@ -292,21 +265,7 @@ const App: React.FC = () => {
     return () => clearInterval(interval);
   }, [timeRange, fetchData, refreshRate]);
 
-  const groupedMetrics = metrics.reduce<Record<string, MetricData[]>>(
-    (acc, m) => {
-      const group = m.group ?? 'Other';
-      if (!acc[group]) acc[group] = [];
-      acc[group].push(m);
-      return acc;
-    },
-    {},
-  );
-  const groupOrder = [
-    'Network Performance',
-    'Network Health',
-    'Operators',
-    'Other',
-  ];
+  const groupedMetrics = groupMetrics(metrics);
 
   const openTable = (
     title: string,
@@ -347,7 +306,7 @@ const App: React.FC = () => {
 
       <main className="mt-6">
         {/* Metrics Grid */}
-        {groupOrder.map((group) =>
+        {GROUP_ORDER.map((group) =>
           groupedMetrics[group] && groupedMetrics[group].length > 0 ? (
             <React.Fragment key={group}>
               {group !== 'Other' && (
