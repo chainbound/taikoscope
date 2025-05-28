@@ -1,4 +1,4 @@
-const metaEnv = (import.meta as any).env ?? {};
+const metaEnv = import.meta.env;
 export const API_BASE = metaEnv.VITE_API_BASE || metaEnv.API_BASE || '';
 
 import type {
