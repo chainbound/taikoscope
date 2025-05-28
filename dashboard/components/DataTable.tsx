@@ -24,6 +24,7 @@ interface DataTableProps {
   extraTable?: ExtraTable;
   timeRange?: TimeRange;
   onTimeRangeChange?: (range: TimeRange) => void;
+  chart?: React.ReactNode;
 }
 
 export const DataTable: React.FC<DataTableProps> = ({
@@ -36,6 +37,7 @@ export const DataTable: React.FC<DataTableProps> = ({
   extraTable,
   timeRange,
   onTimeRangeChange,
+  chart,
 }) => {
   return (
     <div className="p-4">
@@ -60,6 +62,7 @@ export const DataTable: React.FC<DataTableProps> = ({
         )}
       </div>
       <h2 className="text-xl font-semibold mb-2">{title}</h2>
+      {chart && <div className="h-64 md:h-80 w-full mb-4">{chart}</div>}
       <div className="overflow-x-auto">
         <table className="min-w-full border divide-y divide-gray-200">
           <thead>

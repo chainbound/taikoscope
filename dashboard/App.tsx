@@ -8,6 +8,7 @@ import { SequencerPieChart } from './components/SequencerPieChart';
 import { BlockTimeChart } from './components/BlockTimeChart';
 import { BatchProcessChart } from './components/BatchProcessChart';
 import { GasUsedChart } from './components/GasUsedChart';
+import { ReorgDepthChart } from './components/ReorgDepthChart';
 import {
   TimeRange,
   TimeSeriesData,
@@ -74,24 +75,22 @@ const App: React.FC = () => {
   const [l1HeadBlock, setL1HeadBlock] = useState<string>('0');
   const [refreshRate, setRefreshRate] = useState<number>(60000);
   const [errorMessage, setErrorMessage] = useState<string>('');
-  const [tableView, setTableView] = useState<
-    | null
-    | {
-        title: string;
-        columns: { key: string; label: string }[];
-        rows: Record<string, string | number>[];
-        onRowClick?: (row: Record<string, string | number>) => void;
-        extraAction?: { label: string; onClick: () => void };
-        extraTable?: {
-          title: string;
-          columns: { key: string; label: string }[];
-          rows: Record<string, string | number>[];
-          onRowClick?: (row: Record<string, string | number>) => void;
-        };
-        timeRange?: TimeRange;
-        onTimeRangeChange?: (range: TimeRange) => void;
-      }
-  >(null);
+  const [tableView, setTableView] = useState<null | {
+    title: string;
+    columns: { key: string; label: string }[];
+    rows: Record<string, string | number>[];
+    onRowClick?: (row: Record<string, string | number>) => void;
+    extraAction?: { label: string; onClick: () => void };
+    extraTable?: {
+      title: string;
+      columns: { key: string; label: string }[];
+      rows: Record<string, string | number>[];
+      onRowClick?: (row: Record<string, string | number>) => void;
+    };
+    timeRange?: TimeRange;
+    onTimeRangeChange?: (range: TimeRange) => void;
+    chart?: React.ReactNode;
+  }>(null);
 
   useEffect(() => {
     let pollId: NodeJS.Timeout | null = null;
@@ -337,6 +336,7 @@ const App: React.FC = () => {
     },
     range?: TimeRange,
     onRangeChange?: (range: TimeRange) => void,
+    chart?: React.ReactNode,
   ) => {
     setTableView({
       title,
@@ -347,6 +347,7 @@ const App: React.FC = () => {
       extraTable,
       timeRange: range,
       onTimeRangeChange: onRangeChange,
+      chart,
     });
   };
 
@@ -381,13 +382,15 @@ const App: React.FC = () => {
           { key: 'txs', label: 'Tx Count' },
           { key: 'sequencer', label: 'Sequencer' },
         ],
-        rows: (txRes.data || []) as unknown as Record<string, string | number>[],
+        rows: (txRes.data || []) as unknown as Record<
+          string,
+          string | number
+        >[],
       },
       range,
       openSequencerDistributionTable,
     );
   };
-
 
   if (tableView) {
     return (
@@ -401,6 +404,7 @@ const App: React.FC = () => {
         extraTable={tableView.extraTable}
         timeRange={tableView.timeRange}
         onTimeRangeChange={tableView.onTimeRangeChange}
+        chart={tableView.chart}
       />
     );
   }
@@ -440,47 +444,53 @@ const App: React.FC = () => {
                     onMore={
                       typeof m.title === 'string' && m.title === 'L2 Reorgs'
                         ? () =>
-                          openTable(
-                            'L2 Reorgs',
-                            [
-                              {
-                                key: 'l2_block_number',
-                                label: 'Block Number',
-                              },
-                              { key: 'depth', label: 'Depth' },
-                            ],
-                            l2ReorgEvents as unknown as Record<
-                              string,
-                              string | number
-                            >[],
-                          )
-                        : typeof m.title === 'string' &&
-                          m.title === 'Slashing Events'
-                          ? () =>
                             openTable(
-                              'Slashing Events',
+                              'L2 Reorgs',
                               [
                                 {
-                                  key: 'l1_block_number',
-                                  label: 'L1 Block',
+                                  key: 'l2_block_number',
+                                  label: 'Block Number',
                                 },
-                                { key: 'validator_addr', label: 'Validator' },
+                                { key: 'depth', label: 'Depth' },
                               ],
-                              slashingEvents.map((e) => ({
-                                l1_block_number: e.l1_block_number,
-                                validator_addr: bytesToHex(e.validator_addr),
-                              })) as Record<string, string | number>[],
+                              l2ReorgEvents as unknown as Record<
+                                string,
+                                string | number
+                              >[],
+                              undefined,
+                              undefined,
+                              undefined,
+                              undefined,
+                              undefined,
+                              <ReorgDepthChart data={l2ReorgEvents} />,
                             )
-                          : typeof m.title === 'string' &&
-                            m.title === 'Forced Inclusions'
-                            ? () =>
+                        : typeof m.title === 'string' &&
+                            m.title === 'Slashing Events'
+                          ? () =>
                               openTable(
-                                'Forced Inclusions',
-                                [{ key: 'blob_hash', label: 'Blob Hash' }],
-                                forcedInclusionEvents.map((e) => ({
-                                  blob_hash: bytesToHex(e.blob_hash),
+                                'Slashing Events',
+                                [
+                                  {
+                                    key: 'l1_block_number',
+                                    label: 'L1 Block',
+                                  },
+                                  { key: 'validator_addr', label: 'Validator' },
+                                ],
+                                slashingEvents.map((e) => ({
+                                  l1_block_number: e.l1_block_number,
+                                  validator_addr: bytesToHex(e.validator_addr),
                                 })) as Record<string, string | number>[],
                               )
+                          : typeof m.title === 'string' &&
+                              m.title === 'Forced Inclusions'
+                            ? () =>
+                                openTable(
+                                  'Forced Inclusions',
+                                  [{ key: 'blob_hash', label: 'Blob Hash' }],
+                                  forcedInclusionEvents.map((e) => ({
+                                    blob_hash: bytesToHex(e.blob_hash),
+                                  })) as Record<string, string | number>[],
+                                )
                             : undefined
                     }
                   />
