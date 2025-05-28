@@ -4,6 +4,7 @@
 - Install dependencies with `npm install`.
 - Start the dev server with `npm run dev`.
 - Build for production with `npm run build`.
+- Run tests with `npm run tests`.
 - Run type checks with `npm run check` whenever you modify dashboard code and ensure this passes before opening a PR.
 
 ## Code Style
