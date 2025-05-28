@@ -1,7 +1,5 @@
-export const API_BASE =
-  (import.meta as any).env.VITE_API_BASE ||
-  (import.meta as any).env.API_BASE ||
-  '';
+const metaEnv = (import.meta as any).env ?? {};
+export const API_BASE = metaEnv.VITE_API_BASE || metaEnv.API_BASE || '';
 
 import type {
   TimeSeriesData,
