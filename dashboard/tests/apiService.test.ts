@@ -1,22 +1,13 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import fs from 'fs/promises';
+import { describe, it, expect, afterEach } from 'vitest';
 
-let fetchAvgProveTime: typeof import('../services/apiService.js').fetchAvgProveTime;
-let fetchActiveGateways: typeof import('../services/apiService.js').fetchActiveGateways;
-let fetchL2BlockTimes: typeof import('../services/apiService.js').fetchL2BlockTimes;
-let fetchBlockTransactions: typeof import('../services/apiService.js').fetchBlockTransactions;
+import {
+  fetchAvgProveTime,
+  fetchActiveGateways,
+  fetchL2BlockTimes,
+  fetchBlockTransactions,
+} from '../services/apiService.ts';
 
 const originalFetch = globalThis.fetch;
-
-async function loadService() {
-  const path = new URL('../services/apiService.js', import.meta.url);
-  let code = await fs.readFile(path, 'utf8');
-  if (!code.startsWith('import.meta.env ??=')) {
-    code = 'import.meta.env ??= {};' + '\n' + code;
-    await fs.writeFile(path, code);
-  }
-  return import(path.href + '?patched=' + Date.now());
-}
 
 // helper to create mock fetch response
 function mockFetch(data: unknown, status = 200, ok = true) {
@@ -29,15 +20,7 @@ function mockFetch(data: unknown, status = 200, ok = true) {
 }
 
 describe('apiService', () => {
-  beforeAll(async () => {
-    const service = await loadService();
-    fetchAvgProveTime = service.fetchAvgProveTime;
-    fetchActiveGateways = service.fetchActiveGateways;
-    fetchL2BlockTimes = service.fetchL2BlockTimes;
-    fetchBlockTransactions = service.fetchBlockTransactions;
-  });
-
-  afterAll(() => {
+  afterEach(() => {
     globalThis.fetch = originalFetch;
   });
 
