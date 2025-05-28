@@ -1,4 +1,6 @@
 import React from 'react';
+import { TimeRange } from '../types';
+import { TimeRangeSelector } from './DashboardHeader';
 
 interface Column {
   key: string;
@@ -20,6 +22,8 @@ interface DataTableProps {
   onRowClick?: (row: Record<string, string | number>) => void;
   extraAction?: { label: string; onClick: () => void };
   extraTable?: ExtraTable;
+  timeRange?: TimeRange;
+  onTimeRangeChange?: (range: TimeRange) => void;
 }
 
 export const DataTable: React.FC<DataTableProps> = ({
@@ -30,24 +34,31 @@ export const DataTable: React.FC<DataTableProps> = ({
   onRowClick,
   extraAction,
   extraTable,
+  timeRange,
+  onTimeRangeChange,
 }) => {
   return (
     <div className="p-4">
-      <button
-        onClick={onBack}
-        className="mb-4 text-[#e81899] flex items-center space-x-1"
-      >
-        <span>&larr;</span>
-        <span>Back</span>
-      </button>
-      {extraAction && (
+      <div className="flex items-center mb-4 space-x-4">
         <button
-          onClick={extraAction.onClick}
-          className="ml-4 mb-4 text-[#e81899]"
+          onClick={onBack}
+          className="text-[#e81899] flex items-center space-x-1"
         >
-          {extraAction.label}
+          <span>&larr;</span>
+          <span>Back</span>
         </button>
-      )}
+        {extraAction && (
+          <button onClick={extraAction.onClick} className="text-[#e81899]">
+            {extraAction.label}
+          </button>
+        )}
+        {timeRange && onTimeRangeChange && (
+          <TimeRangeSelector
+            currentTimeRange={timeRange}
+            onTimeRangeChange={onTimeRangeChange}
+          />
+        )}
+      </div>
       <h2 className="text-xl font-semibold mb-2">{title}</h2>
       <div className="overflow-x-auto">
         <table className="min-w-full border divide-y divide-gray-200">

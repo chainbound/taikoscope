@@ -88,6 +88,8 @@ const App: React.FC = () => {
           rows: Record<string, string | number>[];
           onRowClick?: (row: Record<string, string | number>) => void;
         };
+        timeRange?: TimeRange;
+        onTimeRangeChange?: (range: TimeRange) => void;
       }
   >(null);
 
@@ -333,8 +335,19 @@ const App: React.FC = () => {
       rows: Record<string, string | number>[];
       onRowClick?: (row: Record<string, string | number>) => void;
     },
+    range?: TimeRange,
+    onRangeChange?: (range: TimeRange) => void,
   ) => {
-    setTableView({ title, columns, rows, onRowClick, extraAction, extraTable });
+    setTableView({
+      title,
+      columns,
+      rows,
+      onRowClick,
+      extraAction,
+      extraTable,
+      timeRange: range,
+      onTimeRangeChange: onRangeChange,
+    });
   };
 
   const openSequencerBlocks = async (address: string) => {
@@ -343,6 +356,35 @@ const App: React.FC = () => {
       `Blocks proposed by ${address}`,
       [{ key: 'block', label: 'Block Number' }],
       (blocksRes.data || []).map((b) => ({ block: b })),
+    );
+  };
+
+  const openSequencerDistributionTable = async (range: TimeRange) => {
+    setTimeRange(range);
+    const [distRes, txRes] = await Promise.all([
+      fetchSequencerDistribution(range),
+      fetchBlockTransactions(range),
+    ]);
+    openTable(
+      'Sequencer Distribution',
+      [
+        { key: 'name', label: 'Address' },
+        { key: 'value', label: 'Blocks' },
+      ],
+      (distRes.data || []) as unknown as Record<string, string | number>[],
+      (row) => openSequencerBlocks(row.name as string),
+      undefined,
+      {
+        title: 'Transactions',
+        columns: [
+          { key: 'block', label: 'Block Number' },
+          { key: 'txs', label: 'Tx Count' },
+          { key: 'sequencer', label: 'Sequencer' },
+        ],
+        rows: (txRes.data || []) as unknown as Record<string, string | number>[],
+      },
+      range,
+      openSequencerDistributionTable,
     );
   };
 
@@ -357,6 +399,8 @@ const App: React.FC = () => {
         onRowClick={tableView.onRowClick}
         extraAction={tableView.extraAction}
         extraTable={tableView.extraTable}
+        timeRange={tableView.timeRange}
+        onTimeRangeChange={tableView.onTimeRangeChange}
       />
     );
   }
@@ -450,32 +494,7 @@ const App: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mt-6">
           <ChartCard
             title="Sequencer Distribution"
-            onMore={async () => {
-              const txRes = await fetchBlockTransactions(timeRange);
-              openTable(
-                'Sequencer Distribution',
-                [
-                  { key: 'name', label: 'Address' },
-                  { key: 'value', label: 'Blocks' },
-                ],
-                sequencerDistribution as unknown as Record<
-                  string,
-                  string | number
-                >[],
-                (row) => openSequencerBlocks(row.name as string),
-                undefined,
-                {
-                  title: `Transactions (${timeRange})`,
-                  columns: [
-                    { key: 'block', label: 'Block Number' },
-                    { key: 'txs', label: 'Tx Count' },
-                    { key: 'sequencer', label: 'Sequencer' },
-                  ],
-                  rows:
-                    (txRes.data || []) as unknown as Record<string, string | number>[],
-                },
-              );
-            }}
+            onMore={() => openSequencerDistributionTable(timeRange)}
           >
             <SequencerPieChart data={sequencerDistribution} />
           </ChartCard>
