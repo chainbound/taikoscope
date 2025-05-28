@@ -44,6 +44,7 @@ import {
   fetchL2GasUsed,
   fetchSequencerDistribution,
   fetchSequencerBlocks,
+  fetchBlockTransactions,
 } from './services/apiService';
 
 // Updated Taiko Pink
@@ -78,6 +79,7 @@ const App: React.FC = () => {
     columns: { key: string; label: string }[];
     rows: Record<string, string | number>[];
     onRowClick?: (row: Record<string, string | number>) => void;
+    extraAction?: { label: string; onClick: () => void };
   }>(null);
 
   useEffect(() => {
@@ -315,8 +317,9 @@ const App: React.FC = () => {
     columns: { key: string; label: string }[],
     rows: Record<string, string | number>[],
     onRowClick?: (row: Record<string, string | number>) => void,
+    extraAction?: { label: string; onClick: () => void },
   ) => {
-    setTableView({ title, columns, rows, onRowClick });
+    setTableView({ title, columns, rows, onRowClick, extraAction });
   };
 
   const openSequencerBlocks = async (address: string) => {
@@ -328,6 +331,19 @@ const App: React.FC = () => {
     );
   };
 
+  const openBlockTransactions = async () => {
+    const txRes = await fetchBlockTransactions(timeRange);
+    openTable(
+      `Transactions (${timeRange})`,
+      [
+        { key: 'block', label: 'Block Number' },
+        { key: 'txs', label: 'Tx Count' },
+        { key: 'sequencer', label: 'Sequencer' },
+      ],
+      (txRes.data || []) as unknown as Record<string, string | number>[],
+    );
+  };
+
   if (tableView) {
     return (
       <DataTable
@@ -336,6 +352,7 @@ const App: React.FC = () => {
         rows={tableView.rows}
         onBack={() => setTableView(null)}
         onRowClick={tableView.onRowClick}
+        extraAction={tableView.extraAction}
       />
     );
   }
@@ -441,6 +458,7 @@ const App: React.FC = () => {
                   string | number
                 >[],
                 (row) => openSequencerBlocks(row.name as string),
+                { label: 'Transactions', onClick: openBlockTransactions },
               )
             }
           >

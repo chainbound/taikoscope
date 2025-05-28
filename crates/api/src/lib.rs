@@ -196,6 +196,18 @@ struct SequencerBlocksResponse {
 }
 
 #[derive(Debug, Serialize)]
+struct BlockTransactionsItem {
+    block: u64,
+    txs: u32,
+    sequencer: String,
+}
+
+#[derive(Debug, Serialize)]
+struct BlockTransactionsResponse {
+    blocks: Vec<BlockTransactionsItem>,
+}
+
+#[derive(Debug, Serialize)]
 struct L2HeadBlockResponse {
     l2_head_block: Option<u64>,
 }
@@ -652,6 +664,32 @@ async fn sequencer_blocks(
     Json(SequencerBlocksResponse { sequencers })
 }
 
+async fn block_transactions(
+    Query(params): Query<RangeQuery>,
+    State(state): State<ApiState>,
+) -> Json<BlockTransactionsResponse> {
+    let since = Utc::now() - range_duration(&params.range);
+    let rows = match state.client.get_block_transactions_since(since).await {
+        Ok(r) => r,
+        Err(e) => {
+            tracing::error!(error = %e, "Failed to get block transactions");
+            Vec::new()
+        }
+    };
+
+    let blocks: Vec<BlockTransactionsItem> = rows
+        .into_iter()
+        .map(|r| BlockTransactionsItem {
+            block: r.l2_block_number,
+            txs: r.sum_tx,
+            sequencer: format!("0x{}", encode(r.sequencer)),
+        })
+        .collect();
+
+    tracing::info!(count = blocks.len(), "Returning block transactions");
+    Json(BlockTransactionsResponse { blocks })
+}
+
 async fn rate_limit(
     State(state): State<ApiState>,
     req: axum::http::Request<axum::body::Body>,
@@ -690,6 +728,7 @@ fn router(state: ApiState) -> Router {
         .route("/l2-gas-used", get(l2_gas_used))
         .route("/sequencer-distribution", get(sequencer_distribution))
         .route("/sequencer-blocks", get(sequencer_blocks))
+        .route("/block-transactions", get(block_transactions))
         .layer(middleware::from_fn_with_state(state.clone(), rate_limit))
         .with_state(state)
 }
@@ -1268,6 +1307,28 @@ mod tests {
         assert_eq!(
             body,
             json!({ "sequencers": [ { "address": "0x0101010101010101010101010101010101010101", "blocks": [42] } ] })
+        );
+    }
+
+    #[tokio::test]
+    async fn block_transactions_endpoint() {
+        let mock = Mock::new();
+        #[derive(Serialize, Row)]
+        struct TxRowTest {
+            sequencer: [u8; 20],
+            l2_block_number: u64,
+            sum_tx: u32,
+        }
+        mock.add(handlers::provide(vec![TxRowTest {
+            sequencer: [1u8; 20],
+            l2_block_number: 42,
+            sum_tx: 7,
+        }]));
+        let app = build_app(mock.url());
+        let body = send_request(app, "/block-transactions?range=1h").await;
+        assert_eq!(
+            body,
+            json!({ "blocks": [ { "block": 42, "txs": 7, "sequencer": "0x0101010101010101010101010101010101010101" } ] })
         );
     }
 

@@ -9,9 +9,9 @@ use serde::{Deserialize, Serialize};
 use url::Url;
 
 use crate::models::{
-    BatchProveTimeRow, BatchVerifyTimeRow, ForcedInclusionProcessedRow, L1BlockTimeRow,
-    L2BlockTimeRow, L2GasUsedRow, L2ReorgRow, SequencerBlockRow, SequencerDistributionRow,
-    SlashingEventRow,
+    BatchProveTimeRow, BatchVerifyTimeRow, BlockTransactionRow, ForcedInclusionProcessedRow,
+    L1BlockTimeRow, L2BlockTimeRow, L2GasUsedRow, L2ReorgRow, SequencerBlockRow,
+    SequencerDistributionRow, SlashingEventRow,
 };
 
 #[derive(Row, Deserialize, Serialize)]
@@ -451,6 +451,24 @@ impl ClickhouseReader {
         );
 
         let rows = client.query(&query).fetch_all::<SequencerBlockRow>().await?;
+        Ok(rows)
+    }
+
+    /// Get transactions per block since the given cutoff time
+    pub async fn get_block_transactions_since(
+        &self,
+        since: DateTime<Utc>,
+    ) -> Result<Vec<BlockTransactionRow>> {
+        let client = self.base.clone().with_database(&self.db_name);
+        let query = format!(
+            "SELECT sequencer, l2_block_number, sum_tx FROM {db}.l2_head_events \
+             WHERE inserted_at > toDateTime64({}, 3) \
+             ORDER BY l2_block_number",
+            since.timestamp_millis() as f64 / 1000.0,
+            db = self.db_name,
+        );
+
+        let rows = client.query(&query).fetch_all::<BlockTransactionRow>().await?;
         Ok(rows)
     }
 

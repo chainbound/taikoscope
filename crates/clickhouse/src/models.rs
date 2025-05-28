@@ -136,6 +136,17 @@ pub struct SequencerBlockRow {
     pub l2_block_number: u64,
 }
 
+/// Row representing the transaction count of a block and its sequencer
+#[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq)]
+pub struct BlockTransactionRow {
+    /// Sequencer address
+    pub sequencer: [u8; 20],
+    /// L2 block number
+    pub l2_block_number: u64,
+    /// Number of transactions in the block
+    pub sum_tx: u32,
+}
+
 /// Row representing the time it took for a batch to be proven
 #[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq)]
 pub struct BatchProveTimeRow {
