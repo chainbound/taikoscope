@@ -7,8 +7,8 @@ const addressValue = '0x1234567890123456789012345678901234567890';
 const htmlAddress = renderToStaticMarkup(
   React.createElement(MetricCard, { title: 'Operator', value: addressValue }),
 );
-assert(htmlAddress.includes('min-w-0 w-full'));
-assert(htmlAddress.includes('text-sm whitespace-nowrap overflow-x-auto'));
+assert(htmlAddress.includes('min-w-0 w-full sm:col-span-2'));
+assert(htmlAddress.includes('text-lg whitespace-nowrap'));
 
 const htmlNormal = renderToStaticMarkup(
   React.createElement(MetricCard, { title: 'Blocks', value: '42' }),
