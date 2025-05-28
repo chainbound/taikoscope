@@ -163,6 +163,11 @@ struct L2BlockTimesResponse {
 }
 
 #[derive(Debug, Serialize)]
+struct L2GasUsedResponse {
+    blocks: Vec<clickhouse_lib::L2GasUsedRow>,
+}
+
+#[derive(Debug, Serialize)]
 struct SequencerDistributionItem {
     address: String,
     blocks: u64,
@@ -550,6 +555,24 @@ async fn l2_block_times(
     Json(L2BlockTimesResponse { blocks })
 }
 
+async fn l2_gas_used(
+    Query(params): Query<RangeQuery>,
+    State(state): State<ApiState>,
+) -> Json<L2GasUsedResponse> {
+    let blocks = match match params.range.as_deref() {
+        Some("24h") => state.client.get_l2_gas_used_last_24_hours().await,
+        Some("7d") => state.client.get_l2_gas_used_last_7_days().await,
+        _ => state.client.get_l2_gas_used_last_hour().await,
+    } {
+        Ok(rows) => rows,
+        Err(e) => {
+            tracing::error!("Failed to get L2 gas used: {}", e);
+            Vec::new()
+        }
+    };
+    Json(L2GasUsedResponse { blocks })
+}
+
 async fn sequencer_distribution(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
@@ -608,6 +631,7 @@ fn router(state: ApiState) -> Router {
         .route("/verify-times", get(verify_times))
         .route("/l1-block-times", get(l1_block_times))
         .route("/l2-block-times", get(l2_block_times))
+        .route("/l2-gas-used", get(l2_gas_used))
         .route("/sequencer-distribution", get(sequencer_distribution))
         .layer(middleware::from_fn_with_state(state.clone(), rate_limit))
         .with_state(state)
@@ -1064,6 +1088,48 @@ mod tests {
             body,
             json!({ "blocks": [ { "l2_block_number": 1, "block_time": "1970-01-01T00:00:02Z", "ms_since_prev_block": 2000 } ] })
         );
+    }
+
+    #[derive(Serialize, Row)]
+    struct L2GasUsedRowTest {
+        l2_block_number: u64,
+        gas_used: u64,
+    }
+
+    #[tokio::test]
+    async fn l2_gas_used_last_hour_endpoint() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(vec![
+            L2GasUsedRowTest { l2_block_number: 0, gas_used: 0 },
+            L2GasUsedRowTest { l2_block_number: 1, gas_used: 42 },
+        ]));
+        let app = build_app(mock.url());
+        let body = send_request(app, "/l2-gas-used?range=1h").await;
+        assert_eq!(body, json!({ "blocks": [ { "l2_block_number": 1, "gas_used": 42 } ] }));
+    }
+
+    #[tokio::test]
+    async fn l2_gas_used_last_day_endpoint() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(vec![
+            L2GasUsedRowTest { l2_block_number: 0, gas_used: 0 },
+            L2GasUsedRowTest { l2_block_number: 1, gas_used: 42 },
+        ]));
+        let app = build_app(mock.url());
+        let body = send_request(app, "/l2-gas-used?range=24h").await;
+        assert_eq!(body, json!({ "blocks": [ { "l2_block_number": 1, "gas_used": 42 } ] }));
+    }
+
+    #[tokio::test]
+    async fn l2_gas_used_last_week_endpoint() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(vec![
+            L2GasUsedRowTest { l2_block_number: 0, gas_used: 0 },
+            L2GasUsedRowTest { l2_block_number: 1, gas_used: 42 },
+        ]));
+        let app = build_app(mock.url());
+        let body = send_request(app, "/l2-gas-used?range=7d").await;
+        assert_eq!(body, json!({ "blocks": [ { "l2_block_number": 1, "gas_used": 42 } ] }));
     }
 
     #[derive(Serialize, Row)]

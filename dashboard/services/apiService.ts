@@ -296,6 +296,27 @@ export const fetchL2BlockTimes = async (
   return { data, badRequest: res.badRequest };
 };
 
+export const fetchL2GasUsed = async (
+  range: '1h' | '24h' | '7d',
+): Promise<RequestResult<TimeSeriesData[]>> => {
+  const url = `${API_BASE}/l2-gas-used?range=${range}`;
+  const res = await fetchJson<{
+    blocks: { l2_block_number: number; gas_used: number }[];
+  }>(url);
+  if (!res.data) {
+    return { data: null, badRequest: res.badRequest };
+  }
+
+  const data = res.data.blocks.slice(1).map(
+    (b): TimeSeriesData => ({
+      value: b.l2_block_number,
+      timestamp: b.gas_used,
+    }),
+  );
+
+  return { data, badRequest: res.badRequest };
+};
+
 export const fetchSequencerDistribution = async (
   range: '1h' | '24h' | '7d',
 ): Promise<RequestResult<PieChartDataItem[]>> => {

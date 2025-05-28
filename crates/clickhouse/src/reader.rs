@@ -10,7 +10,7 @@ use url::Url;
 
 use crate::models::{
     BatchProveTimeRow, BatchVerifyTimeRow, ForcedInclusionProcessedRow, L1BlockTimeRow,
-    L2BlockTimeRow, L2ReorgRow, SequencerDistributionRow, SlashingEventRow,
+    L2BlockTimeRow, L2GasUsedRow, L2ReorgRow, SequencerDistributionRow, SlashingEventRow,
 };
 
 #[derive(Row, Deserialize, Serialize)]
@@ -1234,6 +1234,81 @@ impl ClickhouseReader {
         } else {
             Ok(None)
         }
+    }
+
+    /// Get the gas used for each L2 block in the last hour
+    pub async fn get_l2_gas_used_last_hour(&self) -> Result<Vec<L2GasUsedRow>> {
+        #[derive(Row, Deserialize)]
+        struct RawRow {
+            l2_block_number: u64,
+            gas_used: u64,
+        }
+
+        let client = self.base.clone().with_database(&self.db_name);
+        let query = format!(
+            "SELECT l2_block_number, toUInt64(sum_gas_used) AS gas_used \
+             FROM {db}.l2_head_events \
+             WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL 1 HOUR) \
+             ORDER BY l2_block_number",
+            db = self.db_name
+        );
+
+        let rows = client.query(&query).fetch_all::<RawRow>().await?;
+        Ok(rows
+            .into_iter()
+            .skip(1)
+            .map(|r| L2GasUsedRow { l2_block_number: r.l2_block_number, gas_used: r.gas_used })
+            .collect())
+    }
+
+    /// Get the gas used for each L2 block in the last 24 hours
+    pub async fn get_l2_gas_used_last_24_hours(&self) -> Result<Vec<L2GasUsedRow>> {
+        #[derive(Row, Deserialize)]
+        struct RawRow {
+            l2_block_number: u64,
+            gas_used: u64,
+        }
+
+        let client = self.base.clone().with_database(&self.db_name);
+        let query = format!(
+            "SELECT l2_block_number, toUInt64(sum_gas_used) AS gas_used \
+             FROM {db}.l2_head_events \
+             WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL 24 HOUR) \
+             ORDER BY l2_block_number",
+            db = self.db_name
+        );
+
+        let rows = client.query(&query).fetch_all::<RawRow>().await?;
+        Ok(rows
+            .into_iter()
+            .skip(1)
+            .map(|r| L2GasUsedRow { l2_block_number: r.l2_block_number, gas_used: r.gas_used })
+            .collect())
+    }
+
+    /// Get the gas used for each L2 block in the last 7 days
+    pub async fn get_l2_gas_used_last_7_days(&self) -> Result<Vec<L2GasUsedRow>> {
+        #[derive(Row, Deserialize)]
+        struct RawRow {
+            l2_block_number: u64,
+            gas_used: u64,
+        }
+
+        let client = self.base.clone().with_database(&self.db_name);
+        let query = format!(
+            "SELECT l2_block_number, toUInt64(sum_gas_used) AS gas_used \
+             FROM {db}.l2_head_events \
+             WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL 7 DAY) \
+             ORDER BY l2_block_number",
+            db = self.db_name
+        );
+
+        let rows = client.query(&query).fetch_all::<RawRow>().await?;
+        Ok(rows
+            .into_iter()
+            .skip(1)
+            .map(|r| L2GasUsedRow { l2_block_number: r.l2_block_number, gas_used: r.gas_used })
+            .collect())
     }
 }
 
