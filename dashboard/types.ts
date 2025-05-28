@@ -21,3 +21,8 @@ export interface MetricData {
   description?: ReactNode;
   group?: string;
 }
+
+export interface L2ReorgEvent {
+  l2_block_number: number;
+  depth: number;
+}

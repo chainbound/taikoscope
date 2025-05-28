@@ -3,7 +3,7 @@ export const API_BASE =
   (import.meta as any).env.API_BASE ||
   '';
 
-import type { TimeSeriesData, PieChartDataItem } from '../types';
+import type { TimeSeriesData, PieChartDataItem, L2ReorgEvent } from '../types';
 
 export interface RequestResult<T> {
   data: T | null;
@@ -89,6 +89,17 @@ export const fetchL2Reorgs = async (
   const res = await fetchJson<{ events: unknown[] }>(url);
   return {
     data: res.data ? res.data.events.length : null,
+    badRequest: res.badRequest,
+  };
+};
+
+export const fetchL2ReorgEvents = async (
+  range: '1h' | '24h' | '7d',
+): Promise<RequestResult<L2ReorgEvent[]>> => {
+  const url = `${API_BASE}/reorgs?range=${range}`;
+  const res = await fetchJson<{ events: L2ReorgEvent[] }>(url);
+  return {
+    data: res.data ? res.data.events : null,
     badRequest: res.badRequest,
   };
 };

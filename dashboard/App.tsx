@@ -12,6 +12,7 @@ import {
   TimeSeriesData,
   PieChartDataItem,
   MetricData,
+  L2ReorgEvent,
 } from './types';
 import {
   API_BASE,
@@ -21,6 +22,7 @@ import {
   fetchBatchPostingCadence,
   fetchActiveGateways,
   fetchL2Reorgs,
+  fetchL2ReorgEvents,
   fetchSlashingEvents,
   fetchForcedInclusions,
   fetchCurrentOperator,
@@ -53,6 +55,7 @@ const App: React.FC = () => {
   const [sequencerDistribution, setSequencerDistribution] = useState<
     PieChartDataItem[]
   >([]);
+  const [l2ReorgEvents, setL2ReorgEvents] = useState<L2ReorgEvent[]>([]);
   const [l2HeadBlock, setL2HeadBlock] = useState<string>('0');
   const [l1HeadBlock, setL1HeadBlock] = useState<string>('0');
   const [refreshRate, setRefreshRate] = useState<number>(60000);
@@ -150,6 +153,7 @@ const App: React.FC = () => {
       currentOperatorRes,
       nextOperatorRes,
       l2ReorgsRes,
+      l2ReorgEventsRes,
       slashingsRes,
       forcedInclusionsRes,
       l2BlockRes,
@@ -168,6 +172,7 @@ const App: React.FC = () => {
       fetchCurrentOperator(),
       fetchNextOperator(),
       fetchL2Reorgs(range),
+      fetchL2ReorgEvents(range),
       fetchSlashingEvents(range),
       fetchForcedInclusions(range),
       fetchL2HeadBlock(range),
@@ -187,6 +192,7 @@ const App: React.FC = () => {
     const currentOperator = currentOperatorRes.data;
     const nextOperator = nextOperatorRes.data;
     const l2Reorgs = l2ReorgsRes.data;
+    const reorgEvents = l2ReorgEventsRes.data || [];
     const slashings = slashingsRes.data;
     const forcedInclusions = forcedInclusionsRes.data;
     const l2Block = l2BlockRes.data;
@@ -206,6 +212,7 @@ const App: React.FC = () => {
       currentOperatorRes,
       nextOperatorRes,
       l2ReorgsRes,
+      l2ReorgEventsRes,
       slashingsRes,
       forcedInclusionsRes,
       l2BlockRes,
@@ -238,6 +245,7 @@ const App: React.FC = () => {
     setL2BlockTimeData(l2Times);
     setL1BlockTimeData(l1Times);
     setSequencerDistribution(sequencerDist);
+    setL2ReorgEvents(reorgEvents);
     setL2HeadBlock(
       currentMetrics.find((m) => m.title === 'L2 Head Block')?.value || 'N/A',
     );
@@ -326,6 +334,25 @@ const App: React.FC = () => {
                     key={`${group}-${idx}`}
                     title={m.title}
                     value={m.value}
+                    onMore={
+                      typeof m.title === 'string' && m.title === 'L2 Reorgs'
+                        ? () =>
+                            openTable(
+                              'L2 Reorgs',
+                              [
+                                {
+                                  key: 'l2_block_number',
+                                  label: 'Block Number',
+                                },
+                                { key: 'depth', label: 'Depth' },
+                              ],
+                              l2ReorgEvents as unknown as Record<
+                                string,
+                                string | number
+                              >[],
+                            )
+                        : undefined
+                    }
                   />
                 ))}
               </div>
