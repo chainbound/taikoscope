@@ -503,24 +503,34 @@ impl ClickhouseReader {
         Ok(rows)
     }
 
-    /// Get transactions per block since the given cutoff time with pagination
-    pub async fn get_block_transactions_since_paginated(
+    /// Get transactions per block since the given cutoff time with cursor-based
+    /// pagination. Results are returned in descending order by block number.
+    pub async fn get_block_transactions_paginated(
         &self,
         since: DateTime<Utc>,
         limit: u64,
-        offset: u64,
+        starting_after: Option<u64>,
+        ending_before: Option<u64>,
     ) -> Result<Vec<BlockTransactionRow>> {
-        let client = self.base.clone().with_database(&self.db_name);
-        let query = format!(
+        let mut query = format!(
             "SELECT sequencer, l2_block_number, sum_tx FROM {db}.l2_head_events \
-             WHERE inserted_at > toDateTime64({}, 3) \
-             ORDER BY l2_block_number LIMIT {} OFFSET {}",
+             WHERE inserted_at > toDateTime64({}, 3)",
             since.timestamp_millis() as f64 / 1000.0,
-            limit,
-            offset,
             db = self.db_name,
         );
 
+        if let Some(start) = starting_after {
+            query.push_str(&format!(" AND l2_block_number < {}", start));
+        }
+
+        if let Some(end) = ending_before {
+            query.push_str(&format!(" AND l2_block_number > {}", end));
+        }
+
+        query.push_str(" ORDER BY l2_block_number DESC");
+        query.push_str(&format!(" LIMIT {}", limit));
+
+        let client = self.base.clone().with_database(&self.db_name);
         let rows = client.query(&query).fetch_all::<BlockTransactionRow>().await?;
         Ok(rows)
     }

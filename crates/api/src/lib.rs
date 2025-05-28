@@ -54,7 +54,8 @@ struct SequencerBlocksQuery {
 struct BlockTransactionsQuery {
     range: Option<String>,
     limit: Option<u64>,
-    offset: Option<u64>,
+    starting_after: Option<u64>,
+    ending_before: Option<u64>,
 }
 
 fn range_duration(range: &Option<String>) -> ChronoDuration {
@@ -534,8 +535,13 @@ async fn block_transactions(
 ) -> Json<BlockTransactionsResponse> {
     let since = Utc::now() - range_duration(&params.range);
     let limit = params.limit.unwrap_or(50);
-    let offset = params.offset.unwrap_or(0);
-    let rows = match state.client.get_block_transactions_since_paginated(since, limit, offset).await
+    if params.starting_after.is_some() && params.ending_before.is_some() {
+        tracing::warn!("starting_after and ending_before are mutually exclusive");
+    }
+    let rows = match state
+        .client
+        .get_block_transactions_paginated(since, limit, params.starting_after, params.ending_before)
+        .await
     {
         Ok(r) => r,
         Err(e) => {
