@@ -46,7 +46,12 @@ type State = {
   errorMessage: string;
 };
 
-const responses: Record<string, any> = {
+interface MockFetchResponse {
+  ok: boolean;
+  json: () => Promise<unknown>;
+}
+
+const responses: Record<string, Record<string, unknown>> = {
   '/l2-block-cadence?range=1h': { l2_block_cadence_ms: 60000 },
   '/batch-posting-cadence?range=1h': { batch_posting_cadence_ms: 120000 },
   '/avg-prove-time?range=1h': { avg_prove_time_ms: 1500 },
@@ -90,13 +95,15 @@ const responses: Record<string, any> = {
   '/l1-head-block': { l1_head_block: 456 },
 };
 
-(globalThis as any).fetch = async (url: string) => {
+(globalThis as {
+  fetch?: (url: string) => Promise<MockFetchResponse>;
+}).fetch = async (url: string): Promise<MockFetchResponse> => {
   const u = new URL(url, 'http://localhost');
   const key = u.pathname + (u.search ? `?${u.searchParams.toString()}` : '');
   return {
     ok: true,
     json: async () => responses[key] ?? {},
-  } as any;
+  };
 };
 
 class MockEventSource {
@@ -117,19 +124,25 @@ class MockEventSource {
     this.closed = true;
   }
 }
-(globalThis as any).EventSource = MockEventSource as any;
+(globalThis as unknown as { EventSource: unknown }).EventSource =
+  MockEventSource as unknown as EventSource;
 
-let intervals: { fn: () => Promise<void> | void; ms: number }[] = [];
-(globalThis as any).setInterval = (
+interface IntervalId { fn: () => Promise<void> | void; ms: number }
+let intervals: IntervalId[] = [];
+(globalThis as unknown as {
+  setInterval: (fn: () => Promise<void> | void, ms: number) => NodeJS.Timeout;
+}).setInterval = (
   fn: () => Promise<void> | void,
   ms: number,
-) => {
-  const id = { fn, ms };
+): NodeJS.Timeout => {
+  const id: IntervalId = { fn, ms };
   intervals.push(id);
-  return id;
+  return id as unknown as NodeJS.Timeout;
 };
-(globalThis as any).clearInterval = (id: any) => {
-  intervals = intervals.filter((i) => i !== id);
+(globalThis as unknown as { clearInterval: (id: NodeJS.Timeout) => void }).clearInterval = (
+  id: NodeJS.Timeout,
+) => {
+  intervals = intervals.filter((i) => i !== (id as unknown as IntervalId));
 };
 
 async function fetchData(range: TimeRange, state: State) {
@@ -282,7 +295,7 @@ async function updateHeads(state: State) {
 }
 
 function setupSSE(state: State) {
-  let pollId: any = null;
+  let pollId: ReturnType<typeof setInterval> | null = null;
   const startPolling = () => {
     if (!pollId) {
       state.errorMessage =
@@ -348,7 +361,7 @@ it('app integration', async () => {
   (l1Source as unknown as MockEventSource).emitError();
   expect(state.errorMessage.includes('falling back to polling')).toBe(true);
   expect(intervals.length).toBe(1);
-  await (intervals[0].fn as any)();
+  await intervals[0].fn();
   expect(state.l1HeadBlock).toBe('456');
   expect(state.l2HeadBlock).toBe('123');
 
