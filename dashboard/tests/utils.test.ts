@@ -8,6 +8,7 @@ import {
   shouldShowMinutes,
   findMetricValue,
   formatSequencerTooltip,
+  formatLargeNumber,
   bytesToHex,
 } from '../utils.js';
 
@@ -71,6 +72,12 @@ describe('utils', () => {
 
     const zeroTooltip = formatSequencerTooltip([{ value: 0 }], 0);
     expect(zeroTooltip).toBe('0 blocks (0%)');
+  });
+
+  it('formats large numbers', () => {
+    expect(formatLargeNumber(1500)).toBe('1.5K');
+    expect(formatLargeNumber(15_000_000)).toBe('15M');
+    expect(formatLargeNumber(50)).toBe('50');
   });
 
   it('converts bytes to hex', () => {

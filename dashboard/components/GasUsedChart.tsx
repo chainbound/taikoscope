@@ -10,6 +10,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { TimeSeriesData } from '../types';
+import { formatLargeNumber } from '../utils';
 
 interface GasUsedChartProps {
   data: TimeSeriesData[];
@@ -46,7 +47,7 @@ export const GasUsedChart: React.FC<GasUsedChartProps> = ({ data, lineColor }) =
           stroke="#666666"
           fontSize={12}
           domain={['auto', 'auto']}
-          tickFormatter={(v: number) => v.toLocaleString()}
+          tickFormatter={(v: number) => formatLargeNumber(v)}
           label={{
             value: 'Gas Used',
             angle: -90,
@@ -58,7 +59,7 @@ export const GasUsedChart: React.FC<GasUsedChartProps> = ({ data, lineColor }) =
         />
         <Tooltip
           labelFormatter={(label: number) => `Block ${label.toLocaleString()}`}
-          formatter={(value: number) => [value.toLocaleString(), 'gas']}
+          formatter={(value: number) => [formatLargeNumber(value), 'gas']}
           contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.8)', borderColor: lineColor }}
           labelStyle={{ color: '#333' }}
         />

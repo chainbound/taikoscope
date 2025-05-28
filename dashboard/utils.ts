@@ -13,6 +13,16 @@ export const formatSeconds = (seconds: number): string => {
   return `${formatDecimal(seconds)}s`;
 };
 
+export const formatLargeNumber = (value: number): string => {
+  if (Math.abs(value) >= 1_000_000) {
+    return `${Number(formatDecimal(value / 1_000_000))}M`;
+  }
+  if (Math.abs(value) >= 1_000) {
+    return `${Number(formatDecimal(value / 1_000))}K`;
+  }
+  return value.toLocaleString();
+};
+
 export const formatInterval = (ms: number, showMinutes: boolean): string => {
   return showMinutes
     ? `${formatDecimal(ms / 60000)} minutes`
