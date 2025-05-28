@@ -3,6 +3,7 @@ import { createMetrics, hasBadRequest } from './helpers';
 import { DashboardHeader } from './components/DashboardHeader';
 import { MetricCard } from './components/MetricCard';
 import { ChartCard } from './components/ChartCard';
+import { DataTable } from './components/DataTable';
 import { SequencerPieChart } from './components/SequencerPieChart';
 import { BlockTimeChart } from './components/BlockTimeChart';
 import { BatchProcessChart } from './components/BatchProcessChart';
@@ -56,6 +57,11 @@ const App: React.FC = () => {
   const [l1HeadBlock, setL1HeadBlock] = useState<string>('0');
   const [refreshRate, setRefreshRate] = useState<number>(60000);
   const [errorMessage, setErrorMessage] = useState<string>('');
+  const [tableView, setTableView] = useState<null | {
+    title: string;
+    columns: { key: string; label: string }[];
+    rows: Record<string, string | number>[];
+  }>(null);
 
   useEffect(() => {
     let pollId: NodeJS.Timeout | null = null;
@@ -269,6 +275,25 @@ const App: React.FC = () => {
     'Other',
   ];
 
+  const openTable = (
+    title: string,
+    columns: { key: string; label: string }[],
+    rows: Record<string, string | number>[],
+  ) => {
+    setTableView({ title, columns, rows });
+  };
+
+  if (tableView) {
+    return (
+      <DataTable
+        title={tableView.title}
+        columns={tableView.columns}
+        rows={tableView.rows}
+        onBack={() => setTableView(null)}
+      />
+    );
+  }
+
   return (
     <div
       className="min-h-screen bg-white text-gray-800 p-4 md:p-6 lg:p-8"
@@ -310,22 +335,91 @@ const App: React.FC = () => {
 
         {/* Charts Grid - Reordered: Sequencer Pie Chart first */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mt-6">
-          <ChartCard title="Sequencer Distribution">
+          <ChartCard
+            title="Sequencer Distribution"
+            onMore={() =>
+              openTable(
+                'Sequencer Distribution',
+                [
+                  { key: 'name', label: 'Address' },
+                  { key: 'value', label: 'Blocks' },
+                ],
+                sequencerDistribution as unknown as Record<
+                  string,
+                  string | number
+                >[],
+              )
+            }
+          >
             <SequencerPieChart data={sequencerDistribution} />
           </ChartCard>
-          <ChartCard title="Prove Time">
+          <ChartCard
+            title="Prove Time"
+            onMore={() =>
+              openTable(
+                'Prove Time',
+                [
+                  { key: 'name', label: 'Batch' },
+                  { key: 'value', label: 'Seconds' },
+                ],
+                secondsToProveData as unknown as Record<
+                  string,
+                  string | number
+                >[],
+              )
+            }
+          >
             <BatchProcessChart
               data={secondsToProveData}
               lineColor={TAIKO_PINK}
             />
           </ChartCard>
-          <ChartCard title="Verify Time">
+          <ChartCard
+            title="Verify Time"
+            onMore={() =>
+              openTable(
+                'Verify Time',
+                [
+                  { key: 'name', label: 'Batch' },
+                  { key: 'value', label: 'Seconds' },
+                ],
+                secondsToVerifyData as unknown as Record<
+                  string,
+                  string | number
+                >[],
+              )
+            }
+          >
             <BatchProcessChart data={secondsToVerifyData} lineColor="#5DA5DA" />
           </ChartCard>
-          <ChartCard title="L2 Block Times">
+          <ChartCard
+            title="L2 Block Times"
+            onMore={() =>
+              openTable(
+                'L2 Block Times',
+                [
+                  { key: 'value', label: 'Block Number' },
+                  { key: 'timestamp', label: 'Interval (ms)' },
+                ],
+                l2BlockTimeData as unknown as Record<string, string | number>[],
+              )
+            }
+          >
             <BlockTimeChart data={l2BlockTimeData} lineColor="#FAA43A" />
           </ChartCard>
-          <ChartCard title="L1 Block Times">
+          <ChartCard
+            title="L1 Block Times"
+            onMore={() =>
+              openTable(
+                'L1 Block Times',
+                [
+                  { key: 'value', label: 'Block Number' },
+                  { key: 'timestamp', label: 'Interval (ms)' },
+                ],
+                l1BlockTimeData as unknown as Record<string, string | number>[],
+              )
+            }
+          >
             <BlockTimeChart data={l1BlockTimeData} lineColor="#60BD68" />
           </ChartCard>
         </div>
