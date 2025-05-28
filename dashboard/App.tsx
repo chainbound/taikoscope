@@ -69,11 +69,6 @@ const App: React.FC = () => {
   const [sequencerDistribution, setSequencerDistribution] = useState<
     PieChartDataItem[]
   >([]);
-  const [l2ReorgEvents, setL2ReorgEvents] = useState<L2ReorgEvent[]>([]);
-  const [slashingEvents, setSlashingEvents] = useState<SlashingEvent[]>([]);
-  const [forcedInclusionEvents, setForcedInclusionEvents] = useState<
-    ForcedInclusionEvent[]
-  >([]);
   const [l2HeadBlock, setL2HeadBlock] = useState<string>('0');
   const [l1HeadBlock, setL1HeadBlock] = useState<string>('0');
   const [refreshRate, setRefreshRate] = useState<number>(60000);
@@ -183,11 +178,8 @@ const App: React.FC = () => {
       currentOperatorRes,
       nextOperatorRes,
       l2ReorgsRes,
-      l2ReorgEventsRes,
       slashingCountRes,
       forcedInclusionCountRes,
-      slashingEventsRes,
-      forcedInclusionEventsRes,
       l2BlockRes,
       l1BlockRes,
       proveTimesRes,
@@ -206,11 +198,8 @@ const App: React.FC = () => {
       fetchCurrentOperator(),
       fetchNextOperator(),
       fetchL2Reorgs(range),
-      fetchL2ReorgEvents(range),
       fetchSlashingEventCount(range),
       fetchForcedInclusionCount(range),
-      fetchSlashingEvents(range),
-      fetchForcedInclusionEvents(range),
       fetchL2HeadBlock(range),
       fetchL1HeadBlock(range),
       fetchProveTimes(range),
@@ -230,11 +219,8 @@ const App: React.FC = () => {
     const currentOperator = currentOperatorRes.data;
     const nextOperator = nextOperatorRes.data;
     const l2Reorgs = l2ReorgsRes.data;
-    const reorgEvents = l2ReorgEventsRes.data || [];
     const slashings = slashingCountRes.data;
     const forcedInclusions = forcedInclusionCountRes.data;
-    const slashingEventsData = slashingEventsRes.data || [];
-    const forcedInclusionEventsData = forcedInclusionEventsRes.data || [];
     const l2Block = l2BlockRes.data;
     const l1Block = l1BlockRes.data;
     const proveTimes = proveTimesRes.data || [];
@@ -254,7 +240,6 @@ const App: React.FC = () => {
       currentOperatorRes,
       nextOperatorRes,
       l2ReorgsRes,
-      l2ReorgEventsRes,
       slashingCountRes,
       forcedInclusionCountRes,
       l2BlockRes,
@@ -291,9 +276,6 @@ const App: React.FC = () => {
     setL1BlockTimeData(l1Times);
     setBlockTxData(txPerBlock);
     setSequencerDistribution(sequencerDist);
-    setSlashingEvents(slashingEventsData);
-    setForcedInclusionEvents(forcedInclusionEventsData);
-    setL2ReorgEvents(reorgEvents);
     setL2HeadBlock(
       currentMetrics.find((m) => m.title === 'L2 Head Block')?.value || 'N/A',
     );
@@ -310,10 +292,11 @@ const App: React.FC = () => {
   }, [timeRange]);
 
   useEffect(() => {
+    if (tableView) return;
     fetchData();
     const interval = setInterval(fetchData, Math.max(refreshRate, 10000));
     return () => clearInterval(interval);
-  }, [timeRange, fetchData, refreshRate]);
+  }, [timeRange, fetchData, refreshRate, tableView]);
 
   const groupedMetrics = metrics.reduce<Record<string, MetricData[]>>(
     (acc, m) => {
@@ -373,6 +356,53 @@ const App: React.FC = () => {
       `Blocks proposed by ${address}`,
       [{ key: 'block', label: 'Block Number' }],
       (blocksRes.data || []).map((b) => ({ block: b })),
+    );
+  };
+
+  const openL2ReorgsTable = async () => {
+    const eventsRes = await fetchL2ReorgEvents(timeRange);
+    const events = (eventsRes.data || []) as L2ReorgEvent[];
+    openTable(
+      'L2 Reorgs',
+      [
+        { key: 'l2_block_number', label: 'Block Number' },
+        { key: 'depth', label: 'Depth' },
+      ],
+      events as unknown as Record<string, string | number>[],
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      <ReorgDepthChart data={events} />,
+    );
+  };
+
+  const openSlashingEventsTable = async () => {
+    const eventsRes = await fetchSlashingEvents(timeRange);
+    const events = (eventsRes.data || []) as SlashingEvent[];
+    openTable(
+      'Slashing Events',
+      [
+        { key: 'l1_block_number', label: 'L1 Block' },
+        { key: 'validator_addr', label: 'Validator' },
+      ],
+      events.map((e) => ({
+        l1_block_number: e.l1_block_number,
+        validator_addr: bytesToHex(e.validator_addr),
+      })) as Record<string, string | number>[],
+    );
+  };
+
+  const openForcedInclusionsTable = async () => {
+    const eventsRes = await fetchForcedInclusionEvents(timeRange);
+    const events = (eventsRes.data || []) as ForcedInclusionEvent[];
+    openTable(
+      'Forced Inclusions',
+      [{ key: 'blob_hash', label: 'Blob Hash' }],
+      events.map((e) => ({
+        blob_hash: bytesToHex(e.blob_hash),
+      })) as Record<string, string | number>[],
     );
   };
 
@@ -472,54 +502,13 @@ const App: React.FC = () => {
                     value={m.value}
                     onMore={
                       typeof m.title === 'string' && m.title === 'L2 Reorgs'
-                        ? () =>
-                            openTable(
-                              'L2 Reorgs',
-                              [
-                                {
-                                  key: 'l2_block_number',
-                                  label: 'Block Number',
-                                },
-                                { key: 'depth', label: 'Depth' },
-                              ],
-                              l2ReorgEvents as unknown as Record<
-                                string,
-                                string | number
-                              >[],
-                              undefined,
-                              undefined,
-                              undefined,
-                              undefined,
-                              undefined,
-                              <ReorgDepthChart data={l2ReorgEvents} />,
-                            )
+                        ? () => openL2ReorgsTable()
                         : typeof m.title === 'string' &&
                             m.title === 'Slashing Events'
-                          ? () =>
-                              openTable(
-                                'Slashing Events',
-                                [
-                                  {
-                                    key: 'l1_block_number',
-                                    label: 'L1 Block',
-                                  },
-                                  { key: 'validator_addr', label: 'Validator' },
-                                ],
-                                slashingEvents.map((e) => ({
-                                  l1_block_number: e.l1_block_number,
-                                  validator_addr: bytesToHex(e.validator_addr),
-                                })) as Record<string, string | number>[],
-                              )
+                          ? () => openSlashingEventsTable()
                           : typeof m.title === 'string' &&
                               m.title === 'Forced Inclusions'
-                            ? () =>
-                                openTable(
-                                  'Forced Inclusions',
-                                  [{ key: 'blob_hash', label: 'Blob Hash' }],
-                                  forcedInclusionEvents.map((e) => ({
-                                    blob_hash: bytesToHex(e.blob_hash),
-                                  })) as Record<string, string | number>[],
-                                )
+                            ? () => openForcedInclusionsTable()
                             : undefined
                     }
                   />
