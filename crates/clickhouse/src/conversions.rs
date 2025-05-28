@@ -79,3 +79,96 @@ impl TryFrom<(&chainio::BatchesVerified, u64)> for VerifiedBatchRow {
         Ok(Self { l1_block_number, batch_id: verified.batch_id, block_hash: verified.block_hash })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use alloy::primitives::{Address, B256};
+    use chainio::{self, ITaikoInbox, taiko::wrapper::ITaikoWrapper};
+
+    #[test]
+    fn batch_proposed_into_row() {
+        let batch = ITaikoInbox::BatchProposed {
+            info: ITaikoInbox::BatchInfo {
+                proposedIn: 7,
+                blobByteSize: 100,
+                blocks: vec![ITaikoInbox::BlockParams::default(); 2],
+                blobHashes: vec![B256::repeat_byte(1)],
+                ..Default::default()
+            },
+            meta: ITaikoInbox::BatchMetadata {
+                proposer: Address::repeat_byte(9),
+                batchId: 42,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+
+        let row = BatchRow::try_from(&batch).unwrap();
+        assert_eq!(
+            row,
+            BatchRow {
+                l1_block_number: 7,
+                batch_id: 42,
+                batch_size: 2,
+                proposer_addr: Address::repeat_byte(9).into_array(),
+                blob_count: 1,
+                blob_total_bytes: 100,
+            }
+        );
+    }
+
+    #[test]
+    fn batches_proved_into_row() {
+        let transition = ITaikoInbox::Transition {
+            parentHash: B256::repeat_byte(1),
+            blockHash: B256::repeat_byte(2),
+            stateRoot: B256::repeat_byte(3),
+        };
+
+        let proved = ITaikoInbox::BatchesProved {
+            verifier: Address::repeat_byte(4),
+            batchIds: vec![5],
+            transitions: vec![transition],
+        };
+
+        let row = ProvedBatchRow::try_from((&proved, 11)).unwrap();
+        assert_eq!(
+            row,
+            ProvedBatchRow {
+                l1_block_number: 11,
+                batch_id: 5,
+                verifier_addr: Address::repeat_byte(4).into_array(),
+                parent_hash: [1u8; 32],
+                block_hash: [2u8; 32],
+                state_root: [3u8; 32],
+            }
+        );
+    }
+
+    #[test]
+    fn forced_inclusion_into_row() {
+        let event = ITaikoWrapper::ForcedInclusionProcessed {
+            blobHash: B256::repeat_byte(7),
+            feeInGwei: 1,
+            createdAtBatchId: 0,
+            blobByteOffset: 0,
+            blobByteSize: 0,
+            blobCreatedIn: 0,
+        };
+
+        let row = ForcedInclusionProcessedRow::try_from(&event).unwrap();
+        assert_eq!(row, ForcedInclusionProcessedRow { blob_hash: [7u8; 32] });
+    }
+
+    #[test]
+    fn batches_verified_into_row() {
+        let verified = chainio::BatchesVerified { batch_id: 9, block_hash: [6u8; 32] };
+
+        let row = VerifiedBatchRow::try_from((&verified, 15)).unwrap();
+        assert_eq!(
+            row,
+            VerifiedBatchRow { l1_block_number: 15, batch_id: 9, block_hash: [6u8; 32] }
+        );
+    }
+}
