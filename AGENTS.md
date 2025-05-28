@@ -17,6 +17,8 @@
 
 ## Code Style Guidelines
 - Use Rust 2024 edition
+- Sort imports so that internal crates come first. If there are other
+  dependencies after the internal ones, add a blank line between the groups.
 - Follow rustfmt.toml settings: reordered imports, grouped by crate, use small heuristics
 - Missing debug impls and docs should be warned
 - Follow Clippy lints defined in Cargo.toml
