@@ -1,4 +1,6 @@
 //! Primitives for the taikoscope.
+/// Block analytics helpers
+pub mod block_stats;
 /// Hardware cost estimates
 pub mod hardware;
 /// HTTP retry helpers

@@ -2982,6 +2982,8 @@ version = "0.1.0"
 dependencies = [
  "alloy",
  "alloy-json-rpc",
+ "alloy-network-primitives",
+ "alloy-primitives",
  "eyre",
  "futures",
  "mockito",
