@@ -74,13 +74,22 @@ const App: React.FC = () => {
   const [l1HeadBlock, setL1HeadBlock] = useState<string>('0');
   const [refreshRate, setRefreshRate] = useState<number>(60000);
   const [errorMessage, setErrorMessage] = useState<string>('');
-  const [tableView, setTableView] = useState<null | {
-    title: string;
-    columns: { key: string; label: string }[];
-    rows: Record<string, string | number>[];
-    onRowClick?: (row: Record<string, string | number>) => void;
-    extraAction?: { label: string; onClick: () => void };
-  }>(null);
+  const [tableView, setTableView] = useState<
+    | null
+    | {
+        title: string;
+        columns: { key: string; label: string }[];
+        rows: Record<string, string | number>[];
+        onRowClick?: (row: Record<string, string | number>) => void;
+        extraAction?: { label: string; onClick: () => void };
+        extraTable?: {
+          title: string;
+          columns: { key: string; label: string }[];
+          rows: Record<string, string | number>[];
+          onRowClick?: (row: Record<string, string | number>) => void;
+        };
+      }
+  >(null);
 
   useEffect(() => {
     let pollId: NodeJS.Timeout | null = null;
@@ -318,8 +327,14 @@ const App: React.FC = () => {
     rows: Record<string, string | number>[],
     onRowClick?: (row: Record<string, string | number>) => void,
     extraAction?: { label: string; onClick: () => void },
+    extraTable?: {
+      title: string;
+      columns: { key: string; label: string }[];
+      rows: Record<string, string | number>[];
+      onRowClick?: (row: Record<string, string | number>) => void;
+    },
   ) => {
-    setTableView({ title, columns, rows, onRowClick, extraAction });
+    setTableView({ title, columns, rows, onRowClick, extraAction, extraTable });
   };
 
   const openSequencerBlocks = async (address: string) => {
@@ -331,18 +346,6 @@ const App: React.FC = () => {
     );
   };
 
-  const openBlockTransactions = async () => {
-    const txRes = await fetchBlockTransactions(timeRange);
-    openTable(
-      `Transactions (${timeRange})`,
-      [
-        { key: 'block', label: 'Block Number' },
-        { key: 'txs', label: 'Tx Count' },
-        { key: 'sequencer', label: 'Sequencer' },
-      ],
-      (txRes.data || []) as unknown as Record<string, string | number>[],
-    );
-  };
 
   if (tableView) {
     return (
@@ -353,6 +356,7 @@ const App: React.FC = () => {
         onBack={() => setTableView(null)}
         onRowClick={tableView.onRowClick}
         extraAction={tableView.extraAction}
+        extraTable={tableView.extraTable}
       />
     );
   }
@@ -446,7 +450,8 @@ const App: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mt-6">
           <ChartCard
             title="Sequencer Distribution"
-            onMore={() =>
+            onMore={async () => {
+              const txRes = await fetchBlockTransactions(timeRange);
               openTable(
                 'Sequencer Distribution',
                 [
@@ -458,9 +463,19 @@ const App: React.FC = () => {
                   string | number
                 >[],
                 (row) => openSequencerBlocks(row.name as string),
-                { label: 'Transactions', onClick: openBlockTransactions },
-              )
-            }
+                undefined,
+                {
+                  title: `Transactions (${timeRange})`,
+                  columns: [
+                    { key: 'block', label: 'Block Number' },
+                    { key: 'txs', label: 'Tx Count' },
+                    { key: 'sequencer', label: 'Sequencer' },
+                  ],
+                  rows:
+                    (txRes.data || []) as unknown as Record<string, string | number>[],
+                },
+              );
+            }}
           >
             <SequencerPieChart data={sequencerDistribution} />
           </ChartCard>
