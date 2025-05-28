@@ -8,6 +8,7 @@ import {
   shouldShowMinutes,
   findMetricValue,
   formatSequencerTooltip,
+  bytesToHex,
 } from '../utils.js';
 
 assert.strictEqual(formatDecimal(1), '1.00');
@@ -62,5 +63,7 @@ assert.strictEqual(tooltip, '1 blocks (25.00%)');
 
 const zeroTooltip = formatSequencerTooltip([{ value: 0 }], 0);
 assert.strictEqual(zeroTooltip, '0 blocks (0%)');
+
+assert.strictEqual(bytesToHex([0, 1, 255]), '0x0001ff');
 
 console.log('All tests passed.');

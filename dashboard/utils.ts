@@ -60,3 +60,6 @@ export const formatSequencerTooltip = (
   const percentage = total > 0 ? ((value / total) * 100).toFixed(2) : '0';
   return `${value} blocks (${percentage}%)`;
 };
+
+export const bytesToHex = (bytes: number[]): string =>
+  `0x${bytes.map((b) => b.toString(16).padStart(2, '0')).join('')}`;
