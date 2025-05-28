@@ -8,7 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "check": "tsc --noEmit",
-    "test": "tsc -p tsconfig.tests.json && node tests-build/tests/utils.test.js && node tests-build/tests/helpers.test.js",
+    "test": "tsc -p tsconfig.tests.json && node tests-build/tests/utils.test.js && node tests-build/tests/helpers.test.js && node tests-build/tests/metricCard.test.js && node tests-build/tests/utils.extra.test.js",
     "format": "prettier --write .",
     "lint": "eslint . --ext .ts,.tsx"
   },
