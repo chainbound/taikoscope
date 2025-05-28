@@ -1,9 +1,11 @@
-import assert from 'assert';
+import { describe, it, expect } from 'vitest';
 import { formatDecimal, formatSeconds } from '../utils.js';
 
-assert.strictEqual(formatDecimal(-5.678), '-5.68');
-assert.strictEqual(formatSeconds(0), '0.00s');
-assert.strictEqual(formatSeconds(119), '119.0s');
-assert.strictEqual(formatSeconds(120), '2m');
-
-console.log('Extra util tests passed.');
+describe('extra utils', () => {
+  it('formats decimals and seconds', () => {
+    expect(formatDecimal(-5.678)).toBe('-5.68');
+    expect(formatSeconds(0)).toBe('0.00s');
+    expect(formatSeconds(119)).toBe('119.0s');
+    expect(formatSeconds(120)).toBe('2m');
+  });
+});

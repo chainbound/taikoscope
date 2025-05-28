@@ -1,4 +1,4 @@
-import assert from 'assert';
+import { describe, it, expect } from 'vitest';
 import {
   formatDecimal,
   formatSeconds,
@@ -11,59 +11,69 @@ import {
   bytesToHex,
 } from '../utils.js';
 
-assert.strictEqual(formatDecimal(1), '1.00');
-assert.strictEqual(formatDecimal(12.345), '12.3');
+describe('utils', () => {
+  it('formats numbers and durations', () => {
+    expect(formatDecimal(1)).toBe('1.00');
+    expect(formatDecimal(12.345)).toBe('12.3');
 
-assert.strictEqual(formatSeconds(30), '30.0s');
-assert.strictEqual(formatSeconds(150), '2.5m');
-assert.strictEqual(formatSeconds(7200), '2h');
+    expect(formatSeconds(30)).toBe('30.0s');
+    expect(formatSeconds(150)).toBe('2.5m');
+    expect(formatSeconds(7200)).toBe('2h');
 
-assert.strictEqual(formatInterval(30000, false), '30 seconds');
-assert.strictEqual(formatInterval(180000, true), '3.00 minutes');
+    expect(formatInterval(30000, false)).toBe('30 seconds');
+    expect(formatInterval(180000, true)).toBe('3.00 minutes');
 
-assert.strictEqual(formatBatchDuration(45, false, false), '45 seconds');
-assert.strictEqual(formatBatchDuration(150, false, true), '2.50 minutes');
-assert.strictEqual(formatBatchDuration(7200, true, false), '2.00 hours');
+    expect(formatBatchDuration(45, false, false)).toBe('45 seconds');
+    expect(formatBatchDuration(150, false, true)).toBe('2.50 minutes');
+    expect(formatBatchDuration(7200, true, false)).toBe('2.00 hours');
+  });
 
-const flags = computeBatchDurationFlags([{ value: 30 }, { value: 7200 }]);
-assert.strictEqual(flags.showHours, true);
-assert.strictEqual(flags.showMinutes, false);
+  it('computes batch duration flags', () => {
+    const flags = computeBatchDurationFlags([{ value: 30 }, { value: 7200 }]);
+    expect(flags.showHours).toBe(true);
+    expect(flags.showMinutes).toBe(false);
 
-const flagsMinutes = computeBatchDurationFlags([
-  { value: 150 },
-  { value: 100 },
-]);
-assert.strictEqual(flagsMinutes.showHours, false);
-assert.strictEqual(flagsMinutes.showMinutes, true);
+    const flagsMinutes = computeBatchDurationFlags([
+      { value: 150 },
+      { value: 100 },
+    ]);
+    expect(flagsMinutes.showHours).toBe(false);
+    expect(flagsMinutes.showMinutes).toBe(true);
 
-const flagsNone = computeBatchDurationFlags([{ value: 60 }, { value: 80 }]);
-assert.strictEqual(flagsNone.showHours, false);
-assert.strictEqual(flagsNone.showMinutes, false);
+    const flagsNone = computeBatchDurationFlags([{ value: 60 }, { value: 80 }]);
+    expect(flagsNone.showHours).toBe(false);
+    expect(flagsNone.showMinutes).toBe(false);
+  });
 
-assert.strictEqual(
-  shouldShowMinutes([{ timestamp: 1000 }, { timestamp: 200000 }]),
-  true,
-);
+  it('determines minute display correctly', () => {
+    expect(shouldShowMinutes([{ timestamp: 1000 }, { timestamp: 200000 }])).toBe(
+      true,
+    );
 
-assert.strictEqual(
-  shouldShowMinutes([{ timestamp: 1000 }, { timestamp: 110000 }]),
-  false,
-);
+    expect(shouldShowMinutes([{ timestamp: 1000 }, { timestamp: 110000 }])).toBe(
+      false,
+    );
+  });
 
-const metrics = [
-  { title: 'Test', value: '42' },
-  { title: 'Another', value: '0' },
-];
-assert.strictEqual(findMetricValue(metrics, 'test'), '42');
-assert.strictEqual(findMetricValue(metrics, 'TEST'), '42');
-assert.strictEqual(findMetricValue(metrics, 'missing'), 'N/A');
+  it('finds metric values', () => {
+    const metrics = [
+      { title: 'Test', value: '42' },
+      { title: 'Another', value: '0' },
+    ];
+    expect(findMetricValue(metrics, 'test')).toBe('42');
+    expect(findMetricValue(metrics, 'TEST')).toBe('42');
+    expect(findMetricValue(metrics, 'missing')).toBe('N/A');
+  });
 
-const tooltip = formatSequencerTooltip([{ value: 1 }, { value: 3 }], 1);
-assert.strictEqual(tooltip, '1 blocks (25.00%)');
+  it('formats sequencer tooltip', () => {
+    const tooltip = formatSequencerTooltip([{ value: 1 }, { value: 3 }], 1);
+    expect(tooltip).toBe('1 blocks (25.00%)');
 
-const zeroTooltip = formatSequencerTooltip([{ value: 0 }], 0);
-assert.strictEqual(zeroTooltip, '0 blocks (0%)');
+    const zeroTooltip = formatSequencerTooltip([{ value: 0 }], 0);
+    expect(zeroTooltip).toBe('0 blocks (0%)');
+  });
 
-assert.strictEqual(bytesToHex([0, 1, 255]), '0x0001ff');
-
-console.log('All tests passed.');
+  it('converts bytes to hex', () => {
+    expect(bytesToHex([0, 1, 255])).toBe('0x0001ff');
+  });
+});

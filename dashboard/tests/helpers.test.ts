@@ -1,4 +1,4 @@
-import assert from 'assert';
+import { describe, it, expect } from 'vitest';
 import { createMetrics, hasBadRequest } from '../helpers.js';
 
 const metrics = createMetrics({
@@ -16,37 +16,10 @@ const metrics = createMetrics({
   l1Block: 50,
 });
 
-assert.strictEqual(metrics[0].value, '60.0s');
-assert.strictEqual(metrics[0].group, 'Network Performance');
-assert.strictEqual(metrics[1].value, 'N/A');
-assert.strictEqual(metrics[1].group, 'Network Performance');
-assert.strictEqual(metrics[2].value, '1.20s');
-assert.strictEqual(metrics[2].group, 'Network Performance');
-assert.strictEqual(metrics[3].value, 'N/A');
-assert.strictEqual(metrics[3].group, 'Network Performance');
-assert.strictEqual(metrics[4].value, '2');
-assert.strictEqual(metrics[4].group, 'Operators');
-assert.strictEqual(metrics[5].value, '0xabc');
-assert.strictEqual(metrics[5].group, 'Operators');
-assert.strictEqual(metrics[6].value, 'N/A');
-assert.strictEqual(metrics[6].group, 'Operators');
-assert.strictEqual(metrics[7].value, '1');
-assert.strictEqual(metrics[7].group, 'Network Health');
-assert.strictEqual(metrics[8].value, 'N/A');
-assert.strictEqual(metrics[8].group, 'Network Health');
-assert.strictEqual(metrics[9].value, '0');
-assert.strictEqual(metrics[9].group, 'Network Health');
-assert.strictEqual(metrics[10].value, '100');
-assert.strictEqual(metrics[10].group, 'Block Information');
-assert.strictEqual(metrics[11].value, '50');
-assert.strictEqual(metrics[11].group, 'Block Information');
-
 const results = [
   { badRequest: false, data: null },
   { badRequest: true, data: null },
 ];
-assert.strictEqual(hasBadRequest(results), true);
-assert.strictEqual(hasBadRequest([{ badRequest: false, data: null }]), false);
 
 const metricsAllNull = createMetrics({
   l2Cadence: null,
@@ -62,28 +35,64 @@ const metricsAllNull = createMetrics({
   currentOperator: null,
   nextOperator: null,
 });
-for (const metric of metricsAllNull) {
-  assert.strictEqual(metric.value, 'N/A');
-}
-assert.strictEqual(metricsAllNull[0].group, 'Network Performance');
-assert.strictEqual(metricsAllNull[1].group, 'Network Performance');
-assert.strictEqual(metricsAllNull[2].group, 'Network Performance');
-assert.strictEqual(metricsAllNull[3].group, 'Network Performance');
-assert.strictEqual(metricsAllNull[4].group, 'Operators');
-assert.strictEqual(metricsAllNull[5].group, 'Operators');
-assert.strictEqual(metricsAllNull[6].group, 'Operators');
-assert.strictEqual(metricsAllNull[7].group, 'Network Health');
-assert.strictEqual(metricsAllNull[8].group, 'Network Health');
-assert.strictEqual(metricsAllNull[9].group, 'Network Health');
-assert.strictEqual(metricsAllNull[10].group, 'Block Information');
-assert.strictEqual(metricsAllNull[11].group, 'Block Information');
 
-assert.strictEqual(
-  hasBadRequest([
-    { badRequest: false, data: null },
-    { badRequest: false, data: null },
-  ]),
-  false,
-);
+describe('helpers', () => {
+  it('creates metrics correctly', () => {
+    expect(metrics[0].value).toBe('60.0s');
+    expect(metrics[0].group).toBe('Network Performance');
+    expect(metrics[1].value).toBe('N/A');
+    expect(metrics[1].group).toBe('Network Performance');
+    expect(metrics[2].value).toBe('1.20s');
+    expect(metrics[2].group).toBe('Network Performance');
+    expect(metrics[3].value).toBe('N/A');
+    expect(metrics[3].group).toBe('Network Performance');
+    expect(metrics[4].value).toBe('2');
+    expect(metrics[4].group).toBe('Operators');
+    expect(metrics[5].value).toBe('0xabc');
+    expect(metrics[5].group).toBe('Operators');
+    expect(metrics[6].value).toBe('N/A');
+    expect(metrics[6].group).toBe('Operators');
+    expect(metrics[7].value).toBe('1');
+    expect(metrics[7].group).toBe('Network Health');
+    expect(metrics[8].value).toBe('N/A');
+    expect(metrics[8].group).toBe('Network Health');
+    expect(metrics[9].value).toBe('0');
+    expect(metrics[9].group).toBe('Network Health');
+    expect(metrics[10].value).toBe('100');
+    expect(metrics[10].group).toBe('Block Information');
+    expect(metrics[11].value).toBe('50');
+    expect(metrics[11].group).toBe('Block Information');
+  });
 
-console.log('Helper tests passed.');
+  it('detects bad requests', () => {
+    expect(hasBadRequest(results)).toBe(true);
+    expect(hasBadRequest([{ badRequest: false, data: null }])).toBe(false);
+  });
+
+  it('handles null metrics', () => {
+    for (const metric of metricsAllNull) {
+      expect(metric.value).toBe('N/A');
+    }
+    expect(metricsAllNull[0].group).toBe('Network Performance');
+    expect(metricsAllNull[1].group).toBe('Network Performance');
+    expect(metricsAllNull[2].group).toBe('Network Performance');
+    expect(metricsAllNull[3].group).toBe('Network Performance');
+    expect(metricsAllNull[4].group).toBe('Operators');
+    expect(metricsAllNull[5].group).toBe('Operators');
+    expect(metricsAllNull[6].group).toBe('Operators');
+    expect(metricsAllNull[7].group).toBe('Network Health');
+    expect(metricsAllNull[8].group).toBe('Network Health');
+    expect(metricsAllNull[9].group).toBe('Network Health');
+    expect(metricsAllNull[10].group).toBe('Block Information');
+    expect(metricsAllNull[11].group).toBe('Block Information');
+  });
+
+  it('handles all successful requests', () => {
+    expect(
+      hasBadRequest([
+        { badRequest: false, data: null },
+        { badRequest: false, data: null },
+      ]),
+    ).toBe(false);
+  });
+});
