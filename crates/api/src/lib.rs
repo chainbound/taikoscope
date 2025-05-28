@@ -283,10 +283,11 @@ async fn slashings(
     let events = match state.client.get_slashing_events_since(since).await {
         Ok(evts) => evts,
         Err(e) => {
-            tracing::error!("Failed to get slashing events: {}", e);
+            tracing::error!(error = %e, "Failed to get slashing events");
             Vec::new()
         }
     };
+    tracing::info!(count = events.len(), "Returning slashing events");
     Json(SlashingEventsResponse { events })
 }
 
@@ -298,10 +299,11 @@ async fn forced_inclusions(
     let events = match state.client.get_forced_inclusions_since(since).await {
         Ok(evts) => evts,
         Err(e) => {
-            tracing::error!("Failed to get forced inclusion events: {}", e);
+            tracing::error!(error = %e, "Failed to get forced inclusion events");
             Vec::new()
         }
     };
+    tracing::info!(count = events.len(), "Returning forced inclusion events");
     Json(ForcedInclusionEventsResponse { events })
 }
 
@@ -313,10 +315,11 @@ async fn reorgs(
     let events = match state.client.get_l2_reorgs_since(since).await {
         Ok(evts) => evts,
         Err(e) => {
-            tracing::error!("Failed to get reorg events: {}", e);
+            tracing::error!(error = %e, "Failed to get reorg events");
             Vec::new()
         }
     };
+    tracing::info!(count = events.len(), "Returning reorg events");
     Json(ReorgEventsResponse { events })
 }
 
@@ -328,11 +331,12 @@ async fn active_gateways(
     let gateways = match state.client.get_active_gateways_since(since).await {
         Ok(g) => g,
         Err(e) => {
-            tracing::error!("Failed to get active gateways: {}", e);
+            tracing::error!(error = %e, "Failed to get active gateways");
             Vec::new()
         }
     };
-    let gateways = gateways.into_iter().map(|a| format!("0x{}", encode(a))).collect();
+    let gateways: Vec<String> = gateways.into_iter().map(|a| format!("0x{}", encode(a))).collect();
+    tracing::info!(count = gateways.len(), "Returning active gateways");
     Json(ActiveGatewaysResponse { gateways })
 }
 
@@ -340,10 +344,11 @@ async fn current_operator(State(state): State<ApiState>) -> Json<CurrentOperator
     let op = match state.client.get_last_current_operator().await {
         Ok(o) => o.map(|a| format!("0x{}", encode(a))),
         Err(e) => {
-            tracing::error!("Failed to get current operator: {}", e);
+            tracing::error!(error = %e, "Failed to get current operator");
             None
         }
     };
+    tracing::info!(has_value = op.is_some(), "Returning current operator");
     Json(CurrentOperatorResponse { operator: op })
 }
 
@@ -351,10 +356,11 @@ async fn next_operator(State(state): State<ApiState>) -> Json<NextOperatorRespon
     let op = match state.client.get_last_next_operator().await {
         Ok(o) => o.map(|a| format!("0x{}", encode(a))),
         Err(e) => {
-            tracing::error!("Failed to get next operator: {}", e);
+            tracing::error!(error = %e, "Failed to get next operator");
             None
         }
     };
+    tracing::info!(has_value = op.is_some(), "Returning next operator");
     Json(NextOperatorResponse { operator: op })
 }
 
@@ -372,10 +378,11 @@ async fn avg_prove_time(
     } {
         Ok(val) => val,
         Err(e) => {
-            tracing::error!("Failed to get avg prove time: {}", e);
+            tracing::error!(error = %e, "Failed to get avg prove time");
             None
         }
     };
+    tracing::info!(avg_prove_time_ms = ?avg, "Returning avg prove time");
     Json(AvgProveTimeResponse { avg_prove_time_ms: avg })
 }
 
@@ -393,10 +400,11 @@ async fn avg_verify_time(
     } {
         Ok(val) => val,
         Err(e) => {
-            tracing::error!("Failed to get avg verify time: {}", e);
+            tracing::error!(error = %e, "Failed to get avg verify time");
             None
         }
     };
+    tracing::info!(avg_verify_time_ms = ?avg, "Returning avg verify time");
     Json(AvgVerifyTimeResponse { avg_verify_time_ms: avg })
 }
 
@@ -414,10 +422,11 @@ async fn l2_block_cadence(
     } {
         Ok(val) => val,
         Err(e) => {
-            tracing::error!("Failed to get L2 block cadence: {}", e);
+            tracing::error!(error = %e, "Failed to get L2 block cadence");
             None
         }
     };
+    tracing::info!(l2_block_cadence_ms = ?avg, "Returning L2 block cadence");
     Json(L2BlockCadenceResponse { l2_block_cadence_ms: avg })
 }
 
@@ -435,10 +444,11 @@ async fn batch_posting_cadence(
     } {
         Ok(val) => val,
         Err(e) => {
-            tracing::error!("Failed to get batch posting cadence: {}", e);
+            tracing::error!(error = %e, "Failed to get batch posting cadence");
             None
         }
     };
+    tracing::info!(batch_posting_cadence_ms = ?avg, "Returning batch posting cadence");
     Json(BatchPostingCadenceResponse { batch_posting_cadence_ms: avg })
 }
 
@@ -456,10 +466,11 @@ async fn avg_l2_tps(
     } {
         Ok(val) => val,
         Err(e) => {
-            tracing::error!("Failed to get avg L2 TPS: {}", e);
+            tracing::error!(error = %e, "Failed to get avg L2 TPS");
             None
         }
     };
+    tracing::info!(avg_tps = ?avg, "Returning avg L2 TPS");
     Json(AvgL2TpsResponse { avg_tps: avg })
 }
 
@@ -474,10 +485,11 @@ async fn prove_times(
     } {
         Ok(rows) => rows,
         Err(e) => {
-            tracing::error!("Failed to get prove times: {}", e);
+            tracing::error!(error = %e, "Failed to get prove times");
             Vec::new()
         }
     };
+    tracing::info!(count = batches.len(), "Returning prove times");
     Json(ProveTimesResponse { batches })
 }
 
@@ -492,10 +504,11 @@ async fn verify_times(
     } {
         Ok(rows) => rows,
         Err(e) => {
-            tracing::error!("Failed to get verify times: {}", e);
+            tracing::error!(error = %e, "Failed to get verify times");
             Vec::new()
         }
     };
+    tracing::info!(count = batches.len(), "Returning verify times");
     Json(VerifyTimesResponse { batches })
 }
 
@@ -510,10 +523,11 @@ async fn l1_block_times(
     } {
         Ok(rows) => rows,
         Err(e) => {
-            tracing::error!("Failed to get L1 block times: {}", e);
+            tracing::error!(error = %e, "Failed to get L1 block times");
             Vec::new()
         }
     };
+    tracing::info!(count = blocks.len(), "Returning L1 block times");
     Json(L1BlockTimesResponse { blocks })
 }
 
@@ -528,10 +542,11 @@ async fn l2_block_times(
     } {
         Ok(rows) => rows,
         Err(e) => {
-            tracing::error!("Failed to get L2 block times: {}", e);
+            tracing::error!(error = %e, "Failed to get L2 block times");
             Vec::new()
         }
     };
+    tracing::info!(count = blocks.len(), "Returning L2 block times");
     Json(L2BlockTimesResponse { blocks })
 }
 
@@ -543,17 +558,18 @@ async fn sequencer_distribution(
     let rows = match state.client.get_sequencer_distribution_since(since).await {
         Ok(r) => r,
         Err(e) => {
-            tracing::error!("Failed to get sequencer distribution: {}", e);
+            tracing::error!(error = %e, "Failed to get sequencer distribution");
             Vec::new()
         }
     };
-    let sequencers = rows
+    let sequencers: Vec<SequencerDistributionItem> = rows
         .into_iter()
         .map(|r| SequencerDistributionItem {
             address: format!("0x{}", encode(r.sequencer)),
             blocks: r.blocks,
         })
         .collect();
+    tracing::info!(count = sequencers.len(), "Returning sequencer distribution");
     Json(SequencerDistributionResponse { sequencers })
 }
 
