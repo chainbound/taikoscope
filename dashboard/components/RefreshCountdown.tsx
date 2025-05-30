@@ -11,7 +11,7 @@ export const RefreshCountdown: React.FC<RefreshCountdownProps> = ({
   lastRefresh,
   onRefresh,
 }) => {
-  const [timeLeft, setTimeLeft] = React.useState(refreshRate);
+const [timeLeft, setTimeLeft] = React.useState(() => Math.max(refreshRate - (Date.now() - lastRefresh), 0));
 
   React.useEffect(() => {
     const update = () => {
