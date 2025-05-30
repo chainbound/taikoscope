@@ -10,6 +10,7 @@ import { BatchProcessChart } from './components/BatchProcessChart';
 import { GasUsedChart } from './components/GasUsedChart';
 import { ReorgDepthChart } from './components/ReorgDepthChart';
 import { BlockTxChart } from './components/BlockTxChart';
+import { BlobsPerBatchChart } from './components/BlobsPerBatchChart';
 import {
   TimeRange,
   TimeSeriesData,
@@ -49,7 +50,6 @@ import {
   fetchSequencerBlocks,
   fetchBlockTransactions,
   fetchBatchBlobCounts,
-  fetchAvgBlobsPerBatch,
   type BlockTransaction,
   type BatchBlobCount,
 } from './services/apiService';
@@ -197,7 +197,6 @@ const App: React.FC = () => {
       sequencerDistRes,
       blockTxRes,
       batchBlobCountsRes,
-      avgBlobsPerBatchRes,
     ] = await Promise.all([
       fetchL2BlockCadence(range),
       fetchBatchPostingCadence(range),
@@ -219,7 +218,6 @@ const App: React.FC = () => {
       fetchSequencerDistribution(range),
       fetchBlockTransactions(range),
       fetchBatchBlobCounts(range),
-      fetchAvgBlobsPerBatch(range),
     ]);
 
     const l2Cadence = l2CadenceRes.data;
@@ -242,7 +240,6 @@ const App: React.FC = () => {
     const sequencerDist = sequencerDistRes.data || [];
     const txPerBlock = blockTxRes.data || [];
     const blobsPerBatch = batchBlobCountsRes.data || [];
-    const avgBlobs = avgBlobsPerBatchRes.data;
 
     const anyBadRequest = hasBadRequest([
       l2CadenceRes,
@@ -265,7 +262,6 @@ const App: React.FC = () => {
       sequencerDistRes,
       blockTxRes,
       batchBlobCountsRes,
-      avgBlobsPerBatchRes,
     ]);
 
     const currentMetrics: MetricData[] = createMetrics({
@@ -281,7 +277,6 @@ const App: React.FC = () => {
       forcedInclusions,
       l2Block,
       l1Block,
-      avgBlobsPerBatch: avgBlobs,
     });
 
     setMetrics(currentMetrics);
@@ -653,10 +648,7 @@ const App: React.FC = () => {
                             : typeof m.title === 'string' &&
                               m.title === 'Active Gateways'
                               ? () => openActiveGatewaysTable()
-                              : typeof m.title === 'string' &&
-                                m.title === 'Blobs per Batch'
-                                ? () => openBlobsPerBatchTable()
-                                : undefined
+                              : undefined
                     }
                   />
                 ))}
@@ -730,6 +722,9 @@ const App: React.FC = () => {
             }
           >
             <BlockTxChart data={blockTxData} barColor="#4E79A7" />
+          </ChartCard>
+          <ChartCard title="Blobs per Batch" onMore={() => openBlobsPerBatchTable()}>
+            <BlobsPerBatchChart data={batchBlobCounts} barColor="#A0CBE8" />
           </ChartCard>
           <ChartCard
             title="L2 Block Times"
