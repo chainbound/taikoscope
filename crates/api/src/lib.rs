@@ -42,6 +42,7 @@ impl ApiState {
 #[derive(Debug, Deserialize)]
 struct RangeQuery {
     range: Option<String>,
+    address: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -56,6 +57,7 @@ struct BlockTransactionsQuery {
     limit: Option<u64>,
     starting_after: Option<u64>,
     ending_before: Option<u64>,
+    address: Option<String>,
 }
 
 fn range_duration(range: &Option<String>) -> ChronoDuration {
@@ -80,6 +82,13 @@ fn range_duration(range: &Option<String>) -> ChronoDuration {
     }
 
     ChronoDuration::hours(1)
+}
+
+fn parse_address(addr: &Option<String>) -> Option<[u8; 20]> {
+    let a = addr.as_deref()?;
+    let trimmed = a.trim_start_matches("0x");
+    let v = hex::decode(trimmed).ok()?;
+    <[u8; 20]>::try_from(v).ok()
 }
 
 async fn l2_head(State(state): State<ApiState>) -> Json<L2HeadResponse> {
@@ -312,12 +321,13 @@ async fn l2_block_cadence(
     State(state): State<ApiState>,
 ) -> Json<L2BlockCadenceResponse> {
     let duration = range_duration(&params.range);
+    let address = parse_address(&params.address);
     let avg = match if duration.num_hours() <= 1 {
-        state.client.get_l2_block_cadence_last_hour().await
+        state.client.get_l2_block_cadence_last_hour(address).await
     } else if duration.num_hours() <= 24 {
-        state.client.get_l2_block_cadence_last_24_hours().await
+        state.client.get_l2_block_cadence_last_24_hours(address).await
     } else {
-        state.client.get_l2_block_cadence_last_7_days().await
+        state.client.get_l2_block_cadence_last_7_days(address).await
     } {
         Ok(val) => val,
         Err(e) => {
@@ -356,12 +366,13 @@ async fn avg_l2_tps(
     State(state): State<ApiState>,
 ) -> Json<AvgL2TpsResponse> {
     let duration = range_duration(&params.range);
+    let address = parse_address(&params.address);
     let avg = match if duration.num_hours() <= 1 {
-        state.client.get_avg_l2_tps_last_hour().await
+        state.client.get_avg_l2_tps_last_hour(address).await
     } else if duration.num_hours() <= 24 {
-        state.client.get_avg_l2_tps_last_24_hours().await
+        state.client.get_avg_l2_tps_last_24_hours(address).await
     } else {
-        state.client.get_avg_l2_tps_last_7_days().await
+        state.client.get_avg_l2_tps_last_7_days(address).await
     } {
         Ok(val) => val,
         Err(e) => {
@@ -475,10 +486,11 @@ async fn l2_block_times(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
 ) -> Json<L2BlockTimesResponse> {
+    let address = parse_address(&params.address);
     let blocks = match match params.range.as_deref() {
-        Some("24h") => state.client.get_l2_block_times_last_24_hours().await,
-        Some("7d") => state.client.get_l2_block_times_last_7_days().await,
-        _ => state.client.get_l2_block_times_last_hour().await,
+        Some("24h") => state.client.get_l2_block_times_last_24_hours(address).await,
+        Some("7d") => state.client.get_l2_block_times_last_7_days(address).await,
+        _ => state.client.get_l2_block_times_last_hour(address).await,
     } {
         Ok(rows) => rows,
         Err(e) => {
@@ -494,10 +506,11 @@ async fn l2_gas_used(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
 ) -> Json<L2GasUsedResponse> {
+    let address = parse_address(&params.address);
     let blocks = match match params.range.as_deref() {
-        Some("24h") => state.client.get_l2_gas_used_last_24_hours().await,
-        Some("7d") => state.client.get_l2_gas_used_last_7_days().await,
-        _ => state.client.get_l2_gas_used_last_hour().await,
+        Some("24h") => state.client.get_l2_gas_used_last_24_hours(address).await,
+        Some("7d") => state.client.get_l2_gas_used_last_7_days(address).await,
+        _ => state.client.get_l2_gas_used_last_hour(address).await,
     } {
         Ok(rows) => rows,
         Err(e) => {
@@ -581,7 +594,13 @@ async fn block_transactions(
     }
     let rows = match state
         .client
-        .get_block_transactions_paginated(since, limit, params.starting_after, params.ending_before)
+        .get_block_transactions_paginated(
+            since,
+            limit,
+            params.starting_after,
+            params.ending_before,
+            parse_address(&params.address),
+        )
         .await
     {
         Ok(r) => r,

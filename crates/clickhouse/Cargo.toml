@@ -18,6 +18,7 @@ eyre.workspace = true
 serde.workspace = true
 tracing.workspace = true
 url.workspace = true
+hex.workspace = true
 
 [dev-dependencies]
 clickhouse.workspace = true

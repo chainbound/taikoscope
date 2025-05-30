@@ -5,6 +5,7 @@ use chrono::{DateTime, LocalResult, TimeZone, Utc};
 use clickhouse::{Client, Row};
 use derive_more::Debug;
 use eyre::{Context, Result};
+use hex::encode;
 use serde::{Deserialize, Serialize};
 use std::time::Instant;
 use tracing::{debug, error};
@@ -471,14 +472,18 @@ impl ClickhouseReader {
     pub async fn get_block_transactions_since(
         &self,
         since: DateTime<Utc>,
+        sequencer: Option<[u8; 20]>,
     ) -> Result<Vec<BlockTransactionRow>> {
-        let query = format!(
+        let mut query = format!(
             "SELECT sequencer, l2_block_number, sum_tx FROM {db}.l2_head_events \
-             WHERE inserted_at > toDateTime64({}, 3) \
-             ORDER BY l2_block_number",
+             WHERE inserted_at > toDateTime64({}, 3)",
             since.timestamp_millis() as f64 / 1000.0,
             db = self.db_name,
         );
+        if let Some(addr) = sequencer {
+            query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
+        }
+        query.push_str(" ORDER BY l2_block_number");
 
         let rows = self.execute::<BlockTransactionRow>(&query).await?;
         Ok(rows)
@@ -492,6 +497,7 @@ impl ClickhouseReader {
         limit: u64,
         starting_after: Option<u64>,
         ending_before: Option<u64>,
+        sequencer: Option<[u8; 20]>,
     ) -> Result<Vec<BlockTransactionRow>> {
         let mut query = format!(
             "SELECT sequencer, l2_block_number, sum_tx FROM {db}.l2_head_events \
@@ -499,6 +505,9 @@ impl ClickhouseReader {
             since.timestamp_millis() as f64 / 1000.0,
             db = self.db_name,
         );
+        if let Some(addr) = sequencer {
+            query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
+        }
 
         if let Some(start) = starting_after {
             query.push_str(&format!(" AND l2_block_number < {}", start));
@@ -653,7 +662,10 @@ impl ClickhouseReader {
 
     /// Get the average interval in milliseconds between consecutive L2 blocks
     /// observed within the last hour
-    pub async fn get_l2_block_cadence_last_hour(&self) -> Result<Option<u64>> {
+    pub async fn get_l2_block_cadence_last_hour(
+        &self,
+        sequencer: Option<[u8; 20]>,
+    ) -> Result<Option<u64>> {
         #[derive(Row, Deserialize)]
         struct CadenceRow {
             min_ts: u64,
@@ -661,7 +673,7 @@ impl ClickhouseReader {
             cnt: u64,
         }
 
-        let query = format!(
+        let mut query = format!(
             "SELECT toUInt64(min(toUnixTimestamp64Milli(inserted_at))) AS min_ts, \
                     toUInt64(max(toUnixTimestamp64Milli(inserted_at))) AS max_ts, \
                     count() as cnt \
@@ -669,6 +681,9 @@ impl ClickhouseReader {
              WHERE inserted_at >= now64() - INTERVAL 1 HOUR",
             db = self.db_name
         );
+        if let Some(addr) = sequencer {
+            query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
+        }
 
         let rows = self.execute::<CadenceRow>(&query).await?;
         let row = match rows.into_iter().next() {
@@ -685,7 +700,10 @@ impl ClickhouseReader {
 
     /// Get the average interval in milliseconds between consecutive L2 blocks
     /// observed within the last 24 hours
-    pub async fn get_l2_block_cadence_last_24_hours(&self) -> Result<Option<u64>> {
+    pub async fn get_l2_block_cadence_last_24_hours(
+        &self,
+        sequencer: Option<[u8; 20]>,
+    ) -> Result<Option<u64>> {
         #[derive(Row, Deserialize)]
         struct CadenceRow {
             min_ts: u64,
@@ -693,7 +711,7 @@ impl ClickhouseReader {
             cnt: u64,
         }
 
-        let query = format!(
+        let mut query = format!(
             "SELECT toUInt64(min(toUnixTimestamp64Milli(inserted_at))) AS min_ts, \
                     toUInt64(max(toUnixTimestamp64Milli(inserted_at))) AS max_ts, \
                     count() as cnt \
@@ -701,6 +719,9 @@ impl ClickhouseReader {
              WHERE inserted_at >= now64() - INTERVAL 24 HOUR",
             db = self.db_name
         );
+        if let Some(addr) = sequencer {
+            query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
+        }
 
         let rows = self.execute::<CadenceRow>(&query).await?;
         let row = match rows.into_iter().next() {
@@ -717,7 +738,10 @@ impl ClickhouseReader {
 
     /// Get the average interval in milliseconds between consecutive L2 blocks
     /// observed within the last 7 days
-    pub async fn get_l2_block_cadence_last_7_days(&self) -> Result<Option<u64>> {
+    pub async fn get_l2_block_cadence_last_7_days(
+        &self,
+        sequencer: Option<[u8; 20]>,
+    ) -> Result<Option<u64>> {
         #[derive(Row, Deserialize)]
         struct CadenceRow {
             min_ts: u64,
@@ -725,7 +749,7 @@ impl ClickhouseReader {
             cnt: u64,
         }
 
-        let query = format!(
+        let mut query = format!(
             "SELECT toUInt64(min(toUnixTimestamp64Milli(inserted_at))) AS min_ts, \
                     toUInt64(max(toUnixTimestamp64Milli(inserted_at))) AS max_ts, \
                     count() as cnt \
@@ -733,6 +757,9 @@ impl ClickhouseReader {
              WHERE inserted_at >= now64() - INTERVAL 7 DAY",
             db = self.db_name
         );
+        if let Some(addr) = sequencer {
+            query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
+        }
 
         let rows = self.execute::<CadenceRow>(&query).await?;
         let row = match rows.into_iter().next() {
@@ -1021,7 +1048,10 @@ impl ClickhouseReader {
     }
 
     /// Get the time between consecutive L2 blocks for the last hour
-    pub async fn get_l2_block_times_last_hour(&self) -> Result<Vec<L2BlockTimeRow>> {
+    pub async fn get_l2_block_times_last_hour(
+        &self,
+        sequencer: Option<[u8; 20]>,
+    ) -> Result<Vec<L2BlockTimeRow>> {
         #[derive(Row, Deserialize)]
         struct RawRow {
             l2_block_number: u64,
@@ -1029,16 +1059,19 @@ impl ClickhouseReader {
             ms_since_prev_block: Option<u64>,
         }
 
-        let query = format!(
+        let mut query = format!(
             "SELECT l2_block_number, \
                     block_ts AS block_time, \
                     toUInt64OrNull(toString((block_ts - lagInFrame(block_ts) OVER (ORDER BY l2_block_number)) * 1000)) \
                         AS ms_since_prev_block \
              FROM {db}.l2_head_events \
-             WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL 1 HOUR) \
-             ORDER BY l2_block_number",
+             WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL 1 HOUR)",
             db = self.db_name
         );
+        if let Some(addr) = sequencer {
+            query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
+        }
+        query.push_str(" ORDER BY l2_block_number");
         let rows = self.execute::<RawRow>(&query).await?;
         Ok(rows
             .into_iter()
@@ -1054,7 +1087,10 @@ impl ClickhouseReader {
     }
 
     /// Get the time between consecutive L2 blocks for the last 24 hours
-    pub async fn get_l2_block_times_last_24_hours(&self) -> Result<Vec<L2BlockTimeRow>> {
+    pub async fn get_l2_block_times_last_24_hours(
+        &self,
+        sequencer: Option<[u8; 20]>,
+    ) -> Result<Vec<L2BlockTimeRow>> {
         #[derive(Row, Deserialize)]
         struct RawRow {
             l2_block_number: u64,
@@ -1062,16 +1098,19 @@ impl ClickhouseReader {
             ms_since_prev_block: Option<u64>,
         }
 
-        let query = format!(
+        let mut query = format!(
             "SELECT l2_block_number, \
                     block_ts AS block_time, \
                     toUInt64OrNull(toString((block_ts - lagInFrame(block_ts) OVER (ORDER BY l2_block_number)) * 1000)) \
                         AS ms_since_prev_block \
              FROM {db}.l2_head_events \
-             WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL 24 HOUR) \
-             ORDER BY l2_block_number",
+             WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL 24 HOUR)",
             db = self.db_name
         );
+        if let Some(addr) = sequencer {
+            query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
+        }
+        query.push_str(" ORDER BY l2_block_number");
         let rows = self.execute::<RawRow>(&query).await?;
         Ok(rows
             .into_iter()
@@ -1087,7 +1126,10 @@ impl ClickhouseReader {
     }
 
     /// Get the time between consecutive L2 blocks for the last 7 days
-    pub async fn get_l2_block_times_last_7_days(&self) -> Result<Vec<L2BlockTimeRow>> {
+    pub async fn get_l2_block_times_last_7_days(
+        &self,
+        sequencer: Option<[u8; 20]>,
+    ) -> Result<Vec<L2BlockTimeRow>> {
         #[derive(Row, Deserialize)]
         struct RawRow {
             l2_block_number: u64,
@@ -1095,16 +1137,19 @@ impl ClickhouseReader {
             ms_since_prev_block: Option<u64>,
         }
 
-        let query = format!(
+        let mut query = format!(
             "SELECT l2_block_number, \
                     block_ts AS block_time, \
                     toUInt64OrNull(toString((block_ts - lagInFrame(block_ts) OVER (ORDER BY l2_block_number)) * 1000)) \
                         AS ms_since_prev_block \
              FROM {db}.l2_head_events \
-             WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL 7 DAY) \
-             ORDER BY l2_block_number",
+             WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL 7 DAY)",
             db = self.db_name
         );
+        if let Some(addr) = sequencer {
+            query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
+        }
+        query.push_str(" ORDER BY l2_block_number");
         let rows = self.execute::<RawRow>(&query).await?;
         Ok(rows
             .into_iter()
@@ -1120,7 +1165,10 @@ impl ClickhouseReader {
     }
 
     /// Get the average number of L2 transactions per second for the last hour
-    pub async fn get_avg_l2_tps_last_hour(&self) -> Result<Option<f64>> {
+    pub async fn get_avg_l2_tps_last_hour(
+        &self,
+        sequencer: Option<[u8; 20]>,
+    ) -> Result<Option<f64>> {
         #[derive(Row, Deserialize)]
         struct TpsRow {
             min_ts: u64,
@@ -1128,7 +1176,7 @@ impl ClickhouseReader {
             tx_sum: u64,
         }
 
-        let query = format!(
+        let mut query = format!(
             "SELECT toUInt64(min(block_ts)) AS min_ts, \
                     toUInt64(max(block_ts)) AS max_ts, \
                     sum(sum_tx) AS tx_sum \
@@ -1136,6 +1184,9 @@ impl ClickhouseReader {
              WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL 1 HOUR)",
             db = self.db_name
         );
+        if let Some(addr) = sequencer {
+            query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
+        }
 
         let rows = self.execute::<TpsRow>(&query).await?;
         let row = match rows.into_iter().next() {
@@ -1152,7 +1203,10 @@ impl ClickhouseReader {
     }
 
     /// Get the average number of L2 transactions per second for the last 24 hours
-    pub async fn get_avg_l2_tps_last_24_hours(&self) -> Result<Option<f64>> {
+    pub async fn get_avg_l2_tps_last_24_hours(
+        &self,
+        sequencer: Option<[u8; 20]>,
+    ) -> Result<Option<f64>> {
         #[derive(Row, Deserialize)]
         struct TpsRow {
             min_ts: u64,
@@ -1160,7 +1214,7 @@ impl ClickhouseReader {
             tx_sum: u64,
         }
 
-        let query = format!(
+        let mut query = format!(
             "SELECT toUInt64(min(block_ts)) AS min_ts, \
                     toUInt64(max(block_ts)) AS max_ts, \
                     sum(sum_tx) AS tx_sum \
@@ -1168,6 +1222,9 @@ impl ClickhouseReader {
              WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL 24 HOUR)",
             db = self.db_name
         );
+        if let Some(addr) = sequencer {
+            query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
+        }
 
         let rows = self.execute::<TpsRow>(&query).await?;
         let row = match rows.into_iter().next() {
@@ -1184,7 +1241,10 @@ impl ClickhouseReader {
     }
 
     /// Get the average number of L2 transactions per second for the last 7 days
-    pub async fn get_avg_l2_tps_last_7_days(&self) -> Result<Option<f64>> {
+    pub async fn get_avg_l2_tps_last_7_days(
+        &self,
+        sequencer: Option<[u8; 20]>,
+    ) -> Result<Option<f64>> {
         #[derive(Row, Deserialize)]
         struct TpsRow {
             min_ts: u64,
@@ -1192,7 +1252,7 @@ impl ClickhouseReader {
             tx_sum: u64,
         }
 
-        let query = format!(
+        let mut query = format!(
             "SELECT toUInt64(min(block_ts)) AS min_ts, \
                     toUInt64(max(block_ts)) AS max_ts, \
                     sum(sum_tx) AS tx_sum \
@@ -1200,6 +1260,9 @@ impl ClickhouseReader {
              WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL 7 DAY)",
             db = self.db_name
         );
+        if let Some(addr) = sequencer {
+            query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
+        }
 
         let rows = self.execute::<TpsRow>(&query).await?;
         let row = match rows.into_iter().next() {
@@ -1216,20 +1279,26 @@ impl ClickhouseReader {
     }
 
     /// Get the gas used for each L2 block in the last hour
-    pub async fn get_l2_gas_used_last_hour(&self) -> Result<Vec<L2GasUsedRow>> {
+    pub async fn get_l2_gas_used_last_hour(
+        &self,
+        sequencer: Option<[u8; 20]>,
+    ) -> Result<Vec<L2GasUsedRow>> {
         #[derive(Row, Deserialize)]
         struct RawRow {
             l2_block_number: u64,
             gas_used: u64,
         }
 
-        let query = format!(
+        let mut query = format!(
             "SELECT l2_block_number, toUInt64(sum_gas_used) AS gas_used \
              FROM {db}.l2_head_events \
-             WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL 1 HOUR) \
-             ORDER BY l2_block_number",
+             WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL 1 HOUR)",
             db = self.db_name
         );
+        if let Some(addr) = sequencer {
+            query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
+        }
+        query.push_str(" ORDER BY l2_block_number");
 
         let rows = self.execute::<RawRow>(&query).await?;
         Ok(rows
@@ -1240,20 +1309,26 @@ impl ClickhouseReader {
     }
 
     /// Get the gas used for each L2 block in the last 24 hours
-    pub async fn get_l2_gas_used_last_24_hours(&self) -> Result<Vec<L2GasUsedRow>> {
+    pub async fn get_l2_gas_used_last_24_hours(
+        &self,
+        sequencer: Option<[u8; 20]>,
+    ) -> Result<Vec<L2GasUsedRow>> {
         #[derive(Row, Deserialize)]
         struct RawRow {
             l2_block_number: u64,
             gas_used: u64,
         }
 
-        let query = format!(
+        let mut query = format!(
             "SELECT l2_block_number, toUInt64(sum_gas_used) AS gas_used \
              FROM {db}.l2_head_events \
-             WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL 24 HOUR) \
-             ORDER BY l2_block_number",
+             WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL 24 HOUR)",
             db = self.db_name
         );
+        if let Some(addr) = sequencer {
+            query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
+        }
+        query.push_str(" ORDER BY l2_block_number");
 
         let rows = self.execute::<RawRow>(&query).await?;
         Ok(rows
@@ -1264,20 +1339,26 @@ impl ClickhouseReader {
     }
 
     /// Get the gas used for each L2 block in the last 7 days
-    pub async fn get_l2_gas_used_last_7_days(&self) -> Result<Vec<L2GasUsedRow>> {
+    pub async fn get_l2_gas_used_last_7_days(
+        &self,
+        sequencer: Option<[u8; 20]>,
+    ) -> Result<Vec<L2GasUsedRow>> {
         #[derive(Row, Deserialize)]
         struct RawRow {
             l2_block_number: u64,
             gas_used: u64,
         }
 
-        let query = format!(
+        let mut query = format!(
             "SELECT l2_block_number, toUInt64(sum_gas_used) AS gas_used \
              FROM {db}.l2_head_events \
-             WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL 7 DAY) \
-             ORDER BY l2_block_number",
+             WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL 7 DAY)",
             db = self.db_name
         );
+        if let Some(addr) = sequencer {
+            query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
+        }
+        query.push_str(" ORDER BY l2_block_number");
 
         let rows = self.execute::<RawRow>(&query).await?;
         Ok(rows
@@ -1603,7 +1684,7 @@ mod tests {
         let ch =
             ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
 
-        let result = ch.get_l2_block_times_last_hour().await.unwrap();
+        let result = ch.get_l2_block_times_last_hour(None).await.unwrap();
         assert_eq!(result.len(), 0);
     }
 
@@ -1634,7 +1715,7 @@ mod tests {
         let ch =
             ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
 
-        let result = ch.get_l2_block_times_last_hour().await.unwrap();
+        let result = ch.get_l2_block_times_last_hour(None).await.unwrap();
         assert_eq!(result.len(), 2); // First block filtered out (no ms_since_prev_block)
         assert_eq!(result[0].l2_block_number, 101);
         assert_eq!(result[0].ms_since_prev_block, Some(12000));
@@ -1651,7 +1732,7 @@ mod tests {
         let ch =
             ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
 
-        let result = ch.get_l2_block_times_last_24_hours().await.unwrap();
+        let result = ch.get_l2_block_times_last_24_hours(None).await.unwrap();
         assert_eq!(result.len(), 0);
     }
 
@@ -1673,7 +1754,7 @@ mod tests {
         let ch =
             ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
 
-        let result = ch.get_l2_block_times_last_24_hours().await.unwrap();
+        let result = ch.get_l2_block_times_last_24_hours(None).await.unwrap();
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].l2_block_number, 201);
         assert_eq!(result[0].ms_since_prev_block, Some(15000));
@@ -1688,7 +1769,7 @@ mod tests {
         let ch =
             ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
 
-        let result = ch.get_l2_block_times_last_7_days().await.unwrap();
+        let result = ch.get_l2_block_times_last_7_days(None).await.unwrap();
         assert_eq!(result.len(), 0);
     }
 
@@ -1710,7 +1791,7 @@ mod tests {
         let ch =
             ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
 
-        let result = ch.get_l2_block_times_last_7_days().await.unwrap();
+        let result = ch.get_l2_block_times_last_7_days(None).await.unwrap();
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].l2_block_number, 301);
         assert_eq!(result[0].ms_since_prev_block, Some(20000));
@@ -1730,9 +1811,9 @@ mod tests {
             ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
 
         // These should not panic due to type conversion errors
-        let _ = ch.get_l2_block_times_last_hour().await;
-        let _ = ch.get_l2_block_times_last_24_hours().await;
-        let _ = ch.get_l2_block_times_last_7_days().await;
+        let _ = ch.get_l2_block_times_last_hour(None).await;
+        let _ = ch.get_l2_block_times_last_24_hours(None).await;
+        let _ = ch.get_l2_block_times_last_7_days(None).await;
     }
 
     /// Regression test to prevent ClickHouse type conversion errors
@@ -1756,9 +1837,9 @@ mod tests {
 
         // Test all L2 block time queries (these were the source of the regression)
         // These specifically test toUInt64OrNull with toString() wrapper
-        let _ = ch.get_l2_block_times_last_hour().await;
-        let _ = ch.get_l2_block_times_last_24_hours().await;
-        let _ = ch.get_l2_block_times_last_7_days().await;
+        let _ = ch.get_l2_block_times_last_hour(None).await;
+        let _ = ch.get_l2_block_times_last_24_hours(None).await;
+        let _ = ch.get_l2_block_times_last_7_days(None).await;
 
         // If the toString() wrapper is missing, these would fail with:
         // "Illegal type Int64 of first argument of function toUInt64OrNull"
@@ -1791,7 +1872,7 @@ mod tests {
             ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
 
         // This should work without ClickHouse type errors
-        let result = ch.get_l2_block_times_last_hour().await.unwrap();
+        let result = ch.get_l2_block_times_last_hour(None).await.unwrap();
 
         // Verify the calculation result is properly converted
         assert_eq!(result.len(), 1);
