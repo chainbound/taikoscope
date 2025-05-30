@@ -117,6 +117,7 @@ const App: React.FC = () => {
   const [refreshRate, setRefreshRate] = useState<number>(() =>
     loadRefreshRate(),
   );
+  const [lastRefresh, setLastRefresh] = useState<number>(Date.now());
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [seqDistTxPage, setSeqDistTxPage] = useState<number>(0);
   const [tableLoading, setTableLoading] = useState<boolean>(
@@ -217,6 +218,7 @@ const App: React.FC = () => {
 
   const fetchData = useCallback(async () => {
     setLoadingMetrics(true);
+    setLastRefresh(Date.now());
     const range = timeRange;
     const [
       l2CadenceRes,
@@ -360,6 +362,10 @@ const App: React.FC = () => {
     }
     setLoadingMetrics(false);
   }, [timeRange, selectedSequencer]);
+
+  const handleManualRefresh = useCallback(() => {
+    void fetchData();
+  }, [fetchData]);
 
   useEffect(() => {
     saveRefreshRate(refreshRate);
@@ -698,6 +704,8 @@ const App: React.FC = () => {
         onTimeRangeChange={setTimeRange}
         refreshRate={refreshRate}
         onRefreshRateChange={setRefreshRate}
+        lastRefresh={lastRefresh}
+        onManualRefresh={handleManualRefresh}
         sequencers={sequencerList}
         selectedSequencer={selectedSequencer}
         onSequencerChange={setSelectedSequencer}
