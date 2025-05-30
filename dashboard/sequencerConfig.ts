@@ -1,6 +1,6 @@
 export const SEQUENCER_PAIRS: Array<[string, string]> = [
-  ['0x00a00800c28f2616360dcfadee02d761d14ad94e', 'chainbound A'],
-  ['0x00b00194cdc219921784ab1eb4eaa9634fe1f1a8', 'chainbound B'],
+  ['0x00a00800c28f2616360dcfadee02d761d14ad94e', 'Chainbound A'],
+  ['0x00b00194cdc219921784ab1eb4eaa9634fe1f1a8', 'Chainbound B'],
 ];
 
 export const SEQUENCER_NAME_BY_ADDRESS: Record<string, string> =
