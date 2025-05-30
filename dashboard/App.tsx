@@ -134,6 +134,13 @@ const App: React.FC = () => {
       columns: { key: string; label: string }[];
       rows: Record<string, string | number>[];
       onRowClick?: (row: Record<string, string | number>) => void;
+      pagination?: {
+        page: number;
+        onNext: () => void;
+        onPrev: () => void;
+        disableNext?: boolean;
+        disablePrev?: boolean;
+      };
     };
     timeRange?: TimeRange;
     onTimeRangeChange?: (range: TimeRange) => void;
@@ -461,24 +468,33 @@ const App: React.FC = () => {
     setTableLoading(false);
   };
 
-  const openSequencerBlocks = async (identifier: string) => {
+  const openSequencerBlocks = async (
+    address: string,
+    range: TimeRange = timeRange,
+  ) => {
     setTableLoading(true);
-    const address = getSequencerAddress(identifier) ?? identifier;
+    setTimeRange(range);
     const name = getSequencerName(address);
-    const blocksRes = await fetchSequencerBlocks(timeRange, address);
-    setTableUrl('sequencer-blocks', { address });
+    const blocksRes = await fetchSequencerBlocks(range, address);
+    setTableUrl('sequencer-blocks', { address, range });
     openTable(
       `Blocks proposed by ${name}`,
       [{ key: 'block', label: 'Block Number' }],
       (blocksRes.data || []).map((b) => ({ block: b })),
+      undefined,
+      undefined,
+      undefined,
+      range,
+      (r) => openSequencerBlocks(address, r),
     );
   };
 
-  const openL2ReorgsTable = async () => {
+  const openL2ReorgsTable = async (range: TimeRange = timeRange) => {
     setTableLoading(true);
-    const eventsRes = await fetchL2ReorgEvents(timeRange);
+    setTimeRange(range);
+    const eventsRes = await fetchL2ReorgEvents(range);
     const events = (eventsRes.data || []) as L2ReorgEvent[];
-    setTableUrl('reorgs');
+    setTableUrl('reorgs', { range });
     openTable(
       'L2 Reorgs',
       [
@@ -489,17 +505,18 @@ const App: React.FC = () => {
       undefined,
       undefined,
       undefined,
-      undefined,
-      undefined,
+      range,
+      (r) => openL2ReorgsTable(r),
       <ReorgDepthChart data={events} />,
     );
   };
 
-  const openSlashingEventsTable = async () => {
+  const openSlashingEventsTable = async (range: TimeRange = timeRange) => {
     setTableLoading(true);
-    const eventsRes = await fetchSlashingEvents(timeRange);
+    setTimeRange(range);
+    const eventsRes = await fetchSlashingEvents(range);
     const events = (eventsRes.data || []) as SlashingEvent[];
-    setTableUrl('slashings');
+    setTableUrl('slashings', { range });
     openTable(
       'Slashing Events',
       [
@@ -510,27 +527,39 @@ const App: React.FC = () => {
         l1_block_number: e.l1_block_number,
         validator_addr: bytesToHex(e.validator_addr),
       })) as Record<string, string | number>[],
+      undefined,
+      undefined,
+      undefined,
+      range,
+      (r) => openSlashingEventsTable(r),
     );
   };
 
-  const openForcedInclusionsTable = async () => {
+  const openForcedInclusionsTable = async (range: TimeRange = timeRange) => {
     setTableLoading(true);
-    const eventsRes = await fetchForcedInclusionEvents(timeRange);
+    setTimeRange(range);
+    const eventsRes = await fetchForcedInclusionEvents(range);
     const events = (eventsRes.data || []) as ForcedInclusionEvent[];
-    setTableUrl('forced-inclusions');
+    setTableUrl('forced-inclusions', { range });
     openTable(
       'Forced Inclusions',
       [{ key: 'blob_hash', label: 'Blob Hash' }],
       events.map((e) => ({
         blob_hash: bytesToHex(e.blob_hash),
       })) as Record<string, string | number>[],
+      undefined,
+      undefined,
+      undefined,
+      range,
+      (r) => openForcedInclusionsTable(r),
     );
   };
 
-  const openActiveGatewaysTable = async () => {
+  const openActiveGatewaysTable = async (range: TimeRange = timeRange) => {
     setTableLoading(true);
-    const gatewaysRes = await fetchActiveGatewayAddresses(timeRange);
-    setTableUrl('gateways');
+    setTimeRange(range);
+    const gatewaysRes = await fetchActiveGatewayAddresses(range);
+    setTableUrl('gateways', { range });
     openTable(
       'Active Gateways',
       [{ key: 'address', label: 'Address' }],
@@ -538,18 +567,143 @@ const App: React.FC = () => {
         string,
         string | number
       >[],
+      undefined,
+      undefined,
+      undefined,
+      range,
+      (r) => openActiveGatewaysTable(r),
     );
   };
 
-  const openBlobsPerBatchTable = () => {
+  const openBlobsPerBatchTable = async (range: TimeRange = timeRange) => {
     setTableLoading(true);
+    setTimeRange(range);
+    const blobsRes = await fetchBatchBlobCounts(range);
+    const data = blobsRes.data || [];
+    setTableUrl('blobs-per-batch', { range });
     openTable(
       'Blobs per Batch',
       [
         { key: 'batch', label: 'Batch' },
         { key: 'blobs', label: 'Blobs' },
       ],
-      batchBlobCounts as unknown as Record<string, string | number>[],
+      data as unknown as Record<string, string | number>[],
+      undefined,
+      undefined,
+      undefined,
+      range,
+      (r) => openBlobsPerBatchTable(r),
+    );
+  };
+
+  const openProveTimeTable = async (range: TimeRange = timeRange) => {
+    setTableLoading(true);
+    setTimeRange(range);
+    const res = await fetchProveTimes(range);
+    const data = res.data || [];
+    setTableUrl('prove-time', { range });
+    openTable(
+      'Prove Time',
+      [
+        { key: 'name', label: 'Batch' },
+        { key: 'value', label: 'Seconds' },
+      ],
+      data as unknown as Record<string, string | number>[],
+      undefined,
+      undefined,
+      undefined,
+      range,
+      (r) => openProveTimeTable(r),
+      <BatchProcessChart data={data} lineColor={TAIKO_PINK} />,
+    );
+  };
+
+  const openVerifyTimeTable = async (range: TimeRange = timeRange) => {
+    setTableLoading(true);
+    setTimeRange(range);
+    const res = await fetchVerifyTimes(range);
+    const data = res.data || [];
+    setTableUrl('verify-time', { range });
+    openTable(
+      'Verify Time',
+      [
+        { key: 'name', label: 'Batch' },
+        { key: 'value', label: 'Seconds' },
+      ],
+      data as unknown as Record<string, string | number>[],
+      undefined,
+      undefined,
+      undefined,
+      range,
+      (r) => openVerifyTimeTable(r),
+      <BatchProcessChart data={data} lineColor="#5DA5DA" />,
+    );
+  };
+
+  const openBlockTxTable = async (range: TimeRange = timeRange) => {
+    setTableLoading(true);
+    setTimeRange(range);
+    const res = await fetchBlockTransactions(range, 50);
+    const data = res.data || [];
+    setTableUrl('block-tx', { range });
+    openTable(
+      'Tx Count Per Block',
+      [
+        { key: 'block', label: 'Block Number' },
+        { key: 'txs', label: 'Tx Count' },
+        { key: 'sequencer', label: 'Sequencer' },
+      ],
+      data as unknown as Record<string, string | number>[],
+      undefined,
+      undefined,
+      undefined,
+      range,
+      (r) => openBlockTxTable(r),
+      <BlockTxChart data={data} barColor="#4E79A7" />,
+    );
+  };
+
+  const openL2BlockTimesTable = async (range: TimeRange = timeRange) => {
+    setTableLoading(true);
+    setTimeRange(range);
+    const res = await fetchL2BlockTimes(range, selectedSequencer ?? undefined);
+    const data = res.data || [];
+    setTableUrl('l2-block-times', { range });
+    openTable(
+      'L2 Block Times',
+      [
+        { key: 'value', label: 'Block Number' },
+        { key: 'timestamp', label: 'Interval (ms)' },
+      ],
+      data as unknown as Record<string, string | number>[],
+      undefined,
+      undefined,
+      undefined,
+      range,
+      (r) => openL2BlockTimesTable(r),
+      <BlockTimeChart data={data} lineColor="#FAA43A" />,
+    );
+  };
+
+  const openL1BlockTimesTable = async (range: TimeRange = timeRange) => {
+    setTableLoading(true);
+    setTimeRange(range);
+    const res = await fetchL1BlockTimes(range);
+    const data = res.data || [];
+    setTableUrl('l1-block-times', { range });
+    openTable(
+      'L1 Block Times',
+      [
+        { key: 'value', label: 'Block Number' },
+        { key: 'timestamp', label: 'Interval (ms)' },
+      ],
+      data as unknown as Record<string, string | number>[],
+      undefined,
+      undefined,
+      undefined,
+      range,
+      (r) => openL1BlockTimesTable(r),
+      <BlockTimeChart data={data} lineColor="#60BD68" />,
     );
   };
 
@@ -591,7 +745,7 @@ const App: React.FC = () => {
         { key: 'value', label: 'Blocks' },
       ],
       (distRes.data || []) as unknown as Record<string, string | number>[],
-      (row) => openSequencerBlocks(row.name as string),
+      (row) => openSequencerBlocks(row.name as string, range),
       undefined,
       {
         title: 'Transactions',
@@ -637,21 +791,60 @@ const App: React.FC = () => {
     switch (table) {
       case 'sequencer-blocks': {
         const addr = params.get('address');
-        if (addr) void openSequencerBlocks(addr);
+        const range = (params.get('range') as TimeRange) || timeRange;
+        if (addr) void openSequencerBlocks(addr, range);
         break;
       }
-      case 'reorgs':
-        void openL2ReorgsTable();
+      case 'reorgs': {
+        const range = (params.get('range') as TimeRange) || timeRange;
+        void openL2ReorgsTable(range);
         break;
-      case 'slashings':
-        void openSlashingEventsTable();
+      }
+      case 'slashings': {
+        const range = (params.get('range') as TimeRange) || timeRange;
+        void openSlashingEventsTable(range);
         break;
-      case 'forced-inclusions':
-        void openForcedInclusionsTable();
+      }
+      case 'forced-inclusions': {
+        const range = (params.get('range') as TimeRange) || timeRange;
+        void openForcedInclusionsTable(range);
         break;
-      case 'gateways':
-        void openActiveGatewaysTable();
+      }
+      case 'gateways': {
+        const range = (params.get('range') as TimeRange) || timeRange;
+        void openActiveGatewaysTable(range);
         break;
+      }
+      case 'prove-time': {
+        const range = (params.get('range') as TimeRange) || timeRange;
+        void openProveTimeTable(range);
+        break;
+      }
+      case 'verify-time': {
+        const range = (params.get('range') as TimeRange) || timeRange;
+        void openVerifyTimeTable(range);
+        break;
+      }
+      case 'block-tx': {
+        const range = (params.get('range') as TimeRange) || timeRange;
+        void openBlockTxTable(range);
+        break;
+      }
+      case 'blobs-per-batch': {
+        const range = (params.get('range') as TimeRange) || timeRange;
+        void openBlobsPerBatchTable(range);
+        break;
+      }
+      case 'l2-block-times': {
+        const range = (params.get('range') as TimeRange) || timeRange;
+        void openL2BlockTimesTable(range);
+        break;
+      }
+      case 'l1-block-times': {
+        const range = (params.get('range') as TimeRange) || timeRange;
+        void openL1BlockTimesTable(range);
+        break;
+      }
       case 'sequencer-dist': {
         const range = (params.get('range') as TimeRange) || timeRange;
         const page = parseInt(params.get('page') ?? '0', 10);
@@ -749,13 +942,13 @@ const App: React.FC = () => {
                         typeof m.title === 'string' && m.title === 'L2 Reorgs'
                           ? () => openL2ReorgsTable()
                           : typeof m.title === 'string' &&
-                              m.title === 'Slashing Events'
+                            m.title === 'Slashing Events'
                             ? () => openSlashingEventsTable()
                             : typeof m.title === 'string' &&
-                                m.title === 'Forced Inclusions'
+                              m.title === 'Forced Inclusions'
                               ? () => openForcedInclusionsTable()
                               : typeof m.title === 'string' &&
-                                  m.title === 'Active Gateways'
+                                m.title === 'Active Gateways'
                                 ? () => openActiveGatewaysTable()
                                 : undefined
                       }
@@ -781,19 +974,7 @@ const App: React.FC = () => {
           </ChartCard>
           <ChartCard
             title="Prove Time"
-            onMore={() =>
-              openTable(
-                'Prove Time',
-                [
-                  { key: 'name', label: 'Batch' },
-                  { key: 'value', label: 'Seconds' },
-                ],
-                secondsToProveData as unknown as Record<
-                  string,
-                  string | number
-                >[],
-              )
-            }
+            onMore={() => openProveTimeTable(timeRange)}
             loading={loadingMetrics}
           >
             <BatchProcessChart
@@ -803,19 +984,7 @@ const App: React.FC = () => {
           </ChartCard>
           <ChartCard
             title="Verify Time"
-            onMore={() =>
-              openTable(
-                'Verify Time',
-                [
-                  { key: 'name', label: 'Batch' },
-                  { key: 'value', label: 'Seconds' },
-                ],
-                secondsToVerifyData as unknown as Record<
-                  string,
-                  string | number
-                >[],
-              )
-            }
+            onMore={() => openVerifyTimeTable(timeRange)}
             loading={loadingMetrics}
           >
             <BatchProcessChart data={secondsToVerifyData} lineColor="#5DA5DA" />
@@ -825,56 +994,28 @@ const App: React.FC = () => {
           </ChartCard>
           <ChartCard
             title="Tx Count Per Block"
-            onMore={() =>
-              openTable(
-                'Tx Count Per Block',
-                [
-                  { key: 'block', label: 'Block Number' },
-                  { key: 'txs', label: 'Tx Count' },
-                  { key: 'sequencer', label: 'Sequencer' },
-                ],
-                blockTxData as unknown as Record<string, string | number>[],
-              )
-            }
+            onMore={() => openBlockTxTable(timeRange)}
             loading={loadingMetrics}
           >
             <BlockTxChart data={blockTxData} barColor="#4E79A7" />
           </ChartCard>
           <ChartCard
             title="Blobs per Batch"
-            onMore={() => openBlobsPerBatchTable()}
+            onMore={() => openBlobsPerBatchTable(timeRange)}
             loading={loadingMetrics}
           >
             <BlobsPerBatchChart data={batchBlobCounts} barColor="#A0CBE8" />
           </ChartCard>
           <ChartCard
             title="L2 Block Times"
-            onMore={() =>
-              openTable(
-                'L2 Block Times',
-                [
-                  { key: 'value', label: 'Block Number' },
-                  { key: 'timestamp', label: 'Interval (ms)' },
-                ],
-                l2BlockTimeData as unknown as Record<string, string | number>[],
-              )
-            }
+            onMore={() => openL2BlockTimesTable(timeRange)}
             loading={loadingMetrics}
           >
             <BlockTimeChart data={l2BlockTimeData} lineColor="#FAA43A" />
           </ChartCard>
           <ChartCard
             title="L1 Block Times"
-            onMore={() =>
-              openTable(
-                'L1 Block Times',
-                [
-                  { key: 'value', label: 'Block Number' },
-                  { key: 'timestamp', label: 'Interval (ms)' },
-                ],
-                l1BlockTimeData as unknown as Record<string, string | number>[],
-              )
-            }
+            onMore={() => openL1BlockTimesTable(timeRange)}
             loading={loadingMetrics}
           >
             <BlockTimeChart data={l1BlockTimeData} lineColor="#60BD68" />
