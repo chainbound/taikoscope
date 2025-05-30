@@ -176,7 +176,7 @@ async function fetchData(range: TimeRange, state: State) {
     l2GasUsedRes,
     sequencerDistRes,
   ] = await Promise.all([
-    fetchL2BlockCadence(range),
+    fetchL2BlockCadence(range, undefined),
     fetchBatchPostingCadence(range),
     fetchAvgProveTime(range),
     fetchAvgVerifyTime(range),
@@ -194,8 +194,8 @@ async function fetchData(range: TimeRange, state: State) {
     fetchProveTimes(range),
     fetchVerifyTimes(range),
     fetchL1BlockTimes(range),
-    fetchL2BlockTimes(range),
-    fetchL2GasUsed(range),
+    fetchL2BlockTimes(range, undefined),
+    fetchL2GasUsed(range, undefined),
     fetchSequencerDistribution(range),
   ]);
 

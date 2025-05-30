@@ -55,8 +55,9 @@ export const fetchAvgVerifyTime = async (
 
 export const fetchL2BlockCadence = async (
   range: '1h' | '24h' | '7d',
+  address?: string,
 ): Promise<RequestResult<number>> => {
-  const url = `${API_BASE}/l2-block-cadence?range=${range}`;
+  const url = `${API_BASE}/l2-block-cadence?range=${range}${address ? `&address=${address}` : ''}`;
   const res = await fetchJson<{ l2_block_cadence_ms?: number }>(url);
   return {
     data: res.data?.l2_block_cadence_ms ?? null,
@@ -283,8 +284,9 @@ export const fetchL1BlockTimes = async (
 
 export const fetchL2BlockTimes = async (
   range: '1h' | '24h' | '7d',
+  address?: string,
 ): Promise<RequestResult<TimeSeriesData[]>> => {
-  const url = `${API_BASE}/l2-block-times?range=${range}`;
+  const url = `${API_BASE}/l2-block-times?range=${range}${address ? `&address=${address}` : ''}`;
   const res = await fetchJson<{
     blocks: { l2_block_number: number; ms_since_prev_block: number }[];
   }>(url);
@@ -304,8 +306,9 @@ export const fetchL2BlockTimes = async (
 
 export const fetchL2GasUsed = async (
   range: '1h' | '24h' | '7d',
+  address?: string,
 ): Promise<RequestResult<TimeSeriesData[]>> => {
-  const url = `${API_BASE}/l2-gas-used?range=${range}`;
+  const url = `${API_BASE}/l2-gas-used?range=${range}${address ? `&address=${address}` : ''}`;
   const res = await fetchJson<{
     blocks: { l2_block_number: number; gas_used: number }[];
   }>(url);
@@ -363,12 +366,16 @@ export const fetchBlockTransactions = async (
   limit = 50,
   startingAfter?: number,
   endingBefore?: number,
+  address?: string,
 ): Promise<RequestResult<BlockTransaction[]>> => {
   let url = `${API_BASE}/block-transactions?range=${range}&limit=${limit}`;
   if (startingAfter !== undefined) {
     url += `&starting_after=${startingAfter}`;
   } else if (endingBefore !== undefined) {
     url += `&ending_before=${endingBefore}`;
+  }
+  if (address) {
+    url += `&address=${address}`;
   }
   const res = await fetchJson<{ blocks: BlockTransaction[] }>(url);
   return { data: res.data?.blocks ?? null, badRequest: res.badRequest };

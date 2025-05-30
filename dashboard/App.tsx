@@ -59,6 +59,7 @@ const TAIKO_PINK = '#e81899';
 
 const App: React.FC = () => {
   const [timeRange, setTimeRange] = useState<TimeRange>('1h');
+  const [selectedSequencer, setSelectedSequencer] = useState<string | null>(null);
   const [metrics, setMetrics] = useState<MetricData[]>([]);
   const [secondsToProveData, setSecondsToProveData] = useState<
     TimeSeriesData[]
@@ -74,6 +75,10 @@ const App: React.FC = () => {
   const [sequencerDistribution, setSequencerDistribution] = useState<
     PieChartDataItem[]
   >([]);
+  const sequencerList = React.useMemo(
+    () => sequencerDistribution.map((s) => s.name),
+    [sequencerDistribution],
+  );
   const [l2HeadBlock, setL2HeadBlock] = useState<string>('0');
   const [l1HeadBlock, setL1HeadBlock] = useState<string>('0');
   const [refreshRate, setRefreshRate] = useState<number>(() =>
@@ -198,7 +203,7 @@ const App: React.FC = () => {
       blockTxRes,
       batchBlobCountsRes,
     ] = await Promise.all([
-      fetchL2BlockCadence(range),
+      fetchL2BlockCadence(range, selectedSequencer ?? undefined),
       fetchBatchPostingCadence(range),
       fetchAvgProveTime(range),
       fetchAvgVerifyTime(range),
@@ -213,10 +218,10 @@ const App: React.FC = () => {
       fetchProveTimes(range),
       fetchVerifyTimes(range),
       fetchL1BlockTimes(range),
-      fetchL2BlockTimes(range),
-      fetchL2GasUsed(range),
+      fetchL2BlockTimes(range, selectedSequencer ?? undefined),
+      fetchL2GasUsed(range, selectedSequencer ?? undefined),
       fetchSequencerDistribution(range),
-      fetchBlockTransactions(range),
+      fetchBlockTransactions(range, 50, undefined, undefined, selectedSequencer ?? undefined),
       fetchBatchBlobCounts(range),
     ]);
 
@@ -237,7 +242,9 @@ const App: React.FC = () => {
     const l1Times = l1TimesRes.data || [];
     const l2Times = l2TimesRes.data || [];
     const l2Gas = l2GasUsedRes.data || [];
-    const sequencerDist = sequencerDistRes.data || [];
+    const sequencerDist = (sequencerDistRes.data || []).filter(
+      (d) => !selectedSequencer || d.name === selectedSequencer,
+    );
     const txPerBlock = blockTxRes.data || [];
     const blobsPerBatch = batchBlobCountsRes.data || [];
 
@@ -301,7 +308,7 @@ const App: React.FC = () => {
     } else {
       setErrorMessage('');
     }
-  }, [timeRange]);
+  }, [timeRange, selectedSequencer]);
 
   useEffect(() => {
     saveRefreshRate(refreshRate);
@@ -491,7 +498,13 @@ const App: React.FC = () => {
     });
     const [distRes, txRes] = await Promise.all([
       fetchSequencerDistribution(range),
-      fetchBlockTransactions(range, 50, startingAfter, endingBefore),
+      fetchBlockTransactions(
+        range,
+        50,
+        startingAfter,
+        endingBefore,
+        selectedSequencer ?? undefined,
+      ),
     ]);
     const txData = txRes.data || [];
     const disablePrev = page === 0;
@@ -614,6 +627,9 @@ const App: React.FC = () => {
         onTimeRangeChange={setTimeRange}
         refreshRate={refreshRate}
         onRefreshRateChange={setRefreshRate}
+        sequencers={sequencerList}
+        selectedSequencer={selectedSequencer}
+        onSequencerChange={setSelectedSequencer}
       />
 
       {errorMessage && (
