@@ -11,7 +11,9 @@ export const RefreshCountdown: React.FC<RefreshCountdownProps> = ({
   lastRefresh,
   onRefresh,
 }) => {
-const [timeLeft, setTimeLeft] = React.useState(() => Math.max(refreshRate - (Date.now() - lastRefresh), 0));
+  const [timeLeft, setTimeLeft] = React.useState(() =>
+    Math.max(refreshRate - (Date.now() - lastRefresh), 0),
+  );
 
   React.useEffect(() => {
     const update = () => {
@@ -31,19 +33,11 @@ const [timeLeft, setTimeLeft] = React.useState(() => Math.max(refreshRate - (Dat
   return (
     <svg
       viewBox="0 0 36 36"
-      className="w-8 h-8 cursor-pointer -rotate-90"
+      className="w-6 h-6 cursor-pointer -rotate-90"
       onClick={onRefresh}
       role="button"
       aria-label="Refresh now"
     >
-      <circle
-        cx="18"
-        cy="18"
-        r={radius}
-        stroke="#e5e7eb"
-        strokeWidth="4"
-        fill="none"
-      />
       <circle
         cx="18"
         cy="18"
