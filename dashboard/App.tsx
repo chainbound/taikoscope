@@ -321,6 +321,31 @@ const App: React.FC = () => {
     'Other',
   ];
 
+  const setTableUrl = (
+    name: string,
+    params: Record<string, string | number | undefined> = {},
+  ) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('view', 'table');
+    url.searchParams.set('table', name);
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined) url.searchParams.set(k, String(v));
+    });
+    window.history.replaceState(null, '', url);
+  };
+
+  const clearTableUrl = () => {
+    const url = new URL(window.location.href);
+    url.searchParams.delete('view');
+    url.searchParams.delete('table');
+    url.searchParams.delete('address');
+    url.searchParams.delete('page');
+    url.searchParams.delete('start');
+    url.searchParams.delete('end');
+    url.searchParams.delete('range');
+    window.history.replaceState(null, '', url);
+  };
+
   const openTable = (
     title: string,
     columns: { key: string; label: string }[],
@@ -359,6 +384,7 @@ const App: React.FC = () => {
 
   const openSequencerBlocks = async (address: string) => {
     const blocksRes = await fetchSequencerBlocks(timeRange, address);
+    setTableUrl('sequencer-blocks', { address });
     openTable(
       `Blocks proposed by ${address}`,
       [{ key: 'block', label: 'Block Number' }],
@@ -369,6 +395,7 @@ const App: React.FC = () => {
   const openL2ReorgsTable = async () => {
     const eventsRes = await fetchL2ReorgEvents(timeRange);
     const events = (eventsRes.data || []) as L2ReorgEvent[];
+    setTableUrl('reorgs');
     openTable(
       'L2 Reorgs',
       [
@@ -388,6 +415,7 @@ const App: React.FC = () => {
   const openSlashingEventsTable = async () => {
     const eventsRes = await fetchSlashingEvents(timeRange);
     const events = (eventsRes.data || []) as SlashingEvent[];
+    setTableUrl('slashings');
     openTable(
       'Slashing Events',
       [
@@ -404,6 +432,7 @@ const App: React.FC = () => {
   const openForcedInclusionsTable = async () => {
     const eventsRes = await fetchForcedInclusionEvents(timeRange);
     const events = (eventsRes.data || []) as ForcedInclusionEvent[];
+    setTableUrl('forced-inclusions');
     openTable(
       'Forced Inclusions',
       [{ key: 'blob_hash', label: 'Blob Hash' }],
@@ -415,6 +444,7 @@ const App: React.FC = () => {
 
   const openActiveGatewaysTable = async () => {
     const gatewaysRes = await fetchActiveGatewayAddresses(timeRange);
+    setTableUrl('gateways');
     openTable(
       'Active Gateways',
       [{ key: 'address', label: 'Address' }],
@@ -433,6 +463,12 @@ const App: React.FC = () => {
   ) => {
     setTimeRange(range);
     setSeqDistTxPage(page);
+    setTableUrl('sequencer-dist', {
+      range,
+      page,
+      start: startingAfter,
+      end: endingBefore,
+    });
     const [distRes, txRes] = await Promise.all([
       fetchSequencerDistribution(range),
       fetchBlockTransactions(range, 50, startingAfter, endingBefore),
@@ -488,13 +524,56 @@ const App: React.FC = () => {
     );
   };
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('view') !== 'table') return;
+    const table = params.get('table');
+    switch (table) {
+      case 'sequencer-blocks': {
+        const addr = params.get('address');
+        if (addr) void openSequencerBlocks(addr);
+        break;
+      }
+      case 'reorgs':
+        void openL2ReorgsTable();
+        break;
+      case 'slashings':
+        void openSlashingEventsTable();
+        break;
+      case 'forced-inclusions':
+        void openForcedInclusionsTable();
+        break;
+      case 'gateways':
+        void openActiveGatewaysTable();
+        break;
+      case 'sequencer-dist': {
+        const range = (params.get('range') as TimeRange) || timeRange;
+        const page = parseInt(params.get('page') ?? '0', 10);
+        const start = params.get('start');
+        const end = params.get('end');
+        void openSequencerDistributionTable(
+          range,
+          page,
+          start ? Number(start) : undefined,
+          end ? Number(end) : undefined,
+        );
+        break;
+      }
+      default:
+        break;
+    }
+  }, []);
+
   if (tableView) {
     return (
       <DataTable
         title={tableView.title}
         columns={tableView.columns}
         rows={tableView.rows}
-        onBack={() => setTableView(null)}
+        onBack={() => {
+          clearTableUrl();
+          setTableView(null);
+        }}
         onRowClick={tableView.onRowClick}
         extraAction={tableView.extraAction}
         extraTable={tableView.extraTable}
