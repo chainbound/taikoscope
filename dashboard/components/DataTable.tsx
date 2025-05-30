@@ -97,39 +97,52 @@ export const DataTable: React.FC<DataTableProps> = ({
             </tr>
           </thead>
           <tbody>
-            {pageRows.map((row, idx) => (
-              <tr
-                key={idx}
-                className="border-t hover:bg-gray-50 cursor-pointer"
-                onClick={onRowClick ? () => onRowClick(row) : undefined}
-              >
-                {columns.map((col) => (
-                  <td key={col.key} className="px-2 py-1">
-                    {row[col.key] as React.ReactNode}
-                  </td>
-                ))}
+            {pageRows.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={columns.length}
+                  className="px-2 py-4 text-center text-gray-500"
+                >
+                  No data available
+                </td>
               </tr>
-            ))}
+            ) : (
+              pageRows.map((row, idx) => (
+                <tr
+                  key={idx}
+                  className="border-t hover:bg-gray-50 cursor-pointer"
+                  onClick={onRowClick ? () => onRowClick(row) : undefined}
+                >
+                  {columns.map((col) => (
+                    <td key={col.key} className="px-2 py-1">
+                      {row[col.key] as React.ReactNode}
+                    </td>
+                  ))}
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
-      <div className="flex items-center justify-between mt-2">
-        <button
-          onClick={() => setPage((p) => p - 1)}
-          disabled={disablePrev}
-          className="text-[#e81899] disabled:text-gray-400"
-        >
-          Prev
-        </button>
-        <span>Page {page + 1}</span>
-        <button
-          onClick={() => setPage((p) => p + 1)}
-          disabled={disableNext}
-          className="text-[#e81899] disabled:text-gray-400"
-        >
-          Next
-        </button>
-      </div>
+      {rows.length > 0 && (
+        <div className="flex items-center justify-between mt-2">
+          <button
+            onClick={() => setPage((p) => p - 1)}
+            disabled={disablePrev}
+            className="text-[#e81899] disabled:text-gray-400"
+          >
+            Prev
+          </button>
+          <span>Page {page + 1}</span>
+          <button
+            onClick={() => setPage((p) => p + 1)}
+            disabled={disableNext}
+            className="text-[#e81899] disabled:text-gray-400"
+          >
+            Next
+          </button>
+        </div>
+      )}
 
       {extraTable ? (
         <div className="mt-8">
@@ -146,27 +159,38 @@ export const DataTable: React.FC<DataTableProps> = ({
                 </tr>
               </thead>
               <tbody>
-                {extraTable.rows.map((row, idx) => (
-                  <tr
-                    key={idx}
-                    className="border-t hover:bg-gray-50 cursor-pointer"
-                    onClick={
-                      extraTable.onRowClick
-                        ? () => extraTable.onRowClick!(row)
-                        : undefined
-                    }
-                  >
-                    {extraTable.columns.map((col) => (
-                      <td key={col.key} className="px-2 py-1">
-                        {row[col.key] as React.ReactNode}
-                      </td>
-                    ))}
+                {extraTable.rows.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={extraTable.columns.length}
+                      className="px-2 py-4 text-center text-gray-500"
+                    >
+                      No data available
+                    </td>
                   </tr>
-                ))}
+                ) : (
+                  extraTable.rows.map((row, idx) => (
+                    <tr
+                      key={idx}
+                      className="border-t hover:bg-gray-50 cursor-pointer"
+                      onClick={
+                        extraTable.onRowClick
+                          ? () => extraTable.onRowClick!(row)
+                          : undefined
+                      }
+                    >
+                      {extraTable.columns.map((col) => (
+                        <td key={col.key} className="px-2 py-1">
+                          {row[col.key] as React.ReactNode}
+                        </td>
+                      ))}
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
-          {extraTable.pagination && (
+          {extraTable.pagination && extraTable.rows.length > 0 && (
             <div className="flex items-center justify-between mt-2">
               <button
                 onClick={extraTable.pagination.onPrev}
