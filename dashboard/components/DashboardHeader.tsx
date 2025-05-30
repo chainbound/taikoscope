@@ -27,11 +27,21 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
 }) => {
   return (
     <header className="flex flex-col md:flex-row justify-between items-center pb-4 border-b border-gray-200">
-      <h1 className="text-3xl font-bold" style={{ color: '#e81899' }}>
-        {' '}
-        {/* Updated Taiko Pink */}
-        Taiko Masaya Testnet
-      </h1>
+      <div className="flex items-baseline space-x-4">
+        <h1 className="text-3xl font-bold" style={{ color: '#e81899' }}>
+          {' '}
+          {/* Updated Taiko Pink */}
+          Taiko Masaya Testnet
+        </h1>
+        <a
+          href="https://taikoscope.instatus.com/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-sm text-[#e81899] hover:underline"
+        >
+          Status
+        </a>
+      </div>
       <div className="flex items-center space-x-2 mt-4 md:mt-0">
         <TimeRangeSelector
           currentTimeRange={timeRange}
