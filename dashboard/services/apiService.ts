@@ -352,11 +352,16 @@ export interface BlockTransaction {
 
 export const fetchBlockTransactions = async (
   range: '1h' | '24h' | '7d',
-  page = 0,
   limit = 50,
+  startingAfter?: number,
+  endingBefore?: number,
 ): Promise<RequestResult<BlockTransaction[]>> => {
-  const offset = page * limit;
-  const url = `${API_BASE}/block-transactions?range=${range}&limit=${limit}&offset=${offset}`;
+  let url = `${API_BASE}/block-transactions?range=${range}&limit=${limit}`;
+  if (startingAfter !== undefined) {
+    url += `&starting_after=${startingAfter}`;
+  } else if (endingBefore !== undefined) {
+    url += `&ending_before=${endingBefore}`;
+  }
   const res = await fetchJson<{ blocks: BlockTransaction[] }>(url);
   return { data: res.data?.blocks ?? null, badRequest: res.badRequest };
 };
