@@ -6,6 +6,8 @@ use clickhouse::{Client, Row};
 use derive_more::Debug;
 use eyre::{Context, Result};
 use serde::{Deserialize, Serialize};
+use std::time::Instant;
+use tracing::{debug, error};
 use url::Url;
 
 use crate::models::{
@@ -72,16 +74,28 @@ impl ClickhouseReader {
         Ok(Self { base: client, db_name })
     }
 
+    async fn execute<R>(&self, query: &str) -> Result<Vec<R>>
+    where
+        R: Row + for<'b> Deserialize<'b>,
+    {
+        let client = self.base.clone().with_database(&self.db_name);
+        let start = Instant::now();
+        let result = client.query(query).fetch_all::<R>().await;
+        let duration_ms = start.elapsed().as_millis();
+        match &result {
+            Ok(rows) => {
+                debug!(query = %query, duration_ms, rows = rows.len(), "ClickHouse query executed")
+            }
+            Err(e) => error!(query = %query, duration_ms, error = %e, "ClickHouse query failed"),
+        }
+        result.map_err(Into::into)
+    }
+
     /// Get last L2 head time
     pub async fn get_last_l2_head_time(&self) -> Result<Option<DateTime<Utc>>> {
-        let client = self.base.clone().with_database(&self.db_name);
         let query =
             format!("SELECT max(block_ts) AS block_ts FROM {}.l2_head_events", self.db_name);
-        let rows = client
-            .query(&query)
-            .fetch_all::<MaxTs>()
-            .await
-            .context("fetching max(block_ts) failed")?;
+        let rows = self.execute::<MaxTs>(&query).await.context("fetching max(block_ts) failed")?;
         let row = match rows.into_iter().next() {
             Some(r) => r,
             None => return Ok(None),
@@ -98,15 +112,10 @@ impl ClickhouseReader {
 
     /// Get timestamp of the latest L1 head event in UTC
     pub async fn get_last_l1_head_time(&self) -> Result<Option<DateTime<Utc>>> {
-        let client = self.base.clone().with_database(&self.db_name);
         let query =
             format!("SELECT max(block_ts) AS block_ts FROM {}.l1_head_events", self.db_name);
 
-        let rows = client
-            .query(&query)
-            .fetch_all::<MaxTs>()
-            .await
-            .context("fetching max(block_ts) failed")?;
+        let rows = self.execute::<MaxTs>(&query).await.context("fetching max(block_ts) failed")?;
 
         let row = match rows.into_iter().next() {
             Some(r) => r,
@@ -132,11 +141,10 @@ impl ClickhouseReader {
             number: u64,
         }
 
-        let client = self.base.clone().with_database(&self.db_name);
         let query =
             format!("SELECT max(l2_block_number) AS number FROM {}.l2_head_events", &self.db_name);
 
-        let rows = client.query(&query).fetch_all::<MaxNumber>().await?;
+        let rows = self.execute::<MaxNumber>(&query).await?;
         let row = match rows.into_iter().next() {
             Some(r) => r,
             None => return Ok(None),
@@ -154,11 +162,10 @@ impl ClickhouseReader {
             number: u64,
         }
 
-        let client = self.base.clone().with_database(&self.db_name);
         let query =
             format!("SELECT max(l1_block_number) AS number FROM {}.l1_head_events", &self.db_name);
 
-        let rows = client.query(&query).fetch_all::<MaxNumber>().await?;
+        let rows = self.execute::<MaxNumber>(&query).await?;
         let row = match rows.into_iter().next() {
             Some(r) => r,
             None => return Ok(None),
@@ -171,7 +178,6 @@ impl ClickhouseReader {
 
     /// Get timestamp of the latest `BatchProposed` event based on L1 block timestamp in UTC
     pub async fn get_last_batch_time(&self) -> Result<Option<DateTime<Utc>>> {
-        let client = self.base.clone().with_database(&self.db_name);
         let query = format!(
             "SELECT max(l1_events.block_ts) AS block_ts
              FROM {db}.batches b
@@ -180,9 +186,8 @@ impl ClickhouseReader {
             db = &self.db_name
         );
 
-        let rows = client
-            .query(&query)
-            .fetch_all::<MaxTs>()
+        let rows = self
+            .execute::<MaxTs>(&query)
             .await
             .context("fetching max batch L1 block timestamp failed")?;
 
@@ -205,17 +210,13 @@ impl ClickhouseReader {
 
     /// Get timestamp of the latest `BatchesVerified` event insertion in UTC
     pub async fn get_last_verified_batch_time(&self) -> Result<Option<DateTime<Utc>>> {
-        let client = self.base.clone().with_database(&self.db_name);
         let query = format!(
             "SELECT toUInt64(max(inserted_at)) AS block_ts FROM {}.verified_batches",
             &self.db_name
         );
 
-        let rows = client
-            .query(&query)
-            .fetch_all::<MaxTs>()
-            .await
-            .context("fetching max(inserted_at) failed")?;
+        let rows =
+            self.execute::<MaxTs>(&query).await.context("fetching max(inserted_at) failed")?;
 
         let row = match rows.into_iter().next() {
             Some(r) => r,
@@ -240,12 +241,11 @@ impl ClickhouseReader {
             current_operator: Option<[u8; 20]>,
         }
 
-        let client = self.base.clone().with_database(&self.db_name);
         let query = format!(
             "SELECT current_operator FROM {}.preconf_data ORDER BY inserted_at DESC LIMIT 1",
             self.db_name
         );
-        let rows = client.query(&query).fetch_all::<OpRow>().await?;
+        let rows = self.execute::<OpRow>(&query).await?;
         Ok(rows.into_iter().next().and_then(|r| r.current_operator))
     }
 
@@ -256,12 +256,11 @@ impl ClickhouseReader {
             next_operator: Option<[u8; 20]>,
         }
 
-        let client = self.base.clone().with_database(&self.db_name);
         let query = format!(
             "SELECT next_operator FROM {}.preconf_data ORDER BY inserted_at DESC LIMIT 1",
             self.db_name
         );
-        let rows = client.query(&query).fetch_all::<OpRow>().await?;
+        let rows = self.execute::<OpRow>(&query).await?;
         Ok(rows.into_iter().next().and_then(|r| r.next_operator))
     }
 
@@ -270,7 +269,6 @@ impl ClickhouseReader {
         &self,
         cutoff: DateTime<Utc>,
     ) -> Result<Vec<(u64, u64, DateTime<Utc>)>> {
-        let client = self.base.clone().with_database(&self.db_name);
         let query = format!(
             "SELECT b.l1_block_number, b.batch_id, toUnixTimestamp64Milli(b.inserted_at) as inserted_at \
              FROM (SELECT l1_block_number, batch_id, inserted_at \
@@ -283,9 +281,8 @@ impl ClickhouseReader {
             cutoff.timestamp_millis() as f64 / 1000.0,
             db = self.db_name
         );
-        let rows = client
-            .query(&query)
-            .fetch_all::<(u64, u64, u64)>()
+        let rows = self
+            .execute::<(u64, u64, u64)>(&query)
             .await
             .context("fetching unproved batches failed")?;
         Ok(rows
@@ -305,9 +302,8 @@ impl ClickhouseReader {
         struct ProvedBatchIdRow {
             batch_id: u64,
         }
-        let client = self.base.clone().with_database(&self.db_name);
         let query = format!("SELECT batch_id FROM {}.proved_batches", self.db_name);
-        let rows = client.query(&query).fetch_all::<ProvedBatchIdRow>().await?;
+        let rows = self.execute::<ProvedBatchIdRow>(&query).await?;
         Ok(rows.into_iter().map(|r| r.batch_id).collect())
     }
 
@@ -316,7 +312,6 @@ impl ClickhouseReader {
         &self,
         cutoff: DateTime<Utc>,
     ) -> Result<Vec<(u64, u64, DateTime<Utc>)>> {
-        let client = self.base.clone().with_database(&self.db_name);
         let query = format!(
             "SELECT b.l1_block_number, b.batch_id, toUnixTimestamp64Milli(b.inserted_at) as inserted_at \
              FROM (SELECT l1_block_number, batch_id, inserted_at \
@@ -329,9 +324,8 @@ impl ClickhouseReader {
             cutoff.timestamp_millis() as f64 / 1000.0,
             db = self.db_name
         );
-        let rows = client
-            .query(&query)
-            .fetch_all::<(u64, u64, u64)>()
+        let rows = self
+            .execute::<(u64, u64, u64)>(&query)
             .await
             .context("fetching unverified batches failed")?;
         Ok(rows
@@ -351,9 +345,8 @@ impl ClickhouseReader {
         struct VerifiedBatchIdRow {
             batch_id: u64,
         }
-        let client = self.base.clone().with_database(&self.db_name);
         let query = format!("SELECT batch_id FROM {}.verified_batches", self.db_name);
-        let rows = client.query(&query).fetch_all::<VerifiedBatchIdRow>().await?;
+        let rows = self.execute::<VerifiedBatchIdRow>(&query).await?;
         Ok(rows.into_iter().map(|r| r.batch_id).collect())
     }
 
@@ -362,7 +355,6 @@ impl ClickhouseReader {
         &self,
         since: DateTime<Utc>,
     ) -> Result<Vec<SlashingEventRow>> {
-        let client = self.base.clone().with_database(&self.db_name);
         let query = format!(
             "SELECT l1_block_number, validator_addr FROM {}.slashing_events \
              WHERE inserted_at > toDateTime64({}, 3) \
@@ -370,9 +362,8 @@ impl ClickhouseReader {
             self.db_name,
             since.timestamp_millis() as f64 / 1000.0,
         );
-        let rows = client
-            .query(&query)
-            .fetch_all::<SlashingEventRow>()
+        let rows = self
+            .execute::<SlashingEventRow>(&query)
             .await
             .context("fetching slashing events failed")?;
         Ok(rows)
@@ -383,7 +374,6 @@ impl ClickhouseReader {
         &self,
         since: DateTime<Utc>,
     ) -> Result<Vec<ForcedInclusionProcessedRow>> {
-        let client = self.base.clone().with_database(&self.db_name);
         let query = format!(
             "SELECT blob_hash FROM {}.forced_inclusion_processed \
              WHERE inserted_at > toDateTime64({}, 3) \
@@ -391,9 +381,8 @@ impl ClickhouseReader {
             self.db_name,
             since.timestamp_millis() as f64 / 1000.0,
         );
-        let rows = client
-            .query(&query)
-            .fetch_all::<ForcedInclusionProcessedRow>()
+        let rows = self
+            .execute::<ForcedInclusionProcessedRow>(&query)
             .await
             .context("fetching forced inclusion events failed")?;
         Ok(rows)
@@ -401,7 +390,6 @@ impl ClickhouseReader {
 
     /// Get all L2 reorg events that occurred after the given cutoff time
     pub async fn get_l2_reorgs_since(&self, since: DateTime<Utc>) -> Result<Vec<L2ReorgRow>> {
-        let client = self.base.clone().with_database(&self.db_name);
         let query = format!(
             "SELECT l2_block_number, depth FROM {}.l2_reorgs \
              WHERE inserted_at > toDateTime64({}, 3) \
@@ -409,11 +397,8 @@ impl ClickhouseReader {
             self.db_name,
             since.timestamp_millis() as f64 / 1000.0,
         );
-        let rows = client
-            .query(&query)
-            .fetch_all::<L2ReorgRow>()
-            .await
-            .context("fetching reorg events failed")?;
+        let rows =
+            self.execute::<L2ReorgRow>(&query).await.context("fetching reorg events failed")?;
         Ok(rows)
     }
 
@@ -426,14 +411,13 @@ impl ClickhouseReader {
             next_operator: Option<[u8; 20]>,
         }
 
-        let client = self.base.clone().with_database(&self.db_name);
         let query = format!(
             "SELECT candidates, current_operator, next_operator FROM {}.preconf_data \
              WHERE inserted_at > toDateTime64({}, 3)",
             self.db_name,
             since.timestamp_millis() as f64 / 1000.0,
         );
-        let rows = client.query(&query).fetch_all::<GatewayRow>().await?;
+        let rows = self.execute::<GatewayRow>(&query).await?;
         let mut set = std::collections::HashSet::new();
         for row in rows {
             for cand in row.candidates {
@@ -454,7 +438,6 @@ impl ClickhouseReader {
         &self,
         since: DateTime<Utc>,
     ) -> Result<Vec<SequencerDistributionRow>> {
-        let client = self.base.clone().with_database(&self.db_name);
         let query = format!(
             "SELECT sequencer, count() AS blocks FROM {db}.l2_head_events \
              WHERE inserted_at > toDateTime64({}, 3) \
@@ -463,7 +446,7 @@ impl ClickhouseReader {
             db = self.db_name,
         );
 
-        let rows = client.query(&query).fetch_all::<SequencerDistributionRow>().await?;
+        let rows = self.execute::<SequencerDistributionRow>(&query).await?;
         Ok(rows)
     }
 
@@ -472,7 +455,6 @@ impl ClickhouseReader {
         &self,
         since: DateTime<Utc>,
     ) -> Result<Vec<SequencerBlockRow>> {
-        let client = self.base.clone().with_database(&self.db_name);
         let query = format!(
             "SELECT sequencer, l2_block_number FROM {db}.l2_head_events \
              WHERE inserted_at > toDateTime64({}, 3) \
@@ -481,7 +463,7 @@ impl ClickhouseReader {
             db = self.db_name,
         );
 
-        let rows = client.query(&query).fetch_all::<SequencerBlockRow>().await?;
+        let rows = self.execute::<SequencerBlockRow>(&query).await?;
         Ok(rows)
     }
 
@@ -490,7 +472,6 @@ impl ClickhouseReader {
         &self,
         since: DateTime<Utc>,
     ) -> Result<Vec<BlockTransactionRow>> {
-        let client = self.base.clone().with_database(&self.db_name);
         let query = format!(
             "SELECT sequencer, l2_block_number, sum_tx FROM {db}.l2_head_events \
              WHERE inserted_at > toDateTime64({}, 3) \
@@ -499,7 +480,7 @@ impl ClickhouseReader {
             db = self.db_name,
         );
 
-        let rows = client.query(&query).fetch_all::<BlockTransactionRow>().await?;
+        let rows = self.execute::<BlockTransactionRow>(&query).await?;
         Ok(rows)
     }
 
@@ -530,8 +511,7 @@ impl ClickhouseReader {
         query.push_str(" ORDER BY l2_block_number DESC");
         query.push_str(&format!(" LIMIT {}", limit));
 
-        let client = self.base.clone().with_database(&self.db_name);
-        let rows = client.query(&query).fetch_all::<BlockTransactionRow>().await?;
+        let rows = self.execute::<BlockTransactionRow>(&query).await?;
         Ok(rows)
     }
 
@@ -543,8 +523,6 @@ impl ClickhouseReader {
             avg_ms: f64,
         }
 
-        let client = self.base.clone().with_database(&self.db_name);
-
         // First try the materialized view
         let mv_query = format!(
             "SELECT avg(prove_time_ms) AS avg_ms \
@@ -554,7 +532,7 @@ impl ClickhouseReader {
             db = self.db_name
         );
 
-        let rows = client.query(&mv_query).fetch_all::<AvgRow>().await?;
+        let rows = self.execute::<AvgRow>(&mv_query).await?;
         if let Some(row) = rows.into_iter().next() {
             if !row.avg_ms.is_nan() {
                 return Ok(Some(row.avg_ms.round() as u64));
@@ -575,7 +553,7 @@ impl ClickhouseReader {
             db = self.db_name
         );
 
-        let rows = client.query(&fallback_query).fetch_all::<AvgRow>().await?;
+        let rows = self.execute::<AvgRow>(&fallback_query).await?;
         let row = match rows.into_iter().next() {
             Some(r) => r,
             None => return Ok(None),
@@ -609,7 +587,6 @@ impl ClickhouseReader {
             avg_ms: f64,
         }
 
-        let client = self.base.clone().with_database(&self.db_name);
         let query = format!(
             "SELECT COALESCE(avg(verify_time_ms), 0) AS avg_ms \
              FROM {db}.batch_verify_times_mv \
@@ -617,7 +594,7 @@ impl ClickhouseReader {
             db = self.db_name
         );
 
-        let rows = client.query(&query).fetch_all::<AvgRow>().await?;
+        let rows = self.execute::<AvgRow>(&query).await?;
         let row = match rows.into_iter().next() {
             Some(r) => r,
             None => return Ok(None),
@@ -634,7 +611,6 @@ impl ClickhouseReader {
             avg_ms: f64,
         }
 
-        let client = self.base.clone().with_database(&self.db_name);
         let query = format!(
             "SELECT COALESCE(avg(verify_time_ms), 0) AS avg_ms \
              FROM {db}.batch_verify_times_mv \
@@ -642,7 +618,7 @@ impl ClickhouseReader {
             db = self.db_name
         );
 
-        let rows = client.query(&query).fetch_all::<AvgRow>().await?;
+        let rows = self.execute::<AvgRow>(&query).await?;
         let row = match rows.into_iter().next() {
             Some(r) => r,
             None => return Ok(None),
@@ -659,7 +635,6 @@ impl ClickhouseReader {
             avg_ms: f64,
         }
 
-        let client = self.base.clone().with_database(&self.db_name);
         let query = format!(
             "SELECT COALESCE(avg(verify_time_ms), 0) AS avg_ms \
              FROM {db}.batch_verify_times_mv \
@@ -667,7 +642,7 @@ impl ClickhouseReader {
             db = self.db_name
         );
 
-        let rows = client.query(&query).fetch_all::<AvgRow>().await?;
+        let rows = self.execute::<AvgRow>(&query).await?;
         let row = match rows.into_iter().next() {
             Some(r) => r,
             None => return Ok(None),
@@ -686,7 +661,6 @@ impl ClickhouseReader {
             cnt: u64,
         }
 
-        let client = self.base.clone().with_database(&self.db_name);
         let query = format!(
             "SELECT toUInt64(min(toUnixTimestamp64Milli(inserted_at))) AS min_ts, \
                     toUInt64(max(toUnixTimestamp64Milli(inserted_at))) AS max_ts, \
@@ -696,7 +670,7 @@ impl ClickhouseReader {
             db = self.db_name
         );
 
-        let rows = client.query(&query).fetch_all::<CadenceRow>().await?;
+        let rows = self.execute::<CadenceRow>(&query).await?;
         let row = match rows.into_iter().next() {
             Some(r) => r,
             None => return Ok(None),
@@ -719,7 +693,6 @@ impl ClickhouseReader {
             cnt: u64,
         }
 
-        let client = self.base.clone().with_database(&self.db_name);
         let query = format!(
             "SELECT toUInt64(min(toUnixTimestamp64Milli(inserted_at))) AS min_ts, \
                     toUInt64(max(toUnixTimestamp64Milli(inserted_at))) AS max_ts, \
@@ -729,7 +702,7 @@ impl ClickhouseReader {
             db = self.db_name
         );
 
-        let rows = client.query(&query).fetch_all::<CadenceRow>().await?;
+        let rows = self.execute::<CadenceRow>(&query).await?;
         let row = match rows.into_iter().next() {
             Some(r) => r,
             None => return Ok(None),
@@ -752,7 +725,6 @@ impl ClickhouseReader {
             cnt: u64,
         }
 
-        let client = self.base.clone().with_database(&self.db_name);
         let query = format!(
             "SELECT toUInt64(min(toUnixTimestamp64Milli(inserted_at))) AS min_ts, \
                     toUInt64(max(toUnixTimestamp64Milli(inserted_at))) AS max_ts, \
@@ -762,7 +734,7 @@ impl ClickhouseReader {
             db = self.db_name
         );
 
-        let rows = client.query(&query).fetch_all::<CadenceRow>().await?;
+        let rows = self.execute::<CadenceRow>(&query).await?;
         let row = match rows.into_iter().next() {
             Some(r) => r,
             None => return Ok(None),
@@ -785,7 +757,6 @@ impl ClickhouseReader {
             cnt: u64,
         }
 
-        let client = self.base.clone().with_database(&self.db_name);
         let query = format!(
             "SELECT toUInt64(min(toUnixTimestamp64Milli(inserted_at))) AS min_ts, \
                     toUInt64(max(toUnixTimestamp64Milli(inserted_at))) AS max_ts, \
@@ -795,7 +766,7 @@ impl ClickhouseReader {
             db = self.db_name
         );
 
-        let rows = client.query(&query).fetch_all::<CadenceRow>().await?;
+        let rows = self.execute::<CadenceRow>(&query).await?;
         let row = match rows.into_iter().next() {
             Some(r) => r,
             None => return Ok(None),
@@ -818,7 +789,6 @@ impl ClickhouseReader {
             cnt: u64,
         }
 
-        let client = self.base.clone().with_database(&self.db_name);
         let query = format!(
             "SELECT toUInt64(min(toUnixTimestamp64Milli(inserted_at))) AS min_ts, \
                     toUInt64(max(toUnixTimestamp64Milli(inserted_at))) AS max_ts, \
@@ -828,7 +798,7 @@ impl ClickhouseReader {
             db = self.db_name
         );
 
-        let rows = client.query(&query).fetch_all::<CadenceRow>().await?;
+        let rows = self.execute::<CadenceRow>(&query).await?;
         let row = match rows.into_iter().next() {
             Some(r) => r,
             None => return Ok(None),
@@ -851,7 +821,6 @@ impl ClickhouseReader {
             cnt: u64,
         }
 
-        let client = self.base.clone().with_database(&self.db_name);
         let query = format!(
             "SELECT toUInt64(min(toUnixTimestamp64Milli(inserted_at))) AS min_ts, \
                     toUInt64(max(toUnixTimestamp64Milli(inserted_at))) AS max_ts, \
@@ -861,7 +830,7 @@ impl ClickhouseReader {
             db = self.db_name
         );
 
-        let rows = client.query(&query).fetch_all::<CadenceRow>().await?;
+        let rows = self.execute::<CadenceRow>(&query).await?;
         let row = match rows.into_iter().next() {
             Some(r) => r,
             None => return Ok(None),
@@ -876,7 +845,6 @@ impl ClickhouseReader {
 
     /// Get prove times in seconds for batches proved within the last hour
     pub async fn get_prove_times_last_hour(&self) -> Result<Vec<BatchProveTimeRow>> {
-        let client = self.base.clone().with_database(&self.db_name);
         let query = format!(
             "SELECT b.batch_id AS batch_id, \
                     (l1_proved.block_ts - l1_proposed.block_ts) AS seconds_to_prove \
@@ -891,13 +859,12 @@ impl ClickhouseReader {
             db = self.db_name
         );
 
-        let rows = client.query(&query).fetch_all::<BatchProveTimeRow>().await?;
+        let rows = self.execute::<BatchProveTimeRow>(&query).await?;
         Ok(rows)
     }
 
     /// Get prove times in seconds for batches proved within the last 24 hours
     pub async fn get_prove_times_last_24_hours(&self) -> Result<Vec<BatchProveTimeRow>> {
-        let client = self.base.clone().with_database(&self.db_name);
         let query = format!(
             "SELECT b.batch_id AS batch_id, \
                     (l1_proved.block_ts - l1_proposed.block_ts) AS seconds_to_prove \
@@ -912,13 +879,12 @@ impl ClickhouseReader {
             db = self.db_name
         );
 
-        let rows = client.query(&query).fetch_all::<BatchProveTimeRow>().await?;
+        let rows = self.execute::<BatchProveTimeRow>(&query).await?;
         Ok(rows)
     }
 
     /// Get prove times in seconds for batches proved within the last 7 days
     pub async fn get_prove_times_last_7_days(&self) -> Result<Vec<BatchProveTimeRow>> {
-        let client = self.base.clone().with_database(&self.db_name);
         let query = format!(
             "SELECT b.batch_id AS batch_id, \
                     (l1_proved.block_ts - l1_proposed.block_ts) AS seconds_to_prove \
@@ -933,13 +899,12 @@ impl ClickhouseReader {
             db = self.db_name
         );
 
-        let rows = client.query(&query).fetch_all::<BatchProveTimeRow>().await?;
+        let rows = self.execute::<BatchProveTimeRow>(&query).await?;
         Ok(rows)
     }
 
     /// Get verify times in seconds for batches verified within the last hour
     pub async fn get_verify_times_last_hour(&self) -> Result<Vec<BatchVerifyTimeRow>> {
-        let client = self.base.clone().with_database(&self.db_name);
         let query = format!(
             "SELECT pb.batch_id AS batch_id, \
                     (l1_verified.block_ts - l1_proved.block_ts) AS seconds_to_verify \
@@ -957,13 +922,12 @@ impl ClickhouseReader {
             db = self.db_name
         );
 
-        let rows = client.query(&query).fetch_all::<BatchVerifyTimeRow>().await?;
+        let rows = self.execute::<BatchVerifyTimeRow>(&query).await?;
         Ok(rows)
     }
 
     /// Get verify times in seconds for batches verified within the last 24 hours
     pub async fn get_verify_times_last_24_hours(&self) -> Result<Vec<BatchVerifyTimeRow>> {
-        let client = self.base.clone().with_database(&self.db_name);
         let query = format!(
             "SELECT pb.batch_id AS batch_id, \
                     (l1_verified.block_ts - l1_proved.block_ts) AS seconds_to_verify \
@@ -981,13 +945,12 @@ impl ClickhouseReader {
             db = self.db_name
         );
 
-        let rows = client.query(&query).fetch_all::<BatchVerifyTimeRow>().await?;
+        let rows = self.execute::<BatchVerifyTimeRow>(&query).await?;
         Ok(rows)
     }
 
     /// Get verify times in seconds for batches verified within the last 7 days
     pub async fn get_verify_times_last_7_days(&self) -> Result<Vec<BatchVerifyTimeRow>> {
-        let client = self.base.clone().with_database(&self.db_name);
         let query = format!(
             "SELECT pb.batch_id AS batch_id, \
                     (l1_verified.block_ts - l1_proved.block_ts) AS seconds_to_verify \
@@ -1005,13 +968,12 @@ impl ClickhouseReader {
             db = self.db_name
         );
 
-        let rows = client.query(&query).fetch_all::<BatchVerifyTimeRow>().await?;
+        let rows = self.execute::<BatchVerifyTimeRow>(&query).await?;
         Ok(rows)
     }
 
     /// Get L1 block numbers grouped by minute for the last hour
     pub async fn get_l1_block_times_last_hour(&self) -> Result<Vec<L1BlockTimeRow>> {
-        let client = self.base.clone().with_database(&self.db_name);
         let query = format!(
             "SELECT toUInt64(toStartOfMinute(fromUnixTimestamp64Milli(block_ts * 1000))) AS minute, \
                     max(l1_block_number) AS block_number \
@@ -1022,13 +984,12 @@ impl ClickhouseReader {
             db = self.db_name
         );
 
-        let rows = client.query(&query).fetch_all::<L1BlockTimeRow>().await?;
+        let rows = self.execute::<L1BlockTimeRow>(&query).await?;
         Ok(rows)
     }
 
     /// Get L1 block numbers grouped by minute for the last 24 hours
     pub async fn get_l1_block_times_last_24_hours(&self) -> Result<Vec<L1BlockTimeRow>> {
-        let client = self.base.clone().with_database(&self.db_name);
         let query = format!(
             "SELECT toUInt64(toStartOfMinute(fromUnixTimestamp64Milli(block_ts * 1000))) AS minute, \
                     max(l1_block_number) AS block_number \
@@ -1039,13 +1000,12 @@ impl ClickhouseReader {
             db = self.db_name
         );
 
-        let rows = client.query(&query).fetch_all::<L1BlockTimeRow>().await?;
+        let rows = self.execute::<L1BlockTimeRow>(&query).await?;
         Ok(rows)
     }
 
     /// Get L1 block numbers grouped by minute for the last 7 days
     pub async fn get_l1_block_times_last_7_days(&self) -> Result<Vec<L1BlockTimeRow>> {
-        let client = self.base.clone().with_database(&self.db_name);
         let query = format!(
             "SELECT toUInt64(toStartOfMinute(fromUnixTimestamp64Milli(block_ts * 1000))) AS minute, \
                     max(l1_block_number) AS block_number \
@@ -1056,7 +1016,7 @@ impl ClickhouseReader {
             db = self.db_name
         );
 
-        let rows = client.query(&query).fetch_all::<L1BlockTimeRow>().await?;
+        let rows = self.execute::<L1BlockTimeRow>(&query).await?;
         Ok(rows)
     }
 
@@ -1069,7 +1029,6 @@ impl ClickhouseReader {
             ms_since_prev_block: Option<u64>,
         }
 
-        let client = self.base.clone().with_database(&self.db_name);
         let query = format!(
             "SELECT l2_block_number, \
                     block_ts AS block_time, \
@@ -1080,7 +1039,7 @@ impl ClickhouseReader {
              ORDER BY l2_block_number",
             db = self.db_name
         );
-        let rows = client.query(&query).fetch_all::<RawRow>().await?;
+        let rows = self.execute::<RawRow>(&query).await?;
         Ok(rows
             .into_iter()
             .filter_map(|r| {
@@ -1103,7 +1062,6 @@ impl ClickhouseReader {
             ms_since_prev_block: Option<u64>,
         }
 
-        let client = self.base.clone().with_database(&self.db_name);
         let query = format!(
             "SELECT l2_block_number, \
                     block_ts AS block_time, \
@@ -1114,7 +1072,7 @@ impl ClickhouseReader {
              ORDER BY l2_block_number",
             db = self.db_name
         );
-        let rows = client.query(&query).fetch_all::<RawRow>().await?;
+        let rows = self.execute::<RawRow>(&query).await?;
         Ok(rows
             .into_iter()
             .filter_map(|r| {
@@ -1137,7 +1095,6 @@ impl ClickhouseReader {
             ms_since_prev_block: Option<u64>,
         }
 
-        let client = self.base.clone().with_database(&self.db_name);
         let query = format!(
             "SELECT l2_block_number, \
                     block_ts AS block_time, \
@@ -1148,7 +1105,7 @@ impl ClickhouseReader {
              ORDER BY l2_block_number",
             db = self.db_name
         );
-        let rows = client.query(&query).fetch_all::<RawRow>().await?;
+        let rows = self.execute::<RawRow>(&query).await?;
         Ok(rows
             .into_iter()
             .filter_map(|r| {
@@ -1171,7 +1128,6 @@ impl ClickhouseReader {
             tx_sum: u64,
         }
 
-        let client = self.base.clone().with_database(&self.db_name);
         let query = format!(
             "SELECT toUInt64(min(block_ts)) AS min_ts, \
                     toUInt64(max(block_ts)) AS max_ts, \
@@ -1181,7 +1137,7 @@ impl ClickhouseReader {
             db = self.db_name
         );
 
-        let rows = client.query(&query).fetch_all::<TpsRow>().await?;
+        let rows = self.execute::<TpsRow>(&query).await?;
         let row = match rows.into_iter().next() {
             Some(r) => r,
             None => return Ok(None),
@@ -1204,7 +1160,6 @@ impl ClickhouseReader {
             tx_sum: u64,
         }
 
-        let client = self.base.clone().with_database(&self.db_name);
         let query = format!(
             "SELECT toUInt64(min(block_ts)) AS min_ts, \
                     toUInt64(max(block_ts)) AS max_ts, \
@@ -1214,7 +1169,7 @@ impl ClickhouseReader {
             db = self.db_name
         );
 
-        let rows = client.query(&query).fetch_all::<TpsRow>().await?;
+        let rows = self.execute::<TpsRow>(&query).await?;
         let row = match rows.into_iter().next() {
             Some(r) => r,
             None => return Ok(None),
@@ -1237,7 +1192,6 @@ impl ClickhouseReader {
             tx_sum: u64,
         }
 
-        let client = self.base.clone().with_database(&self.db_name);
         let query = format!(
             "SELECT toUInt64(min(block_ts)) AS min_ts, \
                     toUInt64(max(block_ts)) AS max_ts, \
@@ -1247,7 +1201,7 @@ impl ClickhouseReader {
             db = self.db_name
         );
 
-        let rows = client.query(&query).fetch_all::<TpsRow>().await?;
+        let rows = self.execute::<TpsRow>(&query).await?;
         let row = match rows.into_iter().next() {
             Some(r) => r,
             None => return Ok(None),
@@ -1269,7 +1223,6 @@ impl ClickhouseReader {
             gas_used: u64,
         }
 
-        let client = self.base.clone().with_database(&self.db_name);
         let query = format!(
             "SELECT l2_block_number, toUInt64(sum_gas_used) AS gas_used \
              FROM {db}.l2_head_events \
@@ -1278,7 +1231,7 @@ impl ClickhouseReader {
             db = self.db_name
         );
 
-        let rows = client.query(&query).fetch_all::<RawRow>().await?;
+        let rows = self.execute::<RawRow>(&query).await?;
         Ok(rows
             .into_iter()
             .skip(1)
@@ -1294,7 +1247,6 @@ impl ClickhouseReader {
             gas_used: u64,
         }
 
-        let client = self.base.clone().with_database(&self.db_name);
         let query = format!(
             "SELECT l2_block_number, toUInt64(sum_gas_used) AS gas_used \
              FROM {db}.l2_head_events \
@@ -1303,7 +1255,7 @@ impl ClickhouseReader {
             db = self.db_name
         );
 
-        let rows = client.query(&query).fetch_all::<RawRow>().await?;
+        let rows = self.execute::<RawRow>(&query).await?;
         Ok(rows
             .into_iter()
             .skip(1)
@@ -1319,7 +1271,6 @@ impl ClickhouseReader {
             gas_used: u64,
         }
 
-        let client = self.base.clone().with_database(&self.db_name);
         let query = format!(
             "SELECT l2_block_number, toUInt64(sum_gas_used) AS gas_used \
              FROM {db}.l2_head_events \
@@ -1328,7 +1279,7 @@ impl ClickhouseReader {
             db = self.db_name
         );
 
-        let rows = client.query(&query).fetch_all::<RawRow>().await?;
+        let rows = self.execute::<RawRow>(&query).await?;
         Ok(rows
             .into_iter()
             .skip(1)
