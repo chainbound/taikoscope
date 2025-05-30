@@ -6,13 +6,10 @@ import { ChartCard } from '../components/ChartCard.js';
 describe('ChartCard', () => {
   it('renders title and children', () => {
     const html = renderToStaticMarkup(
-      React.createElement(
-        ChartCard,
-        {
-          title: 'My Chart',
-        } as any,
-        React.createElement('span', null, 'child'),
-      ),
+      React.createElement(ChartCard, {
+        title: 'My Chart',
+        children: React.createElement('span', null, 'child'),
+      }),
     );
     expect(html.includes('My Chart')).toBe(true);
     expect(html.includes('child')).toBe(true);
@@ -21,14 +18,11 @@ describe('ChartCard', () => {
 
   it('shows more button when handler provided', () => {
     const html = renderToStaticMarkup(
-      React.createElement(
-        ChartCard,
-        {
-          title: 'Other Chart',
-          onMore: () => {},
-        } as any,
-        React.createElement('div', null, 'data'),
-      ),
+      React.createElement(ChartCard, {
+        title: 'Other Chart',
+        onMore: () => { },
+        children: React.createElement('div', null, 'data'),
+      }),
     );
     expect(html.includes('data')).toBe(true);
     expect(html.includes('aria-label="View table"')).toBe(true);

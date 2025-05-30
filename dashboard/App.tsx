@@ -383,13 +383,13 @@ const App: React.FC = () => {
   const groupOrder = [
     'Network Performance',
     'Network Health',
-    'Operators',
+    'Sequencers',
     'Other',
   ];
   const skeletonGroupCounts: Record<string, number> = {
     'Network Performance': 5,
     'Network Health': 3,
-    Operators: 3,
+    Sequencers: 3,
   };
 
 
@@ -529,7 +529,7 @@ const App: React.FC = () => {
                                 m.title === 'Forced Inclusions'
                                 ? () => openGenericTable('forced-inclusions')
                                 : typeof m.title === 'string' &&
-                                  m.title === 'Active Gateways'
+                                m.title === 'Active Sequencers'
                                   ? () => openGenericTable('gateways')
                                   : undefined
                       }

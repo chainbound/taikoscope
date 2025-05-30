@@ -66,23 +66,23 @@ export const createMetrics = (data: MetricInputData): MetricData[] => [
     group: 'Network Performance',
   },
   {
-    title: 'Active Gateways',
+    title: 'Active Sequencers',
     value: data.activeGateways != null ? data.activeGateways.toString() : 'N/A',
-    group: 'Operators',
+    group: 'Sequencers',
   },
   {
-    title: 'Current Operator',
+    title: 'Current Sequencer',
     value:
       data.currentOperator != null
         ? getSequencerName(data.currentOperator)
         : 'N/A',
-    group: 'Operators',
+    group: 'Sequencers',
   },
   {
-    title: 'Next Operator',
+    title: 'Next Sequencer',
     value:
       data.nextOperator != null ? getSequencerName(data.nextOperator) : 'N/A',
-    group: 'Operators',
+    group: 'Sequencers',
   },
   {
     title: 'L2 Reorgs',
