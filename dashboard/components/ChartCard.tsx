@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 
 interface ChartCardProps {
   title: string;
@@ -25,7 +25,17 @@ export const ChartCard: React.FC<ChartCardProps> = ({
           </button>
         )}
       </div>
-      <div className="h-64 md:h-80 w-full">{children}</div>
+      <div className="h-64 md:h-80 w-full">
+        <Suspense
+          fallback={
+            <div className="flex items-center justify-center h-full text-gray-500">
+              Loading...
+            </div>
+          }
+        >
+          {children}
+        </Suspense>
+      </div>
     </div>
   );
 };

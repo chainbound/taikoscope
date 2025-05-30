@@ -1,16 +1,44 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, lazy } from 'react';
 import { createMetrics, hasBadRequest } from './helpers';
 import { DashboardHeader } from './components/DashboardHeader';
 import { MetricCard } from './components/MetricCard';
 import { ChartCard } from './components/ChartCard';
 import { DataTable } from './components/DataTable';
-import { SequencerPieChart } from './components/SequencerPieChart';
-import { BlockTimeChart } from './components/BlockTimeChart';
-import { BatchProcessChart } from './components/BatchProcessChart';
-import { GasUsedChart } from './components/GasUsedChart';
-import { ReorgDepthChart } from './components/ReorgDepthChart';
-import { BlockTxChart } from './components/BlockTxChart';
-import { BlobsPerBatchChart } from './components/BlobsPerBatchChart';
+const SequencerPieChart = lazy(() =>
+  import('./components/SequencerPieChart').then((m) => ({
+    default: m.SequencerPieChart,
+  })),
+);
+const BlockTimeChart = lazy(() =>
+  import('./components/BlockTimeChart').then((m) => ({
+    default: m.BlockTimeChart,
+  })),
+);
+const BatchProcessChart = lazy(() =>
+  import('./components/BatchProcessChart').then((m) => ({
+    default: m.BatchProcessChart,
+  })),
+);
+const GasUsedChart = lazy(() =>
+  import('./components/GasUsedChart').then((m) => ({
+    default: m.GasUsedChart,
+  })),
+);
+const ReorgDepthChart = lazy(() =>
+  import('./components/ReorgDepthChart').then((m) => ({
+    default: m.ReorgDepthChart,
+  })),
+);
+const BlockTxChart = lazy(() =>
+  import('./components/BlockTxChart').then((m) => ({
+    default: m.BlockTxChart,
+  })),
+);
+const BlobsPerBatchChart = lazy(() =>
+  import('./components/BlobsPerBatchChart').then((m) => ({
+    default: m.BlobsPerBatchChart,
+  })),
+);
 import {
   TimeRange,
   TimeSeriesData,
@@ -59,7 +87,9 @@ const TAIKO_PINK = '#e81899';
 
 const App: React.FC = () => {
   const [timeRange, setTimeRange] = useState<TimeRange>('1h');
-  const [selectedSequencer, setSelectedSequencer] = useState<string | null>(null);
+  const [selectedSequencer, setSelectedSequencer] = useState<string | null>(
+    null,
+  );
   const [metrics, setMetrics] = useState<MetricData[]>([]);
   const [secondsToProveData, setSecondsToProveData] = useState<
     TimeSeriesData[]
@@ -221,7 +251,13 @@ const App: React.FC = () => {
       fetchL2BlockTimes(range, selectedSequencer ?? undefined),
       fetchL2GasUsed(range, selectedSequencer ?? undefined),
       fetchSequencerDistribution(range),
-      fetchBlockTransactions(range, 50, undefined, undefined, selectedSequencer ?? undefined),
+      fetchBlockTransactions(
+        range,
+        50,
+        undefined,
+        undefined,
+        selectedSequencer ?? undefined,
+      ),
       fetchBatchBlobCounts(range),
     ]);
 
@@ -654,13 +690,13 @@ const App: React.FC = () => {
                       typeof m.title === 'string' && m.title === 'L2 Reorgs'
                         ? () => openL2ReorgsTable()
                         : typeof m.title === 'string' &&
-                          m.title === 'Slashing Events'
+                            m.title === 'Slashing Events'
                           ? () => openSlashingEventsTable()
                           : typeof m.title === 'string' &&
-                            m.title === 'Forced Inclusions'
+                              m.title === 'Forced Inclusions'
                             ? () => openForcedInclusionsTable()
                             : typeof m.title === 'string' &&
-                              m.title === 'Active Gateways'
+                                m.title === 'Active Gateways'
                               ? () => openActiveGatewaysTable()
                               : undefined
                     }
@@ -741,7 +777,10 @@ const App: React.FC = () => {
           >
             <BlockTxChart data={blockTxData} barColor="#4E79A7" />
           </ChartCard>
-          <ChartCard title="Blobs per Batch" onMore={() => openBlobsPerBatchTable()}>
+          <ChartCard
+            title="Blobs per Batch"
+            onMore={() => openBlobsPerBatchTable()}
+          >
             <BlobsPerBatchChart data={batchBlobCounts} barColor="#A0CBE8" />
           </ChartCard>
           <ChartCard
