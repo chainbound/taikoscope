@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   BarChart,
   Bar,
@@ -28,9 +28,14 @@ export const BlockTxChart: React.FC<BlockTxChartProps> = ({
       </div>
     );
   }
+  const sortedData = useMemo(
+    () => [...data].sort((a, b) => a.block - b.block),
+    [data],
+  );
+
   const [brushRange, setBrushRange] = useState({
-    startIndex: Math.max(0, data.length - 50),
-    endIndex: data.length - 1,
+    startIndex: Math.max(0, sortedData.length - 50),
+    endIndex: sortedData.length - 1,
   });
 
   const handleBrushChange = (range: {
@@ -51,7 +56,7 @@ export const BlockTxChart: React.FC<BlockTxChartProps> = ({
   return (
     <ResponsiveContainer width="100%" height="100%">
       <BarChart
-        data={data}
+        data={sortedData}
         margin={{ top: 5, right: 30, left: 20, bottom: 50 }}
       >
         <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
