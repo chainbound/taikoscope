@@ -63,8 +63,8 @@ export const GasUsedChart: React.FC<GasUsedChartProps> = ({
           fontSize={12}
           label={{
             value: 'Block Number',
-            position: 'insideBottom',
-            offset: -10,
+            position: 'bottom',
+            offset: 0,
             fontSize: 10,
             fill: '#666666',
           }}
