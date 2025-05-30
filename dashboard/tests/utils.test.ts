@@ -88,7 +88,6 @@ describe('utils', () => {
 
   it('saves and loads refresh rate', () => {
     const store: Record<string, string> = {};
-    // @ts-expect-error
     globalThis.localStorage = {
       getItem: (k: string) => (k in store ? store[k] : null),
       setItem: (k: string, v: string) => {

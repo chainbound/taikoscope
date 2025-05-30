@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   LineChart,
   Line,
@@ -34,6 +34,13 @@ export const BlockTimeChart: React.FC<BlockTimeChartProps> = ({
     startIndex: Math.max(0, data.length - 50),
     endIndex: data.length - 1,
   });
+
+  useEffect(() => {
+    setBrushRange({
+      startIndex: Math.max(0, data.length - 50),
+      endIndex: data.length - 1,
+    });
+  }, [data]);
 
   const handleBrushChange = (range: {
     startIndex?: number;

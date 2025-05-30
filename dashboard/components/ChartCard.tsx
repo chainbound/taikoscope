@@ -1,11 +1,10 @@
 import React, { Suspense } from 'react';
 
-interface ChartCardProps {
+type ChartCardProps = React.PropsWithChildren<{
   title: string;
-  children: React.ReactNode;
   onMore?: () => void;
   loading?: boolean;
-}
+}>;
 
 export const ChartCard: React.FC<ChartCardProps> = ({
   title,
