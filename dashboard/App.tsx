@@ -48,7 +48,10 @@ import {
   fetchSequencerDistribution,
   fetchSequencerBlocks,
   fetchBlockTransactions,
+  fetchBatchBlobCounts,
+  fetchAvgBlobsPerBatch,
   type BlockTransaction,
+  type BatchBlobCount,
 } from './services/apiService';
 
 // Updated Taiko Pink
@@ -67,6 +70,7 @@ const App: React.FC = () => {
   const [l2GasUsedData, setL2GasUsedData] = useState<TimeSeriesData[]>([]);
   const [l1BlockTimeData, setL1BlockTimeData] = useState<TimeSeriesData[]>([]);
   const [blockTxData, setBlockTxData] = useState<BlockTransaction[]>([]);
+  const [batchBlobCounts, setBatchBlobCounts] = useState<BatchBlobCount[]>([]);
   const [sequencerDistribution, setSequencerDistribution] = useState<
     PieChartDataItem[]
   >([]);
@@ -192,6 +196,8 @@ const App: React.FC = () => {
       l2GasUsedRes,
       sequencerDistRes,
       blockTxRes,
+      batchBlobCountsRes,
+      avgBlobsPerBatchRes,
     ] = await Promise.all([
       fetchL2BlockCadence(range),
       fetchBatchPostingCadence(range),
@@ -212,6 +218,8 @@ const App: React.FC = () => {
       fetchL2GasUsed(range),
       fetchSequencerDistribution(range),
       fetchBlockTransactions(range),
+      fetchBatchBlobCounts(range),
+      fetchAvgBlobsPerBatch(range),
     ]);
 
     const l2Cadence = l2CadenceRes.data;
@@ -233,6 +241,8 @@ const App: React.FC = () => {
     const l2Gas = l2GasUsedRes.data || [];
     const sequencerDist = sequencerDistRes.data || [];
     const txPerBlock = blockTxRes.data || [];
+    const blobsPerBatch = batchBlobCountsRes.data || [];
+    const avgBlobs = avgBlobsPerBatchRes.data;
 
     const anyBadRequest = hasBadRequest([
       l2CadenceRes,
@@ -254,6 +264,8 @@ const App: React.FC = () => {
       l2GasUsedRes,
       sequencerDistRes,
       blockTxRes,
+      batchBlobCountsRes,
+      avgBlobsPerBatchRes,
     ]);
 
     const currentMetrics: MetricData[] = createMetrics({
@@ -269,6 +281,7 @@ const App: React.FC = () => {
       forcedInclusions,
       l2Block,
       l1Block,
+      avgBlobsPerBatch: avgBlobs,
     });
 
     setMetrics(currentMetrics);
@@ -278,6 +291,7 @@ const App: React.FC = () => {
     setL2GasUsedData(l2Gas);
     setL1BlockTimeData(l1Times);
     setBlockTxData(txPerBlock);
+    setBatchBlobCounts(blobsPerBatch);
     setSequencerDistribution(sequencerDist);
     setL2HeadBlock(
       currentMetrics.find((m) => m.title === 'L2 Head Block')?.value || 'N/A',
@@ -425,6 +439,17 @@ const App: React.FC = () => {
     );
   };
 
+  const openBlobsPerBatchTable = () => {
+    openTable(
+      'Blobs per Batch',
+      [
+        { key: 'batch', label: 'Batch' },
+        { key: 'blobs', label: 'Blobs' },
+      ],
+      batchBlobCounts as unknown as Record<string, string | number>[],
+    );
+  };
+
   const openSequencerDistributionTable = async (
     range: TimeRange,
     page = seqDistTxPage,
@@ -541,15 +566,18 @@ const App: React.FC = () => {
                       typeof m.title === 'string' && m.title === 'L2 Reorgs'
                         ? () => openL2ReorgsTable()
                         : typeof m.title === 'string' &&
-                            m.title === 'Slashing Events'
+                          m.title === 'Slashing Events'
                           ? () => openSlashingEventsTable()
                           : typeof m.title === 'string' &&
-                              m.title === 'Forced Inclusions'
+                            m.title === 'Forced Inclusions'
                             ? () => openForcedInclusionsTable()
                             : typeof m.title === 'string' &&
-                                m.title === 'Active Gateways'
+                              m.title === 'Active Gateways'
                               ? () => openActiveGatewaysTable()
-                              : undefined
+                              : typeof m.title === 'string' &&
+                                m.title === 'Blobs per Batch'
+                                ? () => openBlobsPerBatchTable()
+                                : undefined
                     }
                   />
                 ))}

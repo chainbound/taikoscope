@@ -7,8 +7,8 @@
 #![allow(missing_docs)]
 
 use clickhouse_lib::{
-    BatchProveTimeRow, BatchVerifyTimeRow, ForcedInclusionProcessedRow, L1BlockTimeRow,
-    L2BlockTimeRow, L2GasUsedRow, L2ReorgRow, SlashingEventRow,
+    BatchBlobCountRow, BatchProveTimeRow, BatchVerifyTimeRow, ForcedInclusionProcessedRow,
+    L1BlockTimeRow, L2BlockTimeRow, L2GasUsedRow, L2ReorgRow, SlashingEventRow,
 };
 
 use serde::Serialize;
@@ -135,6 +135,16 @@ pub struct BlockTransactionsItem {
 #[derive(Debug, Serialize)]
 pub struct BlockTransactionsResponse {
     pub blocks: Vec<BlockTransactionsItem>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct BatchBlobsResponse {
+    pub batches: Vec<BatchBlobCountRow>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct AvgBlobsPerBatchResponse {
+    pub avg_blobs: Option<f64>,
 }
 
 #[derive(Debug, Serialize)]

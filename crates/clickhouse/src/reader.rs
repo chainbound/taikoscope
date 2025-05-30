@@ -11,9 +11,9 @@ use tracing::{debug, error};
 use url::Url;
 
 use crate::models::{
-    BatchProveTimeRow, BatchVerifyTimeRow, BlockTransactionRow, ForcedInclusionProcessedRow,
-    L1BlockTimeRow, L2BlockTimeRow, L2GasUsedRow, L2ReorgRow, SequencerBlockRow,
-    SequencerDistributionRow, SlashingEventRow,
+    BatchBlobCountRow, BatchProveTimeRow, BatchVerifyTimeRow, BlockTransactionRow,
+    ForcedInclusionProcessedRow, L1BlockTimeRow, L2BlockTimeRow, L2GasUsedRow, L2ReorgRow,
+    SequencerBlockRow, SequencerDistributionRow, SlashingEventRow,
 };
 
 #[derive(Row, Deserialize, Serialize)]
@@ -1285,6 +1285,83 @@ impl ClickhouseReader {
             .skip(1)
             .map(|r| L2GasUsedRow { l2_block_number: r.l2_block_number, gas_used: r.gas_used })
             .collect())
+    }
+
+    /// Get the blob count for each batch in the last hour
+    pub async fn get_blobs_per_batch_last_hour(&self) -> Result<Vec<BatchBlobCountRow>> {
+        let query = format!(
+            "SELECT batch_id, blob_count FROM {db}.batches \
+             WHERE inserted_at >= now64() - INTERVAL 1 HOUR \
+             ORDER BY batch_id",
+            db = self.db_name
+        );
+
+        let rows = self.execute::<BatchBlobCountRow>(&query).await?;
+        Ok(rows)
+    }
+
+    /// Get the blob count for each batch in the last 24 hours
+    pub async fn get_blobs_per_batch_last_24_hours(&self) -> Result<Vec<BatchBlobCountRow>> {
+        let query = format!(
+            "SELECT batch_id, blob_count FROM {db}.batches \
+             WHERE inserted_at >= now64() - INTERVAL 24 HOUR \
+             ORDER BY batch_id",
+            db = self.db_name
+        );
+
+        let rows = self.execute::<BatchBlobCountRow>(&query).await?;
+        Ok(rows)
+    }
+
+    /// Get the blob count for each batch in the last 7 days
+    pub async fn get_blobs_per_batch_last_7_days(&self) -> Result<Vec<BatchBlobCountRow>> {
+        let query = format!(
+            "SELECT batch_id, blob_count FROM {db}.batches \
+             WHERE inserted_at >= now64() - INTERVAL 7 DAY \
+             ORDER BY batch_id",
+            db = self.db_name
+        );
+
+        let rows = self.execute::<BatchBlobCountRow>(&query).await?;
+        Ok(rows)
+    }
+
+    /// Get the average number of blobs per batch for the given range
+    pub async fn get_avg_blobs_per_batch(&self, range: TimeRange) -> Result<Option<f64>> {
+        #[derive(Row, Deserialize)]
+        struct AvgRow {
+            avg: f64,
+        }
+
+        let query = format!(
+            "SELECT avg(blob_count) AS avg FROM {db}.batches \
+             WHERE inserted_at >= now64() - INTERVAL {}",
+            range.interval(),
+            db = self.db_name
+        );
+
+        let rows = self.execute::<AvgRow>(&query).await?;
+        let row = match rows.into_iter().next() {
+            Some(r) => r,
+            None => return Ok(None),
+        };
+
+        if row.avg.is_nan() { Ok(None) } else { Ok(Some(row.avg)) }
+    }
+
+    /// Get the average number of blobs per batch in the last hour
+    pub async fn get_avg_blobs_per_batch_last_hour(&self) -> Result<Option<f64>> {
+        self.get_avg_blobs_per_batch(TimeRange::LastHour).await
+    }
+
+    /// Get the average number of blobs per batch in the last 24 hours
+    pub async fn get_avg_blobs_per_batch_last_24_hours(&self) -> Result<Option<f64>> {
+        self.get_avg_blobs_per_batch(TimeRange::Last24Hours).await
+    }
+
+    /// Get the average number of blobs per batch in the last 7 days
+    pub async fn get_avg_blobs_per_batch_last_7_days(&self) -> Result<Option<f64>> {
+        self.get_avg_blobs_per_batch(TimeRange::Last7Days).await
     }
 }
 

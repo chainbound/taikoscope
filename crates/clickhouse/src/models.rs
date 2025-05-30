@@ -193,3 +193,12 @@ pub struct L2GasUsedRow {
     /// Total gas used in the block
     pub gas_used: u64,
 }
+
+/// Row representing the blob count for each batch
+#[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq)]
+pub struct BatchBlobCountRow {
+    /// Batch ID
+    pub batch_id: u64,
+    /// Number of blobs in the batch
+    pub blob_count: u8,
+}
