@@ -52,6 +52,7 @@ export const BlockTxChart: React.FC<BlockTxChartProps> = ({
           stroke="#666666"
           fontSize={12}
           domain={[0, 'auto']}
+          allowDecimals={false}
           tickFormatter={(v: number) => v.toLocaleString()}
           label={{
             value: 'Tx Count',
