@@ -244,6 +244,7 @@ async function fetchData(range: TimeRange, state: State) {
   ]);
 
   const currentMetrics: MetricData[] = createMetrics({
+    avgTps: 3,
     l2Cadence,
     batchCadence,
     avgProve,

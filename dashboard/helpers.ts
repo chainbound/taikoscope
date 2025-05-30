@@ -5,6 +5,7 @@ import { getSequencerName } from './sequencerConfig.js';
 import type { RequestResult } from './services/apiService';
 
 export interface MetricInputData {
+  avgTps: number | null;
   l2Cadence: number | null;
   batchCadence: number | null;
   avgProve: number | null;
@@ -20,6 +21,11 @@ export interface MetricInputData {
 }
 
 export const createMetrics = (data: MetricInputData): MetricData[] => [
+  {
+    title: 'Avg. L2 TPS',
+    value: data.avgTps != null ? data.avgTps.toFixed(2) : 'N/A',
+    group: 'Network Performance',
+  },
   {
     title: 'L2 Block Cadence',
     value:

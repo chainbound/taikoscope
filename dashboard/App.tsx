@@ -40,6 +40,11 @@ const BlobsPerBatchChart = lazy(() =>
     default: m.BlobsPerBatchChart,
   })),
 );
+const TpsChart = lazy(() =>
+  import('./components/TpsChart').then((m) => ({
+    default: m.TpsChart,
+  })),
+);
 import {
   TimeRange,
   TimeSeriesData,
@@ -80,6 +85,7 @@ import {
   fetchSequencerBlocks,
   fetchBlockTransactions,
   fetchBatchBlobCounts,
+  fetchAvgL2Tps,
   type BlockTransaction,
   type BatchBlobCount,
 } from './services/apiService';
@@ -248,6 +254,7 @@ const App: React.FC = () => {
       sequencerDistRes,
       blockTxRes,
       batchBlobCountsRes,
+      avgTpsRes,
     ] = await Promise.all([
       fetchL2BlockCadence(
         range,
@@ -284,6 +291,10 @@ const App: React.FC = () => {
         selectedSequencer ? getSequencerAddress(selectedSequencer) : undefined,
       ),
       fetchBatchBlobCounts(range),
+      fetchAvgL2Tps(
+        range,
+        selectedSequencer ? getSequencerAddress(selectedSequencer) : undefined,
+      ),
     ]);
 
     const l2Cadence = l2CadenceRes.data;
@@ -306,6 +317,7 @@ const App: React.FC = () => {
     const sequencerDist = sequencerDistRes.data || [];
     const txPerBlock = blockTxRes.data || [];
     const blobsPerBatch = batchBlobCountsRes.data || [];
+    const avgTps = avgTpsRes.data;
 
     const anyBadRequest = hasBadRequest([
       l2CadenceRes,
@@ -328,9 +340,11 @@ const App: React.FC = () => {
       sequencerDistRes,
       blockTxRes,
       batchBlobCountsRes,
+      avgTpsRes,
     ]);
 
     const currentMetrics: MetricData[] = createMetrics({
+      avgTps,
       l2Cadence,
       batchCadence,
       avgProve,
@@ -401,7 +415,7 @@ const App: React.FC = () => {
     'Other',
   ];
   const skeletonGroupCounts: Record<string, number> = {
-    'Network Performance': 4,
+    'Network Performance': 5,
     'Network Health': 3,
     Operators: 3,
   };
@@ -707,6 +721,39 @@ const App: React.FC = () => {
     );
   };
 
+  const openTpsTable = () => {
+    setTableLoading(true);
+    setTableUrl('tps');
+    const intervalMap = new Map<number, number>();
+    l2BlockTimeData.forEach((d) => {
+      intervalMap.set(d.value, d.timestamp);
+    });
+    const data = blockTxData
+      .map((b) => {
+        const ms = intervalMap.get(b.block);
+        if (!ms) return null;
+        return { block: b.block, tps: b.txs / (ms / 1000) };
+      })
+      .filter((d): d is { block: number; tps: number } => d !== null);
+    openTable(
+      'Transactions Per Second',
+      [
+        { key: 'block', label: 'Block Number' },
+        { key: 'tps', label: 'TPS' },
+      ],
+      data.map((d) => ({ block: d.block, tps: d.tps.toFixed(2) })) as Record<
+        string,
+        string | number
+      >[],
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      <TpsChart data={data} lineColor="#4E79A7" />,
+    );
+  };
+
   const openSequencerDistributionTable = async (
     range: TimeRange,
     page = seqDistTxPage,
@@ -845,6 +892,9 @@ const App: React.FC = () => {
         void openL1BlockTimesTable(range);
         break;
       }
+      case 'tps':
+        void openTpsTable();
+        break;
       case 'sequencer-dist': {
         const range = (params.get('range') as TimeRange) || timeRange;
         const page = parseInt(params.get('page') ?? '0', 10);
@@ -939,18 +989,20 @@ const App: React.FC = () => {
                       title={m.title}
                       value={m.value}
                       onMore={
-                        typeof m.title === 'string' && m.title === 'L2 Reorgs'
-                          ? () => openL2ReorgsTable()
-                          : typeof m.title === 'string' &&
-                            m.title === 'Slashing Events'
-                            ? () => openSlashingEventsTable()
+                        typeof m.title === 'string' && m.title === 'Avg. L2 TPS'
+                          ? () => openTpsTable()
+                          : typeof m.title === 'string' && m.title === 'L2 Reorgs'
+                            ? () => openL2ReorgsTable()
                             : typeof m.title === 'string' &&
-                              m.title === 'Forced Inclusions'
-                              ? () => openForcedInclusionsTable()
+                              m.title === 'Slashing Events'
+                              ? () => openSlashingEventsTable()
                               : typeof m.title === 'string' &&
-                                m.title === 'Active Gateways'
-                                ? () => openActiveGatewaysTable()
-                                : undefined
+                                m.title === 'Forced Inclusions'
+                                ? () => openForcedInclusionsTable()
+                                : typeof m.title === 'string' &&
+                                  m.title === 'Active Gateways'
+                                  ? () => openActiveGatewaysTable()
+                                  : undefined
                       }
                     />
                   ))}

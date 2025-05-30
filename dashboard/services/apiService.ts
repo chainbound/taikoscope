@@ -424,3 +424,14 @@ export const fetchAvgBlobsPerBatch = async (
   const res = await fetchJson<{ avg_blobs?: number }>(url);
   return { data: res.data?.avg_blobs ?? null, badRequest: res.badRequest };
 };
+
+export const fetchAvgL2Tps = async (
+  range: '1h' | '24h' | '7d',
+  address?: string,
+): Promise<RequestResult<number>> => {
+  const url =
+    `${API_BASE}/avg-l2-tps?range=${range}` +
+    (address ? `&address=${address}` : '');
+  const res = await fetchJson<{ avg_tps?: number }>(url);
+  return { data: res.data?.avg_tps ?? null, badRequest: res.badRequest };
+};

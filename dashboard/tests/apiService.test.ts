@@ -6,6 +6,7 @@ import {
   fetchActiveGatewayAddresses,
   fetchL2BlockTimes,
   fetchBlockTransactions,
+  fetchAvgL2Tps,
 } from '../services/apiService.ts';
 
 const originalFetch = globalThis.fetch;
@@ -68,5 +69,19 @@ describe('apiService', () => {
     });
     const txs = await fetchBlockTransactions('1h');
     expect(txs.data).toStrictEqual([{ block: 1, txs: 3, sequencer: '0xabc' }]);
+  });
+
+  it('fetchAvgL2Tps succeeds', async () => {
+    globalThis.fetch = mockFetch({ avg_tps: 1.5 });
+    const res = await fetchAvgL2Tps('1h');
+    expect(res.badRequest).toBe(false);
+    expect(res.data).toBe(1.5);
+  });
+
+  it('handles bad request for fetchAvgL2Tps', async () => {
+    globalThis.fetch = mockFetch({}, 400, false);
+    const res = await fetchAvgL2Tps('1h');
+    expect(res.badRequest).toBe(true);
+    expect(res.data).toBeNull();
   });
 });
