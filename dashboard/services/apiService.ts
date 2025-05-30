@@ -1,6 +1,8 @@
 const metaEnv = import.meta.env;
 export const API_BASE = metaEnv.VITE_API_BASE || metaEnv.API_BASE || '';
 
+import { getSequencerName } from '../sequencerConfig.js';
+
 import type {
   TimeSeriesData,
   PieChartDataItem,
@@ -335,7 +337,10 @@ export const fetchSequencerDistribution = async (
   }>(url);
   return {
     data: res.data
-      ? res.data.sequencers.map((s) => ({ name: s.address, value: s.blocks }))
+      ? res.data.sequencers.map((s) => ({
+          name: getSequencerName(s.address),
+          value: s.blocks,
+        }))
       : null,
     badRequest: res.badRequest,
   };
@@ -378,7 +383,15 @@ export const fetchBlockTransactions = async (
     url += `&address=${address}`;
   }
   const res = await fetchJson<{ blocks: BlockTransaction[] }>(url);
-  return { data: res.data?.blocks ?? null, badRequest: res.badRequest };
+  return {
+    data: res.data?.blocks
+      ? res.data.blocks.map((b) => ({
+          ...b,
+          sequencer: getSequencerName(b.sequencer),
+        }))
+      : null,
+    badRequest: res.badRequest,
+  };
 };
 
 export interface BatchBlobCount {

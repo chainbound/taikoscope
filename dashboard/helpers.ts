@@ -1,6 +1,7 @@
 import React from 'react';
 import { type MetricData } from './types';
 import { formatSeconds } from './utils.js';
+import { getSequencerName } from './sequencerConfig.js';
 import type { RequestResult } from './services/apiService';
 
 export interface MetricInputData {
@@ -65,12 +66,16 @@ export const createMetrics = (data: MetricInputData): MetricData[] => [
   },
   {
     title: 'Current Operator',
-    value: data.currentOperator ?? 'N/A',
+    value:
+      data.currentOperator != null
+        ? getSequencerName(data.currentOperator)
+        : 'N/A',
     group: 'Operators',
   },
   {
     title: 'Next Operator',
-    value: data.nextOperator ?? 'N/A',
+    value:
+      data.nextOperator != null ? getSequencerName(data.nextOperator) : 'N/A',
     group: 'Operators',
   },
   {
