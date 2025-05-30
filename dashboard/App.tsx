@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, lazy } from 'react';
 import { createMetrics, hasBadRequest } from './helpers';
 import { DashboardHeader } from './components/DashboardHeader';
 import { MetricCard } from './components/MetricCard';
+import { MetricCardSkeleton } from './components/MetricCardSkeleton';
 import { ChartCard } from './components/ChartCard';
 import { DataTable } from './components/DataTable';
 const SequencerPieChart = lazy(() =>
@@ -91,6 +92,7 @@ const App: React.FC = () => {
     null,
   );
   const [metrics, setMetrics] = useState<MetricData[]>([]);
+  const [loadingMetrics, setLoadingMetrics] = useState(true);
   const [secondsToProveData, setSecondsToProveData] = useState<
     TimeSeriesData[]
   >([]);
@@ -210,6 +212,7 @@ const App: React.FC = () => {
   }, []);
 
   const fetchData = useCallback(async () => {
+    setLoadingMetrics(true);
     const range = timeRange;
     const [
       l2CadenceRes,
@@ -342,6 +345,7 @@ const App: React.FC = () => {
     } else {
       setErrorMessage('');
     }
+    setLoadingMetrics(false);
   }, [timeRange, selectedSequencer]);
 
   useEffect(() => {
@@ -370,6 +374,11 @@ const App: React.FC = () => {
     'Operators',
     'Other',
   ];
+  const skeletonGroupCounts: Record<string, number> = {
+    'Network Performance': 4,
+    'Network Health': 3,
+    Operators: 3,
+  };
 
   const setTableUrl = (
     name: string,
@@ -674,37 +683,51 @@ const App: React.FC = () => {
 
       <main className="mt-6">
         {/* Metrics Grid */}
-        {groupOrder.map((group) =>
-          groupedMetrics[group] && groupedMetrics[group].length > 0 ? (
-            <React.Fragment key={group}>
-              {group !== 'Other' && (
-                <h2 className="mt-6 mb-2 text-lg font-semibold">{group}</h2>
-              )}
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4 md:gap-6">
-                {groupedMetrics[group].map((m, idx) => (
-                  <MetricCard
-                    key={`${group}-${idx}`}
-                    title={m.title}
-                    value={m.value}
-                    onMore={
-                      typeof m.title === 'string' && m.title === 'L2 Reorgs'
-                        ? () => openL2ReorgsTable()
-                        : typeof m.title === 'string' &&
-                            m.title === 'Slashing Events'
-                          ? () => openSlashingEventsTable()
+        {(loadingMetrics ? Object.keys(skeletonGroupCounts) : groupOrder).map(
+          (group) =>
+            loadingMetrics ? (
+              <React.Fragment key={group}>
+                {group !== 'Other' && (
+                  <h2 className="mt-6 mb-2 text-lg font-semibold">{group}</h2>
+                )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4 md:gap-6">
+                  {Array.from({ length: skeletonGroupCounts[group] }).map(
+                    (_, idx) => (
+                      <MetricCardSkeleton key={`${group}-s-${idx}`} />
+                    ),
+                  )}
+                </div>
+              </React.Fragment>
+            ) : groupedMetrics[group] && groupedMetrics[group].length > 0 ? (
+              <React.Fragment key={group}>
+                {group !== 'Other' && (
+                  <h2 className="mt-6 mb-2 text-lg font-semibold">{group}</h2>
+                )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4 md:gap-6">
+                  {groupedMetrics[group].map((m, idx) => (
+                    <MetricCard
+                      key={`${group}-${idx}`}
+                      title={m.title}
+                      value={m.value}
+                      onMore={
+                        typeof m.title === 'string' && m.title === 'L2 Reorgs'
+                          ? () => openL2ReorgsTable()
                           : typeof m.title === 'string' &&
-                              m.title === 'Forced Inclusions'
-                            ? () => openForcedInclusionsTable()
+                              m.title === 'Slashing Events'
+                            ? () => openSlashingEventsTable()
                             : typeof m.title === 'string' &&
-                                m.title === 'Active Gateways'
-                              ? () => openActiveGatewaysTable()
-                              : undefined
-                    }
-                  />
-                ))}
-              </div>
-            </React.Fragment>
-          ) : null,
+                                m.title === 'Forced Inclusions'
+                              ? () => openForcedInclusionsTable()
+                              : typeof m.title === 'string' &&
+                                  m.title === 'Active Gateways'
+                                ? () => openActiveGatewaysTable()
+                                : undefined
+                      }
+                    />
+                  ))}
+                </div>
+              </React.Fragment>
+            ) : null,
         )}
 
         {/* Charts Grid - Reordered: Sequencer Pie Chart first */}
