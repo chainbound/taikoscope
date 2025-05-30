@@ -8,8 +8,7 @@ describe('ChartCard', () => {
     const html = renderToStaticMarkup(
       React.createElement(ChartCard, {
         title: 'My Chart',
-        children: React.createElement('span', null, 'child'),
-      }),
+      }, React.createElement('span', null, 'child')),
     );
     expect(html.includes('My Chart')).toBe(true);
     expect(html.includes('child')).toBe(true);
@@ -21,8 +20,7 @@ describe('ChartCard', () => {
       React.createElement(ChartCard, {
         title: 'Other Chart',
         onMore: () => {},
-        children: React.createElement('div', null, 'data'),
-      }),
+      }, React.createElement('div', null, 'data')),
     );
     expect(html.includes('data')).toBe(true);
     expect(html.includes('aria-label="View table"')).toBe(true);
