@@ -3,6 +3,7 @@ import { describe, it, expect, afterEach } from 'vitest';
 import {
   fetchAvgProveTime,
   fetchActiveGateways,
+  fetchActiveGatewayAddresses,
   fetchL2BlockTimes,
   fetchBlockTransactions,
 } from '../services/apiService.ts';
@@ -44,6 +45,12 @@ describe('apiService', () => {
     expect(gateways.data).toBe(2);
   });
 
+  it('fetches active gateway addresses', async () => {
+    globalThis.fetch = mockFetch({ gateways: ['a', 'b'] });
+    const gateways = await fetchActiveGatewayAddresses('1h');
+    expect(gateways.data).toStrictEqual(['a', 'b']);
+  });
+
   it('transforms block times', async () => {
     globalThis.fetch = mockFetch({
       blocks: [
@@ -57,9 +64,7 @@ describe('apiService', () => {
 
   it('transforms block transactions', async () => {
     globalThis.fetch = mockFetch({
-      blocks: [
-        { block: 1, txs: 3, sequencer: '0xabc' },
-      ],
+      blocks: [{ block: 1, txs: 3, sequencer: '0xabc' }],
     });
     const txs = await fetchBlockTransactions('1h');
     expect(txs.data).toStrictEqual([{ block: 1, txs: 3, sequencer: '0xabc' }]);

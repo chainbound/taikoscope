@@ -86,6 +86,14 @@ export const fetchActiveGateways = async (
   };
 };
 
+export const fetchActiveGatewayAddresses = async (
+  range: '1h' | '24h' | '7d',
+): Promise<RequestResult<string[]>> => {
+  const url = `${API_BASE}/active-gateways?range=${range}`;
+  const res = await fetchJson<{ gateways: string[] }>(url);
+  return { data: res.data?.gateways ?? null, badRequest: res.badRequest };
+};
+
 export const fetchL2Reorgs = async (
   range: '1h' | '24h' | '7d',
 ): Promise<RequestResult<number>> => {
