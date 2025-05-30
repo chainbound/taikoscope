@@ -46,6 +46,21 @@ export const DataTable: React.FC<DataTableProps> = ({
   onTimeRangeChange,
   chart,
 }) => {
+  const ROWS_PER_PAGE = 50;
+  const [page, setPage] = React.useState(0);
+
+  React.useEffect(() => {
+    setPage(0);
+  }, [rows]);
+
+  const pageRows = React.useMemo(
+    () => rows.slice(page * ROWS_PER_PAGE, (page + 1) * ROWS_PER_PAGE),
+    [rows, page],
+  );
+
+  const disablePrev = page === 0;
+  const disableNext = (page + 1) * ROWS_PER_PAGE >= rows.length;
+
   return (
     <div className="p-4">
       <div className="flex items-center mb-4 space-x-4">
@@ -82,7 +97,7 @@ export const DataTable: React.FC<DataTableProps> = ({
             </tr>
           </thead>
           <tbody>
-            {rows.map((row, idx) => (
+            {pageRows.map((row, idx) => (
               <tr
                 key={idx}
                 className="border-t hover:bg-gray-50 cursor-pointer"
@@ -97,6 +112,23 @@ export const DataTable: React.FC<DataTableProps> = ({
             ))}
           </tbody>
         </table>
+      </div>
+      <div className="flex items-center justify-between mt-2">
+        <button
+          onClick={() => setPage((p) => p - 1)}
+          disabled={disablePrev}
+          className="text-[#e81899] disabled:text-gray-400"
+        >
+          Prev
+        </button>
+        <span>Page {page + 1}</span>
+        <button
+          onClick={() => setPage((p) => p + 1)}
+          disabled={disableNext}
+          className="text-[#e81899] disabled:text-gray-400"
+        >
+          Next
+        </button>
       </div>
 
       {extraTable ? (
