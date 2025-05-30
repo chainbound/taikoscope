@@ -1,7 +1,7 @@
 import React from 'react';
 import {
-  LineChart,
-  Line,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -28,7 +28,7 @@ export const ReorgDepthChart: React.FC<ReorgDepthChartProps> = ({ data }) => {
 
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <LineChart
+      <BarChart
         data={data}
         margin={{ top: 5, right: 30, left: 20, bottom: 50 }}
       >
@@ -74,16 +74,8 @@ export const ReorgDepthChart: React.FC<ReorgDepthChartProps> = ({ data }) => {
           align="right"
           wrapperStyle={{ right: 20, bottom: 0 }}
         />
-        <Line
-          type="monotone"
-          dataKey="depth"
-          stroke={TAIKO_PINK}
-          strokeWidth={2}
-          dot={false}
-          activeDot={data.length <= 100 ? { r: 6 } : false}
-          name="Depth"
-        />
-      </LineChart>
+        <Bar dataKey="depth" fill={TAIKO_PINK} name="Depth" />
+      </BarChart>
     </ResponsiveContainer>
   );
 };
