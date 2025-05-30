@@ -409,15 +409,20 @@ const App: React.FC = () => {
   const openSequencerDistributionTable = async (
     range: TimeRange,
     page = seqDistTxPage,
+    startingAfter?: number,
+    endingBefore?: number,
   ) => {
     setTimeRange(range);
     setSeqDistTxPage(page);
     const [distRes, txRes] = await Promise.all([
       fetchSequencerDistribution(range),
-      fetchBlockTransactions(range, page),
+      fetchBlockTransactions(range, 50, startingAfter, endingBefore),
     ]);
+    const txData = txRes.data || [];
     const disablePrev = page === 0;
-    const disableNext = (txRes.data?.length ?? 0) < 50;
+    const disableNext = txData.length < 50;
+    const nextCursor = txData.length > 0 ? txData[txData.length - 1].block : undefined;
+    const prevCursor = txData.length > 0 ? txData[0].block : undefined;
     openTable(
       'Sequencer Distribution',
       [
@@ -440,8 +445,10 @@ const App: React.FC = () => {
         >[],
         pagination: {
           page,
-          onPrev: () => openSequencerDistributionTable(range, page - 1),
-          onNext: () => openSequencerDistributionTable(range, page + 1),
+          onPrev: () =>
+            openSequencerDistributionTable(range, page - 1, undefined, prevCursor),
+          onNext: () =>
+            openSequencerDistributionTable(range, page + 1, nextCursor, undefined),
           disablePrev,
           disableNext,
         },
@@ -522,7 +529,7 @@ const App: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mt-6">
           <ChartCard
             title="Sequencer Distribution"
-            onMore={() => openSequencerDistributionTable(timeRange)}
+            onMore={() => openSequencerDistributionTable(timeRange, 0)}
           >
             <SequencerPieChart data={sequencerDistribution} />
           </ChartCard>

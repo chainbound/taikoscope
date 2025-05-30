@@ -30,6 +30,6 @@ This document lists the HTTP endpoints exposed by the Taikoscope API server. All
 | `/l2-gas-used` | Gas used per L2 block. Optional `?range` query. |
 | `/sequencer-distribution` | Number of blocks produced by each sequencer. Optional `?range` query. |
 | `/sequencer-blocks` | Blocks produced by each sequencer. Optional `?range` query. |
-| `/block-transactions` | Number of transactions per L2 block. Supports `range`, `limit` and `offset` queries. |
+| `/block-transactions` | Number of transactions per L2 block. Supports `range`, `limit` and cursor-based pagination with `starting_after` or `ending_before`. |
 
 Parameters such as `range` follow the form `1h`, `24h` or `7d` and default to one hour if omitted.
