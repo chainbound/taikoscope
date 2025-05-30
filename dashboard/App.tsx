@@ -242,9 +242,7 @@ const App: React.FC = () => {
     const l1Times = l1TimesRes.data || [];
     const l2Times = l2TimesRes.data || [];
     const l2Gas = l2GasUsedRes.data || [];
-    const sequencerDist = (sequencerDistRes.data || []).filter(
-      (d) => !selectedSequencer || d.name === selectedSequencer,
-    );
+    const sequencerDist = sequencerDistRes.data || [];
     const txPerBlock = blockTxRes.data || [];
     const blobsPerBatch = batchBlobCountsRes.data || [];
 
@@ -679,7 +677,11 @@ const App: React.FC = () => {
             title="Sequencer Distribution"
             onMore={() => openSequencerDistributionTable(timeRange, 0)}
           >
-            <SequencerPieChart data={sequencerDistribution} />
+            <SequencerPieChart
+              data={sequencerDistribution.filter(
+                (d) => !selectedSequencer || d.name === selectedSequencer,
+              )}
+            />
           </ChartCard>
           <ChartCard
             title="Prove Time"
