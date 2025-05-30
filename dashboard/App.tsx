@@ -749,13 +749,13 @@ const App: React.FC = () => {
                         typeof m.title === 'string' && m.title === 'L2 Reorgs'
                           ? () => openL2ReorgsTable()
                           : typeof m.title === 'string' &&
-                            m.title === 'Slashing Events'
+                              m.title === 'Slashing Events'
                             ? () => openSlashingEventsTable()
                             : typeof m.title === 'string' &&
-                              m.title === 'Forced Inclusions'
+                                m.title === 'Forced Inclusions'
                               ? () => openForcedInclusionsTable()
                               : typeof m.title === 'string' &&
-                                m.title === 'Active Gateways'
+                                  m.title === 'Active Gateways'
                                 ? () => openActiveGatewaysTable()
                                 : undefined
                       }
@@ -771,6 +771,7 @@ const App: React.FC = () => {
           <ChartCard
             title="Sequencer Distribution"
             onMore={() => openSequencerDistributionTable(timeRange, 0)}
+            loading={loadingMetrics}
           >
             <SequencerPieChart
               data={sequencerDistribution.filter(
@@ -793,6 +794,7 @@ const App: React.FC = () => {
                 >[],
               )
             }
+            loading={loadingMetrics}
           >
             <BatchProcessChart
               data={secondsToProveData}
@@ -814,10 +816,11 @@ const App: React.FC = () => {
                 >[],
               )
             }
+            loading={loadingMetrics}
           >
             <BatchProcessChart data={secondsToVerifyData} lineColor="#5DA5DA" />
           </ChartCard>
-          <ChartCard title="Gas Used Per Block">
+          <ChartCard title="Gas Used Per Block" loading={loadingMetrics}>
             <GasUsedChart data={l2GasUsedData} lineColor="#E573B5" />
           </ChartCard>
           <ChartCard
@@ -833,12 +836,14 @@ const App: React.FC = () => {
                 blockTxData as unknown as Record<string, string | number>[],
               )
             }
+            loading={loadingMetrics}
           >
             <BlockTxChart data={blockTxData} barColor="#4E79A7" />
           </ChartCard>
           <ChartCard
             title="Blobs per Batch"
             onMore={() => openBlobsPerBatchTable()}
+            loading={loadingMetrics}
           >
             <BlobsPerBatchChart data={batchBlobCounts} barColor="#A0CBE8" />
           </ChartCard>
@@ -854,6 +859,7 @@ const App: React.FC = () => {
                 l2BlockTimeData as unknown as Record<string, string | number>[],
               )
             }
+            loading={loadingMetrics}
           >
             <BlockTimeChart data={l2BlockTimeData} lineColor="#FAA43A" />
           </ChartCard>
@@ -869,6 +875,7 @@ const App: React.FC = () => {
                 l1BlockTimeData as unknown as Record<string, string | number>[],
               )
             }
+            loading={loadingMetrics}
           >
             <BlockTimeChart data={l1BlockTimeData} lineColor="#60BD68" />
           </ChartCard>
