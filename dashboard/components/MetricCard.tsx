@@ -23,12 +23,12 @@ export const MetricCard: React.FC<MetricCardProps> = ({
     <div
       className={`bg-white p-4 rounded-lg border border-gray-200 transition-shadow duration-200 ${isAddress ? 'min-w-0 w-full sm:col-span-2' : ''} ${className ?? ''}`.trim()}
     >
-      <div className="flex justify-between items-start">
+      <div className="flex justify-between items-center">
         <h3 className="text-sm font-medium text-gray-500 truncate">{title}</h3>
         {onMore && (
           <button
             onClick={onMore}
-            className="text-gray-500 hover:text-gray-700 text-2xl"
+            className="text-gray-500 hover:text-gray-700 text-xl leading-none"
             aria-label="View table"
           >
             ⋮
