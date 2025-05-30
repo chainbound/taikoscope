@@ -248,7 +248,6 @@ async function fetchData(range: TimeRange, state: State) {
     batchCadence,
     avgProve,
     avgVerify,
-    avgBlobsPerBatch: null,
     activeGateways,
     currentOperator,
     nextOperator,

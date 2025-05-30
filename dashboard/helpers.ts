@@ -8,7 +8,6 @@ export interface MetricInputData {
   batchCadence: number | null;
   avgProve: number | null;
   avgVerify: number | null;
-  avgBlobsPerBatch: number | null;
   activeGateways: number | null;
   currentOperator: string | null;
   nextOperator: string | null;
@@ -57,12 +56,6 @@ export const createMetrics = (data: MetricInputData): MetricData[] => [
       data.avgVerify != null && data.avgVerify > 0
         ? formatSeconds(data.avgVerify / 1000)
         : 'N/A',
-    group: 'Network Performance',
-  },
-  {
-    title: 'Blobs per Batch',
-    value:
-      data.avgBlobsPerBatch != null ? data.avgBlobsPerBatch.toFixed(2) : 'N/A',
     group: 'Network Performance',
   },
   {
