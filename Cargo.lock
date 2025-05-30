@@ -1297,6 +1297,7 @@ dependencies = [
  "derive_more 1.0.0",
  "extractor",
  "eyre",
+ "hex",
  "serde",
  "tokio",
  "tracing",
