@@ -50,6 +50,7 @@ import {
   ForcedInclusionEvent,
 } from './types';
 import { bytesToHex, loadRefreshRate, saveRefreshRate } from './utils';
+import { getSequencerAddress, getSequencerName } from './sequencerConfig.js';
 import {
   API_BASE,
   fetchAvgProveTime,
@@ -239,7 +240,10 @@ const App: React.FC = () => {
       blockTxRes,
       batchBlobCountsRes,
     ] = await Promise.all([
-      fetchL2BlockCadence(range, selectedSequencer ?? undefined),
+      fetchL2BlockCadence(
+        range,
+        selectedSequencer ? getSequencerAddress(selectedSequencer) : undefined,
+      ),
       fetchBatchPostingCadence(range),
       fetchAvgProveTime(range),
       fetchAvgVerifyTime(range),
@@ -254,15 +258,21 @@ const App: React.FC = () => {
       fetchProveTimes(range),
       fetchVerifyTimes(range),
       fetchL1BlockTimes(range),
-      fetchL2BlockTimes(range, selectedSequencer ?? undefined),
-      fetchL2GasUsed(range, selectedSequencer ?? undefined),
+      fetchL2BlockTimes(
+        range,
+        selectedSequencer ? getSequencerAddress(selectedSequencer) : undefined,
+      ),
+      fetchL2GasUsed(
+        range,
+        selectedSequencer ? getSequencerAddress(selectedSequencer) : undefined,
+      ),
       fetchSequencerDistribution(range),
       fetchBlockTransactions(
         range,
         50,
         undefined,
         undefined,
-        selectedSequencer ?? undefined,
+        selectedSequencer ? getSequencerAddress(selectedSequencer) : undefined,
       ),
       fetchBatchBlobCounts(range),
     ]);
@@ -445,12 +455,14 @@ const App: React.FC = () => {
     setTableLoading(false);
   };
 
-  const openSequencerBlocks = async (address: string) => {
+  const openSequencerBlocks = async (identifier: string) => {
     setTableLoading(true);
+    const address = getSequencerAddress(identifier) ?? identifier;
+    const name = getSequencerName(address);
     const blocksRes = await fetchSequencerBlocks(timeRange, address);
     setTableUrl('sequencer-blocks', { address });
     openTable(
-      `Blocks proposed by ${address}`,
+      `Blocks proposed by ${name}`,
       [{ key: 'block', label: 'Block Number' }],
       (blocksRes.data || []).map((b) => ({ block: b })),
     );
@@ -557,7 +569,7 @@ const App: React.FC = () => {
         50,
         startingAfter,
         endingBefore,
-        selectedSequencer ?? undefined,
+        selectedSequencer ? getSequencerAddress(selectedSequencer) : undefined,
       ),
     ]);
     const txData = txRes.data || [];
@@ -569,7 +581,7 @@ const App: React.FC = () => {
     openTable(
       'Sequencer Distribution',
       [
-        { key: 'name', label: 'Address' },
+        { key: 'name', label: 'Sequencer' },
         { key: 'value', label: 'Blocks' },
       ],
       (distRes.data || []) as unknown as Record<string, string | number>[],
@@ -729,13 +741,13 @@ const App: React.FC = () => {
                         typeof m.title === 'string' && m.title === 'L2 Reorgs'
                           ? () => openL2ReorgsTable()
                           : typeof m.title === 'string' &&
-                              m.title === 'Slashing Events'
+                            m.title === 'Slashing Events'
                             ? () => openSlashingEventsTable()
                             : typeof m.title === 'string' &&
-                                m.title === 'Forced Inclusions'
+                              m.title === 'Forced Inclusions'
                               ? () => openForcedInclusionsTable()
                               : typeof m.title === 'string' &&
-                                  m.title === 'Active Gateways'
+                                m.title === 'Active Gateways'
                                 ? () => openActiveGatewaysTable()
                                 : undefined
                       }
