@@ -872,7 +872,20 @@ impl ClickhouseReader {
 
     /// Get prove times in seconds for batches proved within the last hour
     pub async fn get_prove_times_last_hour(&self) -> Result<Vec<BatchProveTimeRow>> {
-        let query = format!(
+        let mv_query = format!(
+            "SELECT batch_id, toUInt64(prove_time_ms / 1000) AS seconds_to_prove \
+             FROM {db}.batch_prove_times_mv \
+             WHERE proved_at >= now64() - INTERVAL 1 HOUR \
+             ORDER BY batch_id ASC",
+            db = self.db_name
+        );
+
+        let rows = self.execute::<BatchProveTimeRow>(&mv_query).await?;
+        if !rows.is_empty() {
+            return Ok(rows);
+        }
+
+        let fallback_query = format!(
             "SELECT b.batch_id AS batch_id, \
                     (l1_proved.block_ts - l1_proposed.block_ts) AS seconds_to_prove \
              FROM {db}.batches b \
@@ -886,13 +899,26 @@ impl ClickhouseReader {
             db = self.db_name
         );
 
-        let rows = self.execute::<BatchProveTimeRow>(&query).await?;
+        let rows = self.execute::<BatchProveTimeRow>(&fallback_query).await?;
         Ok(rows)
     }
 
     /// Get prove times in seconds for batches proved within the last 24 hours
     pub async fn get_prove_times_last_24_hours(&self) -> Result<Vec<BatchProveTimeRow>> {
-        let query = format!(
+        let mv_query = format!(
+            "SELECT batch_id, toUInt64(prove_time_ms / 1000) AS seconds_to_prove \
+             FROM {db}.batch_prove_times_mv \
+             WHERE proved_at >= now64() - INTERVAL 24 HOUR \
+             ORDER BY batch_id ASC",
+            db = self.db_name
+        );
+
+        let rows = self.execute::<BatchProveTimeRow>(&mv_query).await?;
+        if !rows.is_empty() {
+            return Ok(rows);
+        }
+
+        let fallback_query = format!(
             "SELECT b.batch_id AS batch_id, \
                     (l1_proved.block_ts - l1_proposed.block_ts) AS seconds_to_prove \
              FROM {db}.batches b \
@@ -906,13 +932,26 @@ impl ClickhouseReader {
             db = self.db_name
         );
 
-        let rows = self.execute::<BatchProveTimeRow>(&query).await?;
+        let rows = self.execute::<BatchProveTimeRow>(&fallback_query).await?;
         Ok(rows)
     }
 
     /// Get prove times in seconds for batches proved within the last 7 days
     pub async fn get_prove_times_last_7_days(&self) -> Result<Vec<BatchProveTimeRow>> {
-        let query = format!(
+        let mv_query = format!(
+            "SELECT batch_id, toUInt64(prove_time_ms / 1000) AS seconds_to_prove \
+             FROM {db}.batch_prove_times_mv \
+             WHERE proved_at >= now64() - INTERVAL 7 DAY \
+             ORDER BY batch_id ASC",
+            db = self.db_name
+        );
+
+        let rows = self.execute::<BatchProveTimeRow>(&mv_query).await?;
+        if !rows.is_empty() {
+            return Ok(rows);
+        }
+
+        let fallback_query = format!(
             "SELECT b.batch_id AS batch_id, \
                     (l1_proved.block_ts - l1_proposed.block_ts) AS seconds_to_prove \
              FROM {db}.batches b \
@@ -926,13 +965,27 @@ impl ClickhouseReader {
             db = self.db_name
         );
 
-        let rows = self.execute::<BatchProveTimeRow>(&query).await?;
+        let rows = self.execute::<BatchProveTimeRow>(&fallback_query).await?;
         Ok(rows)
     }
 
     /// Get verify times in seconds for batches verified within the last hour
     pub async fn get_verify_times_last_hour(&self) -> Result<Vec<BatchVerifyTimeRow>> {
-        let query = format!(
+        let mv_query = format!(
+            "SELECT batch_id, toUInt64(verify_time_ms / 1000) AS seconds_to_verify \
+             FROM {db}.batch_verify_times_mv \
+             WHERE verified_at >= now64() - INTERVAL 1 HOUR \
+               AND verify_time_ms > 60000 \
+             ORDER BY batch_id ASC",
+            db = self.db_name
+        );
+
+        let rows = self.execute::<BatchVerifyTimeRow>(&mv_query).await?;
+        if !rows.is_empty() {
+            return Ok(rows);
+        }
+
+        let fallback_query = format!(
             "SELECT pb.batch_id AS batch_id, \
                     (l1_verified.block_ts - l1_proved.block_ts) AS seconds_to_verify \
              FROM {db}.proved_batches pb \
@@ -949,13 +1002,27 @@ impl ClickhouseReader {
             db = self.db_name
         );
 
-        let rows = self.execute::<BatchVerifyTimeRow>(&query).await?;
+        let rows = self.execute::<BatchVerifyTimeRow>(&fallback_query).await?;
         Ok(rows)
     }
 
     /// Get verify times in seconds for batches verified within the last 24 hours
     pub async fn get_verify_times_last_24_hours(&self) -> Result<Vec<BatchVerifyTimeRow>> {
-        let query = format!(
+        let mv_query = format!(
+            "SELECT batch_id, toUInt64(verify_time_ms / 1000) AS seconds_to_verify \
+             FROM {db}.batch_verify_times_mv \
+             WHERE verified_at >= now64() - INTERVAL 24 HOUR \
+               AND verify_time_ms > 60000 \
+             ORDER BY batch_id ASC",
+            db = self.db_name
+        );
+
+        let rows = self.execute::<BatchVerifyTimeRow>(&mv_query).await?;
+        if !rows.is_empty() {
+            return Ok(rows);
+        }
+
+        let fallback_query = format!(
             "SELECT pb.batch_id AS batch_id, \
                     (l1_verified.block_ts - l1_proved.block_ts) AS seconds_to_verify \
              FROM {db}.proved_batches pb \
@@ -972,13 +1039,27 @@ impl ClickhouseReader {
             db = self.db_name
         );
 
-        let rows = self.execute::<BatchVerifyTimeRow>(&query).await?;
+        let rows = self.execute::<BatchVerifyTimeRow>(&fallback_query).await?;
         Ok(rows)
     }
 
     /// Get verify times in seconds for batches verified within the last 7 days
     pub async fn get_verify_times_last_7_days(&self) -> Result<Vec<BatchVerifyTimeRow>> {
-        let query = format!(
+        let mv_query = format!(
+            "SELECT batch_id, toUInt64(verify_time_ms / 1000) AS seconds_to_verify \
+             FROM {db}.batch_verify_times_mv \
+             WHERE verified_at >= now64() - INTERVAL 7 DAY \
+               AND verify_time_ms > 60000 \
+             ORDER BY batch_id ASC",
+            db = self.db_name
+        );
+
+        let rows = self.execute::<BatchVerifyTimeRow>(&mv_query).await?;
+        if !rows.is_empty() {
+            return Ok(rows);
+        }
+
+        let fallback_query = format!(
             "SELECT pb.batch_id AS batch_id, \
                     (l1_verified.block_ts - l1_proved.block_ts) AS seconds_to_verify \
              FROM {db}.proved_batches pb \
@@ -995,7 +1076,7 @@ impl ClickhouseReader {
             db = self.db_name
         );
 
-        let rows = self.execute::<BatchVerifyTimeRow>(&query).await?;
+        let rows = self.execute::<BatchVerifyTimeRow>(&fallback_query).await?;
         Ok(rows)
     }
 
