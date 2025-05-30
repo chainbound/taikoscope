@@ -308,7 +308,7 @@ function setupSSE(state: State) {
       state.errorMessage =
         'Realtime updates unavailable, falling back to polling.';
       updateHeads(state);
-      pollId = setInterval(() => updateHeads(state), 10000);
+      pollId = setInterval(() => updateHeads(state), 60000);
     }
   };
 

@@ -8,14 +8,14 @@ describe('DashboardHeader', () => {
     const html = renderToStaticMarkup(
       React.createElement(DashboardHeader, {
         timeRange: '1h',
-        onTimeRangeChange: () => {},
-        refreshRate: 10000,
-        onRefreshRateChange: () => {},
+        onTimeRangeChange: () => { },
+        refreshRate: 60000,
+        onRefreshRateChange: () => { },
         lastRefresh: Date.now(),
-        onManualRefresh: () => {},
+        onManualRefresh: () => { },
         sequencers: ['seq1', 'seq2'],
         selectedSequencer: null,
-        onSequencerChange: () => {},
+        onSequencerChange: () => { },
       }),
     );
     expect(html.includes('Taiko Masaya Testnet')).toBe(true);
