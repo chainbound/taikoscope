@@ -1,11 +1,14 @@
 import React from 'react';
 import { TimeRange } from '../types';
+import { RefreshCountdown } from './RefreshCountdown';
 
 interface DashboardHeaderProps {
   timeRange: TimeRange;
   onTimeRangeChange: (range: TimeRange) => void;
   refreshRate: number;
   onRefreshRateChange: (rate: number) => void;
+  lastRefresh: number;
+  onManualRefresh: () => void;
   sequencers: string[];
   selectedSequencer: string | null;
   onSequencerChange: (seq: string | null) => void;
@@ -16,6 +19,8 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   onTimeRangeChange,
   refreshRate,
   onRefreshRateChange,
+  lastRefresh,
+  onManualRefresh,
   sequencers,
   selectedSequencer,
   onSequencerChange,
@@ -35,6 +40,11 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
         <RefreshRateInput
           refreshRate={refreshRate}
           onRefreshRateChange={onRefreshRateChange}
+        />
+        <RefreshCountdown
+          refreshRate={refreshRate}
+          lastRefresh={lastRefresh}
+          onRefresh={onManualRefresh}
         />
         <SequencerSelector
           sequencers={sequencers}
