@@ -1,4 +1,4 @@
-import { TimeRange, L2ReorgEvent, SlashingEvent, ForcedInclusionEvent } from '../types';
+import { TimeRange, L2ReorgEvent, SlashingEvent, ForcedInclusionEvent, TimeSeriesData } from '../types';
 import { 
   fetchSequencerBlocks,
   fetchL2ReorgEvents, 
@@ -14,7 +14,7 @@ import {
   fetchSequencerDistribution
 } from '../services/apiService';
 import { getSequencerName } from '../sequencerConfig';
-import { bytesToHex } from '../utils';
+import { bytesToHex, formatDecimal } from '../utils';
 import React from 'react';
 
 export interface TableColumn {
@@ -160,9 +160,13 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     fetcher: fetchL2BlockTimes,
     columns: [
       { key: 'value', label: 'Block Number' },
-      { key: 'timestamp', label: 'Interval (ms)' }
+      { key: 'timestamp', label: 'Interval (s)' }
     ],
-    mapData: (data) => data as Record<string, string | number>[],
+    mapData: (data) =>
+      (data as TimeSeriesData[]).map((d) => ({
+        value: d.value,
+        timestamp: Number(formatDecimal(d.timestamp / 1000))
+      })) as Record<string, string | number>[],
     chart: (data) => {
       const BlockTimeChart = React.lazy(() =>
         import('../components/BlockTimeChart').then(m => ({ default: m.BlockTimeChart }))
@@ -177,9 +181,13 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     fetcher: fetchL1BlockTimes,
     columns: [
       { key: 'value', label: 'Block Number' },
-      { key: 'timestamp', label: 'Interval (ms)' }
+      { key: 'timestamp', label: 'Interval (s)' }
     ],
-    mapData: (data) => data as Record<string, string | number>[],
+    mapData: (data) =>
+      (data as TimeSeriesData[]).map((d) => ({
+        value: d.value,
+        timestamp: Number(formatDecimal(d.timestamp / 1000))
+      })) as Record<string, string | number>[],
     chart: (data) => {
       const BlockTimeChart = React.lazy(() =>
         import('../components/BlockTimeChart').then(m => ({ default: m.BlockTimeChart }))

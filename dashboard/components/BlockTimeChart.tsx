@@ -10,7 +10,7 @@ import {
   Brush,
 } from 'recharts';
 import { TimeSeriesData } from '../types';
-import { formatDecimal, formatInterval, shouldShowMinutes } from '../utils';
+import { formatDecimal, formatInterval } from '../utils';
 
 interface BlockTimeChartProps {
   data: TimeSeriesData[];
@@ -28,7 +28,6 @@ export const BlockTimeChart: React.FC<BlockTimeChartProps> = ({
       </div>
     );
   }
-  const showMinutes = shouldShowMinutes(data);
   const [brushRange, setBrushRange] = useState({
     startIndex: Math.max(0, data.length - 50),
     endIndex: data.length - 1,
@@ -81,13 +80,9 @@ export const BlockTimeChart: React.FC<BlockTimeChartProps> = ({
           stroke="#666666"
           fontSize={12}
           domain={['auto', 'auto']}
-          tickFormatter={(v) =>
-            showMinutes
-              ? String(Number(formatDecimal(v / 60000)))
-              : String(Number(formatDecimal(v / 1000)))
-          }
+          tickFormatter={(v) => String(Number(formatDecimal(v / 1000)))}
           label={{
-            value: showMinutes ? 'Minutes' : 'Seconds',
+            value: 'Seconds',
             angle: -90,
             position: 'insideLeft',
             offset: -16,
@@ -97,7 +92,7 @@ export const BlockTimeChart: React.FC<BlockTimeChartProps> = ({
         />
         <Tooltip
           labelFormatter={(label: number) => `Block ${label.toLocaleString()}`}
-          formatter={(value: number) => [formatInterval(value, showMinutes)]}
+          formatter={(value: number) => [formatInterval(value, false)]}
           contentStyle={{
             backgroundColor: 'rgba(255, 255, 255, 0.8)',
             borderColor: lineColor,
