@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   LineChart,
   Line,
@@ -8,6 +8,7 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
+  Brush,
 } from 'recharts';
 import { TimeSeriesData } from '../types';
 import {
@@ -36,6 +37,27 @@ export const BatchProcessChart: React.FC<BatchProcessChartProps> = ({
   const { showHours, showMinutes } = computeBatchDurationFlags(data);
   const formatValue = (value: number) =>
     formatBatchDuration(value, showHours, showMinutes);
+
+  const [brushRange, setBrushRange] = useState({
+    startIndex: Math.max(0, data.length - 50),
+    endIndex: data.length - 1,
+  });
+
+  const handleBrushChange = (range: {
+    startIndex?: number;
+    endIndex?: number;
+  }) => {
+    if (range.startIndex == null || range.endIndex == null) return;
+    const maxRange = 500;
+    if (range.endIndex - range.startIndex > maxRange) {
+      setBrushRange({
+        startIndex: range.endIndex - maxRange,
+        endIndex: range.endIndex,
+      });
+    } else {
+      setBrushRange({ startIndex: range.startIndex, endIndex: range.endIndex });
+    }
+  };
 
   return (
     <ResponsiveContainer width="100%" height="100%">
@@ -99,6 +121,14 @@ export const BatchProcessChart: React.FC<BatchProcessChartProps> = ({
           dot={false}
           activeDot={data.length <= 100 ? { r: 6 } : false}
           name="Time"
+        />
+        <Brush
+          dataKey="name"
+          height={20}
+          stroke={lineColor}
+          startIndex={brushRange.startIndex}
+          endIndex={brushRange.endIndex}
+          onChange={handleBrushChange}
         />
       </LineChart>
     </ResponsiveContainer>

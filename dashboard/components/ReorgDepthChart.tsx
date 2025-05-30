@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   BarChart,
   Bar,
@@ -8,6 +8,7 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
+  Brush,
 } from 'recharts';
 import { L2ReorgEvent } from '../types';
 
@@ -25,6 +26,27 @@ export const ReorgDepthChart: React.FC<ReorgDepthChartProps> = ({ data }) => {
       </div>
     );
   }
+
+  const [brushRange, setBrushRange] = useState({
+    startIndex: Math.max(0, data.length - 50),
+    endIndex: data.length - 1,
+  });
+
+  const handleBrushChange = (range: {
+    startIndex?: number;
+    endIndex?: number;
+  }) => {
+    if (range.startIndex == null || range.endIndex == null) return;
+    const maxRange = 500;
+    if (range.endIndex - range.startIndex > maxRange) {
+      setBrushRange({
+        startIndex: range.endIndex - maxRange,
+        endIndex: range.endIndex,
+      });
+    } else {
+      setBrushRange({ startIndex: range.startIndex, endIndex: range.endIndex });
+    }
+  };
 
   return (
     <ResponsiveContainer width="100%" height="100%">
@@ -75,6 +97,14 @@ export const ReorgDepthChart: React.FC<ReorgDepthChartProps> = ({ data }) => {
           wrapperStyle={{ right: 20, bottom: 0 }}
         />
         <Bar dataKey="depth" fill={TAIKO_PINK} name="Depth" />
+        <Brush
+          dataKey="l2_block_number"
+          height={20}
+          stroke={TAIKO_PINK}
+          startIndex={brushRange.startIndex}
+          endIndex={brushRange.endIndex}
+          onChange={handleBrushChange}
+        />
       </BarChart>
     </ResponsiveContainer>
   );

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   BarChart,
   Bar,
@@ -8,6 +8,7 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
+  Brush,
 } from 'recharts';
 import type { BlockTransaction } from '../services/apiService';
 
@@ -27,6 +28,26 @@ export const BlockTxChart: React.FC<BlockTxChartProps> = ({
       </div>
     );
   }
+  const [brushRange, setBrushRange] = useState({
+    startIndex: Math.max(0, data.length - 50),
+    endIndex: data.length - 1,
+  });
+
+  const handleBrushChange = (range: {
+    startIndex?: number;
+    endIndex?: number;
+  }) => {
+    if (range.startIndex == null || range.endIndex == null) return;
+    const maxRange = 500;
+    if (range.endIndex - range.startIndex > maxRange) {
+      setBrushRange({
+        startIndex: range.endIndex - maxRange,
+        endIndex: range.endIndex,
+      });
+    } else {
+      setBrushRange({ startIndex: range.startIndex, endIndex: range.endIndex });
+    }
+  };
   return (
     <ResponsiveContainer width="100%" height="100%">
       <BarChart
@@ -78,6 +99,14 @@ export const BlockTxChart: React.FC<BlockTxChartProps> = ({
           wrapperStyle={{ right: 20, bottom: 0 }}
         />
         <Bar dataKey="txs" fill={barColor} name="Txs" />
+        <Brush
+          dataKey="block"
+          height={20}
+          stroke={barColor}
+          startIndex={brushRange.startIndex}
+          endIndex={brushRange.endIndex}
+          onChange={handleBrushChange}
+        />
       </BarChart>
     </ResponsiveContainer>
   );
