@@ -10,6 +10,8 @@ import {
   formatSequencerTooltip,
   formatLargeNumber,
   bytesToHex,
+  loadRefreshRate,
+  saveRefreshRate,
 } from '../utils.js';
 
 describe('utils', () => {
@@ -47,13 +49,13 @@ describe('utils', () => {
   });
 
   it('determines minute display correctly', () => {
-    expect(shouldShowMinutes([{ timestamp: 1000 }, { timestamp: 200000 }])).toBe(
-      true,
-    );
+    expect(
+      shouldShowMinutes([{ timestamp: 1000 }, { timestamp: 200000 }]),
+    ).toBe(true);
 
-    expect(shouldShowMinutes([{ timestamp: 1000 }, { timestamp: 110000 }])).toBe(
-      false,
-    );
+    expect(
+      shouldShowMinutes([{ timestamp: 1000 }, { timestamp: 110000 }]),
+    ).toBe(false);
   });
 
   it('finds metric values', () => {
@@ -82,5 +84,26 @@ describe('utils', () => {
 
   it('converts bytes to hex', () => {
     expect(bytesToHex([0, 1, 255])).toBe('0x0001ff');
+  });
+
+  it('saves and loads refresh rate', () => {
+    const store: Record<string, string> = {};
+    // @ts-ignore
+    globalThis.localStorage = {
+      getItem: (k: string) => (k in store ? store[k] : null),
+      setItem: (k: string, v: string) => {
+        store[k] = v;
+      },
+      removeItem: () => {},
+      clear: () => {},
+      key: () => null,
+      length: 0,
+    } as Storage;
+
+    expect(loadRefreshRate()).toBe(60000);
+    saveRefreshRate(10000);
+    expect(store.refreshRate).toBe('10000');
+    store.refreshRate = '2000';
+    expect(loadRefreshRate()).toBe(2000);
   });
 });

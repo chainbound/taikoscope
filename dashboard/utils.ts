@@ -73,3 +73,15 @@ export const formatSequencerTooltip = (
 
 export const bytesToHex = (bytes: number[]): string =>
   `0x${bytes.map((b) => b.toString(16).padStart(2, '0')).join('')}`;
+
+export const loadRefreshRate = (): number => {
+  if (typeof localStorage === 'undefined') return 60000;
+  const stored = localStorage.getItem('refreshRate');
+  const value = stored ? parseInt(stored, 10) : NaN;
+  return Number.isFinite(value) && value > 0 ? value : 60000;
+};
+
+export const saveRefreshRate = (rate: number): void => {
+  if (typeof localStorage === 'undefined') return;
+  localStorage.setItem('refreshRate', String(rate));
+};

@@ -19,7 +19,7 @@ import {
   SlashingEvent,
   ForcedInclusionEvent,
 } from './types';
-import { bytesToHex } from './utils';
+import { bytesToHex, loadRefreshRate, saveRefreshRate } from './utils';
 import {
   API_BASE,
   fetchAvgProveTime,
@@ -71,7 +71,9 @@ const App: React.FC = () => {
   >([]);
   const [l2HeadBlock, setL2HeadBlock] = useState<string>('0');
   const [l1HeadBlock, setL1HeadBlock] = useState<string>('0');
-  const [refreshRate, setRefreshRate] = useState<number>(60000);
+  const [refreshRate, setRefreshRate] = useState<number>(() =>
+    loadRefreshRate(),
+  );
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [seqDistTxPage, setSeqDistTxPage] = useState<number>(0);
   const [tableView, setTableView] = useState<null | {
@@ -292,6 +294,10 @@ const App: React.FC = () => {
   }, [timeRange]);
 
   useEffect(() => {
+    saveRefreshRate(refreshRate);
+  }, [refreshRate]);
+
+  useEffect(() => {
     if (tableView) return;
     fetchData();
     const interval = setInterval(fetchData, Math.max(refreshRate, 10000));
@@ -421,7 +427,8 @@ const App: React.FC = () => {
     const txData = txRes.data || [];
     const disablePrev = page === 0;
     const disableNext = txData.length < 50;
-    const nextCursor = txData.length > 0 ? txData[txData.length - 1].block : undefined;
+    const nextCursor =
+      txData.length > 0 ? txData[txData.length - 1].block : undefined;
     const prevCursor = txData.length > 0 ? txData[0].block : undefined;
     openTable(
       'Sequencer Distribution',
@@ -446,9 +453,19 @@ const App: React.FC = () => {
         pagination: {
           page,
           onPrev: () =>
-            openSequencerDistributionTable(range, page - 1, undefined, prevCursor),
+            openSequencerDistributionTable(
+              range,
+              page - 1,
+              undefined,
+              prevCursor,
+            ),
           onNext: () =>
-            openSequencerDistributionTable(range, page + 1, nextCursor, undefined),
+            openSequencerDistributionTable(
+              range,
+              page + 1,
+              nextCursor,
+              undefined,
+            ),
           disablePrev,
           disableNext,
         },
