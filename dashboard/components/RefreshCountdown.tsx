@@ -22,7 +22,14 @@ export const RefreshCountdown: React.FC<RefreshCountdownProps> = ({
     };
     update();
     const id = setInterval(update, 1000);
-    return () => clearInterval(id);
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') update();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   }, [refreshRate, lastRefresh]);
 
   const radius = 16;
