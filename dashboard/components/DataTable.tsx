@@ -1,6 +1,6 @@
 import React from 'react';
 import { TimeRange } from '../types';
-import { TimeRangeSelector } from './DashboardHeader';
+import { TimeRangeSelector, RefreshRateInput } from './DashboardHeader';
 
 interface Column {
   key: string;
@@ -31,6 +31,8 @@ interface DataTableProps {
   extraTable?: ExtraTable;
   timeRange?: TimeRange;
   onTimeRangeChange?: (range: TimeRange) => void;
+  refreshRate?: number;
+  onRefreshRateChange?: (rate: number) => void;
   chart?: React.ReactNode;
 }
 
@@ -44,6 +46,8 @@ export const DataTable: React.FC<DataTableProps> = ({
   extraTable,
   timeRange,
   onTimeRangeChange,
+  refreshRate,
+  onRefreshRateChange,
   chart,
 }) => {
   const ROWS_PER_PAGE = 50;
@@ -80,6 +84,12 @@ export const DataTable: React.FC<DataTableProps> = ({
           <TimeRangeSelector
             currentTimeRange={timeRange}
             onTimeRangeChange={onTimeRangeChange}
+          />
+        )}
+        {refreshRate !== undefined && onRefreshRateChange && (
+          <RefreshRateInput
+            refreshRate={refreshRate}
+            onRefreshRateChange={onRefreshRateChange}
           />
         )}
       </div>
