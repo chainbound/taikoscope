@@ -10,9 +10,9 @@ This contains everything you need to run your app locally.
 
 1. Install dependencies:
    `npm install`
-2. Run the app:
+2. Set up fonts (if not already present):
+   `./setup-fonts.sh`
+3. Run the app:
    `npm run dev`
-3. Build for production:
+4. Build for production:
    `npm run build`
-
-The production build bundles React and other dependencies locally and uses self-hosted fonts to avoid external network requests. The font files are not included in the repository. To self-host fonts, copy the required `.ttf` files into `dashboard/public/fonts` before building.
