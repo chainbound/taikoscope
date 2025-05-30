@@ -63,12 +63,12 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
   );
 };
 
-interface RefreshRateInputProps {
+export interface RefreshRateInputProps {
   refreshRate: number;
   onRefreshRateChange: (rate: number) => void;
 }
 
-const RefreshRateInput: React.FC<RefreshRateInputProps> = ({
+export const RefreshRateInput: React.FC<RefreshRateInputProps> = ({
   refreshRate,
   onRefreshRateChange,
 }) => {
