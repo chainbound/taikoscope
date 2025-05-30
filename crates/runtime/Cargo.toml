@@ -1,17 +1,18 @@
 [package]
-name = "primitives"
+name = "runtime"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 exclude.workspace = true
 repository.workspace = true
 
-
 [dependencies]
-alloy-network-primitives.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "sync", "signal"] }
+tracing.workspace = true
+futures.workspace = true
 
 [dev-dependencies]
-alloy-primitives.workspace = true
+eyre.workspace = true
 
 [lints]
 workspace = true

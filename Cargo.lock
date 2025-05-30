@@ -736,7 +736,7 @@ dependencies = [
  "eyre",
  "futures",
  "hex",
- "primitives",
+ "runtime",
  "serde",
  "serde_json",
  "tokio",
@@ -756,7 +756,7 @@ dependencies = [
  "config",
  "dotenvy",
  "eyre",
- "primitives",
+ "runtime",
  "server",
  "tokio",
  "tracing",
@@ -1221,7 +1221,6 @@ dependencies = [
  "alloy-sol-macro",
  "alloy-sol-types",
  "derive_more 1.0.0",
- "primitives",
  "url",
 ]
 
@@ -1757,6 +1756,7 @@ dependencies = [
  "chainio",
  "derive_more 1.0.0",
  "eyre",
+ "network",
  "primitives",
  "tokio",
  "tokio-stream",
@@ -2385,7 +2385,7 @@ dependencies = [
  "clickhouse 0.1.0",
  "eyre",
  "mockito",
- "primitives",
+ "network",
  "reqwest",
  "serde",
  "serde_json",
@@ -2659,6 +2659,23 @@ dependencies = [
  "security-framework",
  "security-framework-sys",
  "tempfile",
+]
+
+[[package]]
+name = "network"
+version = "0.1.0"
+dependencies = [
+ "alloy",
+ "alloy-json-rpc",
+ "eyre",
+ "futures",
+ "mockito",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tokio-retry",
+ "tracing",
 ]
 
 [[package]]
@@ -2991,19 +3008,8 @@ dependencies = [
 name = "primitives"
 version = "0.1.0"
 dependencies = [
- "alloy",
- "alloy-json-rpc",
  "alloy-network-primitives",
  "alloy-primitives",
- "eyre",
- "futures",
- "mockito",
- "reqwest",
- "serde",
- "serde_json",
- "tokio",
- "tokio-retry",
- "tracing",
 ]
 
 [[package]]
@@ -3333,6 +3339,16 @@ name = "ruint-macro"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "48fd7bd8a6377e15ad9d42a8ec25371b94ddc67abe7c8b9127bec79bebaaae18"
+
+[[package]]
+name = "runtime"
+version = "0.1.0"
+dependencies = [
+ "eyre",
+ "futures",
+ "tokio",
+ "tracing",
+]
 
 [[package]]
 name = "rustc-demangle"
@@ -3936,7 +3952,7 @@ dependencies = [
  "driver",
  "extractor",
  "eyre",
- "primitives",
+ "runtime",
  "tokio",
  "tokio-stream",
  "tracing",

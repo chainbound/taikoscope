@@ -16,7 +16,7 @@ use chrono::{Duration as ChronoDuration, Utc};
 use clickhouse_lib::ClickhouseReader;
 use futures::stream::Stream;
 use hex::encode;
-use primitives::rate_limiter::RateLimiter;
+use runtime::rate_limiter::RateLimiter;
 use serde::Deserialize;
 use std::{convert::Infallible, time::Duration as StdDuration};
 

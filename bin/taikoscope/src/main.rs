@@ -5,7 +5,7 @@ use driver::Driver;
 use clap::Parser;
 use config::Opts;
 use dotenvy::dotenv;
-use primitives::shutdown::{ShutdownSignal, run_until_shutdown};
+use runtime::shutdown::{ShutdownSignal, run_until_shutdown};
 use tracing::info;
 use tracing_subscriber::filter::EnvFilter;
 

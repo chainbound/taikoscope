@@ -19,7 +19,7 @@ use alloy_rpc_client::ClientBuilder;
 use chainio::TaikoInbox;
 use derive_more::Debug;
 use eyre::Result;
-use primitives::retries::{DEFAULT_RETRY_LAYER, RetryWsConnect};
+use network::retries::{DEFAULT_RETRY_LAYER, RetryWsConnect};
 use std::time::Duration;
 use tokio::{sync::mpsc, time::sleep};
 use tokio_stream::{Stream, StreamExt, wrappers::UnboundedReceiverStream};

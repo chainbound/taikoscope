@@ -6,7 +6,7 @@ use clap::Parser;
 use clickhouse::ClickhouseReader;
 use config::Opts;
 use dotenvy::dotenv;
-use primitives::shutdown::{ShutdownSignal, run_until_shutdown};
+use runtime::shutdown::{ShutdownSignal, run_until_shutdown};
 use server::run;
 use tracing::info;
 use tracing_subscriber::filter::EnvFilter;
