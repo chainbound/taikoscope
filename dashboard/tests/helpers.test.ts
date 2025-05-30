@@ -9,6 +9,7 @@ const metrics = createMetrics({
   activeGateways: 2,
   currentOperator: '0xabc',
   nextOperator: null,
+  avgBlobsPerBatch: 1,
   l2Reorgs: 1,
   slashings: null,
   forcedInclusions: 0,
@@ -27,6 +28,7 @@ const metricsAllNull = createMetrics({
   avgProve: null,
   avgVerify: null,
   activeGateways: null,
+  avgBlobsPerBatch: null,
   l2Reorgs: null,
   slashings: null,
   forcedInclusions: null,
@@ -46,22 +48,24 @@ describe('helpers', () => {
     expect(metrics[2].group).toBe('Network Performance');
     expect(metrics[3].value).toBe('N/A');
     expect(metrics[3].group).toBe('Network Performance');
-    expect(metrics[4].value).toBe('2');
-    expect(metrics[4].group).toBe('Operators');
-    expect(metrics[5].value).toBe('0xabc');
+    expect(metrics[4].value).toBe('1.00');
+    expect(metrics[4].group).toBe('Network Performance');
+    expect(metrics[5].value).toBe('2');
     expect(metrics[5].group).toBe('Operators');
-    expect(metrics[6].value).toBe('N/A');
+    expect(metrics[6].value).toBe('0xabc');
     expect(metrics[6].group).toBe('Operators');
-    expect(metrics[7].value).toBe('1');
-    expect(metrics[7].group).toBe('Network Health');
-    expect(metrics[8].value).toBe('N/A');
+    expect(metrics[7].value).toBe('N/A');
+    expect(metrics[7].group).toBe('Operators');
+    expect(metrics[8].value).toBe('1');
     expect(metrics[8].group).toBe('Network Health');
-    expect(metrics[9].value).toBe('0');
+    expect(metrics[9].value).toBe('N/A');
     expect(metrics[9].group).toBe('Network Health');
-    expect(metrics[10].value).toBe('100');
-    expect(metrics[10].group).toBe('Block Information');
-    expect(metrics[11].value).toBe('50');
+    expect(metrics[10].value).toBe('0');
+    expect(metrics[10].group).toBe('Network Health');
+    expect(metrics[11].value).toBe('100');
     expect(metrics[11].group).toBe('Block Information');
+    expect(metrics[12].value).toBe('50');
+    expect(metrics[12].group).toBe('Block Information');
   });
 
   it('detects bad requests', () => {
@@ -77,14 +81,15 @@ describe('helpers', () => {
     expect(metricsAllNull[1].group).toBe('Network Performance');
     expect(metricsAllNull[2].group).toBe('Network Performance');
     expect(metricsAllNull[3].group).toBe('Network Performance');
-    expect(metricsAllNull[4].group).toBe('Operators');
+    expect(metricsAllNull[4].group).toBe('Network Performance');
     expect(metricsAllNull[5].group).toBe('Operators');
     expect(metricsAllNull[6].group).toBe('Operators');
-    expect(metricsAllNull[7].group).toBe('Network Health');
+    expect(metricsAllNull[7].group).toBe('Operators');
     expect(metricsAllNull[8].group).toBe('Network Health');
     expect(metricsAllNull[9].group).toBe('Network Health');
-    expect(metricsAllNull[10].group).toBe('Block Information');
+    expect(metricsAllNull[10].group).toBe('Network Health');
     expect(metricsAllNull[11].group).toBe('Block Information');
+    expect(metricsAllNull[12].group).toBe('Block Information');
   });
 
   it('handles all successful requests', () => {

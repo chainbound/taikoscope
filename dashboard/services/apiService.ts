@@ -373,3 +373,34 @@ export const fetchBlockTransactions = async (
   const res = await fetchJson<{ blocks: BlockTransaction[] }>(url);
   return { data: res.data?.blocks ?? null, badRequest: res.badRequest };
 };
+
+export interface BatchBlobCount {
+  batch: number;
+  blobs: number;
+}
+
+export const fetchBatchBlobCounts = async (
+  range: '1h' | '24h' | '7d',
+): Promise<RequestResult<BatchBlobCount[]>> => {
+  const url = `${API_BASE}/blobs-per-batch?range=${range}`;
+  const res = await fetchJson<{
+    batches: { batch_id: number; blob_count: number }[];
+  }>(url);
+  return {
+    data: res.data
+      ? res.data.batches.map((b) => ({
+          batch: b.batch_id,
+          blobs: b.blob_count,
+        }))
+      : null,
+    badRequest: res.badRequest,
+  };
+};
+
+export const fetchAvgBlobsPerBatch = async (
+  range: '1h' | '24h' | '7d',
+): Promise<RequestResult<number>> => {
+  const url = `${API_BASE}/avg-blobs-per-batch?range=${range}`;
+  const res = await fetchJson<{ avg_blobs?: number }>(url);
+  return { data: res.data?.avg_blobs ?? null, badRequest: res.badRequest };
+};

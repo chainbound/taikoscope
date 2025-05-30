@@ -95,9 +95,11 @@ const responses: Record<string, Record<string, unknown>> = {
   '/l1-head-block': { l1_head_block: 456 },
 };
 
-(globalThis as {
-  fetch?: (url: string) => Promise<MockFetchResponse>;
-}).fetch = async (url: string): Promise<MockFetchResponse> => {
+(
+  globalThis as {
+    fetch?: (url: string) => Promise<MockFetchResponse>;
+  }
+).fetch = async (url: string): Promise<MockFetchResponse> => {
   const u = new URL(url, 'http://localhost');
   const key = u.pathname + (u.search ? `?${u.searchParams.toString()}` : '');
   return {
@@ -127,11 +129,16 @@ class MockEventSource {
 (globalThis as unknown as { EventSource: unknown }).EventSource =
   MockEventSource as unknown as EventSource;
 
-interface IntervalId { fn: () => Promise<void> | void; ms: number }
+interface IntervalId {
+  fn: () => Promise<void> | void;
+  ms: number;
+}
 let intervals: IntervalId[] = [];
-(globalThis as unknown as {
-  setInterval: (fn: () => Promise<void> | void, ms: number) => NodeJS.Timeout;
-}).setInterval = (
+(
+  globalThis as unknown as {
+    setInterval: (fn: () => Promise<void> | void, ms: number) => NodeJS.Timeout;
+  }
+).setInterval = (
   fn: () => Promise<void> | void,
   ms: number,
 ): NodeJS.Timeout => {
@@ -139,9 +146,9 @@ let intervals: IntervalId[] = [];
   intervals.push(id);
   return id as unknown as NodeJS.Timeout;
 };
-(globalThis as unknown as { clearInterval: (id: NodeJS.Timeout) => void }).clearInterval = (
-  id: NodeJS.Timeout,
-) => {
+(
+  globalThis as unknown as { clearInterval: (id: NodeJS.Timeout) => void }
+).clearInterval = (id: NodeJS.Timeout) => {
   intervals = intervals.filter((i) => i !== (id as unknown as IntervalId));
 };
 
@@ -241,6 +248,7 @@ async function fetchData(range: TimeRange, state: State) {
     batchCadence,
     avgProve,
     avgVerify,
+    avgBlobsPerBatch: null,
     activeGateways,
     currentOperator,
     nextOperator,

@@ -373,6 +373,47 @@ async fn avg_l2_tps(
     Json(AvgL2TpsResponse { avg_tps: avg })
 }
 
+async fn avg_blobs_per_batch(
+    Query(params): Query<RangeQuery>,
+    State(state): State<ApiState>,
+) -> Json<AvgBlobsPerBatchResponse> {
+    let duration = range_duration(&params.range);
+    let avg = match if duration.num_hours() <= 1 {
+        state.client.get_avg_blobs_per_batch_last_hour().await
+    } else if duration.num_hours() <= 24 {
+        state.client.get_avg_blobs_per_batch_last_24_hours().await
+    } else {
+        state.client.get_avg_blobs_per_batch_last_7_days().await
+    } {
+        Ok(val) => val,
+        Err(e) => {
+            tracing::error!(error = %e, "Failed to get avg blobs per batch");
+            None
+        }
+    };
+    tracing::info!(avg_blobs_per_batch = ?avg, "Returning avg blobs per batch");
+    Json(AvgBlobsPerBatchResponse { avg_blobs: avg })
+}
+
+async fn blobs_per_batch(
+    Query(params): Query<RangeQuery>,
+    State(state): State<ApiState>,
+) -> Json<BatchBlobsResponse> {
+    let batches = match match params.range.as_deref() {
+        Some("24h") => state.client.get_blobs_per_batch_last_24_hours().await,
+        Some("7d") => state.client.get_blobs_per_batch_last_7_days().await,
+        _ => state.client.get_blobs_per_batch_last_hour().await,
+    } {
+        Ok(rows) => rows,
+        Err(e) => {
+            tracing::error!(error = %e, "Failed to get blobs per batch");
+            Vec::new()
+        }
+    };
+    tracing::info!(count = batches.len(), "Returning blobs per batch");
+    Json(BatchBlobsResponse { batches })
+}
+
 async fn prove_times(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
@@ -595,6 +636,8 @@ pub fn router(state: ApiState) -> Router {
         .route("/l2-block-cadence", get(l2_block_cadence))
         .route("/batch-posting-cadence", get(batch_posting_cadence))
         .route("/avg-l2-tps", get(avg_l2_tps))
+        .route("/avg-blobs-per-batch", get(avg_blobs_per_batch))
+        .route("/blobs-per-batch", get(blobs_per_batch))
         .route("/prove-times", get(prove_times))
         .route("/verify-times", get(verify_times))
         .route("/l1-block-times", get(l1_block_times))
@@ -1211,5 +1254,32 @@ mod tests {
         let app = build_app(mock.url());
         let body = send_request(app, "/next-operator").await;
         assert_eq!(body, json!({ "operator": format!("0x{}", hex::encode(addr)) }));
+    }
+
+    #[tokio::test]
+    async fn avg_blobs_per_batch_endpoint() {
+        let mock = Mock::new();
+        #[derive(Serialize, Row)]
+        struct AvgRowTest {
+            avg: f64,
+        }
+        mock.add(handlers::provide(vec![AvgRowTest { avg: 2.5 }]));
+        let app = build_app(mock.url());
+        let body = send_request(app, "/avg-blobs-per-batch").await;
+        assert_eq!(body, json!({ "avg_blobs": 2.5 }));
+    }
+
+    #[tokio::test]
+    async fn blobs_per_batch_endpoint() {
+        let mock = Mock::new();
+        #[derive(Serialize, Row)]
+        struct BlobRowTest {
+            batch_id: u64,
+            blob_count: u8,
+        }
+        mock.add(handlers::provide(vec![BlobRowTest { batch_id: 1, blob_count: 3 }]));
+        let app = build_app(mock.url());
+        let body = send_request(app, "/blobs-per-batch?range=1h").await;
+        assert_eq!(body, json!({ "batches": [ { "batch_id": 1, "blob_count": 3 } ] }));
     }
 }
