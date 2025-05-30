@@ -11,7 +11,7 @@ use chainio::{
 use std::pin::Pin;
 
 use alloy::{
-    primitives::{Address, BlockHash, BlockNumber},
+    primitives::{Address, BlockNumber},
     providers::{Provider, ProviderBuilder},
 };
 use alloy_consensus::BlockHeader;
@@ -20,6 +20,7 @@ use chainio::TaikoInbox;
 use derive_more::Debug;
 use eyre::Result;
 use network::retries::{DEFAULT_RETRY_LAYER, RetryWsConnect};
+use primitives::headers::{L1Header, L1HeaderStream, L2Header, L2HeaderStream};
 use std::time::Duration;
 use tokio::{sync::mpsc, time::sleep};
 use tokio_stream::{Stream, StreamExt, wrappers::UnboundedReceiverStream};
@@ -38,42 +39,6 @@ pub struct Extractor {
     taiko_wrapper: TaikoWrapper,
 }
 
-/// L1 Header
-#[derive(Debug)]
-pub struct L1Header {
-    /// Block number
-    pub number: u64,
-    /// Block hash
-    pub hash: BlockHash,
-    /// Block slot
-    pub slot: u64,
-    /// Extracted block timestamp
-    pub timestamp: u64,
-}
-
-/// L2 Header
-#[derive(Debug)]
-pub struct L2Header {
-    /// Block number
-    pub number: u64,
-    /// Block hash
-    pub hash: BlockHash,
-    /// Block parent hash
-    pub parent_hash: BlockHash,
-    /// Block timestamp
-    pub timestamp: u64,
-    /// Gas used
-    pub gas_used: u64,
-    /// Beneficiary
-    pub beneficiary: Address,
-    /// Base fee per gas
-    pub base_fee_per_gas: Option<u64>,
-}
-
-/// Stream of L1 headers
-pub type L1HeaderStream = Pin<Box<dyn Stream<Item = L1Header> + Send>>;
-/// Stream of L2 headers
-pub type L2HeaderStream = Pin<Box<dyn Stream<Item = L2Header> + Send>>;
 /// Stream of batch proposed events
 pub type BatchProposedStream = Pin<Box<dyn Stream<Item = BatchProposed> + Send>>;
 /// Stream of batches proved events

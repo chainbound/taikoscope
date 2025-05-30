@@ -15,12 +15,13 @@ use clickhouse::{ClickhouseReader, ClickhouseWriter};
 use config::Opts;
 use extractor::{
     BatchProposedStream, BatchesProvedStream, BatchesVerifiedStream, Extractor,
-    ForcedInclusionStream, L1Header, L1HeaderStream, L2Header, L2HeaderStream, ReorgDetector,
+    ForcedInclusionStream, ReorgDetector,
 };
 use incident::{
     BatchProofTimeoutMonitor, InstatusL1Monitor, InstatusMonitor, Monitor,
     client::Client as IncidentClient, monitor::BatchVerifyTimeoutMonitor,
 };
+use primitives::headers::{L1Header, L1HeaderStream, L2Header, L2HeaderStream};
 
 /// An EPOCH is a series of 32 slots.
 pub const EPOCH_SLOTS: u64 = 32;

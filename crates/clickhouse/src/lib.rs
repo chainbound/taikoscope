@@ -7,7 +7,7 @@
 //! The separation allows taikoscope to control data, migrations, and inserts,
 //! while the API can only read data for serving analytics and dashboards.
 
-pub use extractor::{L1Header, L2Header};
+pub use primitives::headers::{L1Header, L2Header};
 
 // Re-export core functionality
 /// Type conversions between external types and internal models
