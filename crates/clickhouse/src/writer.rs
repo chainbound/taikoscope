@@ -482,4 +482,59 @@ mod tests {
         let rows: Vec<ForcedInclusionProcessedRow> = ctl.collect().await;
         assert_eq!(rows, vec![ForcedInclusionProcessedRow { blob_hash: [5u8; 32] }]);
     }
+
+    #[tokio::test]
+    async fn apply_materialized_views_migration_executes_all_statements() {
+        let mock = Mock::new();
+        let expected_views = [
+            "batch_prove_times_mv",
+            "batch_verify_times_mv",
+            "hourly_avg_prove_times_mv",
+            "hourly_avg_verify_times_mv",
+            "daily_avg_prove_times_mv",
+            "daily_avg_verify_times_mv",
+        ];
+
+        let mut ctrls = Vec::with_capacity(expected_views.len());
+        for _ in expected_views {
+            ctrls.push(mock.add(handlers::record_ddl()));
+        }
+
+        let url = Url::parse(mock.url()).unwrap();
+        let writer =
+            ClickhouseWriter::new(url, "db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+        writer.apply_materialized_views_migration().await.unwrap();
+
+        for (ctrl, view) in ctrls.into_iter().zip(expected_views) {
+            let query = ctrl.query().await;
+            assert!(query.contains(&format!("db.{view}")));
+        }
+    }
+
+    #[tokio::test]
+    async fn init_schema_runs_create_and_migration_queries() {
+        let mock = Mock::new();
+        let migration_count = 6;
+        let total = TABLE_SCHEMAS.len() + migration_count;
+
+        let ctrls: Vec<_> =
+            std::iter::repeat_with(|| mock.add(handlers::record_ddl())).take(total).collect();
+
+        let url = Url::parse(mock.url()).unwrap();
+        let writer =
+            ClickhouseWriter::new(url, "db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+        writer.init_schema().await.unwrap();
+
+        let mut queries = Vec::new();
+        for c in ctrls {
+            queries.push(c.query().await);
+        }
+        assert_eq!(queries.len(), total);
+
+        // verify that at least one table and one view were created
+        assert!(queries.iter().any(|q| q.contains("db.l1_head_events")));
+        assert!(queries.iter().any(|q| q.contains("db.batch_prove_times_mv")));
+    }
 }
