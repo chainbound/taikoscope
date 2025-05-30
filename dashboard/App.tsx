@@ -116,6 +116,9 @@ const App: React.FC = () => {
   );
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [seqDistTxPage, setSeqDistTxPage] = useState<number>(0);
+  const [tableLoading, setTableLoading] = useState<boolean>(
+    new URLSearchParams(window.location.search).get('view') === 'table',
+  );
   const [tableView, setTableView] = useState<null | {
     title: string;
     columns: { key: string; label: string }[];
@@ -430,9 +433,11 @@ const App: React.FC = () => {
       onTimeRangeChange: onRangeChange,
       chart,
     });
+    setTableLoading(false);
   };
 
   const openSequencerBlocks = async (address: string) => {
+    setTableLoading(true);
     const blocksRes = await fetchSequencerBlocks(timeRange, address);
     setTableUrl('sequencer-blocks', { address });
     openTable(
@@ -443,6 +448,7 @@ const App: React.FC = () => {
   };
 
   const openL2ReorgsTable = async () => {
+    setTableLoading(true);
     const eventsRes = await fetchL2ReorgEvents(timeRange);
     const events = (eventsRes.data || []) as L2ReorgEvent[];
     setTableUrl('reorgs');
@@ -463,6 +469,7 @@ const App: React.FC = () => {
   };
 
   const openSlashingEventsTable = async () => {
+    setTableLoading(true);
     const eventsRes = await fetchSlashingEvents(timeRange);
     const events = (eventsRes.data || []) as SlashingEvent[];
     setTableUrl('slashings');
@@ -480,6 +487,7 @@ const App: React.FC = () => {
   };
 
   const openForcedInclusionsTable = async () => {
+    setTableLoading(true);
     const eventsRes = await fetchForcedInclusionEvents(timeRange);
     const events = (eventsRes.data || []) as ForcedInclusionEvent[];
     setTableUrl('forced-inclusions');
@@ -493,6 +501,7 @@ const App: React.FC = () => {
   };
 
   const openActiveGatewaysTable = async () => {
+    setTableLoading(true);
     const gatewaysRes = await fetchActiveGatewayAddresses(timeRange);
     setTableUrl('gateways');
     openTable(
@@ -506,6 +515,7 @@ const App: React.FC = () => {
   };
 
   const openBlobsPerBatchTable = () => {
+    setTableLoading(true);
     openTable(
       'Blobs per Batch',
       [
@@ -522,6 +532,7 @@ const App: React.FC = () => {
     startingAfter?: number,
     endingBefore?: number,
   ) => {
+    setTableLoading(true);
     setTimeRange(range);
     setSeqDistTxPage(page);
     setTableUrl('sequencer-dist', {
@@ -594,6 +605,7 @@ const App: React.FC = () => {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('view') !== 'table') return;
+    setTableLoading(true);
     const table = params.get('table');
     switch (table) {
       case 'sequencer-blocks': {
@@ -649,6 +661,10 @@ const App: React.FC = () => {
         chart={tableView.chart}
       />
     );
+  }
+
+  if (tableLoading) {
+    return <div className="p-4">Loading...</div>;
   }
 
   return (
