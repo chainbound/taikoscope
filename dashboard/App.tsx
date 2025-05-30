@@ -174,7 +174,7 @@ const App: React.FC = () => {
           'Realtime updates unavailable, falling back to polling.',
         );
         updateHeads();
-        pollId = setInterval(updateHeads, 10000);
+        pollId = setInterval(updateHeads, 60000);
       }
     };
 
@@ -374,7 +374,7 @@ const App: React.FC = () => {
   useEffect(() => {
     if (tableView) return;
     fetchData();
-    const interval = setInterval(fetchData, Math.max(refreshRate, 10000));
+    const interval = setInterval(fetchData, Math.max(refreshRate, 60000));
     return () => clearInterval(interval);
   }, [timeRange, fetchData, refreshRate, tableView]);
 

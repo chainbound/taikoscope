@@ -68,7 +68,7 @@ describe('DataTable', () => {
         columns: [{ key: 'v', label: 'V' }],
         rows: [{ v: 1 }],
         onBack: () => {},
-        refreshRate: 10000,
+        refreshRate: 60000,
         onRefreshRateChange: () => {},
       }),
     );

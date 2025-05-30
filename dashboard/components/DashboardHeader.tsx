@@ -94,7 +94,6 @@ export const RefreshRateInput: React.FC<RefreshRateInputProps> = ({
   onRefreshRateChange,
 }) => {
   const options = [
-    { label: '10s', value: 10_000 },
     { label: '60s', value: 60_000 },
     { label: '5 min', value: 5 * 60_000 },
     { label: '10 min', value: 10 * 60_000 },
