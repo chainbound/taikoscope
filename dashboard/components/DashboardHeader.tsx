@@ -6,6 +6,9 @@ interface DashboardHeaderProps {
   onTimeRangeChange: (range: TimeRange) => void;
   refreshRate: number;
   onRefreshRateChange: (rate: number) => void;
+  sequencers: string[];
+  selectedSequencer: string | null;
+  onSequencerChange: (seq: string | null) => void;
 }
 
 export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
@@ -13,6 +16,9 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   onTimeRangeChange,
   refreshRate,
   onRefreshRateChange,
+  sequencers,
+  selectedSequencer,
+  onSequencerChange,
 }) => {
   return (
     <header className="flex flex-col md:flex-row justify-between items-center pb-4 border-b border-gray-200">
@@ -29,6 +35,11 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
         <RefreshRateInput
           refreshRate={refreshRate}
           onRefreshRateChange={onRefreshRateChange}
+        />
+        <SequencerSelector
+          sequencers={sequencers}
+          value={selectedSequencer}
+          onChange={onSequencerChange}
         />
         {/* Export button removed as per request */}
       </div>
@@ -102,5 +113,32 @@ export const RefreshRateInput: React.FC<RefreshRateInputProps> = ({
         ))}
       </select>
     </div>
+  );
+};
+
+export interface SequencerSelectorProps {
+  sequencers: string[];
+  value: string | null;
+  onChange: (seq: string | null) => void;
+}
+
+export const SequencerSelector: React.FC<SequencerSelectorProps> = ({
+  sequencers,
+  value,
+  onChange,
+}) => {
+  return (
+    <select
+      value={value ?? ''}
+      onChange={(e) => onChange(e.target.value || null)}
+      className="p-1 border rounded-md text-sm"
+    >
+      <option value="">All Sequencers</option>
+      {sequencers.map((s) => (
+        <option key={s} value={s}>
+          {s}
+        </option>
+      ))}
+    </select>
   );
 };
