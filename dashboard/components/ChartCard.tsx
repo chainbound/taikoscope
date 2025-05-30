@@ -4,12 +4,14 @@ interface ChartCardProps {
   title: string;
   children: React.ReactNode;
   onMore?: () => void;
+  loading?: boolean;
 }
 
 export const ChartCard: React.FC<ChartCardProps> = ({
   title,
   children,
   onMore,
+  loading,
 }) => {
   return (
     <div className="bg-white p-4 md:p-6 rounded-lg border border-gray-200 relative">
@@ -25,7 +27,7 @@ export const ChartCard: React.FC<ChartCardProps> = ({
           </button>
         )}
       </div>
-      <div className="h-64 md:h-80 w-full">
+      <div className="h-64 md:h-80 w-full relative">
         <Suspense
           fallback={
             <div className="flex items-center justify-center h-full text-gray-500">
@@ -35,6 +37,11 @@ export const ChartCard: React.FC<ChartCardProps> = ({
         >
           {children}
         </Suspense>
+        {loading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-white/60">
+            <span className="text-gray-500">Loading...</span>
+          </div>
+        )}
       </div>
     </div>
   );
