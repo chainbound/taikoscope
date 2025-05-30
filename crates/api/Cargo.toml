@@ -7,7 +7,7 @@ repository.workspace = true
 
 [dependencies]
 clickhouse_lib = { path = "../clickhouse", package = "clickhouse" }
-primitives = { path = "../primitives" }
+runtime = { path = "../runtime" }
 api-types = { path = "../api-types" }
 
 axum.workspace = true

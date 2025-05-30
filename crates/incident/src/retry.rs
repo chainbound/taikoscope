@@ -1,1 +1,1 @@
-pub use primitives::http_retry::{is_retryable, retry_op};
+pub use network::http_retry::{is_retryable, retry_op};
