@@ -60,4 +60,19 @@ describe('DataTable', () => {
     expect(html.includes('24H')).toBe(true);
     expect(html.includes('7D')).toBe(true);
   });
+
+  it('paginates rows when more than 50 items', () => {
+    const rows = Array.from({ length: 55 }, (_, i) => ({ a: String(i) }));
+    const html = renderToStaticMarkup(
+      React.createElement(DataTable, {
+        title: 'Paged',
+        columns: [{ key: 'a', label: 'A' }],
+        rows,
+        onBack: () => {},
+      }),
+    );
+    expect(html.includes('49')).toBe(true);
+    expect(html.includes('54')).toBe(false);
+    expect(html.includes('Next')).toBe(true);
+  });
 });
