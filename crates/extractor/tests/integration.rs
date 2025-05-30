@@ -7,7 +7,8 @@ use std::{
 };
 
 use alloy::primitives::address;
-use extractor::{Extractor, L1Header};
+use extractor::Extractor;
+use primitives::headers::L1Header;
 
 use eyre::Result;
 use tokio_stream::StreamExt;

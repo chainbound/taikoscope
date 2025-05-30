@@ -11,6 +11,7 @@ config = { path = "../config" }
 chainio = { path = "../chainio" }
 clickhouse = { path = "../clickhouse" }
 extractor = { path = "../extractor" }
+primitives = { path = "../primitives" }
 incident = { path = "../incident" }
 
 chrono = { workspace = true, features = ["serde"] }

@@ -1294,9 +1294,9 @@ dependencies = [
  "chrono",
  "clickhouse 0.13.2",
  "derive_more 1.0.0",
- "extractor",
  "eyre",
  "hex",
+ "primitives",
  "serde",
  "tokio",
  "tracing",
@@ -1661,6 +1661,7 @@ dependencies = [
  "futures",
  "http",
  "incident",
+ "primitives",
  "tokio",
  "tokio-stream",
  "tokio-tungstenite",
@@ -3010,6 +3011,7 @@ version = "0.1.0"
 dependencies = [
  "alloy-network-primitives",
  "alloy-primitives",
+ "futures",
 ]
 
 [[package]]

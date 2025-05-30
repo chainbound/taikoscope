@@ -8,7 +8,7 @@ repository.workspace = true
 
 [dependencies]
 chainio = { path = "../chainio" }
-extractor = { version = "0.1.0", path = "../extractor" }
+primitives = { path = "../primitives" }
 
 alloy.workspace = true
 chrono = { workspace = true, features = ["serde"] }
