@@ -27,6 +27,7 @@ import {
   fetchL2BlockCadence,
   fetchBatchPostingCadence,
   fetchActiveGateways,
+  fetchActiveGatewayAddresses,
   fetchL2Reorgs,
   fetchL2ReorgEvents,
   fetchSlashingEventCount,
@@ -412,6 +413,18 @@ const App: React.FC = () => {
     );
   };
 
+  const openActiveGatewaysTable = async () => {
+    const gatewaysRes = await fetchActiveGatewayAddresses(timeRange);
+    openTable(
+      'Active Gateways',
+      [{ key: 'address', label: 'Address' }],
+      (gatewaysRes.data || []).map((g) => ({ address: g })) as Record<
+        string,
+        string | number
+      >[],
+    );
+  };
+
   const openSequencerDistributionTable = async (
     range: TimeRange,
     page = seqDistTxPage,
@@ -533,7 +546,10 @@ const App: React.FC = () => {
                           : typeof m.title === 'string' &&
                               m.title === 'Forced Inclusions'
                             ? () => openForcedInclusionsTable()
-                            : undefined
+                            : typeof m.title === 'string' &&
+                                m.title === 'Active Gateways'
+                              ? () => openActiveGatewaysTable()
+                              : undefined
                     }
                   />
                 ))}
