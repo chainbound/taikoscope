@@ -61,7 +61,7 @@ export const BlobsPerBatchChart: React.FC<BlobsPerBatchChartProps> = ({
     <ResponsiveContainer width="100%" height="100%">
       <BarChart
         data={data}
-        margin={{ top: 5, right: 30, left: 20, bottom: 50 }}
+        margin={{ top: 5, right: 30, left: 20, bottom: 80 }}
       >
         <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
         <XAxis
@@ -72,7 +72,7 @@ export const BlobsPerBatchChart: React.FC<BlobsPerBatchChartProps> = ({
           label={{
             value: 'Batch',
             position: 'insideBottom',
-            offset: -10,
+            offset: -35,
             fontSize: 10,
             fill: '#666666',
           }}
