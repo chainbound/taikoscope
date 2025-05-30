@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   BarChart,
   Bar,
@@ -31,6 +31,13 @@ export const ReorgDepthChart: React.FC<ReorgDepthChartProps> = ({ data }) => {
     startIndex: Math.max(0, data.length - 50),
     endIndex: data.length - 1,
   });
+
+  useEffect(() => {
+    setBrushRange({
+      startIndex: Math.max(0, data.length - 50),
+      endIndex: data.length - 1,
+    });
+  }, [data]);
 
   const handleBrushChange = (range: {
     startIndex?: number;
