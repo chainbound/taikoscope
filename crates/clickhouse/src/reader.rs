@@ -1532,7 +1532,7 @@ mod tests {
     use super::*;
 
     use chrono::Utc;
-    use clickhouse::test::{Mock, handlers};
+    use clickhouse::test::{self, Mock, handlers};
     use serde::Serialize;
 
     use crate::ClickhouseReader;
@@ -2054,5 +2054,18 @@ mod tests {
         // Test 7d query uses fallback
         let result_7d = ch.get_avg_prove_time_last_7_days().await.unwrap();
         assert_eq!(result_7d, Some(950)); // Rounded from 950.2
+    }
+
+    #[tokio::test]
+    async fn get_last_l2_head_time_returns_error_on_failure() {
+        let mock = Mock::new();
+        mock.add(handlers::failure(test::status::INTERNAL_SERVER_ERROR));
+
+        let url = Url::parse(mock.url()).unwrap();
+        let ch =
+            ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+        let result = ch.get_last_l2_head_time().await;
+        assert!(result.is_err());
     }
 }
