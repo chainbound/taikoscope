@@ -187,7 +187,11 @@ impl ClickhouseWriter {
         Ok(())
     }
 
-    /// Insert a batch
+    /// Insert a proposed batch into the `batches` table.
+    ///
+    /// The provided [`chainio::ITaikoInbox::BatchProposed`] event from the Taiko inbox is converted
+    /// into the internal [`BatchRow`] representation before being written to
+    /// `ClickHouse`. Each call inserts exactly one row.
     pub async fn insert_batch(&self, batch: &chainio::ITaikoInbox::BatchProposed) -> Result<()> {
         let client = self.base.clone().with_database(&self.db_name);
         let batch_row = BatchRow::try_from(batch)?;
@@ -197,7 +201,12 @@ impl ClickhouseWriter {
         Ok(())
     }
 
-    /// Insert proved batches
+    /// Insert one or more proved batches into the `proved_batches` table.
+    ///
+    /// The provided [`chainio::ITaikoInbox::BatchesProved`] event may contain
+    /// multiple batch IDs and transitions. Each pair is transformed into a
+    /// [`ProvedBatchRow`] and written as a separate row. The `l1_block_number`
+    /// parameter denotes the block in which the proof transaction was mined.
     pub async fn insert_proved_batch(
         &self,
         proved: &chainio::ITaikoInbox::BatchesProved,
@@ -221,7 +230,12 @@ impl ClickhouseWriter {
         Ok(())
     }
 
-    /// Insert forced inclusion processed row
+    /// Record a `ForcedInclusionProcessed` event.
+    ///
+    /// Forced inclusions are tracked separately to allow monitoring blobs that
+    /// were included via the wrapper contract. This helper converts the event
+    /// into a [`ForcedInclusionProcessedRow`] and appends it to the
+    /// `forced_inclusion_processed` table.
     pub async fn insert_forced_inclusion(
         &self,
         event: &chainio::taiko::wrapper::ITaikoWrapper::ForcedInclusionProcessed,

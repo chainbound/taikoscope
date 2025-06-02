@@ -92,7 +92,11 @@ impl ClickhouseReader {
         result.map_err(Into::into)
     }
 
-    /// Get last L2 head time
+    /// Return the timestamp of the most recent L2 head event.
+    ///
+    /// The value is derived from the maximum `block_ts` stored in the
+    /// `l2_head_events` table. `None` is returned when the table is empty or the
+    /// stored timestamp is zero.
     pub async fn get_last_l2_head_time(&self) -> Result<Option<DateTime<Utc>>> {
         let query =
             format!("SELECT max(block_ts) AS block_ts FROM {}.l2_head_events", self.db_name);
@@ -265,7 +269,11 @@ impl ClickhouseReader {
         Ok(rows.into_iter().next().and_then(|r| r.next_operator))
     }
 
-    /// Get all batches that have not been proven and are older than the given cutoff time
+    /// Retrieve batches that have not yet been proven and were inserted before `cutoff`.
+    ///
+    /// The returned tuples contain the L1 block number, batch ID and the time
+    /// the batch was inserted. This is useful for monitoring batches that may
+    /// have been forgotten or are taking an unusually long time to prove.
     pub async fn get_unproved_batches_older_than(
         &self,
         cutoff: DateTime<Utc>,
@@ -489,8 +497,15 @@ impl ClickhouseReader {
         Ok(rows)
     }
 
-    /// Get transactions per block since the given cutoff time with cursor-based
-    /// pagination. Results are returned in descending order by block number.
+    /// Fetch block transaction counts using cursor-based pagination.
+    ///
+    /// Only rows inserted after `since` are considered. Results are ordered by
+    /// `l2_block_number` in descending order and limited by `limit`. The
+    /// `starting_after` and `ending_before` parameters act as cursors for
+    /// navigating backward and forward through the result set. When provided,
+    /// only blocks with numbers less than `starting_after` and greater than
+    /// `ending_before` are returned. If a `sequencer` address is supplied the
+    /// query is additionally filtered by that sequencer.
     pub async fn get_block_transactions_paginated(
         &self,
         since: DateTime<Utc>,
