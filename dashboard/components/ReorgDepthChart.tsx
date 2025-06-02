@@ -10,12 +10,12 @@ import {
   Brush,
 } from 'recharts';
 import { L2ReorgEvent } from '../types';
+import { TAIKO_PINK } from '../theme';
 
 interface ReorgDepthChartProps {
   data: L2ReorgEvent[];
 }
 
-const TAIKO_PINK = '#e81899';
 
 export const ReorgDepthChart: React.FC<ReorgDepthChartProps> = ({ data }) => {
   if (!data || data.length === 0) {

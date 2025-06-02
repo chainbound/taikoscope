@@ -1,4 +1,5 @@
 import React from 'react';
+import { TAIKO_PINK } from '../theme';
 
 interface RefreshCountdownProps {
   refreshRate: number;
@@ -49,7 +50,7 @@ export const RefreshCountdown: React.FC<RefreshCountdownProps> = ({
         cx="18"
         cy="18"
         r={radius}
-        stroke="#e81899"
+        stroke={TAIKO_PINK}
         strokeWidth="4"
         fill="none"
         strokeDasharray={circumference}

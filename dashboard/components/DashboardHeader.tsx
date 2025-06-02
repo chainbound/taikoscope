@@ -1,6 +1,7 @@
 import React from 'react';
 import { TimeRange } from '../types';
 import { RefreshCountdown } from './RefreshCountdown';
+import { TAIKO_PINK } from '../theme';
 
 interface DashboardHeaderProps {
   timeRange: TimeRange;
@@ -28,7 +29,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   return (
     <header className="flex flex-col md:flex-row justify-between items-center pb-4 border-b border-gray-200">
       <div className="flex items-baseline space-x-4">
-        <h1 className="text-3xl font-bold" style={{ color: '#e81899' }}>
+        <h1 className="text-3xl font-bold" style={{ color: TAIKO_PINK }}>
           {' '}
           {/* Updated Taiko Pink */}
           Taiko Masaya Testnet
@@ -37,7 +38,8 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
           href="https://taikoscope.instatus.com/"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-sm text-[#e81899] hover:underline"
+          className="text-sm hover:underline"
+          style={{ color: TAIKO_PINK }}
         >
           Status
         </a>
@@ -85,7 +87,8 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
           key={range}
           onClick={() => onTimeRangeChange(range)}
           className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors
-            ${currentTimeRange === range ? 'bg-white text-[#e81899] shadow-sm' : 'text-gray-600 hover:bg-gray-100'}`} /* Updated Taiko Pink for active button */
+            ${currentTimeRange === range ? 'bg-white shadow-sm' : 'text-gray-600 hover:bg-gray-100'}`} /* Updated Taiko Pink for active button */
+          style={currentTimeRange === range ? { color: TAIKO_PINK } : undefined}
         >
           {range.toUpperCase()}
         </button>
