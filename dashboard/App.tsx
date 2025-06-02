@@ -45,6 +45,7 @@ import {
 } from './types';
 import { loadRefreshRate, saveRefreshRate } from './utils';
 import { getSequencerAddress } from './sequencerConfig';
+import { TAIKO_PINK } from './theme';
 import {
   API_BASE,
   fetchAvgProveTime,
@@ -74,8 +75,6 @@ import {
   type BatchBlobCount,
 } from './services/apiService';
 
-// Updated Taiko Pink
-const TAIKO_PINK = '#e81899';
 
 const App: React.FC = () => {
   const [timeRange, setTimeRange] = useState<TimeRange>('1h');
@@ -523,16 +522,16 @@ const App: React.FC = () => {
                         typeof m.title === 'string' && m.title === 'Avg. L2 TPS'
                           ? () => openTpsTable()
                           : typeof m.title === 'string' &&
-                              m.title === 'L2 Reorgs'
+                            m.title === 'L2 Reorgs'
                             ? () => openGenericTable('reorgs')
                             : typeof m.title === 'string' &&
-                                m.title === 'Slashing Events'
+                              m.title === 'Slashing Events'
                               ? () => openGenericTable('slashings')
                               : typeof m.title === 'string' &&
-                                  m.title === 'Forced Inclusions'
+                                m.title === 'Forced Inclusions'
                                 ? () => openGenericTable('forced-inclusions')
                                 : typeof m.title === 'string' &&
-                                    m.title === 'Active Sequencers'
+                                  m.title === 'Active Sequencers'
                                   ? () => openGenericTable('gateways')
                                   : undefined
                       }

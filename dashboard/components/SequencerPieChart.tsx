@@ -3,6 +3,7 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import type { Payload } from 'recharts/types/component/DefaultTooltipContent';
 import { PieChartDataItem } from '../types';
 import { formatSequencerTooltip } from '../utils';
+import { TAIKO_PINK } from '../theme';
 
 interface SequencerPieChartProps {
   data: PieChartDataItem[];
@@ -15,7 +16,6 @@ const SEQUENCER_COLORS: { [key: string]: string } = {
   Chainbound: '#ffc837',
 };
 
-const TAIKO_PINK = '#e81899'; // Updated Taiko Pink
 const FALLBACK_COLORS = [
   TAIKO_PINK,
   '#E573B5',

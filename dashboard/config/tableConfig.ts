@@ -15,6 +15,7 @@ import {
 } from '../services/apiService';
 import { getSequencerName } from '../sequencerConfig';
 import { bytesToHex } from '../utils';
+import { TAIKO_PINK } from '../theme';
 import React from 'react';
 
 export interface TableColumn {
@@ -115,7 +116,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
       const BatchProcessChart = React.lazy(() =>
         import('../components/BatchProcessChart').then(m => ({ default: m.BatchProcessChart }))
       );
-      return React.createElement(BatchProcessChart, { data, lineColor: '#e81899' });
+      return React.createElement(BatchProcessChart, { data, lineColor: TAIKO_PINK });
     },
     urlKey: 'prove-time'
   },

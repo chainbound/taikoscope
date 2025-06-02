@@ -1,6 +1,7 @@
 import React from 'react';
 import { TimeRange } from '../types';
 import { TimeRangeSelector, RefreshRateInput } from './DashboardHeader';
+import { TAIKO_PINK } from '../theme';
 
 interface Column {
   key: string;
@@ -70,13 +71,14 @@ export const DataTable: React.FC<DataTableProps> = ({
       <div className="flex items-center mb-4 space-x-4">
         <button
           onClick={onBack}
-          className="text-[#e81899] flex items-center space-x-1"
+          className="flex items-center space-x-1"
+          style={{ color: TAIKO_PINK }}
         >
           <span>&larr;</span>
           <span>Back</span>
         </button>
         {extraAction && (
-          <button onClick={extraAction.onClick} className="text-[#e81899]">
+          <button onClick={extraAction.onClick} className="" style={{ color: TAIKO_PINK }}>
             {extraAction.label}
           </button>
         )}
@@ -139,7 +141,8 @@ export const DataTable: React.FC<DataTableProps> = ({
           <button
             onClick={() => setPage((p) => p - 1)}
             disabled={disablePrev}
-            className="text-[#e81899] disabled:text-gray-400"
+            className="disabled:text-gray-400"
+            style={{ color: TAIKO_PINK }}
           >
             Prev
           </button>
@@ -147,7 +150,8 @@ export const DataTable: React.FC<DataTableProps> = ({
           <button
             onClick={() => setPage((p) => p + 1)}
             disabled={disableNext}
-            className="text-[#e81899] disabled:text-gray-400"
+            className="disabled:text-gray-400"
+            style={{ color: TAIKO_PINK }}
           >
             Next
           </button>
@@ -205,7 +209,8 @@ export const DataTable: React.FC<DataTableProps> = ({
               <button
                 onClick={extraTable.pagination.onPrev}
                 disabled={extraTable.pagination.disablePrev}
-                className="text-[#e81899] disabled:text-gray-400"
+                className="disabled:text-gray-400"
+                style={{ color: TAIKO_PINK }}
               >
                 Prev
               </button>
@@ -213,7 +218,8 @@ export const DataTable: React.FC<DataTableProps> = ({
               <button
                 onClick={extraTable.pagination.onNext}
                 disabled={extraTable.pagination.disableNext}
-                className="text-[#e81899] disabled:text-gray-400"
+                className="disabled:text-gray-400"
+                style={{ color: TAIKO_PINK }}
               >
                 Next
               </button>
