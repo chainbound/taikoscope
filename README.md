@@ -26,14 +26,20 @@ through a thin HTTP API consumed by the dashboard frontend.
 1. Clone the repository and install dependencies.
 2. Copy `dev.env` and adjust the values for your setup or provide your own env
    file via the `ENV_FILE` variable.
-3. Start the extractor and API server:
+3. (Optional) Start ClickHouse and the dashboard via Docker Compose:
+
+   ```bash
+   docker compose up
+   ```
+
+4. Start the extractor and API server:
 
    ```bash
    just dev         # runs the extractor/driver
    just dev-api     # runs the HTTP API
    ```
 
-4. Start the dashboard (optional):
+5. Start the dashboard (optional if not using Docker Compose):
 
    ```bash
    just dev-dashboard
