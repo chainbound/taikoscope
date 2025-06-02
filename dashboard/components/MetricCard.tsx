@@ -21,7 +21,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
 
   return (
     <div
-      className={`bg-white p-4 rounded-lg border border-gray-200 transition-shadow duration-200 ${isAddress ? 'min-w-0 w-full sm:col-span-2' : ''} ${className ?? ''}`.trim()}
+      className={`bg-white p-4 rounded-lg border border-gray-200 transition-shadow duration-200 ${isAddress ? 'min-w-0 w-full sm:col-span-2 md:col-span-2 lg:col-span-3 xl:col-span-3 2xl:col-span-4' : ''} ${className ?? ''}`.trim()}
     >
       <div className="flex justify-between items-center">
         <h3 className="text-sm font-medium text-gray-500 truncate">{title}</h3>
@@ -36,7 +36,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
         )}
       </div>
       <p
-        className={`mt-1 font-semibold text-gray-900 ${isAddress ? 'text-lg whitespace-nowrap' : 'text-3xl break-all'}`}
+        className={`mt-1 font-semibold text-gray-900 ${isAddress ? 'text-base sm:text-lg break-all' : 'text-3xl break-all'}`}
       >
         {value}
       </p>
