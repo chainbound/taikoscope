@@ -7,6 +7,7 @@ import { ChartCard } from './components/ChartCard';
 import { DataTable } from './components/DataTable';
 import { useTableActions } from './hooks/useTableActions';
 import { useSearchParams } from './hooks/useSearchParams';
+import { useApiQuery } from './hooks/useApiQuery';
 const SequencerPieChart = lazy(() =>
   import('./components/SequencerPieChart').then((m) => ({
     default: m.SequencerPieChart,
@@ -106,6 +107,14 @@ const App: React.FC = () => {
   const [refreshRate, setRefreshRate] = useState<number>(() =>
     loadRefreshRate(),
   );
+  const avgTpsQuery = useApiQuery(
+    `avgTps-${timeRange}-${selectedSequencer ?? 'all'}`,
+    () =>
+      fetchAvgL2Tps(
+        timeRange,
+        selectedSequencer ? getSequencerAddress(selectedSequencer) : undefined,
+      ),
+  );
   const [lastRefresh, setLastRefresh] = useState<number>(Date.now());
   const [errorMessage, setErrorMessage] = useState<string>('');
   const {
@@ -123,6 +132,12 @@ const App: React.FC = () => {
     blockTxData,
     l2BlockTimeData,
   );
+
+  useEffect(() => {
+    if (!avgTpsQuery.loading) {
+      setLoadingMetrics(false);
+    }
+  }, [avgTpsQuery.loading]);
 
   useEffect(() => {
     let pollId: NodeJS.Timeout | null = null;
@@ -225,7 +240,6 @@ const App: React.FC = () => {
       sequencerDistRes,
       blockTxRes,
       batchBlobCountsRes,
-      avgTpsRes,
     ] = await Promise.all([
       fetchL2BlockCadence(
         range,
@@ -262,10 +276,6 @@ const App: React.FC = () => {
         selectedSequencer ? getSequencerAddress(selectedSequencer) : undefined,
       ),
       fetchBatchBlobCounts(range),
-      fetchAvgL2Tps(
-        range,
-        selectedSequencer ? getSequencerAddress(selectedSequencer) : undefined,
-      ),
     ]);
 
     const l2Cadence = l2CadenceRes.data;
@@ -288,9 +298,9 @@ const App: React.FC = () => {
     const sequencerDist = sequencerDistRes.data || [];
     const txPerBlock = blockTxRes.data || [];
     const blobsPerBatch = batchBlobCountsRes.data || [];
-    const avgTps = avgTpsRes.data;
+    const avgTps = avgTpsQuery.data;
 
-    const anyBadRequest = hasBadRequest([
+    const baseBadRequest = hasBadRequest([
       l2CadenceRes,
       batchCadenceRes,
       avgProveRes,
@@ -311,8 +321,8 @@ const App: React.FC = () => {
       sequencerDistRes,
       blockTxRes,
       batchBlobCountsRes,
-      avgTpsRes,
     ]);
+    const anyBadRequestWithTps = baseBadRequest || avgTpsQuery.badRequest;
 
     const currentMetrics: MetricData[] = createMetrics({
       avgTps,
@@ -345,7 +355,7 @@ const App: React.FC = () => {
     setL1HeadBlock(
       currentMetrics.find((m) => m.title === 'L1 Head Block')?.value || 'N/A',
     );
-    if (anyBadRequest) {
+    if (anyBadRequestWithTps) {
       setErrorMessage(
         'Invalid parameters provided. Some data may not be available.',
       );
