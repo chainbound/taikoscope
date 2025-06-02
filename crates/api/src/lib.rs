@@ -20,8 +20,7 @@ use runtime::rate_limiter::RateLimiter;
 use serde::Deserialize;
 use std::{convert::Infallible, time::Duration as StdDuration};
 
-/// Default maximum number of requests allowed during the [`RATE_PERIOD`].
-/// Default number of requests allowed per period.
+/// Default maximum number of requests allowed during the rate limiting period.
 pub const DEFAULT_MAX_REQUESTS: u64 = 1000;
 /// Default duration for the rate limiting window.
 pub const DEFAULT_RATE_PERIOD: StdDuration = StdDuration::from_secs(60);
