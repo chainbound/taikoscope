@@ -7,7 +7,6 @@ import { ChartCard } from './components/ChartCard';
 import { DataTable } from './components/DataTable';
 import { useTableActions } from './hooks/useTableActions';
 import { useSearchParams } from './hooks/useSearchParams';
-import { useApiQuery } from './hooks/useApiQuery';
 const SequencerPieChart = lazy(() =>
   import('./components/SequencerPieChart').then((m) => ({
     default: m.SequencerPieChart,
@@ -76,7 +75,6 @@ import {
   type BatchBlobCount,
 } from './services/apiService';
 
-
 const App: React.FC = () => {
   const [timeRange, setTimeRange] = useState<TimeRange>('1h');
   const [selectedSequencer, setSelectedSequencer] = useState<string | null>(
@@ -124,7 +122,6 @@ const App: React.FC = () => {
     blockTxData,
     l2BlockTimeData,
   );
-
 
   useEffect(() => {
     let pollId: NodeJS.Timeout | null = null;
@@ -525,16 +522,16 @@ const App: React.FC = () => {
                         typeof m.title === 'string' && m.title === 'Avg. L2 TPS'
                           ? () => openTpsTable()
                           : typeof m.title === 'string' &&
-                            m.title === 'L2 Reorgs'
+                              m.title === 'L2 Reorgs'
                             ? () => openGenericTable('reorgs')
                             : typeof m.title === 'string' &&
-                              m.title === 'Slashing Events'
+                                m.title === 'Slashing Events'
                               ? () => openGenericTable('slashings')
                               : typeof m.title === 'string' &&
-                                m.title === 'Forced Inclusions'
+                                  m.title === 'Forced Inclusions'
                                 ? () => openGenericTable('forced-inclusions')
                                 : typeof m.title === 'string' &&
-                                  m.title === 'Active Sequencers'
+                                    m.title === 'Active Sequencers'
                                   ? () => openGenericTable('gateways')
                                   : undefined
                       }
