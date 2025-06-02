@@ -1,0 +1,24 @@
+version: "3.8"
+services:
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    ports:
+      - "8123:8123"
+    volumes:
+      - clickhouse-data:/var/lib/clickhouse
+    environment:
+      CLICKHOUSE_DB: taikoscope
+  dashboard:
+    image: node:20
+    working_dir: /app
+    volumes:
+      - ./dashboard:/app
+      - dashboard-node-modules:/app/node_modules
+    command: sh -c "npm install && VITE_API_BASE=http://localhost:3000 npm run dev -- --host 0.0.0.0"
+    ports:
+      - "5173:5173"
+    depends_on:
+      - clickhouse
+volumes:
+  clickhouse-data:
+  dashboard-node-modules:
