@@ -6,7 +6,6 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
   Brush,
 } from 'recharts';
@@ -97,11 +96,6 @@ export const ReorgDepthChart: React.FC<ReorgDepthChartProps> = ({ data }) => {
             borderColor: TAIKO_PINK,
           }}
           labelStyle={{ color: '#333' }}
-        />
-        <Legend
-          verticalAlign="bottom"
-          align="right"
-          wrapperStyle={{ right: 20, bottom: 0 }}
         />
         <Bar dataKey="depth" fill={TAIKO_PINK} name="Depth" />
         <Brush

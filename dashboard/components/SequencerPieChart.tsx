@@ -1,12 +1,5 @@
 import React from 'react';
-import {
-  PieChart,
-  Pie,
-  Cell,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from 'recharts';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import type { Payload } from 'recharts/types/component/DefaultTooltipContent';
 import { PieChartDataItem } from '../types';
 import { formatSequencerTooltip } from '../utils';
@@ -67,16 +60,11 @@ export const SequencerPieChart: React.FC<SequencerPieChartProps> = ({
           })}
         </Pie>
         <Tooltip
-          formatter={(
-            _,
-            name: string,
-            item: Payload<number, string>,
-          ) => {
+          formatter={(_, name: string, item: Payload<number, string>) => {
             const payload = item.payload as PieChartDataItem;
             return [formatSequencerTooltip(data, payload.value), name];
           }}
         />
-        <Legend verticalAlign="bottom" wrapperStyle={{ paddingTop: '10px' }} />
       </PieChart>
     </ResponsiveContainer>
   );

@@ -6,7 +6,6 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
   Brush,
 } from 'recharts';
@@ -104,11 +103,6 @@ export const BlockTimeChart: React.FC<BlockTimeChartProps> = ({
             borderColor: lineColor,
           }}
           labelStyle={{ color: '#333' }}
-        />
-        <Legend
-          verticalAlign="bottom"
-          align="right"
-          wrapperStyle={{ right: 20, bottom: 0 }}
         />
         <Line
           type="monotone"

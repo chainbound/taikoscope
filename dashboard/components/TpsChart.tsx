@@ -6,7 +6,6 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
 } from 'recharts';
 
@@ -30,7 +29,10 @@ export const TpsChart: React.FC<TpsChartProps> = ({ data, lineColor }) => {
   }
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <LineChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 50 }}>
+      <LineChart
+        data={data}
+        margin={{ top: 5, right: 30, left: 20, bottom: 50 }}
+      >
         <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
         <XAxis
           dataKey="block"
@@ -63,11 +65,20 @@ export const TpsChart: React.FC<TpsChartProps> = ({ data, lineColor }) => {
         <Tooltip
           labelFormatter={(label: number) => `Block ${label.toLocaleString()}`}
           formatter={(value: number) => [value.toFixed(2), 'tps']}
-          contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.8)', borderColor: lineColor }}
+          contentStyle={{
+            backgroundColor: 'rgba(255, 255, 255, 0.8)',
+            borderColor: lineColor,
+          }}
           labelStyle={{ color: '#333' }}
         />
-        <Legend verticalAlign="bottom" align="right" wrapperStyle={{ right: 20, bottom: 0 }} />
-        <Line type="monotone" dataKey="tps" stroke={lineColor} strokeWidth={2} dot={false} name="TPS" />
+        <Line
+          type="monotone"
+          dataKey="tps"
+          stroke={lineColor}
+          strokeWidth={2}
+          dot={false}
+          name="TPS"
+        />
       </LineChart>
     </ResponsiveContainer>
   );
