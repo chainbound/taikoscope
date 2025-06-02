@@ -79,9 +79,8 @@ impl ClickhouseReader {
     where
         R: Row + for<'b> Deserialize<'b>,
     {
-        let client = self.base.clone().with_database(&self.db_name);
         let start = Instant::now();
-        let result = client.query(query).fetch_all::<R>().await;
+        let result = self.base.query(query).fetch_all::<R>().await;
         let duration_ms = start.elapsed().as_millis();
         match &result {
             Ok(rows) => {
