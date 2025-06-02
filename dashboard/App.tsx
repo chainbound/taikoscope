@@ -107,14 +107,6 @@ const App: React.FC = () => {
   const [refreshRate, setRefreshRate] = useState<number>(() =>
     loadRefreshRate(),
   );
-  const avgTpsQuery = useApiQuery(
-    `avgTps-${timeRange}-${selectedSequencer ?? 'all'}`,
-    () =>
-      fetchAvgL2Tps(
-        timeRange,
-        selectedSequencer ? getSequencerAddress(selectedSequencer) : undefined,
-      ),
-  );
   const [lastRefresh, setLastRefresh] = useState<number>(Date.now());
   const [errorMessage, setErrorMessage] = useState<string>('');
   const {
@@ -133,27 +125,6 @@ const App: React.FC = () => {
     l2BlockTimeData,
   );
 
-  useEffect(() => {
-    if (!avgTpsQuery.loading) {
-      setLoadingMetrics(false);
-    }
-  }, [avgTpsQuery.loading]);
-
-  useEffect(() => {
-    setMetrics((m) =>
-      m.map((metric) =>
-        metric.title === 'Avg. L2 TPS'
-          ? {
-              ...metric,
-              value:
-                avgTpsQuery.data != null
-                  ? avgTpsQuery.data.toFixed(2)
-                  : 'N/A',
-            }
-          : metric,
-      ),
-    );
-  }, [avgTpsQuery.data]);
 
   useEffect(() => {
     let pollId: NodeJS.Timeout | null = null;
@@ -240,6 +211,7 @@ const App: React.FC = () => {
       batchCadenceRes,
       avgProveRes,
       avgVerifyRes,
+      avgTpsRes,
       activeGatewaysRes,
       currentOperatorRes,
       nextOperatorRes,
@@ -264,6 +236,10 @@ const App: React.FC = () => {
       fetchBatchPostingCadence(range),
       fetchAvgProveTime(range),
       fetchAvgVerifyTime(range),
+      fetchAvgL2Tps(
+        range,
+        selectedSequencer ? getSequencerAddress(selectedSequencer) : undefined,
+      ),
       fetchActiveGateways(range),
       fetchCurrentOperator(),
       fetchNextOperator(),
@@ -298,6 +274,7 @@ const App: React.FC = () => {
     const batchCadence = batchCadenceRes.data;
     const avgProve = avgProveRes.data;
     const avgVerify = avgVerifyRes.data;
+    const avgTps = avgTpsRes.data;
     const activeGateways = activeGatewaysRes.data;
     const currentOperator = currentOperatorRes.data;
     const nextOperator = nextOperatorRes.data;
@@ -314,13 +291,13 @@ const App: React.FC = () => {
     const sequencerDist = sequencerDistRes.data || [];
     const txPerBlock = blockTxRes.data || [];
     const blobsPerBatch = batchBlobCountsRes.data || [];
-    const avgTps = avgTpsQuery.data;
 
-    const baseBadRequest = hasBadRequest([
+    const anyBadRequest = hasBadRequest([
       l2CadenceRes,
       batchCadenceRes,
       avgProveRes,
       avgVerifyRes,
+      avgTpsRes,
       activeGatewaysRes,
       currentOperatorRes,
       nextOperatorRes,
@@ -338,7 +315,6 @@ const App: React.FC = () => {
       blockTxRes,
       batchBlobCountsRes,
     ]);
-    const anyBadRequestWithTps = baseBadRequest || avgTpsQuery.badRequest;
 
     const currentMetrics: MetricData[] = createMetrics({
       avgTps,
@@ -371,7 +347,7 @@ const App: React.FC = () => {
     setL1HeadBlock(
       currentMetrics.find((m) => m.title === 'L1 Head Block')?.value || 'N/A',
     );
-    if (anyBadRequestWithTps) {
+    if (anyBadRequest) {
       setErrorMessage(
         'Invalid parameters provided. Some data may not be available.',
       );
