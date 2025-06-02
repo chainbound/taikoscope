@@ -8,8 +8,8 @@ repository.workspace = true
 
 [dependencies]
 chainio = { path = "../chainio" }
-primitives = { path = "../primitives" }
 network = { path = "../network" }
+primitives = { path = "../primitives" }
 
 alloy.workspace = true
 alloy-json-rpc.workspace = true

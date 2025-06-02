@@ -24,11 +24,11 @@ tokio-stream.workspace = true
 tracing.workspace = true
 
 [dev-dependencies]
-url.workspace = true
-clickhouse_rs = { package = "clickhouse", version = "0.13.3", features = ["native-tls", "test-util"] }
-http = "1"
-tokio-tungstenite = "0.26"
+clickhouse.workspace = true
 futures.workspace = true
+http.workspace = true
+tokio-tungstenite.workspace = true
+url.workspace = true
 
 [lints]
 workspace = true

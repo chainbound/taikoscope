@@ -7,9 +7,10 @@ exclude.workspace = true
 repository.workspace = true
 
 [dependencies]
-serde.workspace = true
 clickhouse_lib = { path = "../clickhouse", package = "clickhouse" }
-utoipa = "5.3"
+
+serde.workspace = true
+utoipa.workspace = true
 
 [lints]
 workspace = true

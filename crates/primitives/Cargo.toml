@@ -6,7 +6,6 @@ license.workspace = true
 exclude.workspace = true
 repository.workspace = true
 
-
 [dependencies]
 alloy-network-primitives.workspace = true
 alloy-primitives.workspace = true
