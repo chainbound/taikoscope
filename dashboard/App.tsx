@@ -7,7 +7,6 @@ import { ChartCard } from './components/ChartCard';
 import { DataTable } from './components/DataTable';
 import { useTableActions } from './hooks/useTableActions';
 import { useSearchParams } from './hooks/useSearchParams';
-import { useApiQuery } from './hooks/useApiQuery';
 const SequencerPieChart = lazy(() =>
   import('./components/SequencerPieChart').then((m) => ({
     default: m.SequencerPieChart,

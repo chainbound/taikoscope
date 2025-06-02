@@ -1,6 +1,6 @@
 import React from 'react';
 import { type MetricData } from './types';
-import { formatSeconds } from './utils';
+import { formatSeconds, formatDecimal } from './utils';
 import { getSequencerName } from './sequencerConfig';
 import type { RequestResult } from './services/apiService';
 
@@ -23,7 +23,7 @@ export interface MetricInputData {
 export const createMetrics = (data: MetricInputData): MetricData[] => [
   {
     title: 'Avg. L2 TPS',
-    value: data.avgTps != null ? data.avgTps.toFixed(2) : 'N/A',
+    value: data.avgTps != null ? formatDecimal(data.avgTps) : 'N/A',
     group: 'Network Performance',
   },
   {
