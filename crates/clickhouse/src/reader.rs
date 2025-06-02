@@ -139,45 +139,56 @@ impl ClickhouseReader {
     }
 
     /// Get the latest L2 block number.
+    /// Uses an optimized query that should be faster on large tables.
     pub async fn get_last_l2_block_number(&self) -> Result<Option<u64>> {
         #[derive(Row, Deserialize)]
-        struct MaxNumber {
-            number: u64,
+        struct BlockNumber {
+            l2_block_number: u64,
         }
 
-        let query =
-            format!("SELECT max(l2_block_number) AS number FROM {}.l2_head_events", &self.db_name);
+        // Use ORDER BY + LIMIT 1 instead of max() for better performance on large tables
+        // This approach can utilize indexes more efficiently
+        let query = format!(
+            "SELECT l2_block_number FROM {}.l2_head_events \
+             ORDER BY l2_block_number DESC LIMIT 1",
+            &self.db_name
+        );
 
-        let rows = self.execute::<MaxNumber>(&query).await?;
+        let rows = self.execute::<BlockNumber>(&query).await?;
         let row = match rows.into_iter().next() {
             Some(r) => r,
             None => return Ok(None),
         };
-        if row.number == 0 {
+        if row.l2_block_number == 0 {
             return Ok(None);
         }
-        Ok(Some(row.number))
+        Ok(Some(row.l2_block_number))
     }
 
     /// Get the latest L1 block number.
+    /// Uses an optimized query that should be faster on large tables.
     pub async fn get_last_l1_block_number(&self) -> Result<Option<u64>> {
         #[derive(Row, Deserialize)]
-        struct MaxNumber {
-            number: u64,
+        struct BlockNumber {
+            l1_block_number: u64,
         }
 
-        let query =
-            format!("SELECT max(l1_block_number) AS number FROM {}.l1_head_events", &self.db_name);
+        // Use ORDER BY + LIMIT 1 instead of max() for better performance on large tables
+        let query = format!(
+            "SELECT l1_block_number FROM {}.l1_head_events \
+             ORDER BY l1_block_number DESC LIMIT 1",
+            &self.db_name
+        );
 
-        let rows = self.execute::<MaxNumber>(&query).await?;
+        let rows = self.execute::<BlockNumber>(&query).await?;
         let row = match rows.into_iter().next() {
             Some(r) => r,
             None => return Ok(None),
         };
-        if row.number == 0 {
+        if row.l1_block_number == 0 {
             return Ok(None);
         }
-        Ok(Some(row.number))
+        Ok(Some(row.l1_block_number))
     }
 
     /// Get timestamp of the latest `BatchProposed` event based on L1 block timestamp in UTC
@@ -1494,8 +1505,13 @@ mod tests {
     use crate::ClickhouseReader;
 
     #[derive(Serialize, Row)]
-    struct MaxNum {
-        number: u64,
+    struct L2BlockNumber {
+        l2_block_number: u64,
+    }
+
+    #[derive(Serialize, Row)]
+    struct L1BlockNumber {
+        l1_block_number: u64,
     }
 
     #[derive(Serialize, Row)]
@@ -1506,7 +1522,7 @@ mod tests {
     #[tokio::test]
     async fn test_get_last_l2_block_number_empty() {
         let mock = Mock::new();
-        mock.add(handlers::provide(Vec::<MaxNum>::new()));
+        mock.add(handlers::provide(Vec::<L2BlockNumber>::new()));
 
         let url = Url::parse(mock.url()).unwrap();
         let ch =
@@ -1520,7 +1536,7 @@ mod tests {
     async fn test_get_last_l2_block_number() {
         let mock = Mock::new();
         let expected = 42u64;
-        mock.add(handlers::provide(vec![MaxNum { number: expected }]));
+        mock.add(handlers::provide(vec![L2BlockNumber { l2_block_number: expected }]));
 
         let url = Url::parse(mock.url()).unwrap();
         let ch =
@@ -1533,7 +1549,7 @@ mod tests {
     #[tokio::test]
     async fn test_get_last_l1_block_number_empty() {
         let mock = Mock::new();
-        mock.add(handlers::provide(Vec::<MaxNum>::new()));
+        mock.add(handlers::provide(Vec::<L1BlockNumber>::new()));
 
         let url = Url::parse(mock.url()).unwrap();
         let ch =
@@ -1547,7 +1563,7 @@ mod tests {
     async fn test_get_last_l1_block_number() {
         let mock = Mock::new();
         let expected = 50u64;
-        mock.add(handlers::provide(vec![MaxNum { number: expected }]));
+        mock.add(handlers::provide(vec![L1BlockNumber { l1_block_number: expected }]));
 
         let url = Url::parse(mock.url()).unwrap();
         let ch =
