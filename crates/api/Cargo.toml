@@ -27,7 +27,7 @@ utoipa-swagger-ui.workspace = true
 [dev-dependencies]
 tower = "0.5"
 url.workspace = true
-clickhouse = { package = "clickhouse", version = "0.13.2", features = ["native-tls", "test-util"] }
+clickhouse = { package = "clickhouse", version = "0.13.3", features = ["native-tls", "test-util"] }
 
 [lints]
 workspace = true

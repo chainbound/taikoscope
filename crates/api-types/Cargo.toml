@@ -9,7 +9,7 @@ repository.workspace = true
 [dependencies]
 serde.workspace = true
 clickhouse_lib = { path = "../clickhouse", package = "clickhouse" }
-utoipa = "5.2"
+utoipa = "5.3"
 
 [lints]
 workspace = true
