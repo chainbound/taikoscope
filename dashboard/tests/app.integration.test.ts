@@ -25,8 +25,8 @@ import {
   fetchSequencerDistribution,
   API_BASE,
 } from '../services/apiService.ts';
-import { createMetrics, hasBadRequest } from '../helpers.js';
-import type { MetricData } from '../types.js';
+import { createMetrics, hasBadRequest } from '../helpers';
+import type { MetricData } from '../types';
 
 type TimeRange = '1h' | '24h' | '7d';
 

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { ChartCard } from '../components/ChartCard.js';
+import { ChartCard } from '../components/ChartCard';
 
 describe('ChartCard', () => {
   it('renders title and children', () => {
@@ -20,7 +20,7 @@ describe('ChartCard', () => {
     const html = renderToStaticMarkup(
       React.createElement(ChartCard, {
         title: 'Other Chart',
-        onMore: () => { },
+        onMore: () => {},
         children: React.createElement('div', null, 'data'),
       }),
     );

@@ -12,7 +12,7 @@ import {
   bytesToHex,
   loadRefreshRate,
   saveRefreshRate,
-} from '../utils.js';
+} from '../utils';
 
 describe('utils', () => {
   it('formats numbers and durations', () => {
@@ -93,8 +93,8 @@ describe('utils', () => {
       setItem: (k: string, v: string) => {
         store[k] = v;
       },
-      removeItem: () => { },
-      clear: () => { },
+      removeItem: () => {},
+      clear: () => {},
       key: () => null,
       length: 0,
     } as Storage;
