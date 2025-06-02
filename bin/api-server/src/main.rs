@@ -44,7 +44,10 @@ async fn main() -> eyre::Result<()> {
         info!("👋 API server shutting down...");
     };
 
-    let run_server = async { run(addr, client, opts.api.allowed_origins).await };
+    let max_requests = opts.api.rate_limit_max_requests;
+    let period = std::time::Duration::from_secs(opts.api.rate_limit_period_secs);
+    let run_server =
+        async { run(addr, client, opts.api.allowed_origins, max_requests, period).await };
 
     run_until_shutdown(run_server, shutdown_signal, on_shutdown).await
 }

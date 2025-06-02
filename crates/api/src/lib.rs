@@ -20,10 +20,11 @@ use runtime::rate_limiter::RateLimiter;
 use serde::Deserialize;
 use std::{convert::Infallible, time::Duration as StdDuration};
 
-/// Maximum number of requests allowed during the [`RATE_PERIOD`].
-const MAX_REQUESTS: u64 = 1000;
-/// Duration for the rate limiting window.
-const RATE_PERIOD: StdDuration = StdDuration::from_secs(60);
+/// Default maximum number of requests allowed during the [`RATE_PERIOD`].
+/// Default number of requests allowed per period.
+pub const DEFAULT_MAX_REQUESTS: u64 = 1000;
+/// Default duration for the rate limiting window.
+pub const DEFAULT_RATE_PERIOD: StdDuration = StdDuration::from_secs(60);
 
 /// Shared state for API handlers.
 #[derive(Clone, Debug)]
@@ -34,8 +35,8 @@ pub struct ApiState {
 
 impl ApiState {
     /// Create a new [`ApiState`].
-    pub fn new(client: ClickhouseReader) -> Self {
-        Self { client, limiter: RateLimiter::new(MAX_REQUESTS, RATE_PERIOD) }
+    pub fn new(client: ClickhouseReader, max_requests: u64, rate_period: StdDuration) -> Self {
+        Self { client, limiter: RateLimiter::new(max_requests, rate_period) }
     }
 }
 
@@ -704,7 +705,7 @@ mod tests {
         let url = Url::parse(mock_url).unwrap();
         let client =
             ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
-        let state = ApiState::new(client);
+        let state = ApiState::new(client, DEFAULT_MAX_REQUESTS, DEFAULT_RATE_PERIOD);
         router(state)
     }
 

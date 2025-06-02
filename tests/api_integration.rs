@@ -28,7 +28,13 @@ async fn l2_head_integration() {
         ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
 
     let addr: SocketAddr = "127.0.0.1:3001".parse().unwrap();
-    let server = tokio::spawn(run(addr, client, vec![]));
+    let server = tokio::spawn(run(
+        addr,
+        client,
+        vec![],
+        1000,
+        Duration::from_secs(60),
+    ));
 
     sleep(Duration::from_millis(100)).await;
 

@@ -103,6 +103,18 @@ pub struct ApiOpts {
     /// Additional allowed CORS origins (comma separated)
     #[clap(long = "allowed-origin", env = "ALLOWED_ORIGINS", value_delimiter = ',')]
     pub allowed_origins: Vec<String>,
+
+    /// Maximum number of requests allowed during the rate limiting period
+    #[clap(
+        long = "rate-limit-max-requests",
+        env = "RATE_LIMIT_MAX_REQUESTS",
+        default_value = "1000"
+    )]
+    pub rate_limit_max_requests: u64,
+
+    /// Duration of the rate limiting window in seconds
+    #[clap(long = "rate-limit-period-secs", env = "RATE_LIMIT_PERIOD_SECS", default_value = "60")]
+    pub rate_limit_period_secs: u64,
 }
 
 /// CLI options for taikoscope
@@ -195,6 +207,8 @@ mod tests {
         assert_eq!(opts.api.host, "127.0.0.1");
         assert_eq!(opts.api.port, 3000);
         assert!(opts.api.allowed_origins.is_empty());
+        assert_eq!(opts.api.rate_limit_max_requests, 1000);
+        assert_eq!(opts.api.rate_limit_period_secs, 60);
         assert!(!opts.reset_db);
     }
 
@@ -207,6 +221,8 @@ mod tests {
             env::set_var("INSTATUS_MONITOR_THRESHOLD_SECS", "33");
             env::set_var("BATCH_PROOF_TIMEOUT_SECS", "99");
             env::set_var("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:5173");
+            env::set_var("RATE_LIMIT_MAX_REQUESTS", "500");
+            env::set_var("RATE_LIMIT_PERIOD_SECS", "120");
         }
 
         let mut args = base_args();
@@ -223,6 +239,8 @@ mod tests {
             opts.api.allowed_origins,
             vec!["http://localhost:3000", "http://localhost:5173",]
         );
+        assert_eq!(opts.api.rate_limit_max_requests, 500);
+        assert_eq!(opts.api.rate_limit_period_secs, 120);
         assert!(opts.reset_db);
 
         unsafe {
@@ -230,6 +248,8 @@ mod tests {
             env::remove_var("INSTATUS_MONITOR_THRESHOLD_SECS");
             env::remove_var("BATCH_PROOF_TIMEOUT_SECS");
             env::remove_var("ALLOWED_ORIGINS");
+            env::remove_var("RATE_LIMIT_MAX_REQUESTS");
+            env::remove_var("RATE_LIMIT_PERIOD_SECS");
         }
     }
 }

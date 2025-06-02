@@ -1,6 +1,6 @@
 //! Helper utilities to launch the Taikoscope API server.
 
-use std::{net::SocketAddr, sync::Arc};
+use std::{net::SocketAddr, sync::Arc, time::Duration};
 
 use api::{self, ApiState};
 use axum::{
@@ -48,8 +48,10 @@ pub async fn run(
     addr: SocketAddr,
     client: ClickhouseReader,
     extra_origins: Vec<String>,
+    max_requests: u64,
+    rate_period: Duration,
 ) -> Result<()> {
-    let state = ApiState::new(client);
+    let state = ApiState::new(client, max_requests, rate_period);
     let app = router(state, extra_origins);
 
     info!("Starting API server on {}", addr);
