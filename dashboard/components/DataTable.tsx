@@ -3,6 +3,8 @@ import { TimeRange } from '../types';
 import { TimeRangeSelector, RefreshRateInput } from './DashboardHeader';
 import { TAIKO_PINK } from '../theme';
 
+const ROWS_PER_PAGE = 50;
+
 interface Column {
   key: string;
   label: string;
@@ -53,7 +55,6 @@ export const DataTable: React.FC<DataTableProps> = ({
   onRefreshRateChange,
   chart,
 }) => {
-  const ROWS_PER_PAGE = 50;
   const [page, setPage] = React.useState(0);
 
   React.useEffect(() => {
