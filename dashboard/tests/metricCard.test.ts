@@ -9,7 +9,7 @@ describe('MetricCard', () => {
     const htmlAddress = renderToStaticMarkup(
       React.createElement(MetricCard, { title: 'Operator', value: addressValue }),
     );
-    expect(htmlAddress.includes('min-w-0 w-full sm:col-span-2 md:col-span-2 lg:col-span-3 xl:col-span-3 2xl:col-span-4')).toBe(true);
+    expect(htmlAddress.includes('min-w-0 w-full sm:col-span-2 md:col-span-2 lg:col-span-2 xl:col-span-2 2xl:col-span-2')).toBe(true);
     expect(htmlAddress.includes('text-base sm:text-lg break-all')).toBe(true);
   });
 
