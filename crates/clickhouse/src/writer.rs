@@ -265,7 +265,7 @@ mod tests {
 
     use alloy::primitives::B256;
     use chainio::{ITaikoInbox, taiko::wrapper::ITaikoWrapper};
-    use clickhouse::test::{Mock, handlers};
+    use clickhouse::test::{self, Mock, handlers};
 
     #[tokio::test]
     async fn create_table_generates_correct_query() {
@@ -536,5 +536,68 @@ mod tests {
         // verify that at least one table and one view were created
         assert!(queries.iter().any(|q| q.contains("db.l1_head_events")));
         assert!(queries.iter().any(|q| q.contains("db.batch_prove_times_mv")));
+    }
+
+    #[tokio::test]
+    async fn create_table_returns_error_on_failure() {
+        let mock = Mock::new();
+        mock.add(handlers::failure(test::status::INTERNAL_SERVER_ERROR));
+
+        let url = Url::parse(mock.url()).unwrap();
+        let writer =
+            ClickhouseWriter::new(url, "db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+        let result = writer.create_table(&TABLE_SCHEMAS[0]).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn insert_batch_fails_with_too_many_blobs() {
+        let mock = Mock::new();
+        let url = Url::parse(mock.url()).unwrap();
+        let writer =
+            ClickhouseWriter::new(url, "db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+        let batch = ITaikoInbox::BatchProposed {
+            info: ITaikoInbox::BatchInfo {
+                proposedIn: 1,
+                blobByteSize: 10,
+                blocks: vec![ITaikoInbox::BlockParams::default(); 1],
+                blobHashes: vec![B256::repeat_byte(1); 256],
+                ..Default::default()
+            },
+            meta: ITaikoInbox::BatchMetadata {
+                proposer: Address::repeat_byte(2),
+                batchId: 1,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+
+        let result = writer.insert_batch(&batch).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn insert_proved_batch_returns_error_on_failure() {
+        let mock = Mock::new();
+        mock.add(handlers::failure(test::status::INTERNAL_SERVER_ERROR));
+        let url = Url::parse(mock.url()).unwrap();
+        let writer =
+            ClickhouseWriter::new(url, "db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+        let transition = ITaikoInbox::Transition {
+            parentHash: B256::repeat_byte(1),
+            blockHash: B256::repeat_byte(2),
+            stateRoot: B256::repeat_byte(3),
+        };
+        let proved = ITaikoInbox::BatchesProved {
+            verifier: Address::repeat_byte(4),
+            batchIds: vec![1],
+            transitions: vec![transition],
+        };
+
+        let result = writer.insert_proved_batch(&proved, 10).await;
+        assert!(result.is_err());
     }
 }
