@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createMetrics, hasBadRequest } from '../helpers.js';
+import { createMetrics, hasBadRequest } from '../helpers';
 
 const metrics = createMetrics({
   avgTps: 3,

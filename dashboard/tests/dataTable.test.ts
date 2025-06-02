@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { DataTable } from '../components/DataTable.js';
+import { DataTable } from '../components/DataTable';
 
 describe('DataTable', () => {
   it('renders table rows and columns', () => {

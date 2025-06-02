@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatDecimal, formatSeconds } from '../utils.js';
+import { formatDecimal, formatSeconds } from '../utils';
 
 describe('extra utils', () => {
   it('formats decimals and seconds', () => {

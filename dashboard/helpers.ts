@@ -1,7 +1,7 @@
 import React from 'react';
 import { type MetricData } from './types';
-import { formatSeconds } from './utils.js';
-import { getSequencerName } from './sequencerConfig.js';
+import { formatSeconds } from './utils';
+import { getSequencerName } from './sequencerConfig';
 import type { RequestResult } from './services/apiService';
 
 export interface MetricInputData {
