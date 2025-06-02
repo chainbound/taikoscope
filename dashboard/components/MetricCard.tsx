@@ -28,7 +28,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
         {onMore && (
           <button
             onClick={onMore}
-            className="text-gray-500 hover:text-gray-700 text-xl leading-none"
+            className="text-gray-500 hover:text-gray-700 text-xl leading-none w-8 h-8 flex items-center justify-center rounded-md"
             aria-label="View table"
           >
             ⋮
