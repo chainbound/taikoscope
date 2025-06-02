@@ -52,47 +52,47 @@ interface MockFetchResponse {
 }
 
 const responses: Record<string, Record<string, unknown>> = {
-  '/l2-block-cadence?range=1h': { l2_block_cadence_ms: 60000 },
-  '/batch-posting-cadence?range=1h': { batch_posting_cadence_ms: 120000 },
-  '/avg-prove-time?range=1h': { avg_prove_time_ms: 1500 },
-  '/avg-verify-time?range=1h': { avg_verify_time_ms: 2500 },
-  '/active-gateways?range=1h': { gateways: ['gw1', 'gw2'] },
-  '/current-operator': { operator: '0xaaa' },
-  '/next-operator': { operator: '0xbbb' },
-  '/reorgs?range=1h': { events: [{ l2_block_number: 10, depth: 1 }] },
-  '/slashings?range=1h': {
+  '/v1/l2-block-cadence?range=1h': { l2_block_cadence_ms: 60000 },
+  '/v1/batch-posting-cadence?range=1h': { batch_posting_cadence_ms: 120000 },
+  '/v1/avg-prove-time?range=1h': { avg_prove_time_ms: 1500 },
+  '/v1/avg-verify-time?range=1h': { avg_verify_time_ms: 2500 },
+  '/v1/active-gateways?range=1h': { gateways: ['gw1', 'gw2'] },
+  '/v1/current-operator': { operator: '0xaaa' },
+  '/v1/next-operator': { operator: '0xbbb' },
+  '/v1/reorgs?range=1h': { events: [{ l2_block_number: 10, depth: 1 }] },
+  '/v1/slashings?range=1h': {
     events: [{ l1_block_number: 5, validator_addr: [1, 2] }],
   },
-  '/forced-inclusions?range=1h': { events: [{ blob_hash: [3, 4] }] },
-  '/l2-block-times?range=1h': {
+  '/v1/forced-inclusions?range=1h': { events: [{ blob_hash: [3, 4] }] },
+  '/v1/l2-block-times?range=1h': {
     blocks: [
       { l2_block_number: 1, ms_since_prev_block: 1000 },
       { l2_block_number: 2, ms_since_prev_block: 2000 },
     ],
   },
-  '/l1-block-times?range=1h': {
+  '/v1/l1-block-times?range=1h': {
     blocks: [
       { block_number: 50, minute: 1 },
       { block_number: 52, minute: 2 },
     ],
   },
-  '/prove-times?range=1h': {
+  '/v1/prove-times?range=1h': {
     batches: [{ batch_id: 1, seconds_to_prove: 3 }],
   },
-  '/verify-times?range=1h': {
+  '/v1/verify-times?range=1h': {
     batches: [{ batch_id: 1, seconds_to_verify: 4 }],
   },
-  '/l2-gas-used?range=1h': {
+  '/v1/l2-gas-used?range=1h': {
     blocks: [
       { l2_block_number: 1, gas_used: 100 },
       { l2_block_number: 2, gas_used: 150 },
     ],
   },
-  '/sequencer-distribution?range=1h': {
+  '/v1/sequencer-distribution?range=1h': {
     sequencers: [{ address: 'addr1', blocks: 10 }],
   },
-  '/l2-head-block': { l2_head_block: 123 },
-  '/l1-head-block': { l1_head_block: 456 },
+  '/v1/l2-head-block': { l2_head_block: 123 },
+  '/v1/l1-head-block': { l1_head_block: 456 },
 };
 
 (

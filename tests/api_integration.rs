@@ -9,7 +9,7 @@ use serde::Serialize;
 use tokio::time::sleep;
 use url::Url;
 
-use server::run;
+use server::{run, API_VERSION};
 use clickhouse_lib::ClickhouseReader;
 
 #[derive(Serialize, Row)]
@@ -38,7 +38,7 @@ async fn l2_head_integration() {
 
     sleep(Duration::from_millis(100)).await;
 
-    let resp = reqwest::get(format!("http://{addr}/l2-head")).await.unwrap();
+    let resp = reqwest::get(format!("http://{addr}/{API_VERSION}/l2-head")).await.unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
     let body: serde_json::Value = resp.json().await.unwrap();
     let expected = chrono::Utc.timestamp_opt(ts as i64, 0).single().unwrap().to_rfc3339();
