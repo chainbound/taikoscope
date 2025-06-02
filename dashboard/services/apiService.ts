@@ -1,6 +1,5 @@
-const metaEnv = import.meta.env;
-export const API_BASE =
-  (metaEnv.VITE_API_BASE || metaEnv.API_BASE || '') + '/v1';
+const metaEnv = import.meta.env as ImportMetaEnv;
+export const API_BASE: string = (metaEnv.VITE_API_BASE ?? metaEnv.API_BASE ?? '') + '/v1';
 
 import { getSequencerName } from '../sequencerConfig';
 
@@ -225,10 +224,10 @@ export const fetchProveTimes = async (
   return {
     data: res.data
       ? res.data.batches.map((b) => ({
-          name: b.batch_id.toString(),
-          value: b.seconds_to_prove,
-          timestamp: 0,
-        }))
+        name: b.batch_id.toString(),
+        value: b.seconds_to_prove,
+        timestamp: 0,
+      }))
       : null,
     badRequest: res.badRequest,
   };
@@ -244,10 +243,10 @@ export const fetchVerifyTimes = async (
   return {
     data: res.data
       ? res.data.batches.map((b) => ({
-          name: b.batch_id.toString(),
-          value: b.seconds_to_verify,
-          timestamp: 0,
-        }))
+        name: b.batch_id.toString(),
+        value: b.seconds_to_verify,
+        timestamp: 0,
+      }))
       : null,
     badRequest: res.badRequest,
   };
@@ -340,9 +339,9 @@ export const fetchSequencerDistribution = async (
   return {
     data: res.data
       ? res.data.sequencers.map((s) => ({
-          name: getSequencerName(s.address),
-          value: s.blocks,
-        }))
+        name: getSequencerName(s.address),
+        value: s.blocks,
+      }))
       : null,
     badRequest: res.badRequest,
   };
@@ -388,9 +387,9 @@ export const fetchBlockTransactions = async (
   return {
     data: res.data?.blocks
       ? res.data.blocks.map((b) => ({
-          ...b,
-          sequencer: getSequencerName(b.sequencer),
-        }))
+        ...b,
+        sequencer: getSequencerName(b.sequencer),
+      }))
       : null,
     badRequest: res.badRequest,
   };
@@ -411,9 +410,9 @@ export const fetchBatchBlobCounts = async (
   return {
     data: res.data
       ? res.data.batches.map((b) => ({
-          batch: b.batch_id,
-          blobs: b.blob_count,
-        }))
+        batch: b.batch_id,
+        blobs: b.blob_count,
+      }))
       : null,
     badRequest: res.badRequest,
   };
