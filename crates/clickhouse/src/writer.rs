@@ -204,16 +204,9 @@ impl ClickhouseWriter {
         l1_block_number: u64,
     ) -> Result<()> {
         let client = self.base.clone().with_database(&self.db_name);
-        for (i, batch_id) in proved.batchIds.iter().enumerate() {
-            if i >= proved.transitions.len() {
-                continue;
-            }
-            let single_proved = chainio::ITaikoInbox::BatchesProved {
-                verifier: proved.verifier,
-                batchIds: vec![*batch_id],
-                transitions: vec![proved.transitions[i].clone()],
-            };
-            let proved_row = ProvedBatchRow::try_from((&single_proved, l1_block_number))?;
+        for (batch_id, transition) in proved.batchIds.iter().zip(&proved.transitions) {
+            let proved_row =
+                ProvedBatchRow::from_parts(l1_block_number, *batch_id, proved.verifier, transition);
             let mut insert = client.insert("proved_batches")?;
             insert.write(&proved_row).await?;
             insert.end().await?;

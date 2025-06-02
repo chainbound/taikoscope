@@ -1,5 +1,7 @@
 use crate::models::{BatchRow, ForcedInclusionProcessedRow, ProvedBatchRow, VerifiedBatchRow};
 use chainio::{ITaikoInbox, taiko::wrapper::ITaikoWrapper};
+
+use alloy::primitives::Address;
 use eyre::{Error, Result, eyre};
 use std::convert::TryFrom;
 
@@ -54,6 +56,25 @@ impl TryFrom<(&ITaikoInbox::BatchesProved, u64)> for ProvedBatchRow {
             block_hash: *transition.blockHash.as_ref(),
             state_root: *transition.stateRoot.as_ref(),
         })
+    }
+}
+
+impl ProvedBatchRow {
+    /// Construct a `ProvedBatchRow` directly from a batch ID and transition.
+    pub fn from_parts(
+        l1_block_number: u64,
+        batch_id: u64,
+        verifier: Address,
+        transition: &ITaikoInbox::Transition,
+    ) -> Self {
+        Self {
+            l1_block_number,
+            batch_id,
+            verifier_addr: verifier.into_array(),
+            parent_hash: *transition.parentHash.as_ref(),
+            block_hash: *transition.blockHash.as_ref(),
+            state_root: *transition.stateRoot.as_ref(),
+        }
     }
 }
 
@@ -133,6 +154,29 @@ mod tests {
         };
 
         let row = ProvedBatchRow::try_from((&proved, 11)).unwrap();
+        assert_eq!(
+            row,
+            ProvedBatchRow {
+                l1_block_number: 11,
+                batch_id: 5,
+                verifier_addr: Address::repeat_byte(4).into_array(),
+                parent_hash: [1u8; 32],
+                block_hash: [2u8; 32],
+                state_root: [3u8; 32],
+            }
+        );
+    }
+
+    #[test]
+    fn proved_batch_from_parts() {
+        let transition = ITaikoInbox::Transition {
+            parentHash: B256::repeat_byte(1),
+            blockHash: B256::repeat_byte(2),
+            stateRoot: B256::repeat_byte(3),
+        };
+
+        let row = ProvedBatchRow::from_parts(11, 5, Address::repeat_byte(4), &transition);
+
         assert_eq!(
             row,
             ProvedBatchRow {
