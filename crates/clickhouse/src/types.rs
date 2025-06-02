@@ -1,10 +1,29 @@
 use alloy::primitives::{Address, B256};
 use derive_more::Deref;
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 
 /// Wrapper around `[u8; 20]` representing an address.
 #[derive(
-    Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, Default, Deref,
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Serialize,
+    Deserialize,
+    Default,
+    Deref,
+    ToSchema,
+)]
+#[schema(
+    value_type = String,
+    format = "hex",
+    description = "20-byte address as hex string",
+    example = "0x1234567890123456789012345678901234567890"
 )]
 pub struct AddressBytes(pub [u8; 20]);
 
@@ -46,7 +65,15 @@ impl AddressBytes {
 }
 
 /// Wrapper around `[u8; 32]` representing a hash.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, Default, Deref)]
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, Default, Deref, ToSchema,
+)]
+#[schema(
+    value_type = String,
+    format = "hex",
+    description = "32-byte hash as hex string",
+    example = "0x1234567890123456789012345678901234567890123456789012345678901234"
+)]
 pub struct HashBytes(pub [u8; 32]);
 
 impl From<[u8; 32]> for HashBytes {
