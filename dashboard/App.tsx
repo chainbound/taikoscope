@@ -548,6 +548,7 @@ const App: React.FC = () => {
             loading={loadingMetrics}
           >
             <SequencerPieChart
+              key={timeRange}
               data={sequencerDistribution.filter(
                 (d) => !selectedSequencer || d.name === selectedSequencer,
               )}
@@ -559,6 +560,7 @@ const App: React.FC = () => {
             loading={loadingMetrics}
           >
             <BatchProcessChart
+              key={timeRange}
               data={secondsToProveData}
               lineColor={TAIKO_PINK}
             />
@@ -568,38 +570,38 @@ const App: React.FC = () => {
             onMore={() => openGenericTable('verify-time', timeRange)}
             loading={loadingMetrics}
           >
-            <BatchProcessChart data={secondsToVerifyData} lineColor="#5DA5DA" />
+            <BatchProcessChart key={timeRange} data={secondsToVerifyData} lineColor="#5DA5DA" />
           </ChartCard>
           <ChartCard title="Gas Used Per Block" loading={loadingMetrics}>
-            <GasUsedChart data={l2GasUsedData} lineColor="#E573B5" />
+            <GasUsedChart key={timeRange} data={l2GasUsedData} lineColor="#E573B5" />
           </ChartCard>
           <ChartCard
             title="Tx Count Per Block"
             onMore={() => openGenericTable('block-tx', timeRange)}
             loading={loadingMetrics}
           >
-            <BlockTxChart data={blockTxData} barColor="#4E79A7" />
+            <BlockTxChart key={timeRange} data={blockTxData} barColor="#4E79A7" />
           </ChartCard>
           <ChartCard
             title="Blobs per Batch"
             onMore={() => openGenericTable('blobs-per-batch', timeRange)}
             loading={loadingMetrics}
           >
-            <BlobsPerBatchChart data={batchBlobCounts} barColor="#A0CBE8" />
+            <BlobsPerBatchChart key={timeRange} data={batchBlobCounts} barColor="#A0CBE8" />
           </ChartCard>
           <ChartCard
             title="L2 Block Times"
             onMore={() => openGenericTable('l2-block-times', timeRange)}
             loading={loadingMetrics}
           >
-            <BlockTimeChart data={l2BlockTimeData} lineColor="#FAA43A" />
+            <BlockTimeChart key={timeRange} data={l2BlockTimeData} lineColor="#FAA43A" />
           </ChartCard>
           <ChartCard
             title="L1 Block Times"
             onMore={() => openGenericTable('l1-block-times', timeRange)}
             loading={loadingMetrics}
           >
-            <BlockTimeChart data={l1BlockTimeData} lineColor="#60BD68" />
+            <BlockTimeChart key={timeRange} data={l1BlockTimeData} lineColor="#60BD68" />
           </ChartCard>
         </div>
       </main>
