@@ -127,16 +127,13 @@ impl ApiState {
 }
 
 #[derive(Debug, Deserialize, ToSchema, IntoParams)]
-struct RangeQuery {
+struct RangeAddressQuery {
     range: Option<String>,
     address: Option<String>,
 }
 
-#[derive(Debug, Deserialize, ToSchema, IntoParams)]
-struct SequencerBlocksQuery {
-    range: Option<String>,
-    address: Option<String>,
-}
+type RangeQuery = RangeAddressQuery;
+type SequencerBlocksQuery = RangeAddressQuery;
 
 #[derive(Debug, Deserialize, ToSchema, IntoParams)]
 struct BlockTransactionsQuery {
