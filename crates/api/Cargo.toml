@@ -10,6 +10,7 @@ clickhouse_lib = { path = "../clickhouse", package = "clickhouse" }
 runtime = { path = "../runtime" }
 api-types = { path = "../api-types" }
 
+async-stream.workspace = true
 axum.workspace = true
 chrono = { workspace = true, features = ["serde"] }
 eyre.workspace = true
@@ -19,10 +20,9 @@ tracing.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 tower-http.workspace = true
-async-stream = "0.3"
 futures.workspace = true
-utoipa = { version = "5.2", features = ["axum_extras"] }
-utoipa-swagger-ui = { version = "8.1", features = ["axum"] }
+utoipa.workspace = true
+utoipa-swagger-ui.workspace = true
 
 [dev-dependencies]
 tower = "0.5"
