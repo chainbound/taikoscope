@@ -36,3 +36,5 @@ jobs:
       - uses: taiki-e/install-action@nextest
       - name: Run tests
         run: cargo nextest run --retries 3 --no-tests=warn
+      - name: Check OpenAPI docs
+        run: cargo test --test api_docs
