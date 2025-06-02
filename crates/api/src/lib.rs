@@ -27,7 +27,7 @@ pub const DEFAULT_MAX_REQUESTS: u64 = 1000;
 /// Default duration for the rate limiting window.
 pub const DEFAULT_RATE_PERIOD: StdDuration = StdDuration::from_secs(60);
 
-/// OpenAPI documentation structure
+/// `OpenAPI` documentation structure
 #[derive(Debug, OpenApi)]
 #[openapi(
     paths(

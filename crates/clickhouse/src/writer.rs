@@ -8,6 +8,96 @@ use eyre::{Context, Result};
 use tracing::info;
 use url::Url;
 
+/// Split a SQL script into individual statements.
+///
+/// This parser is aware of comments and quoted strings so semicolons within
+/// them do not act as statement delimiters.
+pub(crate) fn parse_sql_statements(sql: &str) -> Vec<String> {
+    let mut statements = Vec::new();
+    let mut current = String::new();
+
+    let mut chars = sql.chars().peekable();
+    let mut in_single = false;
+    let mut in_double = false;
+    let mut in_line_comment = false;
+    let mut in_block_comment = false;
+    let mut prev = '\0';
+
+    while let Some(c) = chars.next() {
+        if in_line_comment {
+            if c == '\n' {
+                in_line_comment = false;
+            }
+            current.push(c);
+            prev = c;
+            continue;
+        }
+
+        if in_block_comment {
+            if prev == '*' && c == '/' {
+                in_block_comment = false;
+            }
+            current.push(c);
+            prev = c;
+            continue;
+        }
+
+        if !in_single && !in_double {
+            if c == '-' && chars.peek() == Some(&'-') {
+                in_line_comment = true;
+                current.push(c);
+                if let Some(n) = chars.next() {
+                    current.push(n);
+                    prev = n;
+                }
+                continue;
+            }
+            if c == '/' && chars.peek() == Some(&'*') {
+                in_block_comment = true;
+                current.push(c);
+                if let Some(n) = chars.next() {
+                    current.push(n);
+                    prev = n;
+                }
+                continue;
+            }
+        }
+
+        if c == '\'' && !in_double {
+            in_single = !in_single;
+            current.push(c);
+            prev = c;
+            continue;
+        }
+        if c == '"' && !in_single {
+            in_double = !in_double;
+            current.push(c);
+            prev = c;
+            continue;
+        }
+
+        if c == ';' && !in_single && !in_double {
+            let trimmed = current.trim();
+            if !trimmed.is_empty() {
+                statements.push(trimmed.to_owned());
+            }
+            current.clear();
+            prev = c;
+            continue;
+        }
+
+        current.push(c);
+        prev = c;
+    }
+
+    let trimmed = current.trim();
+    if !trimmed.is_empty() {
+        statements.push(trimmed.to_owned());
+    }
+
+    statements
+}
+
 use crate::{
     L1Header,
     models::{
@@ -108,7 +198,7 @@ impl ClickhouseWriter {
         info!("Applying materialized views migration...");
         static MV_SQL: &str = include_str!("../migrations/002_create_materialized_views.sql");
 
-        let statements: Vec<&str> = MV_SQL.split(';').collect();
+        let statements = parse_sql_statements(MV_SQL);
         info!(
             statement_count = statements.len(),
             "Found {} SQL statements in migration",
@@ -116,10 +206,6 @@ impl ClickhouseWriter {
         );
 
         for (i, stmt) in statements.iter().enumerate() {
-            let stmt = stmt.trim();
-            if stmt.is_empty() {
-                continue;
-            }
             let stmt = stmt.replace("${DB}", &self.db_name);
 
             info!(
@@ -510,6 +596,14 @@ mod tests {
             let query = ctrl.query().await;
             assert!(query.contains(&format!("db.{view}")));
         }
+    }
+
+    #[test]
+    fn parse_sql_handles_semicolons_in_strings() {
+        let sql = "CREATE TABLE t(a String DEFAULT ';');\nCREATE TABLE t2(b String);";
+        let statements = parse_sql_statements(sql);
+        assert_eq!(statements.len(), 2);
+        assert!(statements[0].contains("DEFAULT ';'"));
     }
 
     #[tokio::test]
