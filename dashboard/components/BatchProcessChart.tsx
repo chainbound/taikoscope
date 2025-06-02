@@ -6,7 +6,6 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
   Brush,
 } from 'recharts';
@@ -114,11 +113,6 @@ export const BatchProcessChart: React.FC<BatchProcessChartProps> = ({
             borderRadius: '4px',
           }}
           labelStyle={{ color: '#333', fontWeight: 'bold' }}
-        />
-        <Legend
-          verticalAlign="bottom"
-          align="right"
-          wrapperStyle={{ right: 20, bottom: 0 }}
         />
         <Line
           type="monotone"
