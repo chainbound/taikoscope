@@ -19,11 +19,98 @@ use hex::encode;
 use runtime::rate_limiter::RateLimiter;
 use serde::Deserialize;
 use std::{convert::Infallible, time::Duration as StdDuration};
+use utoipa::{IntoParams, OpenApi, ToSchema};
+use utoipa_swagger_ui::SwaggerUi;
 
 /// Default maximum number of requests allowed during the rate limiting period.
 pub const DEFAULT_MAX_REQUESTS: u64 = 1000;
 /// Default duration for the rate limiting window.
 pub const DEFAULT_RATE_PERIOD: StdDuration = StdDuration::from_secs(60);
+
+/// OpenAPI documentation structure
+#[derive(Debug, OpenApi)]
+#[openapi(
+    paths(
+        l2_head,
+        l1_head,
+        l2_head_block,
+        l1_head_block,
+        slashings,
+        forced_inclusions,
+        reorgs,
+        active_gateways,
+        current_operator,
+        next_operator,
+        avg_prove_time,
+        avg_verify_time,
+        l2_block_cadence,
+        batch_posting_cadence,
+        avg_l2_tps,
+        avg_blobs_per_batch,
+        blobs_per_batch,
+        prove_times,
+        verify_times,
+        l1_block_times,
+        l2_block_times,
+        l2_gas_used,
+        sequencer_distribution,
+        sequencer_blocks,
+        block_transactions
+    ),
+    components(
+        schemas(
+            RangeQuery,
+            SequencerBlocksQuery, 
+            BlockTransactionsQuery,
+            L2HeadResponse,
+            L1HeadResponse,
+            L2HeadBlockResponse,
+            L1HeadBlockResponse,
+            SlashingEventsResponse,
+            ForcedInclusionEventsResponse,
+            ReorgEventsResponse,
+            ActiveGatewaysResponse,
+            CurrentOperatorResponse,
+            NextOperatorResponse,
+            AvgProveTimeResponse,
+            AvgVerifyTimeResponse,
+            L2BlockCadenceResponse,
+            BatchPostingCadenceResponse,
+            AvgL2TpsResponse,
+            AvgBlobsPerBatchResponse,
+            BatchBlobsResponse,
+            ProveTimesResponse,
+            VerifyTimesResponse,
+            L1BlockTimesResponse,
+            L2BlockTimesResponse,
+            L2GasUsedResponse,
+            SequencerDistributionResponse,
+            SequencerDistributionItem,
+            SequencerBlocksResponse,
+            SequencerBlocksItem,
+            BlockTransactionsResponse,
+            BlockTransactionsItem,
+            clickhouse_lib::SlashingEventRow,
+            clickhouse_lib::ForcedInclusionProcessedRow,
+            clickhouse_lib::L2ReorgRow,
+            clickhouse_lib::BatchProveTimeRow,
+            clickhouse_lib::BatchVerifyTimeRow,
+            clickhouse_lib::L1BlockTimeRow,
+            clickhouse_lib::L2BlockTimeRow,
+            clickhouse_lib::L2GasUsedRow,
+            clickhouse_lib::BatchBlobCountRow
+        )
+    ),
+    tags(
+        (name = "taikoscope", description = "Taikoscope API endpoints")
+    ),
+    info(
+        title = "Taikoscope API",
+        description = "API for accessing Taiko blockchain metrics and data",
+        version = "0.1.0"
+    )
+)]
+pub struct ApiDoc;
 
 /// Shared state for API handlers.
 #[derive(Clone, Debug)]
@@ -39,19 +126,19 @@ impl ApiState {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema, IntoParams)]
 struct RangeQuery {
     range: Option<String>,
     address: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema, IntoParams)]
 struct SequencerBlocksQuery {
     range: Option<String>,
     address: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema, IntoParams)]
 struct BlockTransactionsQuery {
     range: Option<String>,
     limit: Option<u64>,
@@ -91,6 +178,14 @@ fn parse_address(addr: &Option<String>) -> Option<[u8; 20]> {
     <[u8; 20]>::try_from(v).ok()
 }
 
+#[utoipa::path(
+    get,
+    path = "/l2-head",
+    responses(
+        (status = 200, description = "L2 head timestamp", body = L2HeadResponse)
+    ),
+    tag = "taikoscope"
+)]
 async fn l2_head(State(state): State<ApiState>) -> Json<L2HeadResponse> {
     let ts = match state.client.get_last_l2_head_time().await {
         Ok(time) => time,
@@ -104,6 +199,14 @@ async fn l2_head(State(state): State<ApiState>) -> Json<L2HeadResponse> {
     Json(resp)
 }
 
+#[utoipa::path(
+    get,
+    path = "/l1-head",
+    responses(
+        (status = 200, description = "L1 head timestamp", body = L1HeadResponse)
+    ),
+    tag = "taikoscope"
+)]
 async fn l1_head(State(state): State<ApiState>) -> Json<L1HeadResponse> {
     let ts = match state.client.get_last_l1_head_time().await {
         Ok(time) => time,
@@ -117,6 +220,14 @@ async fn l1_head(State(state): State<ApiState>) -> Json<L1HeadResponse> {
     Json(resp)
 }
 
+#[utoipa::path(
+    get,
+    path = "/l2-head-block",
+    responses(
+        (status = 200, description = "L2 head block number", body = L2HeadBlockResponse)
+    ),
+    tag = "taikoscope"
+)]
 async fn l2_head_block(State(state): State<ApiState>) -> Json<L2HeadBlockResponse> {
     let num = match state.client.get_last_l2_block_number().await {
         Ok(num) => num,
@@ -128,6 +239,14 @@ async fn l2_head_block(State(state): State<ApiState>) -> Json<L2HeadBlockRespons
     Json(L2HeadBlockResponse { l2_head_block: num })
 }
 
+#[utoipa::path(
+    get,
+    path = "/l1-head-block",
+    responses(
+        (status = 200, description = "L1 head block number", body = L1HeadBlockResponse)
+    ),
+    tag = "taikoscope"
+)]
 async fn l1_head_block(State(state): State<ApiState>) -> Json<L1HeadBlockResponse> {
     let num = match state.client.get_last_l1_block_number().await {
         Ok(num) => num,
@@ -183,6 +302,17 @@ async fn sse_l1_head(
     Sse::new(stream).keep_alive(KeepAlive::default())
 }
 
+#[utoipa::path(
+    get,
+    path = "/slashings",
+    params(
+        RangeQuery
+    ),
+    responses(
+        (status = 200, description = "Slashing events", body = SlashingEventsResponse)
+    ),
+    tag = "taikoscope"
+)]
 async fn slashings(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
@@ -199,6 +329,17 @@ async fn slashings(
     Json(SlashingEventsResponse { events })
 }
 
+#[utoipa::path(
+    get,
+    path = "/forced-inclusions",
+    params(
+        RangeQuery
+    ),
+    responses(
+        (status = 200, description = "Forced inclusion events", body = ForcedInclusionEventsResponse)
+    ),
+    tag = "taikoscope"
+)]
 async fn forced_inclusions(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
@@ -215,6 +356,17 @@ async fn forced_inclusions(
     Json(ForcedInclusionEventsResponse { events })
 }
 
+#[utoipa::path(
+    get,
+    path = "/reorgs",
+    params(
+        RangeQuery
+    ),
+    responses(
+        (status = 200, description = "Reorg events", body = ReorgEventsResponse)
+    ),
+    tag = "taikoscope"
+)]
 async fn reorgs(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
@@ -231,6 +383,17 @@ async fn reorgs(
     Json(ReorgEventsResponse { events })
 }
 
+#[utoipa::path(
+    get,
+    path = "/active-gateways",
+    params(
+        RangeQuery
+    ),
+    responses(
+        (status = 200, description = "Active gateways", body = ActiveGatewaysResponse)
+    ),
+    tag = "taikoscope"
+)]
 async fn active_gateways(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
@@ -248,6 +411,14 @@ async fn active_gateways(
     Json(ActiveGatewaysResponse { gateways })
 }
 
+#[utoipa::path(
+    get,
+    path = "/current-operator",
+    responses(
+        (status = 200, description = "Current operator", body = CurrentOperatorResponse)
+    ),
+    tag = "taikoscope"
+)]
 async fn current_operator(State(state): State<ApiState>) -> Json<CurrentOperatorResponse> {
     let op = match state.client.get_last_current_operator().await {
         Ok(o) => o.map(|a| format!("0x{}", encode(a))),
@@ -260,6 +431,14 @@ async fn current_operator(State(state): State<ApiState>) -> Json<CurrentOperator
     Json(CurrentOperatorResponse { operator: op })
 }
 
+#[utoipa::path(
+    get,
+    path = "/next-operator",
+    responses(
+        (status = 200, description = "Next operator", body = NextOperatorResponse)
+    ),
+    tag = "taikoscope"
+)]
 async fn next_operator(State(state): State<ApiState>) -> Json<NextOperatorResponse> {
     let op = match state.client.get_last_next_operator().await {
         Ok(o) => o.map(|a| format!("0x{}", encode(a))),
@@ -272,6 +451,17 @@ async fn next_operator(State(state): State<ApiState>) -> Json<NextOperatorRespon
     Json(NextOperatorResponse { operator: op })
 }
 
+#[utoipa::path(
+    get,
+    path = "/avg-prove-time",
+    params(
+        RangeQuery
+    ),
+    responses(
+        (status = 200, description = "Average prove time", body = AvgProveTimeResponse)
+    ),
+    tag = "taikoscope"
+)]
 async fn avg_prove_time(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
@@ -294,6 +484,17 @@ async fn avg_prove_time(
     Json(AvgProveTimeResponse { avg_prove_time_ms: avg })
 }
 
+#[utoipa::path(
+    get,
+    path = "/avg-verify-time",
+    params(
+        RangeQuery
+    ),
+    responses(
+        (status = 200, description = "Average verify time", body = AvgVerifyTimeResponse)
+    ),
+    tag = "taikoscope"
+)]
 async fn avg_verify_time(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
@@ -316,6 +517,17 @@ async fn avg_verify_time(
     Json(AvgVerifyTimeResponse { avg_verify_time_ms: avg })
 }
 
+#[utoipa::path(
+    get,
+    path = "/l2-block-cadence",
+    params(
+        RangeQuery
+    ),
+    responses(
+        (status = 200, description = "L2 block cadence", body = L2BlockCadenceResponse)
+    ),
+    tag = "taikoscope"
+)]
 async fn l2_block_cadence(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
@@ -339,6 +551,17 @@ async fn l2_block_cadence(
     Json(L2BlockCadenceResponse { l2_block_cadence_ms: avg })
 }
 
+#[utoipa::path(
+    get,
+    path = "/batch-posting-cadence",
+    params(
+        RangeQuery
+    ),
+    responses(
+        (status = 200, description = "Batch posting cadence", body = BatchPostingCadenceResponse)
+    ),
+    tag = "taikoscope"
+)]
 async fn batch_posting_cadence(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
@@ -361,6 +584,17 @@ async fn batch_posting_cadence(
     Json(BatchPostingCadenceResponse { batch_posting_cadence_ms: avg })
 }
 
+#[utoipa::path(
+    get,
+    path = "/avg-l2-tps",
+    params(
+        RangeQuery
+    ),
+    responses(
+        (status = 200, description = "Average L2 TPS", body = AvgL2TpsResponse)
+    ),
+    tag = "taikoscope"
+)]
 async fn avg_l2_tps(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
@@ -384,6 +618,17 @@ async fn avg_l2_tps(
     Json(AvgL2TpsResponse { avg_tps: avg })
 }
 
+#[utoipa::path(
+    get,
+    path = "/avg-blobs-per-batch",
+    params(
+        RangeQuery
+    ),
+    responses(
+        (status = 200, description = "Average blobs per batch", body = AvgBlobsPerBatchResponse)
+    ),
+    tag = "taikoscope"
+)]
 async fn avg_blobs_per_batch(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
@@ -406,6 +651,17 @@ async fn avg_blobs_per_batch(
     Json(AvgBlobsPerBatchResponse { avg_blobs: avg })
 }
 
+#[utoipa::path(
+    get,
+    path = "/blobs-per-batch",
+    params(
+        RangeQuery
+    ),
+    responses(
+        (status = 200, description = "Blobs per batch", body = BatchBlobsResponse)
+    ),
+    tag = "taikoscope"
+)]
 async fn blobs_per_batch(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
@@ -425,6 +681,17 @@ async fn blobs_per_batch(
     Json(BatchBlobsResponse { batches })
 }
 
+#[utoipa::path(
+    get,
+    path = "/prove-times",
+    params(
+        RangeQuery
+    ),
+    responses(
+        (status = 200, description = "Prove times", body = ProveTimesResponse)
+    ),
+    tag = "taikoscope"
+)]
 async fn prove_times(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
@@ -444,6 +711,17 @@ async fn prove_times(
     Json(ProveTimesResponse { batches })
 }
 
+#[utoipa::path(
+    get,
+    path = "/verify-times",
+    params(
+        RangeQuery
+    ),
+    responses(
+        (status = 200, description = "Verify times", body = VerifyTimesResponse)
+    ),
+    tag = "taikoscope"
+)]
 async fn verify_times(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
@@ -463,6 +741,17 @@ async fn verify_times(
     Json(VerifyTimesResponse { batches })
 }
 
+#[utoipa::path(
+    get,
+    path = "/l1-block-times",
+    params(
+        RangeQuery
+    ),
+    responses(
+        (status = 200, description = "L1 block times", body = L1BlockTimesResponse)
+    ),
+    tag = "taikoscope"
+)]
 async fn l1_block_times(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
@@ -482,6 +771,17 @@ async fn l1_block_times(
     Json(L1BlockTimesResponse { blocks })
 }
 
+#[utoipa::path(
+    get,
+    path = "/l2-block-times",
+    params(
+        RangeQuery
+    ),
+    responses(
+        (status = 200, description = "L2 block times", body = L2BlockTimesResponse)
+    ),
+    tag = "taikoscope"
+)]
 async fn l2_block_times(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
@@ -502,6 +802,17 @@ async fn l2_block_times(
     Json(L2BlockTimesResponse { blocks })
 }
 
+#[utoipa::path(
+    get,
+    path = "/l2-gas-used",
+    params(
+        RangeQuery
+    ),
+    responses(
+        (status = 200, description = "L2 gas used", body = L2GasUsedResponse)
+    ),
+    tag = "taikoscope"
+)]
 async fn l2_gas_used(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
@@ -521,6 +832,17 @@ async fn l2_gas_used(
     Json(L2GasUsedResponse { blocks })
 }
 
+#[utoipa::path(
+    get,
+    path = "/sequencer-distribution",
+    params(
+        RangeQuery
+    ),
+    responses(
+        (status = 200, description = "Sequencer distribution", body = SequencerDistributionResponse)
+    ),
+    tag = "taikoscope"
+)]
 async fn sequencer_distribution(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
@@ -544,6 +866,17 @@ async fn sequencer_distribution(
     Json(SequencerDistributionResponse { sequencers })
 }
 
+#[utoipa::path(
+    get,
+    path = "/sequencer-blocks",
+    params(
+        SequencerBlocksQuery
+    ),
+    responses(
+        (status = 200, description = "Sequencer blocks", body = SequencerBlocksResponse)
+    ),
+    tag = "taikoscope"
+)]
 async fn sequencer_blocks(
     Query(params): Query<SequencerBlocksQuery>,
     State(state): State<ApiState>,
@@ -583,6 +916,17 @@ async fn sequencer_blocks(
     Json(SequencerBlocksResponse { sequencers })
 }
 
+#[utoipa::path(
+    get,
+    path = "/block-transactions",
+    params(
+        BlockTransactionsQuery
+    ),
+    responses(
+        (status = 200, description = "Block transactions", body = BlockTransactionsResponse)
+    ),
+    tag = "taikoscope"
+)]
 async fn block_transactions(
     Query(params): Query<BlockTransactionsQuery>,
     State(state): State<ApiState>,
@@ -638,6 +982,7 @@ async fn rate_limit(
 /// Build the router with all API endpoints.
 pub fn router(state: ApiState) -> Router {
     Router::new()
+        .merge(SwaggerUi::new("/swagger-ui").url("/api-doc/openapi.json", ApiDoc::openapi()))
         .route("/l2-head", get(l2_head))
         .route("/l1-head", get(l1_head))
         .route("/l2-head-block", get(l2_head_block))

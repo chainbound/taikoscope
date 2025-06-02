@@ -2,6 +2,7 @@ use chrono::{DateTime, Utc};
 use clickhouse::Row;
 use derive_more::Debug;
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 
 /// L1 head event
 #[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq)]
@@ -83,7 +84,7 @@ pub struct ProvedBatchRow {
 }
 
 /// L2 reorg row
-#[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
 pub struct L2ReorgRow {
     /// Block number
     pub l2_block_number: u64,
@@ -92,7 +93,7 @@ pub struct L2ReorgRow {
 }
 
 /// Forced inclusion processed row
-#[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
 pub struct ForcedInclusionProcessedRow {
     /// Blob hash
     pub blob_hash: [u8; 32],
@@ -110,7 +111,7 @@ pub struct VerifiedBatchRow {
 }
 
 /// Slashing event row
-#[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
 pub struct SlashingEventRow {
     /// L1 block number where slashing occurred
     pub l1_block_number: u64,
@@ -148,7 +149,7 @@ pub struct BlockTransactionRow {
 }
 
 /// Row representing the time it took for a batch to be proven
-#[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
 pub struct BatchProveTimeRow {
     /// Batch ID
     pub batch_id: u64,
@@ -157,7 +158,7 @@ pub struct BatchProveTimeRow {
 }
 
 /// Row representing the time it took for a batch to be verified
-#[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
 pub struct BatchVerifyTimeRow {
     /// Batch ID
     pub batch_id: u64,
@@ -166,7 +167,7 @@ pub struct BatchVerifyTimeRow {
 }
 
 /// Row representing the block number seen at a given minute
-#[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
 pub struct L1BlockTimeRow {
     /// Minute timestamp (unix seconds)
     pub minute: u64,
@@ -175,7 +176,7 @@ pub struct L1BlockTimeRow {
 }
 
 /// Row representing the time between consecutive L2 blocks
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
 pub struct L2BlockTimeRow {
     /// L2 block number
     pub l2_block_number: u64,
@@ -186,7 +187,7 @@ pub struct L2BlockTimeRow {
 }
 
 /// Row representing the gas used in each L2 block
-#[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
 pub struct L2GasUsedRow {
     /// L2 block number
     pub l2_block_number: u64,
@@ -195,7 +196,7 @@ pub struct L2GasUsedRow {
 }
 
 /// Row representing the blob count for each batch
-#[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
 pub struct BatchBlobCountRow {
     /// Batch ID
     pub batch_id: u64,
