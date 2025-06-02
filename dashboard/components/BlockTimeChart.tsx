@@ -120,6 +120,7 @@ export const BlockTimeChart: React.FC<BlockTimeChartProps> = ({
           startIndex={brushRange.startIndex}
           endIndex={brushRange.endIndex}
           onChange={handleBrushChange}
+          tickFormatter={(v: number) => formatInterval(v, showMinutes)}
         />
       </LineChart>
     </ResponsiveContainer>
