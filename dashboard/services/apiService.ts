@@ -1,5 +1,6 @@
 const metaEnv = import.meta.env;
-export const API_BASE = metaEnv.VITE_API_BASE || metaEnv.API_BASE || '';
+export const API_BASE =
+  (metaEnv.VITE_API_BASE || metaEnv.API_BASE || '') + '/v1';
 
 import { getSequencerName } from '../sequencerConfig';
 

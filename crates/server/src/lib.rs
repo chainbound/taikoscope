@@ -18,6 +18,9 @@ use tracing::{Level, info};
 /// Allowed CORS origins for dashboard requests.
 const ALLOWED_ORIGINS: &[&str] = &["https://taikoscope.xyz", "https://www.taikoscope.xyz"];
 
+/// Version prefix for all API routes.
+pub const API_VERSION: &str = "v1";
+
 /// Build the API router with CORS and tracing layers.
 pub fn router(state: ApiState, extra_origins: Vec<String>) -> Router {
     let extra = Arc::new(extra_origins);
@@ -40,7 +43,7 @@ pub fn router(state: ApiState, extra_origins: Vec<String>) -> Router {
         .on_request(DefaultOnRequest::new().level(Level::INFO))
         .on_response(DefaultOnResponse::new().level(Level::INFO));
 
-    api::router(state).layer(cors).layer(trace)
+    Router::new().nest(&format!("/{API_VERSION}"), api::router(state)).layer(cors).layer(trace)
 }
 
 /// Run the API server on the given address.
