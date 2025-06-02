@@ -19,7 +19,7 @@ export const ChartCard: React.FC<ChartCardProps> = ({
         {onMore && (
           <button
             onClick={onMore}
-            className="text-gray-500 hover:text-gray-700 text-2xl"
+            className="text-gray-500 hover:text-gray-700 text-2xl w-8 h-8 flex items-center justify-center rounded-md"
             aria-label="View table"
           >
             ⋮
