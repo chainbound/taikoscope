@@ -23,8 +23,9 @@ const fetchJson = async <T>(url: string): Promise<RequestResult<T>> => {
       return { data: null, badRequest: res.status === 400 };
     }
     return { data: (await res.json()) as T, badRequest: false };
-  } catch {
-    return { data: null, badRequest: false };
+  } catch (error: unknown) {
+    console.error(`Failed to fetch ${url}`, error);
+    throw error;
   }
 };
 
