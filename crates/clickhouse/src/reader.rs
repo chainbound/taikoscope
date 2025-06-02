@@ -11,10 +11,13 @@ use std::time::Instant;
 use tracing::{debug, error};
 use url::Url;
 
-use crate::models::{
-    BatchBlobCountRow, BatchProveTimeRow, BatchVerifyTimeRow, BlockTransactionRow,
-    ForcedInclusionProcessedRow, L1BlockTimeRow, L2BlockTimeRow, L2GasUsedRow, L2ReorgRow,
-    SequencerBlockRow, SequencerDistributionRow, SlashingEventRow,
+use crate::{
+    models::{
+        BatchBlobCountRow, BatchProveTimeRow, BatchVerifyTimeRow, BlockTransactionRow,
+        ForcedInclusionProcessedRow, L1BlockTimeRow, L2BlockTimeRow, L2GasUsedRow, L2ReorgRow,
+        SequencerBlockRow, SequencerDistributionRow, SlashingEventRow,
+    },
+    types::AddressBytes,
 };
 
 #[derive(Row, Deserialize, Serialize)]
@@ -236,10 +239,10 @@ impl ClickhouseReader {
     }
 
     /// Get the last observed current operator
-    pub async fn get_last_current_operator(&self) -> Result<Option<[u8; 20]>> {
+    pub async fn get_last_current_operator(&self) -> Result<Option<AddressBytes>> {
         #[derive(Row, Deserialize)]
         struct OpRow {
-            current_operator: Option<[u8; 20]>,
+            current_operator: Option<AddressBytes>,
         }
 
         let query = format!(
@@ -251,10 +254,10 @@ impl ClickhouseReader {
     }
 
     /// Get the last observed next operator
-    pub async fn get_last_next_operator(&self) -> Result<Option<[u8; 20]>> {
+    pub async fn get_last_next_operator(&self) -> Result<Option<AddressBytes>> {
         #[derive(Row, Deserialize)]
         struct OpRow {
-            next_operator: Option<[u8; 20]>,
+            next_operator: Option<AddressBytes>,
         }
 
         let query = format!(
@@ -404,12 +407,15 @@ impl ClickhouseReader {
     }
 
     /// Get all active gateway addresses observed since the given cutoff time
-    pub async fn get_active_gateways_since(&self, since: DateTime<Utc>) -> Result<Vec<[u8; 20]>> {
+    pub async fn get_active_gateways_since(
+        &self,
+        since: DateTime<Utc>,
+    ) -> Result<Vec<AddressBytes>> {
         #[derive(Row, Deserialize)]
         struct GatewayRow {
-            candidates: Vec<[u8; 20]>,
-            current_operator: Option<[u8; 20]>,
-            next_operator: Option<[u8; 20]>,
+            candidates: Vec<AddressBytes>,
+            current_operator: Option<AddressBytes>,
+            next_operator: Option<AddressBytes>,
         }
 
         let query = format!(
@@ -472,7 +478,7 @@ impl ClickhouseReader {
     pub async fn get_block_transactions_since(
         &self,
         since: DateTime<Utc>,
-        sequencer: Option<[u8; 20]>,
+        sequencer: Option<AddressBytes>,
     ) -> Result<Vec<BlockTransactionRow>> {
         let mut query = format!(
             "SELECT sequencer, l2_block_number, sum_tx FROM {db}.l2_head_events \
@@ -497,7 +503,7 @@ impl ClickhouseReader {
         limit: u64,
         starting_after: Option<u64>,
         ending_before: Option<u64>,
-        sequencer: Option<[u8; 20]>,
+        sequencer: Option<AddressBytes>,
     ) -> Result<Vec<BlockTransactionRow>> {
         let mut query = format!(
             "SELECT sequencer, l2_block_number, sum_tx FROM {db}.l2_head_events \
@@ -664,7 +670,7 @@ impl ClickhouseReader {
     /// observed within the last hour
     pub async fn get_l2_block_cadence_last_hour(
         &self,
-        sequencer: Option<[u8; 20]>,
+        sequencer: Option<AddressBytes>,
     ) -> Result<Option<u64>> {
         #[derive(Row, Deserialize)]
         struct CadenceRow {
@@ -702,7 +708,7 @@ impl ClickhouseReader {
     /// observed within the last 24 hours
     pub async fn get_l2_block_cadence_last_24_hours(
         &self,
-        sequencer: Option<[u8; 20]>,
+        sequencer: Option<AddressBytes>,
     ) -> Result<Option<u64>> {
         #[derive(Row, Deserialize)]
         struct CadenceRow {
@@ -740,7 +746,7 @@ impl ClickhouseReader {
     /// observed within the last 7 days
     pub async fn get_l2_block_cadence_last_7_days(
         &self,
-        sequencer: Option<[u8; 20]>,
+        sequencer: Option<AddressBytes>,
     ) -> Result<Option<u64>> {
         #[derive(Row, Deserialize)]
         struct CadenceRow {
@@ -1131,7 +1137,7 @@ impl ClickhouseReader {
     /// Get the time between consecutive L2 blocks for the last hour
     pub async fn get_l2_block_times_last_hour(
         &self,
-        sequencer: Option<[u8; 20]>,
+        sequencer: Option<AddressBytes>,
     ) -> Result<Vec<L2BlockTimeRow>> {
         #[derive(Row, Deserialize)]
         struct RawRow {
@@ -1170,7 +1176,7 @@ impl ClickhouseReader {
     /// Get the time between consecutive L2 blocks for the last 24 hours
     pub async fn get_l2_block_times_last_24_hours(
         &self,
-        sequencer: Option<[u8; 20]>,
+        sequencer: Option<AddressBytes>,
     ) -> Result<Vec<L2BlockTimeRow>> {
         #[derive(Row, Deserialize)]
         struct RawRow {
@@ -1209,7 +1215,7 @@ impl ClickhouseReader {
     /// Get the time between consecutive L2 blocks for the last 7 days
     pub async fn get_l2_block_times_last_7_days(
         &self,
-        sequencer: Option<[u8; 20]>,
+        sequencer: Option<AddressBytes>,
     ) -> Result<Vec<L2BlockTimeRow>> {
         #[derive(Row, Deserialize)]
         struct RawRow {
@@ -1248,7 +1254,7 @@ impl ClickhouseReader {
     /// Get the average number of L2 transactions per second for the last hour
     pub async fn get_avg_l2_tps_last_hour(
         &self,
-        sequencer: Option<[u8; 20]>,
+        sequencer: Option<AddressBytes>,
     ) -> Result<Option<f64>> {
         #[derive(Row, Deserialize)]
         struct TpsRow {
@@ -1286,7 +1292,7 @@ impl ClickhouseReader {
     /// Get the average number of L2 transactions per second for the last 24 hours
     pub async fn get_avg_l2_tps_last_24_hours(
         &self,
-        sequencer: Option<[u8; 20]>,
+        sequencer: Option<AddressBytes>,
     ) -> Result<Option<f64>> {
         #[derive(Row, Deserialize)]
         struct TpsRow {
@@ -1324,7 +1330,7 @@ impl ClickhouseReader {
     /// Get the average number of L2 transactions per second for the last 7 days
     pub async fn get_avg_l2_tps_last_7_days(
         &self,
-        sequencer: Option<[u8; 20]>,
+        sequencer: Option<AddressBytes>,
     ) -> Result<Option<f64>> {
         #[derive(Row, Deserialize)]
         struct TpsRow {
@@ -1362,7 +1368,7 @@ impl ClickhouseReader {
     /// Get the gas used for each L2 block in the last hour
     pub async fn get_l2_gas_used_last_hour(
         &self,
-        sequencer: Option<[u8; 20]>,
+        sequencer: Option<AddressBytes>,
     ) -> Result<Vec<L2GasUsedRow>> {
         #[derive(Row, Deserialize)]
         struct RawRow {
@@ -1392,7 +1398,7 @@ impl ClickhouseReader {
     /// Get the gas used for each L2 block in the last 24 hours
     pub async fn get_l2_gas_used_last_24_hours(
         &self,
-        sequencer: Option<[u8; 20]>,
+        sequencer: Option<AddressBytes>,
     ) -> Result<Vec<L2GasUsedRow>> {
         #[derive(Row, Deserialize)]
         struct RawRow {
@@ -1422,7 +1428,7 @@ impl ClickhouseReader {
     /// Get the gas used for each L2 block in the last 7 days
     pub async fn get_l2_gas_used_last_7_days(
         &self,
-        sequencer: Option<[u8; 20]>,
+        sequencer: Option<AddressBytes>,
     ) -> Result<Vec<L2GasUsedRow>> {
         #[derive(Row, Deserialize)]
         struct RawRow {
@@ -1604,10 +1610,10 @@ mod tests {
     #[tokio::test]
     async fn test_get_last_current_operator() {
         let mock = Mock::new();
-        let addr = [1u8; 20];
+        let addr = AddressBytes::from([1u8; 20]);
         #[derive(Serialize, Row)]
         struct CurrentRowTest {
-            current_operator: Option<[u8; 20]>,
+            current_operator: Option<AddressBytes>,
         }
         mock.add(handlers::provide(vec![CurrentRowTest { current_operator: Some(addr) }]));
 
@@ -1622,10 +1628,10 @@ mod tests {
     #[tokio::test]
     async fn test_get_last_next_operator() {
         let mock = Mock::new();
-        let addr = [2u8; 20];
+        let addr = AddressBytes::from([2u8; 20]);
         #[derive(Serialize, Row)]
         struct NextRowTest {
-            next_operator: Option<[u8; 20]>,
+            next_operator: Option<AddressBytes>,
         }
         mock.add(handlers::provide(vec![NextRowTest { next_operator: Some(addr) }]));
 

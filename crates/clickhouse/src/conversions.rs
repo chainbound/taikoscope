@@ -1,4 +1,7 @@
-use crate::models::{BatchRow, ForcedInclusionProcessedRow, ProvedBatchRow, VerifiedBatchRow};
+use crate::{
+    models::{BatchRow, ForcedInclusionProcessedRow, ProvedBatchRow, VerifiedBatchRow},
+    types::{AddressBytes, HashBytes},
+};
 use chainio::{ITaikoInbox, taiko::wrapper::ITaikoWrapper};
 use eyre::{Error, Result, eyre};
 use std::convert::TryFrom;
@@ -16,7 +19,7 @@ impl TryFrom<&ITaikoInbox::BatchProposed> for BatchRow {
         let batch_size = u16::try_from(batch.info.blocks.len())?;
         let blob_count = u8::try_from(batch.info.blobHashes.len())?;
 
-        let proposer_addr = batch.meta.proposer.into_array();
+        let proposer_addr = AddressBytes::from(batch.meta.proposer);
 
         Ok(Self {
             l1_block_number: batch.info.proposedIn,
@@ -44,15 +47,22 @@ impl TryFrom<(&ITaikoInbox::BatchesProved, u64)> for ProvedBatchRow {
         // all transitions in a real implementation
         let batch_id = proved.batchIds[0];
         let transition = &proved.transitions[0];
-        let verifier_addr = proved.verifier.into_array();
+        let verifier_addr = AddressBytes::from(proved.verifier);
+
+        let mut parent = [0u8; 32];
+        parent.copy_from_slice(transition.parentHash.as_slice());
+        let mut block = [0u8; 32];
+        block.copy_from_slice(transition.blockHash.as_slice());
+        let mut state = [0u8; 32];
+        state.copy_from_slice(transition.stateRoot.as_slice());
 
         Ok(Self {
             l1_block_number,
             batch_id,
             verifier_addr,
-            parent_hash: *transition.parentHash.as_ref(),
-            block_hash: *transition.blockHash.as_ref(),
-            state_root: *transition.stateRoot.as_ref(),
+            parent_hash: HashBytes::from(parent),
+            block_hash: HashBytes::from(block),
+            state_root: HashBytes::from(state),
         })
     }
 }
@@ -65,7 +75,7 @@ impl TryFrom<&ITaikoWrapper::ForcedInclusionProcessed> for ForcedInclusionProces
         let mut hash_bytes = [0u8; 32];
         hash_bytes.copy_from_slice(event.blobHash.as_slice());
 
-        Ok(Self { blob_hash: hash_bytes })
+        Ok(Self { blob_hash: HashBytes::from(hash_bytes) })
     }
 }
 
@@ -76,7 +86,11 @@ impl TryFrom<(&chainio::BatchesVerified, u64)> for VerifiedBatchRow {
     fn try_from(input: (&chainio::BatchesVerified, u64)) -> Result<Self, Self::Error> {
         let (verified, l1_block_number) = input;
 
-        Ok(Self { l1_block_number, batch_id: verified.batch_id, block_hash: verified.block_hash })
+        Ok(Self {
+            l1_block_number,
+            batch_id: verified.batch_id,
+            block_hash: HashBytes::from(verified.block_hash),
+        })
     }
 }
 
@@ -111,7 +125,7 @@ mod tests {
                 l1_block_number: 7,
                 batch_id: 42,
                 batch_size: 2,
-                proposer_addr: Address::repeat_byte(9).into_array(),
+                proposer_addr: AddressBytes::from(Address::repeat_byte(9)),
                 blob_count: 1,
                 blob_total_bytes: 100,
             }
@@ -138,10 +152,10 @@ mod tests {
             ProvedBatchRow {
                 l1_block_number: 11,
                 batch_id: 5,
-                verifier_addr: Address::repeat_byte(4).into_array(),
-                parent_hash: [1u8; 32],
-                block_hash: [2u8; 32],
-                state_root: [3u8; 32],
+                verifier_addr: AddressBytes::from(Address::repeat_byte(4)),
+                parent_hash: HashBytes::from([1u8; 32]),
+                block_hash: HashBytes::from([2u8; 32]),
+                state_root: HashBytes::from([3u8; 32]),
             }
         );
     }
@@ -158,7 +172,7 @@ mod tests {
         };
 
         let row = ForcedInclusionProcessedRow::try_from(&event).unwrap();
-        assert_eq!(row, ForcedInclusionProcessedRow { blob_hash: [7u8; 32] });
+        assert_eq!(row, ForcedInclusionProcessedRow { blob_hash: HashBytes::from([7u8; 32]) });
     }
 
     #[test]
@@ -168,7 +182,11 @@ mod tests {
         let row = VerifiedBatchRow::try_from((&verified, 15)).unwrap();
         assert_eq!(
             row,
-            VerifiedBatchRow { l1_block_number: 15, batch_id: 9, block_hash: [6u8; 32] }
+            VerifiedBatchRow {
+                l1_block_number: 15,
+                batch_id: 9,
+                block_hash: HashBytes::from([6u8; 32])
+            }
         );
     }
 }

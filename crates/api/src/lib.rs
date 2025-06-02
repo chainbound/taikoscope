@@ -13,7 +13,9 @@ use axum::{
     routing::get,
 };
 use chrono::{Duration as ChronoDuration, Utc};
-use clickhouse_lib::ClickhouseReader;
+#[cfg(test)]
+use clickhouse_lib::HashBytes;
+use clickhouse_lib::{AddressBytes, ClickhouseReader};
 use futures::stream::Stream;
 use hex::encode;
 use runtime::rate_limiter::RateLimiter;
@@ -171,11 +173,11 @@ fn range_duration(range: &Option<String>) -> ChronoDuration {
     ChronoDuration::hours(1)
 }
 
-fn parse_address(addr: &Option<String>) -> Option<[u8; 20]> {
+fn parse_address(addr: &Option<String>) -> Option<AddressBytes> {
     let a = addr.as_deref()?;
     let trimmed = a.trim_start_matches("0x");
     let v = hex::decode(trimmed).ok()?;
-    <[u8; 20]>::try_from(v).ok()
+    <[u8; 20]>::try_from(v).ok().map(AddressBytes::from)
 }
 
 #[utoipa::path(
@@ -892,13 +894,17 @@ async fn sequencer_blocks(
 
     let filter = if let Some(addr) = params.address.as_deref() {
         let trimmed = addr.trim_start_matches("0x");
-        if let Ok(v) = hex::decode(trimmed) { <[u8; 20]>::try_from(v).ok() } else { None }
+        if let Ok(v) = hex::decode(trimmed) {
+            <[u8; 20]>::try_from(v).ok().map(AddressBytes::from)
+        } else {
+            None
+        }
     } else {
         None
     };
 
     use std::collections::BTreeMap;
-    let mut map: BTreeMap<[u8; 20], Vec<u64>> = BTreeMap::new();
+    let mut map: BTreeMap<AddressBytes, Vec<u64>> = BTreeMap::new();
     for r in rows {
         if let Some(addr) = filter {
             if r.sequencer != addr {
@@ -1104,11 +1110,15 @@ mod tests {
     #[tokio::test]
     async fn slashing_events_endpoint() {
         let mock = Mock::new();
-        let event =
-            clickhouse_lib::SlashingEventRow { l1_block_number: 1, validator_addr: [1u8; 20] };
+        let event = clickhouse_lib::SlashingEventRow {
+            l1_block_number: 1,
+            validator_addr: AddressBytes([1u8; 20]),
+        };
         mock.add(handlers::provide(vec![event]));
-        let expected =
-            clickhouse_lib::SlashingEventRow { l1_block_number: 1, validator_addr: [1u8; 20] };
+        let expected = clickhouse_lib::SlashingEventRow {
+            l1_block_number: 1,
+            validator_addr: AddressBytes([1u8; 20]),
+        };
         let app = build_app(mock.url());
         let body = send_request(app, "/slashings?range=1h").await;
         assert_eq!(body, json!({ "events": [expected] }));
@@ -1117,11 +1127,15 @@ mod tests {
     #[tokio::test]
     async fn slashing_events_last_day_endpoint() {
         let mock = Mock::new();
-        let event =
-            clickhouse_lib::SlashingEventRow { l1_block_number: 1, validator_addr: [1u8; 20] };
+        let event = clickhouse_lib::SlashingEventRow {
+            l1_block_number: 1,
+            validator_addr: AddressBytes([1u8; 20]),
+        };
         mock.add(handlers::provide(vec![event]));
-        let expected =
-            clickhouse_lib::SlashingEventRow { l1_block_number: 1, validator_addr: [1u8; 20] };
+        let expected = clickhouse_lib::SlashingEventRow {
+            l1_block_number: 1,
+            validator_addr: AddressBytes([1u8; 20]),
+        };
         let app = build_app(mock.url());
         let body = send_request(app, "/slashings?range=24h").await;
         assert_eq!(body, json!({ "events": [expected] }));
@@ -1130,11 +1144,15 @@ mod tests {
     #[tokio::test]
     async fn slashing_events_last_week_endpoint() {
         let mock = Mock::new();
-        let event =
-            clickhouse_lib::SlashingEventRow { l1_block_number: 1, validator_addr: [1u8; 20] };
+        let event = clickhouse_lib::SlashingEventRow {
+            l1_block_number: 1,
+            validator_addr: AddressBytes([1u8; 20]),
+        };
         mock.add(handlers::provide(vec![event]));
-        let expected =
-            clickhouse_lib::SlashingEventRow { l1_block_number: 1, validator_addr: [1u8; 20] };
+        let expected = clickhouse_lib::SlashingEventRow {
+            l1_block_number: 1,
+            validator_addr: AddressBytes([1u8; 20]),
+        };
         let app = build_app(mock.url());
         let body = send_request(app, "/slashings?range=7d").await;
         assert_eq!(body, json!({ "events": [expected] }));
@@ -1143,9 +1161,10 @@ mod tests {
     #[tokio::test]
     async fn forced_inclusions_endpoint() {
         let mock = Mock::new();
-        let event = clickhouse_lib::ForcedInclusionProcessedRow { blob_hash: [2u8; 32] };
+        let event = clickhouse_lib::ForcedInclusionProcessedRow { blob_hash: HashBytes([2u8; 32]) };
         mock.add(handlers::provide(vec![event]));
-        let expected = clickhouse_lib::ForcedInclusionProcessedRow { blob_hash: [2u8; 32] };
+        let expected =
+            clickhouse_lib::ForcedInclusionProcessedRow { blob_hash: HashBytes([2u8; 32]) };
         let app = build_app(mock.url());
         let body = send_request(app, "/forced-inclusions?range=1h").await;
         assert_eq!(body, json!({ "events": [expected] }));
@@ -1154,9 +1173,10 @@ mod tests {
     #[tokio::test]
     async fn forced_inclusions_last_day_endpoint() {
         let mock = Mock::new();
-        let event = clickhouse_lib::ForcedInclusionProcessedRow { blob_hash: [2u8; 32] };
+        let event = clickhouse_lib::ForcedInclusionProcessedRow { blob_hash: HashBytes([2u8; 32]) };
         mock.add(handlers::provide(vec![event]));
-        let expected = clickhouse_lib::ForcedInclusionProcessedRow { blob_hash: [2u8; 32] };
+        let expected =
+            clickhouse_lib::ForcedInclusionProcessedRow { blob_hash: HashBytes([2u8; 32]) };
         let app = build_app(mock.url());
         let body = send_request(app, "/forced-inclusions?range=24h").await;
         assert_eq!(body, json!({ "events": [expected] }));
@@ -1509,24 +1529,27 @@ mod tests {
 
     #[derive(Serialize, Row)]
     struct SequencerRowTest {
-        sequencer: [u8; 20],
+        sequencer: AddressBytes,
         blocks: u64,
     }
 
     #[derive(Serialize, Row)]
     struct CurrentRowTest {
-        current_operator: Option<[u8; 20]>,
+        current_operator: Option<AddressBytes>,
     }
 
     #[derive(Serialize, Row)]
     struct NextRowTest {
-        next_operator: Option<[u8; 20]>,
+        next_operator: Option<AddressBytes>,
     }
 
     #[tokio::test]
     async fn sequencer_distribution_endpoint() {
         let mock = Mock::new();
-        mock.add(handlers::provide(vec![SequencerRowTest { sequencer: [1u8; 20], blocks: 5 }]));
+        mock.add(handlers::provide(vec![SequencerRowTest {
+            sequencer: AddressBytes([1u8; 20]),
+            blocks: 5,
+        }]));
         let app = build_app(mock.url());
         let body = send_request(app, "/sequencer-distribution?range=1h").await;
         assert_eq!(
@@ -1540,11 +1563,11 @@ mod tests {
         let mock = Mock::new();
         #[derive(Serialize, Row)]
         struct SeqBlockRowTest {
-            sequencer: [u8; 20],
+            sequencer: AddressBytes,
             l2_block_number: u64,
         }
         mock.add(handlers::provide(vec![SeqBlockRowTest {
-            sequencer: [1u8; 20],
+            sequencer: AddressBytes([1u8; 20]),
             l2_block_number: 42,
         }]));
         let app = build_app(mock.url());
@@ -1560,12 +1583,12 @@ mod tests {
         let mock = Mock::new();
         #[derive(Serialize, Row)]
         struct TxRowTest {
-            sequencer: [u8; 20],
+            sequencer: AddressBytes,
             l2_block_number: u64,
             sum_tx: u32,
         }
         mock.add(handlers::provide(vec![TxRowTest {
-            sequencer: [1u8; 20],
+            sequencer: AddressBytes([1u8; 20]),
             l2_block_number: 42,
             sum_tx: 7,
         }]));
@@ -1601,7 +1624,7 @@ mod tests {
     #[tokio::test]
     async fn current_operator_endpoint() {
         let mock = Mock::new();
-        let addr = [1u8; 20];
+        let addr = AddressBytes([1u8; 20]);
         mock.add(handlers::provide(vec![CurrentRowTest { current_operator: Some(addr) }]));
 
         let app = build_app(mock.url());
@@ -1612,7 +1635,7 @@ mod tests {
     #[tokio::test]
     async fn next_operator_endpoint() {
         let mock = Mock::new();
-        let addr = [2u8; 20];
+        let addr = AddressBytes([2u8; 20]);
         mock.add(handlers::provide(vec![NextRowTest { next_operator: Some(addr) }]));
 
         let app = build_app(mock.url());

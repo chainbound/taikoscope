@@ -18,6 +18,8 @@ pub mod models;
 pub mod reader;
 /// Schema definitions and table structures
 pub mod schema;
+/// Byte wrapper types used throughout the crate
+pub mod types;
 /// Write operations client for taikoscope
 pub mod writer;
 
@@ -30,6 +32,9 @@ pub use models::*;
 
 // Re-export schema constants
 pub use schema::{TABLE_SCHEMAS, TABLES};
+
+// Re-export byte wrappers
+pub use types::{AddressBytes, HashBytes};
 
 /// Legacy alias for backward compatibility - will be deprecated
 pub type ClickhouseClient = ClickhouseWriter;
