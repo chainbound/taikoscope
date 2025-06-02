@@ -60,7 +60,7 @@ pub const DEFAULT_RATE_PERIOD: StdDuration = StdDuration::from_secs(60);
     components(
         schemas(
             RangeQuery,
-            SequencerBlocksQuery, 
+            SequencerBlocksQuery,
             BlockTransactionsQuery,
             L2HeadResponse,
             L1HeadResponse,
