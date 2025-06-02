@@ -10,6 +10,7 @@ import {
 
 export interface TableViewState {
   title: string;
+  description?: React.ReactNode;
   columns: { key: string; label: string }[];
   rows: Record<string, string | number>[];
   onRowClick?: (row: Record<string, string | number>) => void;
@@ -65,6 +66,7 @@ export const useTableActions = (
   const openTable = useCallback(
     (
       title: string,
+      description: React.ReactNode | undefined,
       columns: { key: string; label: string }[],
       rows: Record<string, string | number>[],
       onRowClick?: (row: Record<string, string | number>) => void,
@@ -76,6 +78,7 @@ export const useTableActions = (
     ) => {
       setTableView({
         title,
+        description,
         columns,
         rows,
         onRowClick,
@@ -131,6 +134,10 @@ export const useTableActions = (
 
         openTable(
           title,
+          tableKey === 'reorgs'
+            ?
+                'An L2 reorg occurs when the chain replaces previously published blocks. Depth shows how many blocks were replaced.'
+            : undefined,
           config.columns,
           mappedData,
           tableKey === 'sequencer-dist'
@@ -176,6 +183,7 @@ export const useTableActions = (
 
     openTable(
       'Transactions Per Second',
+      undefined,
       [
         { key: 'block', label: 'Block Number' },
         { key: 'tps', label: 'TPS' },
@@ -232,6 +240,7 @@ export const useTableActions = (
 
       openTable(
         'Sequencer Distribution',
+        undefined,
         [
           { key: 'name', label: 'Sequencer' },
           { key: 'value', label: 'Blocks' },
@@ -273,6 +282,7 @@ export const useTableActions = (
         },
         range,
         (r) => openSequencerDistributionTable(r, 0),
+        undefined,
       );
     },
     [
