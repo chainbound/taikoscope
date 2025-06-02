@@ -1251,10 +1251,11 @@ impl ClickhouseReader {
             .collect())
     }
 
-    /// Get the average number of L2 transactions per second for the last hour
-    pub async fn get_avg_l2_tps_last_hour(
+    /// Get the average number of L2 transactions per second for the given range
+    pub async fn get_avg_l2_tps(
         &self,
         sequencer: Option<AddressBytes>,
+        range: TimeRange,
     ) -> Result<Option<f64>> {
         #[derive(Row, Deserialize)]
         struct TpsRow {
@@ -1268,7 +1269,8 @@ impl ClickhouseReader {
                     toUInt64(max(block_ts)) AS max_ts, \
                     sum(sum_tx) AS tx_sum \
              FROM {db}.l2_head_events \
-             WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL 1 HOUR)",
+             WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})",
+            interval = range.interval(),
             db = self.db_name
         );
         if let Some(addr) = sequencer {
@@ -1287,6 +1289,14 @@ impl ClickhouseReader {
         } else {
             Ok(None)
         }
+    }
+
+    /// Get the average number of L2 transactions per second for the last hour
+    pub async fn get_avg_l2_tps_last_hour(
+        &self,
+        sequencer: Option<AddressBytes>,
+    ) -> Result<Option<f64>> {
+        self.get_avg_l2_tps(sequencer, TimeRange::LastHour).await
     }
 
     /// Get the average number of L2 transactions per second for the last 24 hours
@@ -1294,37 +1304,7 @@ impl ClickhouseReader {
         &self,
         sequencer: Option<AddressBytes>,
     ) -> Result<Option<f64>> {
-        #[derive(Row, Deserialize)]
-        struct TpsRow {
-            min_ts: u64,
-            max_ts: u64,
-            tx_sum: u64,
-        }
-
-        let mut query = format!(
-            "SELECT toUInt64(min(block_ts)) AS min_ts, \
-                    toUInt64(max(block_ts)) AS max_ts, \
-                    sum(sum_tx) AS tx_sum \
-             FROM {db}.l2_head_events \
-             WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL 24 HOUR)",
-            db = self.db_name
-        );
-        if let Some(addr) = sequencer {
-            query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
-        }
-
-        let rows = self.execute::<TpsRow>(&query).await?;
-        let row = match rows.into_iter().next() {
-            Some(r) => r,
-            None => return Ok(None),
-        };
-
-        if row.max_ts > row.min_ts && row.tx_sum > 0 {
-            let duration = (row.max_ts - row.min_ts) as f64;
-            Ok(Some(row.tx_sum as f64 / duration))
-        } else {
-            Ok(None)
-        }
+        self.get_avg_l2_tps(sequencer, TimeRange::Last24Hours).await
     }
 
     /// Get the average number of L2 transactions per second for the last 7 days
@@ -1332,37 +1312,7 @@ impl ClickhouseReader {
         &self,
         sequencer: Option<AddressBytes>,
     ) -> Result<Option<f64>> {
-        #[derive(Row, Deserialize)]
-        struct TpsRow {
-            min_ts: u64,
-            max_ts: u64,
-            tx_sum: u64,
-        }
-
-        let mut query = format!(
-            "SELECT toUInt64(min(block_ts)) AS min_ts, \
-                    toUInt64(max(block_ts)) AS max_ts, \
-                    sum(sum_tx) AS tx_sum \
-             FROM {db}.l2_head_events \
-             WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL 7 DAY)",
-            db = self.db_name
-        );
-        if let Some(addr) = sequencer {
-            query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
-        }
-
-        let rows = self.execute::<TpsRow>(&query).await?;
-        let row = match rows.into_iter().next() {
-            Some(r) => r,
-            None => return Ok(None),
-        };
-
-        if row.max_ts > row.min_ts && row.tx_sum > 0 {
-            let duration = (row.max_ts - row.min_ts) as f64;
-            Ok(Some(row.tx_sum as f64 / duration))
-        } else {
-            Ok(None)
-        }
+        self.get_avg_l2_tps(sequencer, TimeRange::Last7Days).await
     }
 
     /// Get the gas used for each L2 block in the last hour
