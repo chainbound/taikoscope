@@ -109,12 +109,13 @@ export const GasUsedChart: React.FC<GasUsedChartProps> = ({
           name="Gas Used"
         />
         <Brush
-          dataKey="timestamp"
+          dataKey="value"
           height={20}
           stroke={lineColor}
           startIndex={brushRange.startIndex}
           endIndex={brushRange.endIndex}
           onChange={handleBrushChange}
+          tickFormatter={(v: number) => v.toLocaleString()}
         />
       </LineChart>
     </ResponsiveContainer>
