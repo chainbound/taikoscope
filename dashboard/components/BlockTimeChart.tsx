@@ -114,7 +114,7 @@ export const BlockTimeChart: React.FC<BlockTimeChartProps> = ({
           name="Time"
         />
         <Brush
-          dataKey="value"
+          dataKey="timestamp"
           height={20}
           stroke={lineColor}
           startIndex={brushRange.startIndex}
