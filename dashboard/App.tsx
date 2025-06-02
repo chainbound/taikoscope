@@ -448,6 +448,7 @@ const App: React.FC = () => {
     return (
       <DataTable
         title={tableView.title}
+        description={tableView.description}
         columns={tableView.columns}
         rows={tableView.rows}
         onBack={() => {

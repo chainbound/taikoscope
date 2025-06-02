@@ -8,6 +8,7 @@ describe('DataTable', () => {
     const html = renderToStaticMarkup(
       React.createElement(DataTable, {
         title: 'My Table',
+        description: 'info',
         columns: [
           { key: 'a', label: 'A' },
           { key: 'b', label: 'B' },
@@ -23,6 +24,7 @@ describe('DataTable', () => {
     expect(html.includes('B')).toBe(true);
     expect(html.includes('1')).toBe(true);
     expect(html.includes('4')).toBe(true);
+    expect(html.includes('info')).toBe(true);
   });
 
   it('renders extra action and extra table', () => {

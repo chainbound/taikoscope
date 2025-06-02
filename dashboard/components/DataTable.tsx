@@ -23,6 +23,7 @@ interface ExtraTable {
 
 interface DataTableProps {
   title: string;
+  description?: React.ReactNode;
   columns: Column[];
   rows: Array<Record<string, string | number>>;
   onBack: () => void;
@@ -38,6 +39,7 @@ interface DataTableProps {
 
 export const DataTable: React.FC<DataTableProps> = ({
   title,
+  description,
   columns,
   rows,
   onBack,
@@ -94,6 +96,9 @@ export const DataTable: React.FC<DataTableProps> = ({
         )}
       </div>
       <h2 className="text-xl font-semibold mb-2">{title}</h2>
+      {description && (
+        <p className="text-gray-600 mb-2">{description}</p>
+      )}
       {chart && <div className="h-64 md:h-80 w-full mb-4">{chart}</div>}
       <div className="overflow-x-auto">
         <table className="min-w-full border divide-y divide-gray-200">
