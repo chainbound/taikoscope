@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from 'react';
+import { useSearchParams } from './useSearchParams';
 import { TimeRange } from '../types';
 import { TABLE_CONFIGS } from '../config/tableConfig';
 import { getSequencerAddress } from '../sequencerConfig';
@@ -39,8 +40,9 @@ export const useTableActions = (
   l2BlockTimeData: any[],
 ) => {
   const [tableView, setTableView] = useState<TableViewState | null>(null);
+  const searchParams = useSearchParams();
   const [tableLoading, setTableLoading] = useState<boolean>(
-    new URLSearchParams(window.location.search).get('view') === 'table',
+    searchParams.get('view') === 'table',
   );
   const [seqDistTxPage, setSeqDistTxPage] = useState<number>(0);
 

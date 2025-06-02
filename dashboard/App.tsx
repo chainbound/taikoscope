@@ -6,6 +6,7 @@ import { MetricCardSkeleton } from './components/MetricCardSkeleton';
 import { ChartCard } from './components/ChartCard';
 import { DataTable } from './components/DataTable';
 import { useTableActions } from './hooks/useTableActions';
+import { useSearchParams } from './hooks/useSearchParams';
 const SequencerPieChart = lazy(() =>
   import('./components/SequencerPieChart').then((m) => ({
     default: m.SequencerPieChart,
@@ -391,8 +392,10 @@ const App: React.FC = () => {
     Sequencers: 3,
   };
 
+  const searchParams = useSearchParams();
+
   const handleRouteChange = useCallback(() => {
-    const params = new URLSearchParams(window.location.search);
+    const params = searchParams;
     if (params.get('view') !== 'table') {
       setTableView(null);
       return;
@@ -439,10 +442,8 @@ const App: React.FC = () => {
   ]);
 
   useEffect(() => {
-    window.addEventListener('popstate', handleRouteChange);
     handleRouteChange();
-    return () => window.removeEventListener('popstate', handleRouteChange);
-  }, [handleRouteChange]);
+  }, [handleRouteChange, searchParams]);
 
   if (tableView) {
     return (
