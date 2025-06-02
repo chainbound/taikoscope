@@ -4,13 +4,15 @@ use derive_more::Debug;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
+use crate::types::{AddressBytes, HashBytes};
+
 /// L1 head event
 #[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq)]
 pub struct L1HeadEvent {
     /// L1 block number
     pub l1_block_number: u64,
     /// Block hash
-    pub block_hash: [u8; 32],
+    pub block_hash: HashBytes,
     /// Slot
     pub slot: u64,
     /// Block timestamp
@@ -23,11 +25,11 @@ pub struct PreconfData {
     /// Slot
     pub slot: u64,
     /// Candidates
-    pub candidates: Vec<[u8; 20]>,
+    pub candidates: Vec<AddressBytes>,
     /// Current operator
-    pub current_operator: Option<[u8; 20]>,
+    pub current_operator: Option<AddressBytes>,
     /// Next operator
-    pub next_operator: Option<[u8; 20]>,
+    pub next_operator: Option<AddressBytes>,
 }
 
 /// L2 head event
@@ -36,7 +38,7 @@ pub struct L2HeadEvent {
     /// L2 block number
     pub l2_block_number: u64,
     /// Block hash
-    pub block_hash: [u8; 32],
+    pub block_hash: HashBytes,
     /// Block timestamp
     pub block_ts: u64,
     /// Sum of gas used in the block
@@ -46,7 +48,7 @@ pub struct L2HeadEvent {
     /// Sum of priority fees paid
     pub sum_priority_fee: u128,
     /// Sequencer sequencing the block
-    pub sequencer: [u8; 20],
+    pub sequencer: AddressBytes,
 }
 
 /// Batch row
@@ -59,7 +61,7 @@ pub struct BatchRow {
     /// Batch size
     pub batch_size: u16,
     /// Proposer address
-    pub proposer_addr: [u8; 20],
+    pub proposer_addr: AddressBytes,
     /// Blob count
     pub blob_count: u8,
     /// Blob total bytes
@@ -74,13 +76,13 @@ pub struct ProvedBatchRow {
     /// Batch ID
     pub batch_id: u64,
     /// Verifier address
-    pub verifier_addr: [u8; 20],
+    pub verifier_addr: AddressBytes,
     /// Parent hash
-    pub parent_hash: [u8; 32],
+    pub parent_hash: HashBytes,
     /// Block hash
-    pub block_hash: [u8; 32],
+    pub block_hash: HashBytes,
     /// State root
-    pub state_root: [u8; 32],
+    pub state_root: HashBytes,
 }
 
 /// L2 reorg row
@@ -96,7 +98,7 @@ pub struct L2ReorgRow {
 #[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
 pub struct ForcedInclusionProcessedRow {
     /// Blob hash
-    pub blob_hash: [u8; 32],
+    pub blob_hash: HashBytes,
 }
 
 /// Verified batch row
@@ -107,7 +109,7 @@ pub struct VerifiedBatchRow {
     /// Batch ID
     pub batch_id: u64,
     /// Block hash
-    pub block_hash: [u8; 32],
+    pub block_hash: HashBytes,
 }
 
 /// Slashing event row
@@ -116,14 +118,14 @@ pub struct SlashingEventRow {
     /// L1 block number where slashing occurred
     pub l1_block_number: u64,
     /// Address of the validator that was slashed
-    pub validator_addr: [u8; 20],
+    pub validator_addr: AddressBytes,
 }
 
 /// Row representing the number of blocks produced by a sequencer
 #[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SequencerDistributionRow {
     /// Sequencer address
-    pub sequencer: [u8; 20],
+    pub sequencer: AddressBytes,
     /// Number of blocks produced by the sequencer
     pub blocks: u64,
 }
@@ -132,7 +134,7 @@ pub struct SequencerDistributionRow {
 #[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SequencerBlockRow {
     /// Sequencer address
-    pub sequencer: [u8; 20],
+    pub sequencer: AddressBytes,
     /// L2 block number proposed by the sequencer
     pub l2_block_number: u64,
 }
@@ -141,7 +143,7 @@ pub struct SequencerBlockRow {
 #[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq)]
 pub struct BlockTransactionRow {
     /// Sequencer address
-    pub sequencer: [u8; 20],
+    pub sequencer: AddressBytes,
     /// L2 block number
     pub l2_block_number: u64,
     /// Number of transactions in the block

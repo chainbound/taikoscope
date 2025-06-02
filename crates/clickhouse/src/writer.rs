@@ -105,6 +105,7 @@ use crate::{
         ProvedBatchRow, VerifiedBatchRow,
     },
     schema::{TABLE_SCHEMAS, TABLES, TableSchema},
+    types::{AddressBytes, HashBytes},
 };
 
 /// `ClickHouse` writer client for taikoscope (data insertion and migrations)
@@ -228,8 +229,7 @@ impl ClickhouseWriter {
     /// Insert L1 header
     pub async fn insert_l1_header(&self, header: &L1Header) -> Result<()> {
         let client = self.base.clone().with_database(&self.db_name);
-        let mut hash_bytes = [0u8; 32];
-        hash_bytes.copy_from_slice(header.hash.as_slice());
+        let hash_bytes = HashBytes::from(header.hash);
         let event = L1HeadEvent {
             l1_block_number: header.number,
             block_hash: hash_bytes,
@@ -251,12 +251,12 @@ impl ClickhouseWriter {
         next_operator: Option<Address>,
     ) -> Result<()> {
         let client = self.base.clone().with_database(&self.db_name);
-        let candidate_array = candidates.into_iter().map(|c| c.into_array()).collect();
+        let candidate_array = candidates.into_iter().map(AddressBytes::from).collect();
         let data = PreconfData {
             slot,
             candidates: candidate_array,
-            current_operator: current_operator.map(|c| c.into_array()),
-            next_operator: next_operator.map(|c| c.into_array()),
+            current_operator: current_operator.map(AddressBytes::from),
+            next_operator: next_operator.map(AddressBytes::from),
         };
         let mut insert = client.insert("preconf_data")?;
         insert.write(&data).await?;
@@ -380,8 +380,12 @@ mod tests {
         writer.insert_l1_header(&header).await.unwrap();
 
         let rows: Vec<L1HeadEvent> = ctl.collect().await;
-        let expected =
-            L1HeadEvent { l1_block_number: 1, block_hash: [1u8; 32], slot: 2, block_ts: 42 };
+        let expected = L1HeadEvent {
+            l1_block_number: 1,
+            block_hash: HashBytes::from([1u8; 32]),
+            slot: 2,
+            block_ts: 42,
+        };
         assert_eq!(rows, vec![expected]);
     }
 
@@ -404,10 +408,10 @@ mod tests {
         let expected = PreconfData {
             slot: 5,
             candidates: vec![
-                Address::repeat_byte(1).into_array(),
-                Address::repeat_byte(2).into_array(),
+                AddressBytes::from(Address::repeat_byte(1)),
+                AddressBytes::from(Address::repeat_byte(2)),
             ],
-            current_operator: Some(Address::repeat_byte(3).into_array()),
+            current_operator: Some(AddressBytes::from(Address::repeat_byte(3))),
             next_operator: None,
         };
         assert_eq!(rows, vec![expected]);
@@ -440,12 +444,12 @@ mod tests {
 
         let event = L2HeadEvent {
             l2_block_number: 1,
-            block_hash: [1u8; 32],
+            block_hash: HashBytes::from([1u8; 32]),
             block_ts: 10,
             sum_gas_used: 20,
             sum_tx: 3,
             sum_priority_fee: 30,
-            sequencer: [5u8; 20],
+            sequencer: AddressBytes::from([5u8; 20]),
         };
 
         writer.insert_l2_header(&event).await.unwrap();
@@ -486,7 +490,7 @@ mod tests {
             l1_block_number: 2,
             batch_id: 7,
             batch_size: 1,
-            proposer_addr: Address::repeat_byte(2).into_array(),
+            proposer_addr: AddressBytes::from(Address::repeat_byte(2)),
             blob_count: 1,
             blob_total_bytes: 50,
         };
@@ -519,10 +523,10 @@ mod tests {
         let expected = ProvedBatchRow {
             l1_block_number: 10,
             batch_id: 8,
-            verifier_addr: Address::repeat_byte(4).into_array(),
-            parent_hash: [1u8; 32],
-            block_hash: [2u8; 32],
-            state_root: [3u8; 32],
+            verifier_addr: AddressBytes::from(Address::repeat_byte(4)),
+            parent_hash: HashBytes::from([1u8; 32]),
+            block_hash: HashBytes::from([2u8; 32]),
+            state_root: HashBytes::from([3u8; 32]),
         };
         assert_eq!(rows, vec![expected]);
     }
@@ -541,7 +545,11 @@ mod tests {
         writer.insert_verified_batch(&verified, 12).await.unwrap();
 
         let rows: Vec<VerifiedBatchRow> = ctl.collect().await;
-        let expected = VerifiedBatchRow { l1_block_number: 12, batch_id: 3, block_hash: [9u8; 32] };
+        let expected = VerifiedBatchRow {
+            l1_block_number: 12,
+            batch_id: 3,
+            block_hash: HashBytes::from([9u8; 32]),
+        };
         assert_eq!(rows, vec![expected]);
     }
 
@@ -566,7 +574,10 @@ mod tests {
         writer.insert_forced_inclusion(&event).await.unwrap();
 
         let rows: Vec<ForcedInclusionProcessedRow> = ctl.collect().await;
-        assert_eq!(rows, vec![ForcedInclusionProcessedRow { blob_hash: [5u8; 32] }]);
+        assert_eq!(
+            rows,
+            vec![ForcedInclusionProcessedRow { blob_hash: HashBytes::from([5u8; 32]) }]
+        );
     }
 
     #[tokio::test]

@@ -11,7 +11,7 @@ use chainio::{
     ITaikoInbox::{BatchProposed, BatchesProved},
     taiko::wrapper::ITaikoWrapper::ForcedInclusionProcessed,
 };
-use clickhouse::{ClickhouseReader, ClickhouseWriter};
+use clickhouse::{AddressBytes, ClickhouseReader, ClickhouseWriter, HashBytes};
 use config::Opts;
 use extractor::{
     BatchProposedStream, BatchesProvedStream, BatchesVerifiedStream, Extractor,
@@ -439,12 +439,12 @@ impl Driver {
                 Ok((sum_gas_used, sum_tx, sum_priority_fee)) => {
                     let event = clickhouse::L2HeadEvent {
                         l2_block_number: header.number,
-                        block_hash: *header.hash,
+                        block_hash: HashBytes(*header.hash),
                         block_ts: header.timestamp,
                         sum_gas_used,
                         sum_tx,
                         sum_priority_fee,
-                        sequencer: header.beneficiary.into_array(),
+                        sequencer: AddressBytes(header.beneficiary.into_array()),
                     };
 
                     if let Err(e) = self.clickhouse.insert_l2_header(&event).await {
