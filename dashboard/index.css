@@ -13,3 +13,7 @@
   font-weight: 700;
   font-style: normal;
 }
+
+button:hover {
+  cursor: pointer;
+}
