@@ -140,6 +140,22 @@ const App: React.FC = () => {
   }, [avgTpsQuery.loading]);
 
   useEffect(() => {
+    setMetrics((m) =>
+      m.map((metric) =>
+        metric.title === 'Avg. L2 TPS'
+          ? {
+              ...metric,
+              value:
+                avgTpsQuery.data != null
+                  ? avgTpsQuery.data.toFixed(2)
+                  : 'N/A',
+            }
+          : metric,
+      ),
+    );
+  }, [avgTpsQuery.data]);
+
+  useEffect(() => {
     let pollId: NodeJS.Timeout | null = null;
 
     const updateHeads = async () => {
