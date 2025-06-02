@@ -116,13 +116,12 @@ const App: React.FC = () => {
     openGenericTable,
     openTpsTable,
     openSequencerDistributionTable,
-    clearTableUrl
   } = useTableActions(
     timeRange,
     setTimeRange,
     selectedSequencer,
     blockTxData,
-    l2BlockTimeData
+    l2BlockTimeData,
   );
 
   useEffect(() => {
@@ -392,30 +391,20 @@ const App: React.FC = () => {
     Sequencers: 3,
   };
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  useEffect(() => {
+  const handleRouteChange = useCallback(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get('view') !== 'table') return;
+    if (params.get('view') !== 'table') {
+      setTableView(null);
+      return;
+    }
     setTableLoading(true);
     const table = params.get('table');
     switch (table) {
       case 'sequencer-blocks': {
         const addr = params.get('address');
         const range = (params.get('range') as TimeRange) || timeRange;
-        if (addr) void openGenericTable('sequencer-blocks', range, { address: addr });
+        if (addr)
+          void openGenericTable('sequencer-blocks', range, { address: addr });
         break;
       }
       case 'tps':
@@ -440,7 +429,20 @@ const App: React.FC = () => {
         break;
       }
     }
-  }, []);
+  }, [
+    openGenericTable,
+    openTpsTable,
+    openSequencerDistributionTable,
+    setTableView,
+    setTableLoading,
+    timeRange,
+  ]);
+
+  useEffect(() => {
+    window.addEventListener('popstate', handleRouteChange);
+    handleRouteChange();
+    return () => window.removeEventListener('popstate', handleRouteChange);
+  }, [handleRouteChange]);
 
   if (tableView) {
     return (
@@ -449,8 +451,7 @@ const App: React.FC = () => {
         columns={tableView.columns}
         rows={tableView.rows}
         onBack={() => {
-          clearTableUrl();
-          setTableView(null);
+          window.history.back();
         }}
         onRowClick={tableView.onRowClick}
         extraAction={tableView.extraAction}
@@ -520,16 +521,17 @@ const App: React.FC = () => {
                       onMore={
                         typeof m.title === 'string' && m.title === 'Avg. L2 TPS'
                           ? () => openTpsTable()
-                          : typeof m.title === 'string' && m.title === 'L2 Reorgs'
+                          : typeof m.title === 'string' &&
+                              m.title === 'L2 Reorgs'
                             ? () => openGenericTable('reorgs')
                             : typeof m.title === 'string' &&
-                              m.title === 'Slashing Events'
+                                m.title === 'Slashing Events'
                               ? () => openGenericTable('slashings')
                               : typeof m.title === 'string' &&
-                                m.title === 'Forced Inclusions'
+                                  m.title === 'Forced Inclusions'
                                 ? () => openGenericTable('forced-inclusions')
                                 : typeof m.title === 'string' &&
-                                m.title === 'Active Sequencers'
+                                    m.title === 'Active Sequencers'
                                   ? () => openGenericTable('gateways')
                                   : undefined
                       }
