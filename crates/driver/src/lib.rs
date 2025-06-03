@@ -362,10 +362,17 @@ impl Driver {
             info!(header_number = header.number, "Inserted L1 header");
         }
 
-        // TODO: uncomment this when this is deployed
-        /*
-        let opt_candidates = match self.extractor.get_operator_candidates_for_current_epoch().await {
-            Ok(c) => Some(c),
+        let opt_candidates = match self.extractor.get_operator_candidates_for_current_epoch().await
+        {
+            Ok(c) => {
+                tracing::info!(
+                    slot = header.slot,
+                    block = header.number,
+                    candidates_count = c.len(),
+                    "Successfully retrieved operator candidates"
+                );
+                Some(c)
+            }
             Err(e) => {
                 tracing::error!(
                     slot = header.slot,
@@ -376,8 +383,8 @@ impl Driver {
                 None
             }
         };
-        */
-        let candidates: Vec<Address> = Vec::new();
+
+        let candidates = opt_candidates.unwrap_or_else(Vec::new);
 
         let opt_current_operator = match self.extractor.get_operator_for_current_epoch().await {
             Ok(op) => Some(op),
