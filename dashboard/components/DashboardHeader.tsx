@@ -41,7 +41,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
           className="text-sm hover:underline"
           style={{ color: TAIKO_PINK }}
         >
-          Status
+          Status Page
         </a>
       </div>
       <div className="flex items-center space-x-2 mt-4 md:mt-0">
