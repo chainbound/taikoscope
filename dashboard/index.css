@@ -20,6 +20,10 @@ button:hover {
   cursor: pointer;
 }
 
+button:disabled {
+  cursor: not-allowed;
+}
+
 select:hover {
   cursor: pointer;
 }

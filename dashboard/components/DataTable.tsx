@@ -152,7 +152,7 @@ export const DataTable: React.FC<DataTableProps> = ({
             onClick={() => setPage((p) => p - 1)}
             disabled={disablePrev}
             className="disabled:text-gray-400"
-            style={{ color: TAIKO_PINK }}
+            style={disablePrev ? undefined : { color: TAIKO_PINK }}
           >
             Prev
           </button>
@@ -161,7 +161,7 @@ export const DataTable: React.FC<DataTableProps> = ({
             onClick={() => setPage((p) => p + 1)}
             disabled={disableNext}
             className="disabled:text-gray-400"
-            style={{ color: TAIKO_PINK }}
+            style={disableNext ? undefined : { color: TAIKO_PINK }}
           >
             Next
           </button>
@@ -220,7 +220,11 @@ export const DataTable: React.FC<DataTableProps> = ({
                 onClick={extraTable.pagination.onPrev}
                 disabled={extraTable.pagination.disablePrev}
                 className="disabled:text-gray-400"
-                style={{ color: TAIKO_PINK }}
+                style={
+                  extraTable.pagination.disablePrev
+                    ? undefined
+                    : { color: TAIKO_PINK }
+                }
               >
                 Prev
               </button>
@@ -229,7 +233,11 @@ export const DataTable: React.FC<DataTableProps> = ({
                 onClick={extraTable.pagination.onNext}
                 disabled={extraTable.pagination.disableNext}
                 className="disabled:text-gray-400"
-                style={{ color: TAIKO_PINK }}
+                style={
+                  extraTable.pagination.disableNext
+                    ? undefined
+                    : { color: TAIKO_PINK }
+                }
               >
                 Next
               </button>
