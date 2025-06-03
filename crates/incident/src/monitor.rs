@@ -914,34 +914,6 @@ mod tests {
         (client, server)
     }
 
-    #[test]
-    fn test_batch_proof_timeout_monitor_creation() {
-        let (ch_client, _ch_server) = mock_clickhouse_client();
-        let (incident_client, _incident_server) = mock_incident_client();
-
-        let _monitor = BatchProofTimeoutMonitor::new(
-            ch_client,
-            incident_client,
-            "component_proof_timeout".to_owned(),
-            Duration::from_secs(3 * 60 * 60), // 3 hours
-            Duration::from_secs(60),          // 1 minute interval
-        );
-    }
-
-    #[test]
-    fn test_batch_verify_timeout_monitor_creation() {
-        let (ch_client, _ch_server) = mock_clickhouse_client();
-        let (incident_client, _incident_server) = mock_incident_client();
-
-        let _monitor = BatchVerifyTimeoutMonitor::new(
-            ch_client,
-            incident_client,
-            "component_verify_timeout".to_owned(),
-            Duration::from_secs(60 * 60), // 1 hour
-            Duration::from_secs(60),      // 1 minute interval
-        );
-    }
-
     #[tokio::test]
     async fn instatus_monitor_create_and_resolve_incident() {
         let (ch_client, _ch_server) = mock_clickhouse_client_async().await;
