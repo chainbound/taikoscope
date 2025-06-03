@@ -16,6 +16,7 @@ clickhouse.workspace = true
 derive_more.workspace = true
 eyre.workspace = true
 serde.workspace = true
+sqlparser = "0.48"
 tracing.workspace = true
 url.workspace = true
 hex.workspace = true

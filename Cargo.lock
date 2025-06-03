@@ -1312,6 +1312,7 @@ dependencies = [
  "hex",
  "primitives",
  "serde",
+ "sqlparser",
  "tokio",
  "tracing",
  "url",
@@ -3932,6 +3933,15 @@ checksum = "d91ed6c858b01f942cd56b37a94b3e0a1798290327d1236e4d9cf4eaca44d29d"
 dependencies = [
  "base64ct",
  "der",
+]
+
+[[package]]
+name = "sqlparser"
+version = "0.48.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "749780d15ad1ee15fd74f5f84b0665560b6abb913de744c2b69155770f9601da"
+dependencies = [
+ "log",
 ]
 
 [[package]]

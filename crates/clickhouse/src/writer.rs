@@ -5,94 +5,134 @@ use alloy::primitives::{Address, BlockNumber};
 use clickhouse::Client;
 use derive_more::Debug;
 use eyre::{Context, Result};
+use sqlparser::{dialect::GenericDialect, parser::Parser};
 use tracing::info;
 use url::Url;
 
-/// Split a SQL script into individual statements.
+/// Split a SQL script into individual statements using sqlparser-rs.
 ///
-/// This parser is aware of comments and quoted strings so semicolons within
-/// them do not act as statement delimiters.
+/// This parser properly handles comments, quoted strings, and complex SQL syntax.
 pub(crate) fn parse_sql_statements(sql: &str) -> Vec<String> {
-    let mut statements = Vec::new();
-    let mut current = String::new();
+    let dialect = GenericDialect {};
 
+    // Use sqlparser to split statements properly, handling quotes and comments
+    match Parser::parse_sql(&dialect, sql) {
+        Ok(parsed_statements) => {
+            // Successfully parsed - extract statement strings by re-parsing each individually
+            let mut statements = Vec::new();
+            let mut remaining = sql;
+
+            for _ in parsed_statements {
+                // Find the next complete statement in the remaining text
+                if let Some((stmt_text, rest)) = extract_next_statement(remaining) {
+                    let trimmed = stmt_text.trim();
+                    if !trimmed.is_empty() {
+                        statements.push(trimmed.to_owned());
+                    }
+                    remaining = rest;
+                }
+            }
+            statements
+        }
+        Err(_) => {
+            // Fallback to manual parsing when sqlparser fails (e.g., ClickHouse-specific syntax)
+            split_statements_manually(sql)
+        }
+    }
+}
+
+/// Extract the next complete SQL statement from text, handling quotes and comments
+fn extract_next_statement(sql: &str) -> Option<(String, &str)> {
+    let mut statement = String::new();
     let mut chars = sql.chars().peekable();
-    let mut in_single = false;
-    let mut in_double = false;
+    let mut in_single_quote = false;
+    let mut in_double_quote = false;
     let mut in_line_comment = false;
     let mut in_block_comment = false;
-    let mut prev = '\0';
+    let mut prev_char = '\0';
+    let mut char_count = 0;
 
     while let Some(c) = chars.next() {
+        char_count += c.len_utf8();
+
         if in_line_comment {
+            statement.push(c);
             if c == '\n' {
                 in_line_comment = false;
             }
-            current.push(c);
-            prev = c;
+            prev_char = c;
             continue;
         }
 
         if in_block_comment {
-            if prev == '*' && c == '/' {
+            statement.push(c);
+            if prev_char == '*' && c == '/' {
                 in_block_comment = false;
             }
-            current.push(c);
-            prev = c;
+            prev_char = c;
             continue;
         }
 
-        if !in_single && !in_double {
+        if !in_single_quote && !in_double_quote {
             if c == '-' && chars.peek() == Some(&'-') {
                 in_line_comment = true;
-                current.push(c);
-                if let Some(n) = chars.next() {
-                    current.push(n);
-                    prev = n;
+                statement.push(c);
+                if let Some(next) = chars.next() {
+                    char_count += next.len_utf8();
+                    statement.push(next);
+                    prev_char = next;
                 }
                 continue;
             }
             if c == '/' && chars.peek() == Some(&'*') {
                 in_block_comment = true;
-                current.push(c);
-                if let Some(n) = chars.next() {
-                    current.push(n);
-                    prev = n;
+                statement.push(c);
+                if let Some(next) = chars.next() {
+                    char_count += next.len_utf8();
+                    statement.push(next);
+                    prev_char = next;
                 }
                 continue;
             }
         }
 
-        if c == '\'' && !in_double {
-            in_single = !in_single;
-            current.push(c);
-            prev = c;
-            continue;
-        }
-        if c == '"' && !in_single {
-            in_double = !in_double;
-            current.push(c);
-            prev = c;
-            continue;
+        if c == '\'' && !in_double_quote {
+            in_single_quote = !in_single_quote;
+        } else if c == '"' && !in_single_quote {
+            in_double_quote = !in_double_quote;
         }
 
-        if c == ';' && !in_single && !in_double {
-            let trimmed = current.trim();
+        statement.push(c);
+
+        if c == ';' && !in_single_quote && !in_double_quote && !in_line_comment && !in_block_comment
+        {
+            // Found end of statement
+            let remaining = &sql[char_count..];
+            return Some((statement, remaining));
+        }
+
+        prev_char = c;
+    }
+
+    // If we reach here, we have remaining text but no semicolon
+    (!statement.trim().is_empty()).then_some((statement, ""))
+}
+
+/// Fallback manual statement splitting for when sqlparser fails
+fn split_statements_manually(sql: &str) -> Vec<String> {
+    let mut statements = Vec::new();
+    let mut remaining = sql;
+
+    while !remaining.trim().is_empty() {
+        if let Some((stmt, rest)) = extract_next_statement(remaining) {
+            let trimmed = stmt.trim();
             if !trimmed.is_empty() {
                 statements.push(trimmed.to_owned());
             }
-            current.clear();
-            prev = c;
-            continue;
+            remaining = rest;
+        } else {
+            break;
         }
-
-        current.push(c);
-        prev = c;
-    }
-
-    let trimmed = current.trim();
-    if !trimmed.is_empty() {
-        statements.push(trimmed.to_owned());
     }
 
     statements
