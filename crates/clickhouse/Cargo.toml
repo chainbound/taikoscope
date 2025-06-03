@@ -26,5 +26,8 @@ utoipa = { version = "5.3", features = ["chrono"] }
 clickhouse.workspace = true
 tokio.workspace = true
 
+[features]
+test-util = ["clickhouse/test-util"]
+
 [lints]
 workspace = true

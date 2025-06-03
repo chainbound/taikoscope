@@ -502,9 +502,15 @@ impl Driver {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use alloy_primitives::Address;
-    use clickhouse_rs::test::Mock;
+    use chainio::{ITaikoInbox, taiko::wrapper::ITaikoWrapper};
+    use clickhouse::{
+        AddressBytes, BatchRow, ForcedInclusionProcessedRow, HashBytes, ProvedBatchRow,
+        VerifiedBatchRow,
+    };
+    use clickhouse_rs::test::{Mock, handlers};
     use config::{ApiOpts, ClickhouseOpts, InstatusOpts, Opts, RpcOpts, TaikoAddressOpts};
+
+    use alloy_primitives::{Address, B256};
     use futures::future;
     use tokio::net::TcpListener;
     use tokio_tungstenite::accept_async;
@@ -523,16 +529,8 @@ mod tests {
         (url, handle)
     }
 
-    #[tokio::test]
-    async fn new_respects_batch_proof_timeout_from_opts() {
-        // Mock ClickHouse server - minimal setup since we skip migrations
-        let mock = Mock::new();
-        // Just one handler since we're not actually doing any DB operations
-
-        let url = Url::parse(mock.url()).unwrap();
-        let (l1_url, l1_handle) = start_ws_server().await;
-        let (l2_url, l2_handle) = start_ws_server().await;
-        let opts = Opts {
+    fn make_opts(url: Url, l1_url: Url, l2_url: Url) -> Opts {
+        Opts {
             clickhouse: ClickhouseOpts {
                 url,
                 db: "test".into(),
@@ -564,11 +562,175 @@ mod tests {
                 batch_proof_timeout_secs: 999,
             },
             reset_db: false,
-        };
+        }
+    }
+
+    #[tokio::test]
+    async fn new_respects_batch_proof_timeout_from_opts() {
+        // Mock ClickHouse server - minimal setup since we skip migrations
+        let mock = Mock::new();
+        // Just one handler since we're not actually doing any DB operations
+
+        let url = Url::parse(mock.url()).unwrap();
+        let (l1_url, l1_handle) = start_ws_server().await;
+        let (l2_url, l2_handle) = start_ws_server().await;
+        let opts = make_opts(url, l1_url.clone(), l2_url.clone());
 
         let driver = Driver::new_with_migrations(opts.clone(), false).await.unwrap();
         l1_handle.abort();
         l2_handle.abort();
         assert_eq!(driver.batch_proof_timeout_secs, opts.instatus.batch_proof_timeout_secs);
+    }
+
+    #[tokio::test]
+    async fn handle_batch_proposed_inserts_row() {
+        let mock = Mock::new();
+        let ctl = mock.add(handlers::record::<BatchRow>());
+
+        let url = Url::parse(mock.url()).unwrap();
+        let (l1_url, l1_handle) = start_ws_server().await;
+        let (l2_url, l2_handle) = start_ws_server().await;
+        let driver =
+            Driver::new_with_migrations(make_opts(url, l1_url.clone(), l2_url.clone()), false)
+                .await
+                .unwrap();
+        l1_handle.abort();
+        l2_handle.abort();
+
+        let batch = ITaikoInbox::BatchProposed {
+            info: ITaikoInbox::BatchInfo {
+                proposedIn: 2,
+                blobByteSize: 50,
+                blocks: vec![ITaikoInbox::BlockParams::default(); 1],
+                blobHashes: vec![B256::repeat_byte(1)],
+                ..Default::default()
+            },
+            meta: ITaikoInbox::BatchMetadata {
+                proposer: Address::repeat_byte(2),
+                batchId: 7,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+
+        driver.handle_batch_proposed(batch).await;
+
+        let rows: Vec<BatchRow> = ctl.collect().await;
+        assert_eq!(
+            rows,
+            vec![BatchRow {
+                l1_block_number: 2,
+                batch_id: 7,
+                batch_size: 1,
+                proposer_addr: AddressBytes::from(Address::repeat_byte(2)),
+                blob_count: 1,
+                blob_total_bytes: 50,
+            }]
+        );
+    }
+
+    #[tokio::test]
+    async fn handle_forced_inclusion_inserts_row() {
+        let mock = Mock::new();
+        let ctl = mock.add(handlers::record::<ForcedInclusionProcessedRow>());
+
+        let url = Url::parse(mock.url()).unwrap();
+        let (l1_url, l1_handle) = start_ws_server().await;
+        let (l2_url, l2_handle) = start_ws_server().await;
+        let driver =
+            Driver::new_with_migrations(make_opts(url, l1_url.clone(), l2_url.clone()), false)
+                .await
+                .unwrap();
+        l1_handle.abort();
+        l2_handle.abort();
+
+        let event = ITaikoWrapper::ForcedInclusionProcessed {
+            blobHash: B256::repeat_byte(5),
+            feeInGwei: 1,
+            createdAtBatchId: 0,
+            blobByteOffset: 0,
+            blobByteSize: 0,
+            blobCreatedIn: 0,
+        };
+
+        driver.handle_forced_inclusion(event).await;
+
+        let rows: Vec<ForcedInclusionProcessedRow> = ctl.collect().await;
+        assert_eq!(
+            rows,
+            vec![ForcedInclusionProcessedRow { blob_hash: HashBytes::from([5u8; 32]) }]
+        );
+    }
+
+    #[tokio::test]
+    async fn handle_batches_proved_inserts_rows() {
+        let mock = Mock::new();
+        let ctl = mock.add(handlers::record::<ProvedBatchRow>());
+
+        let url = Url::parse(mock.url()).unwrap();
+        let (l1_url, l1_handle) = start_ws_server().await;
+        let (l2_url, l2_handle) = start_ws_server().await;
+        let driver =
+            Driver::new_with_migrations(make_opts(url, l1_url.clone(), l2_url.clone()), false)
+                .await
+                .unwrap();
+        l1_handle.abort();
+        l2_handle.abort();
+
+        let transition = ITaikoInbox::Transition {
+            parentHash: B256::repeat_byte(1),
+            blockHash: B256::repeat_byte(2),
+            stateRoot: B256::repeat_byte(3),
+        };
+        let proved = ITaikoInbox::BatchesProved {
+            verifier: Address::repeat_byte(4),
+            batchIds: vec![8],
+            transitions: vec![transition],
+        };
+
+        driver.handle_batches_proved((proved, 10)).await;
+
+        let rows: Vec<ProvedBatchRow> = ctl.collect().await;
+        assert_eq!(
+            rows,
+            vec![ProvedBatchRow {
+                l1_block_number: 10,
+                batch_id: 8,
+                verifier_addr: AddressBytes::from(Address::repeat_byte(4)),
+                parent_hash: HashBytes::from([1u8; 32]),
+                block_hash: HashBytes::from([2u8; 32]),
+                state_root: HashBytes::from([3u8; 32]),
+            }]
+        );
+    }
+
+    #[tokio::test]
+    async fn handle_batches_verified_inserts_row() {
+        let mock = Mock::new();
+        let ctl = mock.add(handlers::record::<VerifiedBatchRow>());
+
+        let url = Url::parse(mock.url()).unwrap();
+        let (l1_url, l1_handle) = start_ws_server().await;
+        let (l2_url, l2_handle) = start_ws_server().await;
+        let driver =
+            Driver::new_with_migrations(make_opts(url, l1_url.clone(), l2_url.clone()), false)
+                .await
+                .unwrap();
+        l1_handle.abort();
+        l2_handle.abort();
+
+        let verified = chainio::BatchesVerified { batch_id: 3, block_hash: [9u8; 32] };
+
+        driver.handle_batches_verified((verified, 12)).await;
+
+        let rows: Vec<VerifiedBatchRow> = ctl.collect().await;
+        assert_eq!(
+            rows,
+            vec![VerifiedBatchRow {
+                l1_block_number: 12,
+                batch_id: 3,
+                block_hash: HashBytes::from([9u8; 32]),
+            }]
+        );
     }
 }
