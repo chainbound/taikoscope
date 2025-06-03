@@ -30,13 +30,13 @@ export const BlockTimeChart: React.FC<BlockTimeChartProps> = ({
   }
   const showMinutes = shouldShowMinutes(data);
   const [brushRange, setBrushRange] = useState({
-    startIndex: Math.max(0, data.length - 50),
+    startIndex: 0,
     endIndex: data.length - 1,
   });
 
   useEffect(() => {
     setBrushRange({
-      startIndex: Math.max(0, data.length - 50),
+      startIndex: 0,
       endIndex: data.length - 1,
     });
   }, [data]);

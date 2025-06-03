@@ -16,7 +16,6 @@ interface ReorgDepthChartProps {
   data: L2ReorgEvent[];
 }
 
-
 export const ReorgDepthChart: React.FC<ReorgDepthChartProps> = ({ data }) => {
   if (!data || data.length === 0) {
     return (
@@ -27,13 +26,13 @@ export const ReorgDepthChart: React.FC<ReorgDepthChartProps> = ({ data }) => {
   }
 
   const [brushRange, setBrushRange] = useState({
-    startIndex: Math.max(0, data.length - 50),
+    startIndex: 0,
     endIndex: data.length - 1,
   });
 
   useEffect(() => {
     setBrushRange({
-      startIndex: Math.max(0, data.length - 50),
+      startIndex: 0,
       endIndex: data.length - 1,
     });
   }, [data]);
