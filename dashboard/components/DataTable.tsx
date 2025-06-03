@@ -1,6 +1,10 @@
 import React from 'react';
 import { TimeRange } from '../types';
-import { TimeRangeSelector, RefreshRateInput } from './DashboardHeader';
+import {
+  TimeRangeSelector,
+  RefreshRateInput,
+  SequencerSelector,
+} from './DashboardHeader';
 import { TAIKO_PINK } from '../theme';
 
 const DEFAULT_ROWS_PER_PAGE = 50;
@@ -37,6 +41,9 @@ interface DataTableProps {
   onTimeRangeChange?: (range: TimeRange) => void;
   refreshRate?: number;
   onRefreshRateChange?: (rate: number) => void;
+  sequencers?: string[];
+  selectedSequencer?: string | null;
+  onSequencerChange?: (seq: string | null) => void;
   chart?: React.ReactNode;
   rowsPerPage?: number;
 }
@@ -54,6 +61,9 @@ export const DataTable: React.FC<DataTableProps> = ({
   onTimeRangeChange,
   refreshRate,
   onRefreshRateChange,
+  sequencers,
+  selectedSequencer,
+  onSequencerChange,
   chart,
   rowsPerPage = DEFAULT_ROWS_PER_PAGE,
 }) => {
@@ -101,6 +111,13 @@ export const DataTable: React.FC<DataTableProps> = ({
           <RefreshRateInput
             refreshRate={refreshRate}
             onRefreshRateChange={onRefreshRateChange}
+          />
+        )}
+        {sequencers && onSequencerChange && (
+          <SequencerSelector
+            sequencers={sequencers}
+            value={selectedSequencer ?? null}
+            onChange={onSequencerChange}
           />
         )}
       </div>

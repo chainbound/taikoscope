@@ -77,6 +77,23 @@ describe('DataTable', () => {
     expect(html.includes('Refresh')).toBe(true);
   });
 
+  it('renders sequencer selector', () => {
+    const html = renderToStaticMarkup(
+      React.createElement(DataTable, {
+        title: 'Seq',
+        columns: [{ key: 'v', label: 'V' }],
+        rows: [{ v: 1 }],
+        onBack: () => {},
+        sequencers: ['a', 'b'],
+        selectedSequencer: null,
+        onSequencerChange: () => {},
+      }),
+    );
+    expect(html.includes('All Sequencers')).toBe(true);
+    expect(html.includes('a')).toBe(true);
+    expect(html.includes('b')).toBe(true);
+  });
+
   it('paginates rows when more than 50 items', () => {
     const rows = Array.from({ length: 55 }, (_, i) => ({ a: String(i) }));
     const html = renderToStaticMarkup(
