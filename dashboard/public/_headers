@@ -1,0 +1,14 @@
+/assets/*.js
+  Content-Type: application/javascript
+  Cache-Control: no-cache
+
+/fonts/*.ttf
+  Content-Type: font/ttf
+  Access-Control-Allow-Origin: *
+
+/*.ttf
+  Content-Type: font/ttf
+  Access-Control-Allow-Origin: *
+
+/*
+  Access-Control-Allow-Origin: https://api.taikoscope.xyz

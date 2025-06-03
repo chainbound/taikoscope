@@ -16,8 +16,15 @@ export default defineConfig(() => {
             react: ['react', 'react-dom'],
             charts: ['recharts'],
           },
+          assetFileNames: (assetInfo) => {
+            if (assetInfo.name?.endsWith('.ttf')) {
+              return 'fonts/[name].[hash][extname]';
+            }
+            return 'assets/[name].[hash][extname]';
+          },
         },
       },
     },
+    assetsInclude: ['**/*.ttf'],
   };
 });

@@ -2,7 +2,7 @@
 
 @font-face {
   font-family: 'DejaVu Sans';
-  src: url('/fonts/DejaVuSans.ttf') format('truetype');
+  src: url('./fonts/DejaVuSans.ttf') format('truetype');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -10,7 +10,7 @@
 
 @font-face {
   font-family: 'DejaVu Sans';
-  src: url('/fonts/DejaVuSans-Bold.ttf') format('truetype');
+  src: url('./fonts/DejaVuSans-Bold.ttf') format('truetype');
   font-weight: 700;
   font-style: normal;
   font-display: swap;

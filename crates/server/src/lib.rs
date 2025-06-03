@@ -37,7 +37,8 @@ pub fn router(state: ApiState, extra_origins: Vec<String>) -> Router {
             }
         }))
         .allow_methods([Method::GET])
-        .allow_headers(Any);
+        .allow_headers(Any)
+        .expose_headers(Any);
     let trace = TraceLayer::new_for_http()
         .make_span_with(DefaultMakeSpan::new().level(Level::INFO))
         .on_request(DefaultOnRequest::new().level(Level::INFO))

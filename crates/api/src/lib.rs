@@ -12,6 +12,7 @@ use axum::{
         sse::{Event, KeepAlive, Sse},
     },
     routing::get,
+    http::HeaderMap,
 };
 use chrono::{Duration as ChronoDuration, Utc};
 #[cfg(test)]

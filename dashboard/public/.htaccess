@@ -1,0 +1,38 @@
+# Force correct MIME types for JavaScript modules
+<Files "*.js">
+    Header set Content-Type "application/javascript"
+</Files>
+
+# Force correct MIME types for fonts
+<Files "*.ttf">
+    Header set Content-Type "font/ttf"
+</Files>
+
+<Files "*.woff">
+    Header set Content-Type "font/woff"
+</Files>
+
+<Files "*.woff2">
+    Header set Content-Type "font/woff2"
+</Files>
+
+# Enable CORS for fonts and SSE
+<IfModule mod_headers.c>
+    # Allow cross-origin requests for fonts
+    <FilesMatch "\.(ttf|otf|eot|woff|woff2)$">
+        Header set Access-Control-Allow-Origin "*"
+    </FilesMatch>
+    
+    # Add CORS headers for all requests
+    Header always set Access-Control-Allow-Origin "https://api.taikoscope.xyz"
+    Header always set Access-Control-Allow-Methods "GET, POST, OPTIONS"
+    Header always set Access-Control-Allow-Headers "Content-Type, Authorization, Cache-Control"
+    Header always set Access-Control-Allow-Credentials "false"
+</IfModule>
+
+# Disable caching for JavaScript files to prevent module loading issues
+<Files "*.js">
+    Header set Cache-Control "no-cache, no-store, must-revalidate"
+    Header set Pragma "no-cache"
+    Header set Expires "0"
+</Files>
