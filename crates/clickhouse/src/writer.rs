@@ -228,7 +228,7 @@ impl ClickhouseWriter {
 
     /// Insert L1 header
     pub async fn insert_l1_header(&self, header: &L1Header) -> Result<()> {
-        let client = self.base.clone().with_database(&self.db_name);
+        let client = self.base.clone();
         let hash_bytes = HashBytes::from(header.hash);
         let event = L1HeadEvent {
             l1_block_number: header.number,
@@ -250,7 +250,7 @@ impl ClickhouseWriter {
         current_operator: Option<Address>,
         next_operator: Option<Address>,
     ) -> Result<()> {
-        let client = self.base.clone().with_database(&self.db_name);
+        let client = self.base.clone();
         let candidate_array = candidates.into_iter().map(AddressBytes::from).collect();
         let data = PreconfData {
             slot,
@@ -266,7 +266,7 @@ impl ClickhouseWriter {
 
     /// Insert L2 header event
     pub async fn insert_l2_header(&self, event: &L2HeadEvent) -> Result<()> {
-        let client = self.base.clone().with_database(&self.db_name);
+        let client = self.base.clone();
         let mut insert = client.insert("l2_head_events")?;
         insert.write(event).await?;
         insert.end().await?;
@@ -275,7 +275,7 @@ impl ClickhouseWriter {
 
     /// Insert a batch
     pub async fn insert_batch(&self, batch: &chainio::ITaikoInbox::BatchProposed) -> Result<()> {
-        let client = self.base.clone().with_database(&self.db_name);
+        let client = self.base.clone();
         let batch_row = BatchRow::try_from(batch)?;
         let mut insert = client.insert("batches")?;
         insert.write(&batch_row).await?;
@@ -289,7 +289,7 @@ impl ClickhouseWriter {
         proved: &chainio::ITaikoInbox::BatchesProved,
         l1_block_number: u64,
     ) -> Result<()> {
-        let client = self.base.clone().with_database(&self.db_name);
+        let client = self.base.clone();
         for (i, batch_id) in proved.batchIds.iter().enumerate() {
             if i >= proved.transitions.len() {
                 continue;
@@ -312,7 +312,7 @@ impl ClickhouseWriter {
         &self,
         event: &chainio::taiko::wrapper::ITaikoWrapper::ForcedInclusionProcessed,
     ) -> Result<()> {
-        let client = self.base.clone().with_database(&self.db_name);
+        let client = self.base.clone();
         let row = ForcedInclusionProcessedRow::try_from(event)?;
         let mut insert = client.insert("forced_inclusion_processed")?;
         insert.write(&row).await?;
@@ -322,7 +322,7 @@ impl ClickhouseWriter {
 
     /// Insert L2 reorg row
     pub async fn insert_l2_reorg(&self, block_number: BlockNumber, depth: u16) -> Result<()> {
-        let client = self.base.clone().with_database(&self.db_name);
+        let client = self.base.clone();
         let row = L2ReorgRow { l2_block_number: block_number, depth };
         let mut insert = client.insert("l2_reorgs")?;
         insert.write(&row).await?;
@@ -336,7 +336,7 @@ impl ClickhouseWriter {
         verified: &chainio::BatchesVerified,
         l1_block_number: u64,
     ) -> Result<()> {
-        let client = self.base.clone().with_database(&self.db_name);
+        let client = self.base.clone();
         let verified_row = VerifiedBatchRow::try_from((verified, l1_block_number))?;
         let mut insert = client.insert("verified_batches")?;
         insert.write(&verified_row).await?;
