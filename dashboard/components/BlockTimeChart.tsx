@@ -10,7 +10,7 @@ import {
   Brush,
 } from 'recharts';
 import { TimeSeriesData } from '../types';
-import { formatDecimal, formatInterval, shouldShowMinutes } from '../utils';
+import { formatDecimal, formatInterval, shouldShowMinutes, formatTime } from '../utils';
 
 interface BlockTimeChartProps {
   data: TimeSeriesData[];
@@ -120,7 +120,7 @@ export const BlockTimeChart: React.FC<BlockTimeChartProps> = ({
           startIndex={brushRange.startIndex}
           endIndex={brushRange.endIndex}
           onChange={handleBrushChange}
-          tickFormatter={(v: number) => formatInterval(v, showMinutes)}
+          tickFormatter={(v: number) => formatTime(v)}
         />
       </LineChart>
     </ResponsiveContainer>
