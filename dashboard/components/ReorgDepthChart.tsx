@@ -57,7 +57,7 @@ export const ReorgDepthChart: React.FC<ReorgDepthChartProps> = ({ data }) => {
     <ResponsiveContainer width="100%" height="100%">
       <BarChart
         data={data}
-        margin={{ top: 5, right: 30, left: 20, bottom: 40 }}
+        margin={{ top: 5, right: 70, left: 20, bottom: 40 }}
       >
         <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
         <XAxis
