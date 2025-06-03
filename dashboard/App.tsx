@@ -369,7 +369,13 @@ const App: React.FC = () => {
     return () => clearInterval(interval);
   }, [timeRange, fetchData, refreshRate, tableView]);
 
-  const groupedMetrics = metrics.reduce<Record<string, MetricData[]>>(
+  const visibleMetrics = React.useMemo(
+    () =>
+      metrics.filter((m) => !(selectedSequencer && m.group === 'Sequencers')),
+    [metrics, selectedSequencer],
+  );
+
+  const groupedMetrics = visibleMetrics.reduce<Record<string, MetricData[]>>(
     (acc, m) => {
       const group = m.group ?? 'Other';
       if (!acc[group]) acc[group] = [];
@@ -389,6 +395,16 @@ const App: React.FC = () => {
     'Network Health': 3,
     Sequencers: 3,
   };
+  const displayedGroupOrder = selectedSequencer
+    ? groupOrder.filter((g) => g !== 'Sequencers')
+    : groupOrder;
+  const displayedSkeletonCounts = React.useMemo(
+    () =>
+      selectedSequencer
+        ? { ...skeletonGroupCounts, Sequencers: 0 }
+        : skeletonGroupCounts,
+    [selectedSequencer],
+  );
 
   const searchParams = useSearchParams();
 
@@ -492,70 +508,68 @@ const App: React.FC = () => {
 
       <main className="mt-6">
         {/* Metrics Grid */}
-        {(loadingMetrics ? Object.keys(skeletonGroupCounts) : groupOrder).map(
-          (group) =>
-            loadingMetrics ? (
-              <React.Fragment key={group}>
-                {group !== 'Other' && (
-                  <h2 className="mt-6 mb-2 text-lg font-semibold">{group}</h2>
+        {(loadingMetrics
+          ? Object.keys(displayedSkeletonCounts)
+          : displayedGroupOrder
+        ).map((group) =>
+          loadingMetrics ? (
+            <React.Fragment key={group}>
+              {group !== 'Other' && (
+                <h2 className="mt-6 mb-2 text-lg font-semibold">{group}</h2>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4 md:gap-6">
+                {Array.from({ length: displayedSkeletonCounts[group] }).map(
+                  (_, idx) => (
+                    <MetricCardSkeleton key={`${group}-s-${idx}`} />
+                  ),
                 )}
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4 md:gap-6">
-                  {Array.from({ length: skeletonGroupCounts[group] }).map(
-                    (_, idx) => (
-                      <MetricCardSkeleton key={`${group}-s-${idx}`} />
-                    ),
-                  )}
-                </div>
-              </React.Fragment>
-            ) : groupedMetrics[group] && groupedMetrics[group].length > 0 ? (
-              <React.Fragment key={group}>
-                {group !== 'Other' && (
-                  <h2 className="mt-6 mb-2 text-lg font-semibold">{group}</h2>
-                )}
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4 md:gap-6">
-                  {groupedMetrics[group].map((m, idx) => (
-                    <MetricCard
-                      key={`${group}-${idx}`}
-                      title={m.title}
-                      value={m.value}
-                      onMore={
-                        typeof m.title === 'string' && m.title === 'Avg. L2 TPS'
-                          ? () => openTpsTable()
+              </div>
+            </React.Fragment>
+          ) : groupedMetrics[group] && groupedMetrics[group].length > 0 ? (
+            <React.Fragment key={group}>
+              {group !== 'Other' && (
+                <h2 className="mt-6 mb-2 text-lg font-semibold">{group}</h2>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4 md:gap-6">
+                {groupedMetrics[group].map((m, idx) => (
+                  <MetricCard
+                    key={`${group}-${idx}`}
+                    title={m.title}
+                    value={m.value}
+                    onMore={
+                      typeof m.title === 'string' && m.title === 'Avg. L2 TPS'
+                        ? () => openTpsTable()
+                        : typeof m.title === 'string' && m.title === 'L2 Reorgs'
+                          ? () => openGenericTable('reorgs')
                           : typeof m.title === 'string' &&
-                              m.title === 'L2 Reorgs'
-                            ? () => openGenericTable('reorgs')
+                              m.title === 'Slashing Events'
+                            ? () => openGenericTable('slashings')
                             : typeof m.title === 'string' &&
-                                m.title === 'Slashing Events'
-                              ? () => openGenericTable('slashings')
+                                m.title === 'Forced Inclusions'
+                              ? () => openGenericTable('forced-inclusions')
                               : typeof m.title === 'string' &&
-                                  m.title === 'Forced Inclusions'
-                                ? () => openGenericTable('forced-inclusions')
-                                : typeof m.title === 'string' &&
-                                    m.title === 'Active Sequencers'
-                                  ? () => openGenericTable('gateways')
-                                  : undefined
-                      }
-                    />
-                  ))}
-                </div>
-              </React.Fragment>
-            ) : null,
+                                  m.title === 'Active Sequencers'
+                                ? () => openGenericTable('gateways')
+                                : undefined
+                    }
+                  />
+                ))}
+              </div>
+            </React.Fragment>
+          ) : null,
         )}
 
         {/* Charts Grid - Reordered: Sequencer Pie Chart first */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mt-6">
-          <ChartCard
-            title="Sequencer Distribution"
-            onMore={() => openSequencerDistributionTable(timeRange, 0)}
-            loading={loadingMetrics}
-          >
-            <SequencerPieChart
-              key={timeRange}
-              data={sequencerDistribution.filter(
-                (d) => !selectedSequencer || d.name === selectedSequencer,
-              )}
-            />
-          </ChartCard>
+          {!selectedSequencer && (
+            <ChartCard
+              title="Sequencer Distribution"
+              onMore={() => openSequencerDistributionTable(timeRange, 0)}
+              loading={loadingMetrics}
+            >
+              <SequencerPieChart key={timeRange} data={sequencerDistribution} />
+            </ChartCard>
+          )}
           <ChartCard
             title="Prove Time"
             onMore={() => openGenericTable('prove-time', timeRange)}
