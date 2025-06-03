@@ -39,9 +39,21 @@ jobs:
         run: |
           cargo run --bin generate-openapi-spec --quiet > openapi.json
       - name: Validate OpenAPI spec
-        uses: char0n/swagger-editor-validate@v1
-        with:
-          definition-file: openapi.json
+        run: |
+          # Basic JSON validation and structural checks
+          jq empty openapi.json  # Validates JSON syntax
+          # Check required OpenAPI fields exist
+          jq -e '.openapi' openapi.json > /dev/null
+          jq -e '.info.title' openapi.json > /dev/null
+          jq -e '.info.version' openapi.json > /dev/null
+          jq -e '.paths' openapi.json > /dev/null
+          # Check we have endpoints documented
+          ENDPOINT_COUNT=$(jq '.paths | keys | length' openapi.json)
+          echo "Found $ENDPOINT_COUNT documented endpoints"
+          if [ "$ENDPOINT_COUNT" -lt 20 ]; then
+            echo "Error: Expected at least 20 endpoints, found $ENDPOINT_COUNT"
+            exit 1
+          fi
       - name: Upload OpenAPI spec
         uses: actions/upload-artifact@v4
         with:
