@@ -16,3 +16,11 @@ eyre.workspace = true
 
 [lints]
 workspace = true
+
+[dev-dependencies]
+chrono.workspace = true
+clickhouse.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tower.workspace = true
+url.workspace = true

@@ -71,7 +71,7 @@ mod tests {
         body::{self, Body},
         http::{Request, StatusCode},
     };
-    use chrono::Utc;
+    use chrono::{TimeZone, Utc};
     use clickhouse::{
         Row,
         test::{Mock, handlers},
@@ -134,7 +134,7 @@ mod tests {
     async fn allows_extra_origin() {
         let mock = Mock::new();
         mock.add(handlers::provide(vec![MaxRow { block_ts: 1 }]));
-        let app = build_app(mock.url(), vec!["https://example.com".to_string()]);
+        let app = build_app(mock.url(), vec!["https://example.com".to_owned()]);
         let (status, _, cors) = send_request(app, "https://example.com").await;
         assert_eq!(status, StatusCode::OK);
         assert_eq!(cors.as_deref(), Some("https://example.com"));
