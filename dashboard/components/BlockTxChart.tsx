@@ -33,13 +33,13 @@ export const BlockTxChart: React.FC<BlockTxChartProps> = ({
   );
 
   const [brushRange, setBrushRange] = useState({
-    startIndex: Math.max(0, sortedData.length - 50),
+    startIndex: 0,
     endIndex: sortedData.length - 1,
   });
 
   useEffect(() => {
     setBrushRange({
-      startIndex: Math.max(0, sortedData.length - 50),
+      startIndex: 0,
       endIndex: sortedData.length - 1,
     });
   }, [sortedData]);

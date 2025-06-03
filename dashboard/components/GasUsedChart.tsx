@@ -29,13 +29,13 @@ export const GasUsedChart: React.FC<GasUsedChartProps> = ({
     );
   }
   const [brushRange, setBrushRange] = useState({
-    startIndex: Math.max(0, data.length - 50),
+    startIndex: 0,
     endIndex: data.length - 1,
   });
 
   useEffect(() => {
     setBrushRange({
-      startIndex: Math.max(0, data.length - 50),
+      startIndex: 0,
       endIndex: data.length - 1,
     });
   }, [data]);
