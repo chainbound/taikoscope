@@ -29,6 +29,7 @@ export const formatTime = (ms: number): string =>
     minute: '2-digit',
     second: '2-digit',
     hour12: false,
+    timeZone: 'UTC',
   });
 
 export const formatInterval = (ms: number, showMinutes: boolean): string => {
