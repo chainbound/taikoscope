@@ -17,7 +17,7 @@ describe('DataTable', () => {
           { a: '1', b: '2' },
           { a: '3', b: '4' },
         ],
-        onBack: () => {},
+        onBack: () => { },
       }),
     );
     expect(html.includes('A')).toBe(true);
@@ -33,8 +33,8 @@ describe('DataTable', () => {
         title: 'Main',
         columns: [{ key: 'x', label: 'X' }],
         rows: [{ x: '10' }],
-        onBack: () => {},
-        extraAction: { label: 'More', onClick: () => {} },
+        onBack: () => { },
+        extraAction: { label: 'More', onClick: () => { } },
         extraTable: {
           title: 'Extra',
           columns: [{ key: 'y', label: 'Y' }],
@@ -53,9 +53,9 @@ describe('DataTable', () => {
         title: 'Range',
         columns: [{ key: 'v', label: 'V' }],
         rows: [{ v: 1 }],
-        onBack: () => {},
+        onBack: () => { },
         timeRange: '1h',
-        onTimeRangeChange: () => {},
+        onTimeRangeChange: () => { },
       }),
     );
     expect(html.includes('1H')).toBe(true);
@@ -69,9 +69,9 @@ describe('DataTable', () => {
         title: 'Refresh',
         columns: [{ key: 'v', label: 'V' }],
         rows: [{ v: 1 }],
-        onBack: () => {},
+        onBack: () => { },
         refreshRate: 60000,
-        onRefreshRateChange: () => {},
+        onRefreshRateChange: () => { },
       }),
     );
     expect(html.includes('Refresh')).toBe(true);
@@ -84,7 +84,7 @@ describe('DataTable', () => {
         title: 'Paged',
         columns: [{ key: 'a', label: 'A' }],
         rows,
-        onBack: () => {},
+        onBack: () => { },
       }),
     );
     expect(html.includes('49')).toBe(true);
@@ -99,12 +99,13 @@ describe('DataTable', () => {
         title: 'Custom',
         columns: [{ key: 'a', label: 'A' }],
         rows,
-        onBack: () => {},
+        onBack: () => { },
         rowsPerPage: 5,
       }),
     );
-    expect(html.includes('4')).toBe(true);
-    expect(html.includes('5')).toBe(false);
+    // Check for actual cell content, not just any occurrence of the character
+    expect(html.includes('>4<')).toBe(true);
+    expect(html.includes('>5<')).toBe(false);
     expect(html.includes('Next')).toBe(true);
   });
 });
