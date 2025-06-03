@@ -10,6 +10,7 @@ clickhouse_lib = { path = "../clickhouse", package = "clickhouse" }
 runtime = { path = "../runtime" }
 api-types = { path = "../api-types" }
 
+alloy-primitives.workspace = true
 async-stream.workspace = true
 axum.workspace = true
 chrono = { workspace = true, features = ["serde"] }
