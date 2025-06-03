@@ -40,6 +40,8 @@ pub struct Driver {
     instatus_monitor_poll_interval_secs: u64,
     instatus_monitor_threshold_secs: u64,
     batch_proof_timeout_secs: u64,
+    last_proposed_l2_block: u64,
+    last_l2_header: Option<(u64, Address)>,
 }
 
 impl Driver {
@@ -109,6 +111,8 @@ impl Driver {
             instatus_monitor_poll_interval_secs: opts.instatus.monitor_poll_interval_secs,
             instatus_monitor_threshold_secs: opts.instatus.monitor_threshold_secs,
             batch_proof_timeout_secs: opts.instatus.batch_proof_timeout_secs,
+            last_proposed_l2_block: 0,
+            last_l2_header: None,
         })
     }
 
@@ -425,10 +429,29 @@ impl Driver {
                 "Skipping preconf data insertion due to errors fetching operator data"
             );
         }
+
+        if let Some((l2_number, sequencer)) = self.last_l2_header {
+            if l2_number > self.last_proposed_l2_block {
+                if let Err(e) = self
+                    .clickhouse
+                    .insert_missed_block_proposal(header.slot, sequencer, l2_number)
+                    .await
+                {
+                    tracing::error!(slot = header.slot, err = %e, "Failed to insert missed block proposal");
+                } else {
+                    info!(
+                        slot = header.slot,
+                        l2_block = l2_number,
+                        "Inserted missed block proposal"
+                    );
+                }
+            }
+        }
     }
 
     /// Process an L2 header event, inserting statistics and detecting reorgs.
     async fn handle_l2_header(&mut self, header: L2Header) {
+        self.last_l2_header = Some((header.number, header.beneficiary));
         // Detect reorgs
         // The simplified on_new_block now only takes the new block's number.
         // It returns Some(depth) if new_block_number < current_head_number.
@@ -470,12 +493,13 @@ impl Driver {
     }
 
     /// Store a newly proposed batch.
-    async fn handle_batch_proposed(&self, batch: BatchProposed) {
+    async fn handle_batch_proposed(&mut self, batch: BatchProposed) {
         if let Err(e) = self.clickhouse.insert_batch(&batch).await {
             tracing::error!(batch_last_block = ?batch.last_block_number(), err = %e, "Failed to insert batch");
         } else {
             info!(last_block_number = ?batch.last_block_number(), "Inserted batch");
         }
+        self.last_proposed_l2_block = batch.last_block_number();
     }
 
     /// Record a forced inclusion event.
@@ -599,7 +623,7 @@ mod tests {
         let url = Url::parse(mock.url()).unwrap();
         let (l1_url, l1_handle) = start_ws_server().await;
         let (l2_url, l2_handle) = start_ws_server().await;
-        let driver =
+        let mut driver =
             Driver::new_with_migrations(make_opts(url, l1_url.clone(), l2_url.clone()), false)
                 .await
                 .unwrap();

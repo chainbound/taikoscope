@@ -142,8 +142,8 @@ fn split_statements_manually(sql: &str) -> Vec<String> {
 use crate::{
     L1Header,
     models::{
-        BatchRow, ForcedInclusionProcessedRow, L1HeadEvent, L2HeadEvent, L2ReorgRow, PreconfData,
-        ProvedBatchRow, VerifiedBatchRow,
+        BatchRow, ForcedInclusionProcessedRow, L1HeadEvent, L2HeadEvent, L2ReorgRow,
+        MissedBlockProposalRow, PreconfData, ProvedBatchRow, VerifiedBatchRow,
     },
     schema::{TABLE_SCHEMAS, TABLES, TableSchema},
     types::{AddressBytes, HashBytes},
@@ -384,6 +384,25 @@ impl ClickhouseWriter {
         insert.end().await?;
         Ok(())
     }
+
+    /// Insert a missed block proposal row
+    pub async fn insert_missed_block_proposal(
+        &self,
+        slot: u64,
+        sequencer: Address,
+        l2_block_number: u64,
+    ) -> Result<()> {
+        let client = self.base.clone();
+        let row = MissedBlockProposalRow {
+            slot,
+            sequencer: AddressBytes::from(sequencer),
+            l2_block_number,
+        };
+        let mut insert = client.insert("missed_block_proposals")?;
+        insert.write(&row).await?;
+        insert.end().await?;
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -620,6 +639,28 @@ mod tests {
         assert_eq!(
             rows,
             vec![ForcedInclusionProcessedRow { blob_hash: HashBytes::from([5u8; 32]) }]
+        );
+    }
+
+    #[tokio::test]
+    async fn insert_missed_block_proposal_writes_expected_row() {
+        let mock = Mock::new();
+        let ctl = mock.add(handlers::record::<MissedBlockProposalRow>());
+
+        let url = Url::parse(mock.url()).unwrap();
+        let writer =
+            ClickhouseWriter::new(url, "db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+        writer.insert_missed_block_proposal(7, Address::repeat_byte(3), 42).await.unwrap();
+
+        let rows: Vec<MissedBlockProposalRow> = ctl.collect().await;
+        assert_eq!(
+            rows,
+            vec![MissedBlockProposalRow {
+                slot: 7,
+                sequencer: AddressBytes::from(Address::repeat_byte(3)),
+                l2_block_number: 42,
+            }]
         );
     }
 
