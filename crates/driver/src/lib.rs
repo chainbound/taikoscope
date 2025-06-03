@@ -6,7 +6,6 @@ use eyre::Result;
 use tokio_stream::StreamExt;
 use tracing::info;
 
-use alloy_primitives::Address;
 use chainio::{
     ITaikoInbox::{BatchProposed, BatchesProved},
     taiko::wrapper::ITaikoWrapper::ForcedInclusionProcessed,
