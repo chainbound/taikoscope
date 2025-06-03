@@ -171,17 +171,6 @@ fn range_duration(range: &Option<String>) -> ChronoDuration {
     ChronoDuration::hours(1)
 }
 
-fn parse_address(addr: &Option<String>) -> Option<AddressBytes> {
-    let a = addr.as_deref()?;
-    match a.parse::<Address>() {
-        Ok(addr) => Some(AddressBytes::from(addr)),
-        Err(e) => {
-            tracing::warn!(error = %e, "Failed to parse address");
-            None
-        }
-    }
-}
-
 #[utoipa::path(
     get,
     path = "/l2-head",
@@ -631,7 +620,13 @@ async fn l2_block_cadence(
     State(state): State<ApiState>,
 ) -> Json<L2BlockCadenceResponse> {
     let duration = range_duration(&params.range);
-    let address = parse_address(&params.address);
+    let address = params.address.as_ref().and_then(|addr| match addr.parse::<Address>() {
+        Ok(a) => Some(AddressBytes::from(a)),
+        Err(e) => {
+            tracing::warn!(error = %e, "Failed to parse address");
+            None
+        }
+    });
     let avg = match if duration.num_hours() <= 1 {
         state.client.get_l2_block_cadence_last_hour(address).await
     } else if duration.num_hours() <= 24 {
@@ -698,7 +693,13 @@ async fn avg_l2_tps(
     State(state): State<ApiState>,
 ) -> Json<AvgL2TpsResponse> {
     let duration = range_duration(&params.range);
-    let address = parse_address(&params.address);
+    let address = params.address.as_ref().and_then(|addr| match addr.parse::<Address>() {
+        Ok(a) => Some(AddressBytes::from(a)),
+        Err(e) => {
+            tracing::warn!(error = %e, "Failed to parse address");
+            None
+        }
+    });
     let avg = match if duration.num_hours() <= 1 {
         state.client.get_avg_l2_tps_last_hour(address).await
     } else if duration.num_hours() <= 24 {
@@ -884,7 +885,13 @@ async fn l2_block_times(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
 ) -> Json<L2BlockTimesResponse> {
-    let address = parse_address(&params.address);
+    let address = params.address.as_ref().and_then(|addr| match addr.parse::<Address>() {
+        Ok(a) => Some(AddressBytes::from(a)),
+        Err(e) => {
+            tracing::warn!(error = %e, "Failed to parse address");
+            None
+        }
+    });
     let blocks = match match params.range.as_deref() {
         Some("24h") => state.client.get_l2_block_times_last_24_hours(address).await,
         Some("7d") => state.client.get_l2_block_times_last_7_days(address).await,
@@ -915,7 +922,13 @@ async fn l2_gas_used(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
 ) -> Json<L2GasUsedResponse> {
-    let address = parse_address(&params.address);
+    let address = params.address.as_ref().and_then(|addr| match addr.parse::<Address>() {
+        Ok(a) => Some(AddressBytes::from(a)),
+        Err(e) => {
+            tracing::warn!(error = %e, "Failed to parse address");
+            None
+        }
+    });
     let blocks = match match params.range.as_deref() {
         Some("24h") => state.client.get_l2_gas_used_last_24_hours(address).await,
         Some("7d") => state.client.get_l2_gas_used_last_7_days(address).await,
@@ -988,7 +1001,13 @@ async fn sequencer_blocks(
         }
     };
 
-    let filter = parse_address(&params.address);
+    let filter = params.address.as_ref().and_then(|addr| match addr.parse::<Address>() {
+        Ok(a) => Some(AddressBytes::from(a)),
+        Err(e) => {
+            tracing::warn!(error = %e, "Failed to parse address");
+            None
+        }
+    });
 
     use std::collections::BTreeMap;
     let mut map: BTreeMap<AddressBytes, Vec<u64>> = BTreeMap::new();
@@ -1036,7 +1055,13 @@ async fn block_transactions(
             limit,
             params.starting_after,
             params.ending_before,
-            parse_address(&params.address),
+            params.address.as_ref().and_then(|addr| match addr.parse::<Address>() {
+                Ok(a) => Some(AddressBytes::from(a)),
+                Err(e) => {
+                    tracing::warn!(error = %e, "Failed to parse address");
+                    None
+                }
+            }),
         )
         .await
     {
