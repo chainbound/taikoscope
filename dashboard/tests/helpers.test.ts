@@ -18,8 +18,8 @@ const metrics = createMetrics({
 });
 
 const results = [
-  { badRequest: false, data: null },
-  { badRequest: true, data: null },
+  { badRequest: false, data: null, error: null },
+  { badRequest: true, data: null, error: null },
 ];
 
 const metricsAllNull = createMetrics({
@@ -70,7 +70,9 @@ describe('helpers', () => {
 
   it('detects bad requests', () => {
     expect(hasBadRequest(results)).toBe(true);
-    expect(hasBadRequest([{ badRequest: false, data: null }])).toBe(false);
+    expect(
+      hasBadRequest([{ badRequest: false, data: null, error: null }]),
+    ).toBe(false);
   });
 
   it('handles null metrics', () => {
@@ -95,8 +97,8 @@ describe('helpers', () => {
   it('handles all successful requests', () => {
     expect(
       hasBadRequest([
-        { badRequest: false, data: null },
-        { badRequest: false, data: null },
+        { badRequest: false, data: null, error: null },
+        { badRequest: false, data: null, error: null },
       ]),
     ).toBe(false);
   });
