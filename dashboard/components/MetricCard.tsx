@@ -39,7 +39,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
         )}
       </div>
       <p
-        className={`mt-1 font-semibold text-gray-900 ${isAddress ? 'text-base sm:text-lg break-all' : `text-3xl${isShortValue ? '' : ' whitespace-nowrap overflow-hidden text-ellipsis'}`}`}
+        className={`mt-1 font-semibold text-gray-900 ${isAddress ? 'text-base sm:text-lg break-all' : `text-2xl${isShortValue ? '' : ' whitespace-nowrap overflow-hidden text-ellipsis'}`}`}
       >
         {value}
       </p>
