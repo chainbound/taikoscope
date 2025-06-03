@@ -25,7 +25,17 @@ describe('MetricCard', () => {
       React.createElement(MetricCard, { title: 'Blocks', value: '42' }),
     );
     expect(htmlNormal.includes('min-w-0 w-full')).toBe(false);
-    expect(htmlNormal.includes('text-3xl whitespace-nowrap overflow-hidden text-ellipsis')).toBe(true);
+    expect(htmlNormal.includes('text-3xl')).toBe(true);
+    expect(htmlNormal.includes('whitespace-nowrap')).toBe(false);
     expect(htmlNormal.includes('42')).toBe(true);
+  });
+
+  it('truncates long values with ellipsis', () => {
+    const longValue = 'Chainbound extremely long name';
+    const html = renderToStaticMarkup(
+      React.createElement(MetricCard, { title: 'Current', value: longValue }),
+    );
+    expect(html.includes('whitespace-nowrap')).toBe(true);
+    expect(html.includes('overflow-hidden')).toBe(true);
   });
 });
