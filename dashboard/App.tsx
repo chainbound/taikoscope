@@ -129,19 +129,16 @@ const App: React.FC = () => {
     setSelectedSequencer(seq ?? null);
   }, [searchParams]);
 
-  const handleSequencerChange = useCallback(
-    (seq: string | null) => {
-      setSelectedSequencer(seq);
-      const url = new URL(window.location.href);
-      if (seq) {
-        url.searchParams.set('sequencer', seq);
-      } else {
-        url.searchParams.delete('sequencer');
-      }
-      window.history.pushState(null, '', url);
-    },
-    [],
-  );
+  const handleSequencerChange = useCallback((seq: string | null) => {
+    setSelectedSequencer(seq);
+    const url = new URL(window.location.href);
+    if (seq) {
+      url.searchParams.set('sequencer', seq);
+    } else {
+      url.searchParams.delete('sequencer');
+    }
+    window.history.pushState(null, '', url);
+  }, []);
 
   useEffect(() => {
     let pollId: NodeJS.Timeout | null = null;
@@ -502,6 +499,11 @@ const App: React.FC = () => {
         extraTable={tableView.extraTable}
         timeRange={tableView.timeRange}
         onTimeRangeChange={tableView.onTimeRangeChange}
+        refreshRate={refreshRate}
+        onRefreshRateChange={setRefreshRate}
+        sequencers={sequencerList}
+        selectedSequencer={selectedSequencer}
+        onSequencerChange={handleSequencerChange}
         chart={tableView.chart}
       />
     );
@@ -584,8 +586,9 @@ const App: React.FC = () => {
                                 ? () => openGenericTable('gateways')
                                 : typeof m.title === 'string' &&
                                     m.title === 'Batch Posting Cadence'
-                                  ? () => openGenericTable('batch-posting-cadence')
-                                : undefined
+                                  ? () =>
+                                      openGenericTable('batch-posting-cadence')
+                                  : undefined
                     }
                   />
                 ))}
