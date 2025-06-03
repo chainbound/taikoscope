@@ -13,201 +13,205 @@ use serde::Serialize;
 use utoipa::ToSchema;
 
 /// Timestamp of the most recent L2 block.
-#[allow(missing_docs)]
 #[derive(Debug, Serialize, ToSchema)]
 pub struct L2HeadResponse {
+    /// Time when the last L2 block was produced.
     pub last_l2_head_time: Option<String>,
 }
 
 /// Timestamp of the most recent L1 block.
-#[allow(missing_docs)]
 #[derive(Debug, Serialize, ToSchema)]
 pub struct L1HeadResponse {
+    /// Time when the last L1 block was produced.
     pub last_l1_head_time: Option<String>,
 }
 
 /// List of validator slashing events.
-#[allow(missing_docs)]
 #[derive(Debug, Serialize, ToSchema)]
 pub struct SlashingEventsResponse {
+    /// List of slashing event rows.
     pub events: Vec<SlashingEventRow>,
 }
 
 /// Forced inclusion events that were processed.
-#[allow(missing_docs)]
 #[derive(Debug, Serialize, ToSchema)]
 pub struct ForcedInclusionEventsResponse {
+    /// Forced inclusion events that were processed.
     pub events: Vec<ForcedInclusionProcessedRow>,
 }
 
 /// Detected L2 reorg events.
-#[allow(missing_docs)]
 #[derive(Debug, Serialize, ToSchema)]
 pub struct ReorgEventsResponse {
+    /// Detected L2 reorg events.
     pub events: Vec<L2ReorgRow>,
 }
 
 /// Gateways that submitted batches in the requested range.
-#[allow(missing_docs)]
 #[derive(Debug, Serialize, ToSchema)]
 pub struct ActiveGatewaysResponse {
+    /// Gateways that submitted batches in the requested range.
     pub gateways: Vec<String>,
 }
 
 /// Current operator address.
-#[allow(missing_docs)]
 #[derive(Debug, Serialize, ToSchema)]
 pub struct CurrentOperatorResponse {
+    /// Current operator address, if any.
     pub operator: Option<String>,
 }
 
 /// Address of the next operator.
-#[allow(missing_docs)]
 #[derive(Debug, Serialize, ToSchema)]
 pub struct NextOperatorResponse {
+    /// Address of the next operator, if configured.
     pub operator: Option<String>,
 }
 
 /// Average time in milliseconds to prove a batch.
-#[allow(missing_docs)]
 #[derive(Debug, Serialize, ToSchema)]
 pub struct AvgProveTimeResponse {
+    /// Average time in milliseconds to prove a batch.
     pub avg_prove_time_ms: Option<u64>,
 }
 
 /// Average time in milliseconds to verify a batch.
-#[allow(missing_docs)]
 #[derive(Debug, Serialize, ToSchema)]
 pub struct AvgVerifyTimeResponse {
+    /// Average time in milliseconds to verify a batch.
     pub avg_verify_time_ms: Option<u64>,
 }
 
 /// Average delay between L2 blocks in milliseconds.
-#[allow(missing_docs)]
 #[derive(Debug, Serialize, ToSchema)]
 pub struct L2BlockCadenceResponse {
+    /// Average delay between L2 blocks in milliseconds.
     pub l2_block_cadence_ms: Option<u64>,
 }
 
 /// Average delay between batch submissions.
-#[allow(missing_docs)]
 #[derive(Debug, Serialize, ToSchema)]
 pub struct BatchPostingCadenceResponse {
+    /// Average delay between batch submissions in milliseconds.
     pub batch_posting_cadence_ms: Option<u64>,
 }
 
 /// Average L2 transactions per second.
-#[allow(missing_docs)]
 #[derive(Debug, Serialize, ToSchema)]
 pub struct AvgL2TpsResponse {
+    /// Average L2 transactions per second.
     pub avg_tps: Option<f64>,
 }
 
 /// Time to prove individual batches.
-#[allow(missing_docs)]
 #[derive(Debug, Serialize, ToSchema)]
 pub struct ProveTimesResponse {
+    /// Time to prove individual batches.
     pub batches: Vec<BatchProveTimeRow>,
 }
 
 /// Time to verify individual batches.
-#[allow(missing_docs)]
 #[derive(Debug, Serialize, ToSchema)]
 pub struct VerifyTimesResponse {
+    /// Time to verify individual batches.
     pub batches: Vec<BatchVerifyTimeRow>,
 }
 
 /// L1 block numbers grouped by minute.
-#[allow(missing_docs)]
 #[derive(Debug, Serialize, ToSchema)]
 pub struct L1BlockTimesResponse {
+    /// L1 block numbers grouped by minute.
     pub blocks: Vec<L1BlockTimeRow>,
 }
 
 /// Timestamp data for L2 blocks.
-#[allow(missing_docs)]
 #[derive(Debug, Serialize, ToSchema)]
 pub struct L2BlockTimesResponse {
+    /// Timestamp data for L2 blocks.
     pub blocks: Vec<L2BlockTimeRow>,
 }
 
 /// Gas usage for each L2 block.
-#[allow(missing_docs)]
 #[derive(Debug, Serialize, ToSchema)]
 pub struct L2GasUsedResponse {
+    /// Gas usage for each L2 block.
     pub blocks: Vec<L2GasUsedRow>,
 }
 
 /// Number of blocks produced by a sequencer.
-#[allow(missing_docs)]
 #[derive(Debug, Serialize, ToSchema)]
 pub struct SequencerDistributionItem {
+    /// Sequencer address.
     pub address: String,
+    /// Number of blocks produced by the sequencer.
     pub blocks: u64,
 }
 
 /// Distribution of blocks across sequencers.
-#[allow(missing_docs)]
 #[derive(Debug, Serialize, ToSchema)]
 pub struct SequencerDistributionResponse {
+    /// Distribution of blocks across sequencers.
     pub sequencers: Vec<SequencerDistributionItem>,
 }
 
 /// Blocks proposed by a sequencer.
-#[allow(missing_docs)]
 #[derive(Debug, Serialize, ToSchema)]
 pub struct SequencerBlocksItem {
+    /// Sequencer address.
     pub address: String,
+    /// Blocks proposed by the sequencer.
     pub blocks: Vec<u64>,
 }
 
 /// Mapping of sequencers to their blocks.
-#[allow(missing_docs)]
 #[derive(Debug, Serialize, ToSchema)]
 pub struct SequencerBlocksResponse {
+    /// Mapping of sequencers to their blocks.
     pub sequencers: Vec<SequencerBlocksItem>,
 }
 
 /// Transaction count for a block and its sequencer.
-#[allow(missing_docs)]
 #[derive(Debug, Serialize, ToSchema)]
 pub struct BlockTransactionsItem {
+    /// Block number.
     pub block: u64,
+    /// Number of transactions in the block.
     pub txs: u32,
+    /// Address of the sequencer that proposed the block.
     pub sequencer: String,
 }
 
 /// Collection of block transaction counts.
-#[allow(missing_docs)]
 #[derive(Debug, Serialize, ToSchema)]
 pub struct BlockTransactionsResponse {
+    /// Collection of block transaction counts.
     pub blocks: Vec<BlockTransactionsItem>,
 }
 
 /// Blob count per batch.
-#[allow(missing_docs)]
 #[derive(Debug, Serialize, ToSchema)]
 pub struct BatchBlobsResponse {
+    /// Blob count per batch.
     pub batches: Vec<BatchBlobCountRow>,
 }
 
 /// Average number of blobs per batch.
-#[allow(missing_docs)]
 #[derive(Debug, Serialize, ToSchema)]
 pub struct AvgBlobsPerBatchResponse {
+    /// Average number of blobs per batch.
     pub avg_blobs: Option<f64>,
 }
 
 /// Number of the most recent L2 block.
-#[allow(missing_docs)]
 #[derive(Debug, Serialize, ToSchema)]
 pub struct L2HeadBlockResponse {
+    /// Number of the most recent L2 block.
     pub l2_head_block: Option<u64>,
 }
 
 /// Number of the most recent L1 block.
-#[allow(missing_docs)]
 #[derive(Debug, Serialize, ToSchema)]
 pub struct L1HeadBlockResponse {
+    /// Number of the most recent L1 block.
     pub l1_head_block: Option<u64>,
 }
