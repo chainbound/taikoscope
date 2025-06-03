@@ -30,6 +30,7 @@ describe('apiService', () => {
     globalThis.fetch = mockFetch({ avg_prove_time_ms: 42 });
     const prove = await fetchAvgProveTime('1h');
     expect(prove.badRequest).toBe(false);
+    expect(prove.error).toBeNull();
     expect(prove.data).toBe(42);
   });
 
@@ -37,6 +38,7 @@ describe('apiService', () => {
     globalThis.fetch = mockFetch({}, 400, false);
     const badProve = await fetchAvgProveTime('1h');
     expect(badProve.badRequest).toBe(true);
+    expect(badProve.error).toStrictEqual({});
     expect(badProve.data).toBeNull();
   });
 
@@ -60,6 +62,7 @@ describe('apiService', () => {
       ],
     });
     const blockTimes = await fetchL2BlockTimes('1h');
+    expect(blockTimes.error).toBeNull();
     expect(blockTimes.data).toStrictEqual([{ value: 2, timestamp: 20 }]);
   });
 
@@ -68,6 +71,7 @@ describe('apiService', () => {
       blocks: [{ block: 1, txs: 3, sequencer: '0xabc' }],
     });
     const txs = await fetchBlockTransactions('1h');
+    expect(txs.error).toBeNull();
     expect(txs.data).toStrictEqual([{ block: 1, txs: 3, sequencer: '0xabc' }]);
   });
 
@@ -75,6 +79,7 @@ describe('apiService', () => {
     globalThis.fetch = mockFetch({ avg_tps: 1.5 });
     const res = await fetchAvgL2Tps('1h');
     expect(res.badRequest).toBe(false);
+    expect(res.error).toBeNull();
     expect(res.data).toBe(1.5);
   });
 
@@ -82,6 +87,7 @@ describe('apiService', () => {
     globalThis.fetch = mockFetch({}, 400, false);
     const res = await fetchAvgL2Tps('1h');
     expect(res.badRequest).toBe(true);
+    expect(res.error).toStrictEqual({});
     expect(res.data).toBeNull();
   });
 });

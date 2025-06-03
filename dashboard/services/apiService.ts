@@ -1,5 +1,6 @@
 const metaEnv = import.meta.env as ImportMetaEnv;
-export const API_BASE: string = (metaEnv.VITE_API_BASE ?? metaEnv.API_BASE ?? '') + '/v1';
+export const API_BASE: string =
+  (metaEnv.VITE_API_BASE ?? metaEnv.API_BASE ?? '') + '/v1';
 
 import { getSequencerName } from '../sequencerConfig';
 
@@ -9,20 +10,28 @@ import type {
   L2ReorgEvent,
   SlashingEvent,
   ForcedInclusionEvent,
+  ErrorResponse,
 } from '../types';
 
 export interface RequestResult<T> {
   data: T | null;
   badRequest: boolean;
+  error: ErrorResponse | null;
 }
 
 const fetchJson = async <T>(url: string): Promise<RequestResult<T>> => {
   try {
     const res = await fetch(url);
     if (!res.ok) {
-      return { data: null, badRequest: res.status === 400 };
+      let error: ErrorResponse | null = null;
+      try {
+        error = (await res.json()) as ErrorResponse;
+      } catch {
+        // ignore JSON parse errors
+      }
+      return { data: null, badRequest: res.status === 400, error };
     }
-    return { data: (await res.json()) as T, badRequest: false };
+    return { data: (await res.json()) as T, badRequest: false, error: null };
   } catch (error: unknown) {
     console.error(`Failed to fetch ${url}`, error);
     throw error;
@@ -42,6 +51,7 @@ export const fetchAvgProveTime = async (
   return {
     data: res.data?.avg_prove_time_ms ?? null,
     badRequest: res.badRequest,
+    error: res.error,
   };
 };
 
@@ -53,6 +63,7 @@ export const fetchAvgVerifyTime = async (
   return {
     data: res.data?.avg_verify_time_ms ?? null,
     badRequest: res.badRequest,
+    error: res.error,
   };
 };
 
@@ -65,6 +76,7 @@ export const fetchL2BlockCadence = async (
   return {
     data: res.data?.l2_block_cadence_ms ?? null,
     badRequest: res.badRequest,
+    error: res.error,
   };
 };
 
@@ -76,6 +88,7 @@ export const fetchBatchPostingCadence = async (
   return {
     data: res.data?.batch_posting_cadence_ms ?? null,
     badRequest: res.badRequest,
+    error: res.error,
   };
 };
 
@@ -87,6 +100,7 @@ export const fetchActiveGateways = async (
   return {
     data: res.data ? res.data.gateways.length : null,
     badRequest: res.badRequest,
+    error: res.error,
   };
 };
 
@@ -95,7 +109,11 @@ export const fetchActiveGatewayAddresses = async (
 ): Promise<RequestResult<string[]>> => {
   const url = `${API_BASE}/active-gateways?range=${range}`;
   const res = await fetchJson<{ gateways: string[] }>(url);
-  return { data: res.data?.gateways ?? null, badRequest: res.badRequest };
+  return {
+    data: res.data?.gateways ?? null,
+    badRequest: res.badRequest,
+    error: res.error,
+  };
 };
 
 export const fetchL2Reorgs = async (
@@ -106,6 +124,7 @@ export const fetchL2Reorgs = async (
   return {
     data: res.data ? res.data.events.length : null,
     badRequest: res.badRequest,
+    error: res.error,
   };
 };
 
@@ -117,6 +136,7 @@ export const fetchL2ReorgEvents = async (
   return {
     data: res.data ? res.data.events : null,
     badRequest: res.badRequest,
+    error: res.error,
   };
 };
 
@@ -128,6 +148,7 @@ export const fetchSlashingEventCount = async (
   return {
     data: res.data ? res.data.events.length : null,
     badRequest: res.badRequest,
+    error: res.error,
   };
 };
 
@@ -139,6 +160,7 @@ export const fetchForcedInclusionCount = async (
   return {
     data: res.data ? res.data.events.length : null,
     badRequest: res.badRequest,
+    error: res.error,
   };
 };
 
@@ -150,6 +172,7 @@ export const fetchSlashingEvents = async (
   return {
     data: res.data ? res.data.events : null,
     badRequest: res.badRequest,
+    error: res.error,
   };
 };
 
@@ -161,6 +184,7 @@ export const fetchForcedInclusionEvents = async (
   return {
     data: res.data ? res.data.events : null,
     badRequest: res.badRequest,
+    error: res.error,
   };
 };
 
@@ -173,7 +197,7 @@ export const fetchL2HeadBlock = async (
     res.data && res.data.blocks.length > 0
       ? res.data.blocks[res.data.blocks.length - 1].l2_block_number
       : null;
-  return { data: value, badRequest: res.badRequest };
+  return { data: value, badRequest: res.badRequest, error: res.error };
 };
 
 export const fetchL1HeadBlock = async (
@@ -185,7 +209,7 @@ export const fetchL1HeadBlock = async (
     res.data && res.data.blocks.length > 0
       ? res.data.blocks[res.data.blocks.length - 1].block_number
       : null;
-  return { data: value, badRequest: res.badRequest };
+  return { data: value, badRequest: res.badRequest, error: res.error };
 };
 
 export const fetchCurrentOperator = async (): Promise<
@@ -193,25 +217,41 @@ export const fetchCurrentOperator = async (): Promise<
 > => {
   const url = `${API_BASE}/current-operator`;
   const res = await fetchJson<{ operator?: string }>(url);
-  return { data: res.data?.operator ?? null, badRequest: res.badRequest };
+  return {
+    data: res.data?.operator ?? null,
+    badRequest: res.badRequest,
+    error: res.error,
+  };
 };
 
 export const fetchNextOperator = async (): Promise<RequestResult<string>> => {
   const url = `${API_BASE}/next-operator`;
   const res = await fetchJson<{ operator?: string }>(url);
-  return { data: res.data?.operator ?? null, badRequest: res.badRequest };
+  return {
+    data: res.data?.operator ?? null,
+    badRequest: res.badRequest,
+    error: res.error,
+  };
 };
 
 export const fetchL2HeadNumber = async (): Promise<RequestResult<number>> => {
   const url = `${API_BASE}/l2-head-block`;
   const res = await fetchJson<{ l2_head_block?: number }>(url);
-  return { data: res.data?.l2_head_block ?? null, badRequest: res.badRequest };
+  return {
+    data: res.data?.l2_head_block ?? null,
+    badRequest: res.badRequest,
+    error: res.error,
+  };
 };
 
 export const fetchL1HeadNumber = async (): Promise<RequestResult<number>> => {
   const url = `${API_BASE}/l1-head-block`;
   const res = await fetchJson<{ l1_head_block?: number }>(url);
-  return { data: res.data?.l1_head_block ?? null, badRequest: res.badRequest };
+  return {
+    data: res.data?.l1_head_block ?? null,
+    badRequest: res.badRequest,
+    error: res.error,
+  };
 };
 
 export const fetchProveTimes = async (
@@ -224,12 +264,13 @@ export const fetchProveTimes = async (
   return {
     data: res.data
       ? res.data.batches.map((b) => ({
-        name: b.batch_id.toString(),
-        value: b.seconds_to_prove,
-        timestamp: 0,
-      }))
+          name: b.batch_id.toString(),
+          value: b.seconds_to_prove,
+          timestamp: 0,
+        }))
       : null,
     badRequest: res.badRequest,
+    error: res.error,
   };
 };
 
@@ -243,12 +284,13 @@ export const fetchVerifyTimes = async (
   return {
     data: res.data
       ? res.data.batches.map((b) => ({
-        name: b.batch_id.toString(),
-        value: b.seconds_to_verify,
-        timestamp: 0,
-      }))
+          name: b.batch_id.toString(),
+          value: b.seconds_to_verify,
+          timestamp: 0,
+        }))
       : null,
     badRequest: res.badRequest,
+    error: res.error,
   };
 };
 
@@ -260,7 +302,7 @@ export const fetchL1BlockTimes = async (
     blocks: { minute: number; block_number: number }[];
   }>(url);
   if (!res.data) {
-    return { data: null, badRequest: res.badRequest };
+    return { data: null, badRequest: res.badRequest, error: res.error };
   }
 
   const blocks = res.data.blocks.map((b) => ({
@@ -282,7 +324,7 @@ export const fetchL1BlockTimes = async (
     })
     .filter((d): d is TimeSeriesData => d !== null);
 
-  return { data, badRequest: res.badRequest };
+  return { data, badRequest: res.badRequest, error: res.error };
 };
 
 export const fetchL2BlockTimes = async (
@@ -294,7 +336,7 @@ export const fetchL2BlockTimes = async (
     blocks: { l2_block_number: number; ms_since_prev_block: number }[];
   }>(url);
   if (!res.data) {
-    return { data: null, badRequest: res.badRequest };
+    return { data: null, badRequest: res.badRequest, error: res.error };
   }
 
   const data = res.data.blocks.slice(1).map(
@@ -304,7 +346,7 @@ export const fetchL2BlockTimes = async (
     }),
   );
 
-  return { data, badRequest: res.badRequest };
+  return { data, badRequest: res.badRequest, error: res.error };
 };
 
 export const fetchL2GasUsed = async (
@@ -316,7 +358,7 @@ export const fetchL2GasUsed = async (
     blocks: { l2_block_number: number; gas_used: number }[];
   }>(url);
   if (!res.data) {
-    return { data: null, badRequest: res.badRequest };
+    return { data: null, badRequest: res.badRequest, error: res.error };
   }
 
   const data = res.data.blocks.slice(1).map(
@@ -326,7 +368,7 @@ export const fetchL2GasUsed = async (
     }),
   );
 
-  return { data, badRequest: res.badRequest };
+  return { data, badRequest: res.badRequest, error: res.error };
 };
 
 export const fetchSequencerDistribution = async (
@@ -339,11 +381,12 @@ export const fetchSequencerDistribution = async (
   return {
     data: res.data
       ? res.data.sequencers.map((s) => ({
-        name: getSequencerName(s.address),
-        value: s.blocks,
-      }))
+          name: getSequencerName(s.address),
+          value: s.blocks,
+        }))
       : null,
     badRequest: res.badRequest,
+    error: res.error,
   };
 };
 
@@ -358,7 +401,7 @@ export const fetchSequencerBlocks = async (
   const blocks = res.data?.sequencers.find(
     (s) => s.address.toLowerCase() === address.toLowerCase(),
   )?.blocks;
-  return { data: blocks ?? null, badRequest: res.badRequest };
+  return { data: blocks ?? null, badRequest: res.badRequest, error: res.error };
 };
 
 export interface BlockTransaction {
@@ -387,11 +430,12 @@ export const fetchBlockTransactions = async (
   return {
     data: res.data?.blocks
       ? res.data.blocks.map((b) => ({
-        ...b,
-        sequencer: getSequencerName(b.sequencer),
-      }))
+          ...b,
+          sequencer: getSequencerName(b.sequencer),
+        }))
       : null,
     badRequest: res.badRequest,
+    error: res.error,
   };
 };
 
@@ -410,11 +454,12 @@ export const fetchBatchBlobCounts = async (
   return {
     data: res.data
       ? res.data.batches.map((b) => ({
-        batch: b.batch_id,
-        blobs: b.blob_count,
-      }))
+          batch: b.batch_id,
+          blobs: b.blob_count,
+        }))
       : null,
     badRequest: res.badRequest,
+    error: res.error,
   };
 };
 
@@ -423,7 +468,11 @@ export const fetchAvgBlobsPerBatch = async (
 ): Promise<RequestResult<number>> => {
   const url = `${API_BASE}/avg-blobs-per-batch?range=${range}`;
   const res = await fetchJson<{ avg_blobs?: number }>(url);
-  return { data: res.data?.avg_blobs ?? null, badRequest: res.badRequest };
+  return {
+    data: res.data?.avg_blobs ?? null,
+    badRequest: res.badRequest,
+    error: res.error,
+  };
 };
 
 export const fetchAvgL2Tps = async (
@@ -434,5 +483,9 @@ export const fetchAvgL2Tps = async (
     `${API_BASE}/avg-l2-tps?range=${range}` +
     (address ? `&address=${address}` : '');
   const res = await fetchJson<{ avg_tps?: number }>(url);
-  return { data: res.data?.avg_tps ?? null, badRequest: res.badRequest };
+  return {
+    data: res.data?.avg_tps ?? null,
+    badRequest: res.badRequest,
+    error: res.error,
+  };
 };

@@ -35,3 +35,10 @@ export interface SlashingEvent {
 export interface ForcedInclusionEvent {
   blob_hash: number[];
 }
+
+export interface ErrorResponse {
+  type: string;
+  title: string;
+  status: number;
+  detail: string;
+}
