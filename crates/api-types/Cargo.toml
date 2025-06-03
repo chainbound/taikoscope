@@ -8,6 +8,7 @@ repository.workspace = true
 
 [dependencies]
 clickhouse_lib = { path = "../clickhouse", package = "clickhouse" }
+axum.workspace = true
 
 serde.workspace = true
 utoipa.workspace = true

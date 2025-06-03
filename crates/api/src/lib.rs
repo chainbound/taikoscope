@@ -102,7 +102,8 @@ pub const DEFAULT_RATE_PERIOD: StdDuration = StdDuration::from_secs(60);
             clickhouse_lib::L1BlockTimeRow,
             clickhouse_lib::L2BlockTimeRow,
             clickhouse_lib::L2GasUsedRow,
-            clickhouse_lib::BatchBlobCountRow
+            clickhouse_lib::BatchBlobCountRow,
+            api_types::ErrorResponse
         )
     ),
     tags(
@@ -1122,7 +1123,13 @@ async fn rate_limit(
     if state.try_acquire(ip) {
         next.run(req).await
     } else {
-        axum::http::StatusCode::TOO_MANY_REQUESTS.into_response()
+        api_types::ErrorResponse::new(
+            "rate-limit-exceeded",
+            "Too Many Requests",
+            axum::http::StatusCode::TOO_MANY_REQUESTS,
+            "Request limit exceeded",
+        )
+        .into_response()
     }
 }
 
@@ -1165,7 +1172,7 @@ mod tests {
     use super::*;
     use axum::{
         body::{self, Body},
-        http::Request,
+        http::{Request, StatusCode},
     };
     use chrono::{TimeZone, Utc};
     use clickhouse::{
@@ -1174,6 +1181,7 @@ mod tests {
     };
     use serde::Serialize;
     use serde_json::{Value, json};
+    use std::time::Duration as StdDuration;
     use tower::util::ServiceExt;
     use url::Url;
 
@@ -1869,5 +1877,32 @@ mod tests {
         if let Some(components) = &openapi.components {
             assert!(!components.schemas.is_empty(), "OpenAPI spec should have schemas defined");
         }
+    }
+
+    #[tokio::test]
+    async fn rate_limit_error_response() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(vec![MaxRow { block_ts: 42u64 }]));
+        let url = Url::parse(mock.url()).unwrap();
+        let client =
+            ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
+        let state = ApiState::new(client, 1, StdDuration::from_secs(60));
+        let app = router(state);
+
+        let _ = app
+            .clone()
+            .oneshot(Request::builder().uri("/l2-head").body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+
+        let resp = app
+            .oneshot(Request::builder().uri("/l2-head").body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+
+        assert_eq!(resp.status(), StatusCode::TOO_MANY_REQUESTS);
+        let bytes = body::to_bytes(resp.into_body(), usize::MAX).await.unwrap();
+        let err: api_types::ErrorResponse = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(err.r#type, "rate-limit-exceeded");
     }
 }
