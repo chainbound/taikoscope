@@ -1,6 +1,6 @@
 //! Thin HTTP API for accessing `ClickHouse` data
 
-use alloy::primitives::Address;
+use alloy_primitives::Address;
 use api_types::*;
 use async_stream::stream;
 use axum::{
