@@ -1172,14 +1172,13 @@ mod tests {
     use super::*;
     use axum::{
         body::{self, Body},
-        http::Request,
+        http::{Request, StatusCode},
     };
     use chrono::{TimeZone, Utc};
     use clickhouse::{
         Row,
         test::{Mock, handlers},
     };
-    use http::StatusCode;
     use serde::Serialize;
     use serde_json::{Value, json};
     use std::time::Duration as StdDuration;
@@ -1883,6 +1882,7 @@ mod tests {
     #[tokio::test]
     async fn rate_limit_error_response() {
         let mock = Mock::new();
+        mock.add(handlers::provide(vec![MaxRow { block_ts: 42u64 }]));
         let url = Url::parse(mock.url()).unwrap();
         let client =
             ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();

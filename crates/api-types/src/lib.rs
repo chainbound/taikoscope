@@ -10,7 +10,7 @@ use clickhouse_lib::{
 };
 
 use axum::{Json, http::StatusCode, response::IntoResponse};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 /// Error response following a condensed version of RFC 7807.
@@ -18,7 +18,7 @@ use utoipa::ToSchema;
 /// This structure is returned when API calls fail and provides
 /// machine readable details about the error. The `type` field uses a
 /// short identifier instead of a full URL.
-#[derive(Debug, Serialize, ToSchema)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct ErrorResponse {
     /// Identifier for the error type.
     #[serde(rename = "type")]
