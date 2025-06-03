@@ -109,7 +109,7 @@ export const GasUsedChart: React.FC<GasUsedChartProps> = ({
           name="Gas Used"
         />
         <Brush
-          dataKey="value"
+          dataKey="timestamp"
           height={20}
           stroke={lineColor}
           startIndex={brushRange.startIndex}
