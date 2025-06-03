@@ -568,6 +568,13 @@ const App: React.FC = () => {
                     key={`${group}-${idx}`}
                     title={m.title}
                     value={m.value}
+                    valueClassName={
+                      typeof m.title === 'string' &&
+                      (m.title === 'Current Sequencer' ||
+                        m.title === 'Next Sequencer')
+                        ? 'text-2xl'
+                        : undefined
+                    }
                     onMore={
                       typeof m.title === 'string' && m.title === 'Avg. L2 TPS'
                         ? () => openTpsTable()

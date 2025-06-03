@@ -49,4 +49,15 @@ describe('MetricCard', () => {
       expect(html.includes('overflow-hidden')).toBe(false);
     }
   });
+
+  it('allows overriding value class', () => {
+    const html = renderToStaticMarkup(
+      React.createElement(MetricCard, {
+        title: 'Current',
+        value: '42',
+        valueClassName: 'text-2xl',
+      }),
+    );
+    expect(html.includes('text-2xl')).toBe(true);
+  });
 });

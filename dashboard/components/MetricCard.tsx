@@ -6,6 +6,7 @@ interface MetricCardProps {
   unit?: string; // Unit is passed but not displayed in the title directly as (unit)
   description?: React.ReactNode;
   className?: string;
+  valueClassName?: string;
   onMore?: () => void;
 }
 
@@ -14,6 +15,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
   value,
   description,
   className,
+  valueClassName,
   onMore,
 }) => {
   // Check if value looks like an Ethereum address (0x followed by 40 hex characters)
@@ -37,7 +39,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
         )}
       </div>
       <p
-        className={`mt-1 font-semibold text-gray-900 ${isAddress ? 'text-base sm:text-lg break-all' : `text-3xl${isShortValue ? '' : ' whitespace-nowrap overflow-hidden text-ellipsis'}`}`}
+        className={`mt-1 font-semibold text-gray-900 ${isAddress ? 'text-base sm:text-lg break-all' : `text-3xl${isShortValue ? '' : ' whitespace-nowrap overflow-hidden text-ellipsis'}`} ${valueClassName ?? ''}`}
       >
         {value}
       </p>
