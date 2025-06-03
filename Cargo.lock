@@ -3803,11 +3803,17 @@ version = "0.1.0"
 dependencies = [
  "api",
  "axum",
+ "chrono",
  "clickhouse 0.1.0",
+ "clickhouse 0.13.3",
  "eyre",
+ "serde",
+ "serde_json",
  "tokio",
+ "tower",
  "tower-http",
  "tracing",
+ "url",
 ]
 
 [[package]]
