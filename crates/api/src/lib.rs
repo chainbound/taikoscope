@@ -17,6 +17,7 @@ use chrono::{Duration as ChronoDuration, Utc};
 #[cfg(test)]
 use clickhouse_lib::HashBytes;
 use clickhouse_lib::{AddressBytes, ClickhouseReader};
+use dashmap::DashMap;
 use futures::stream::Stream;
 use hex::encode;
 use runtime::rate_limiter::RateLimiter;
@@ -116,16 +117,35 @@ pub const DEFAULT_RATE_PERIOD: StdDuration = StdDuration::from_secs(60);
 pub struct ApiDoc;
 
 /// Shared state for API handlers.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct ApiState {
     client: ClickhouseReader,
-    limiter: RateLimiter,
+    limiters: std::sync::Arc<DashMap<std::net::IpAddr, RateLimiter>>,
+    max_requests: u64,
+    rate_period: StdDuration,
+}
+
+impl std::fmt::Debug for ApiState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ApiState")
+            .field("max_requests", &self.max_requests)
+            .field("rate_period", &self.rate_period)
+            .finish_non_exhaustive()
+    }
 }
 
 impl ApiState {
     /// Create a new [`ApiState`].
     pub fn new(client: ClickhouseReader, max_requests: u64, rate_period: StdDuration) -> Self {
-        Self { client, limiter: RateLimiter::new(max_requests, rate_period) }
+        Self { client, limiters: std::sync::Arc::new(DashMap::new()), max_requests, rate_period }
+    }
+
+    fn try_acquire(&self, ip: std::net::IpAddr) -> bool {
+        self.limiters
+            .entry(ip)
+            .or_insert_with(|| RateLimiter::new(self.max_requests, self.rate_period))
+            .value_mut()
+            .try_acquire()
     }
 }
 
@@ -1065,7 +1085,16 @@ async fn rate_limit(
     req: axum::http::Request<axum::body::Body>,
     next: middleware::Next,
 ) -> axum::response::Response {
-    if state.limiter.try_acquire() {
+    use axum::extract::connect_info::ConnectInfo;
+    use std::net::{IpAddr, Ipv4Addr};
+
+    let ip = req
+        .extensions()
+        .get::<ConnectInfo<std::net::SocketAddr>>()
+        .map(|c| c.0.ip())
+        .unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED));
+
+    if state.try_acquire(ip) {
         next.run(req).await
     } else {
         axum::http::StatusCode::TOO_MANY_REQUESTS.into_response()

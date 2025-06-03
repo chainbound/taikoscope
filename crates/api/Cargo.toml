@@ -22,6 +22,7 @@ serde.workspace = true
 serde_json.workspace = true
 tower-http.workspace = true
 futures.workspace = true
+dashmap.workspace = true
 utoipa.workspace = true
 utoipa-swagger-ui.workspace = true
 

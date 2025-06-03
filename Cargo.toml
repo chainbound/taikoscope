@@ -45,6 +45,7 @@ tracing-subscriber = { version = "0.3.19", features = ["env-filter", "fmt"] }
 url = { version = "2.5.4", features = ["serde"] }
 tower-http = { version = "0.5.2", features = ["cors", "trace"] }
 tower = "0.5.2"
+dashmap = "6.1"
 utoipa = { version = "5.3", features = ["axum_extras"] }
 utoipa-swagger-ui = { version = "8.1", features = ["axum"] }
 
