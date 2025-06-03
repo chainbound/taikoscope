@@ -1,0 +1,15 @@
+[package]
+name = "generate-openapi-spec"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+api = { path = "../../crates/api" }
+
+serde_json.workspace = true
+utoipa.workspace = true
+
+[lints]
+workspace = true

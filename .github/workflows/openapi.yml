@@ -1,0 +1,49 @@
+name: OpenAPI
+
+on:
+  push:
+    branches:
+      - unstable
+      - main
+    paths:
+      - 'crates/api/**'
+      - 'crates/api-types/**'
+      - '.github/workflows/openapi.yml'
+  pull_request:
+    paths:
+      - 'crates/api/**'
+      - 'crates/api-types/**'
+      - '.github/workflows/openapi.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  openapi-validation:
+    name: validate openapi spec
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.87.0
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+      - name: Generate OpenAPI spec
+        run: |
+          cargo run --bin generate-openapi-spec --quiet > openapi.json
+      - name: Validate OpenAPI spec
+        uses: char0n/swagger-editor-validate@v1
+        with:
+          definition-file: openapi.json
+      - name: Upload OpenAPI spec
+        uses: actions/upload-artifact@v4
+        with:
+          name: openapi-spec
+          path: openapi.json

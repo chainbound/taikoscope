@@ -1765,4 +1765,59 @@ mod tests {
         let body = send_request(app, "/blobs-per-batch?range=1h").await;
         assert_eq!(body, json!({ "batches": [ { "batch_id": 1, "blob_count": 3 } ] }));
     }
+
+    #[test]
+    fn openapi_spec_is_valid() {
+        let openapi = ApiDoc::openapi();
+
+        // Basic structural validation
+        assert_eq!(openapi.info.title, "Taikoscope API");
+        assert_eq!(openapi.info.version, "0.1.0");
+        assert!(!openapi.paths.paths.is_empty(), "OpenAPI spec should have paths defined");
+
+        // Verify all expected endpoints are documented
+        let expected_paths = [
+            "/l2-head",
+            "/l1-head",
+            "/l2-head-block",
+            "/l1-head-block",
+            "/slashings",
+            "/forced-inclusions",
+            "/reorgs",
+            "/active-gateways",
+            "/current-operator",
+            "/next-operator",
+            "/avg-prove-time",
+            "/avg-verify-time",
+            "/l2-block-cadence",
+            "/batch-posting-cadence",
+            "/avg-l2-tps",
+            "/avg-blobs-per-batch",
+            "/blobs-per-batch",
+            "/prove-times",
+            "/verify-times",
+            "/l1-block-times",
+            "/l2-block-times",
+            "/l2-gas-used",
+            "/sequencer-distribution",
+            "/sequencer-blocks",
+            "/block-transactions",
+        ];
+
+        for path in expected_paths {
+            assert!(openapi.paths.paths.contains_key(path), "OpenAPI spec missing path: {path}");
+        }
+
+        // Verify all paths have GET operations
+        for (path, path_item) in &openapi.paths.paths {
+            assert!(path_item.get.is_some(), "Path {path} should have GET operation defined");
+        }
+
+        // Verify essential components are defined
+        assert!(openapi.components.is_some(), "OpenAPI spec should have components defined");
+
+        if let Some(components) = &openapi.components {
+            assert!(!components.schemas.is_empty(), "OpenAPI spec should have schemas defined");
+        }
+    }
 }
