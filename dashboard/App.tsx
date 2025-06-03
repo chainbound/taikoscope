@@ -12,6 +12,11 @@ const SequencerPieChart = lazy(() =>
     default: m.SequencerPieChart,
   })),
 );
+const SequencerBarChart = lazy(() =>
+  import('./components/SequencerBarChart').then((m) => ({
+    default: m.SequencerBarChart,
+  })),
+);
 const BlockTimeChart = lazy(() =>
   import('./components/BlockTimeChart').then((m) => ({
     default: m.BlockTimeChart,
@@ -550,6 +555,18 @@ const App: React.FC = () => {
             loading={loadingMetrics}
           >
             <SequencerPieChart
+              key={timeRange}
+              data={sequencerDistribution.filter(
+                (d) => !selectedSequencer || d.name === selectedSequencer,
+              )}
+            />
+          </ChartCard>
+          <ChartCard
+            title="Blocks Proposed per Sequencer"
+            onMore={() => openSequencerDistributionTable(timeRange, 0)}
+            loading={loadingMetrics}
+          >
+            <SequencerBarChart
               key={timeRange}
               data={sequencerDistribution.filter(
                 (d) => !selectedSequencer || d.name === selectedSequencer,

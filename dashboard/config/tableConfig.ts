@@ -198,6 +198,12 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
       { key: 'value', label: 'Blocks' }
     ],
     mapData: (data) => data as Record<string, string | number>[],
+    chart: (data) => {
+      const SequencerBarChart = React.lazy(() =>
+        import('../components/SequencerBarChart').then((m) => ({ default: m.SequencerBarChart }))
+      );
+      return React.createElement(SequencerBarChart, { data });
+    },
     supportsPagination: true,
     urlKey: 'sequencer-dist'
   }
