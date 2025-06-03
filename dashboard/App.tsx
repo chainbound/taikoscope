@@ -76,9 +76,10 @@ import {
 } from './services/apiService';
 
 const App: React.FC = () => {
+  const searchParams = useSearchParams();
   const [timeRange, setTimeRange] = useState<TimeRange>('1h');
   const [selectedSequencer, setSelectedSequencer] = useState<string | null>(
-    null,
+    searchParams.get('sequencer'),
   );
   const [metrics, setMetrics] = useState<MetricData[]>([]);
   const [loadingMetrics, setLoadingMetrics] = useState(true);
@@ -121,6 +122,25 @@ const App: React.FC = () => {
     selectedSequencer,
     blockTxData,
     l2BlockTimeData,
+  );
+
+  useEffect(() => {
+    const seq = searchParams.get('sequencer');
+    setSelectedSequencer(seq ?? null);
+  }, [searchParams]);
+
+  const handleSequencerChange = useCallback(
+    (seq: string | null) => {
+      setSelectedSequencer(seq);
+      const url = new URL(window.location.href);
+      if (seq) {
+        url.searchParams.set('sequencer', seq);
+      } else {
+        url.searchParams.delete('sequencer');
+      }
+      window.history.pushState(null, '', url);
+    },
+    [],
   );
 
   useEffect(() => {
@@ -406,8 +426,6 @@ const App: React.FC = () => {
     [selectedSequencer],
   );
 
-  const searchParams = useSearchParams();
-
   const handleRouteChange = useCallback(() => {
     const params = searchParams;
     if (params.get('view') !== 'table') {
@@ -497,7 +515,7 @@ const App: React.FC = () => {
         onManualRefresh={handleManualRefresh}
         sequencers={sequencerList}
         selectedSequencer={selectedSequencer}
-        onSequencerChange={setSelectedSequencer}
+        onSequencerChange={handleSequencerChange}
       />
 
       {errorMessage && (
