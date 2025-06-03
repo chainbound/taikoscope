@@ -6,17 +6,17 @@ use clickhouse::{
 };
 use reqwest::StatusCode;
 use serde::Serialize;
-use tokio::time::sleep;
+use tokio::{
+    net::TcpStream,
+    time::{Instant, sleep},
+};
 use url::Url;
 
 use api::{ApiState, DEFAULT_MAX_REQUESTS, DEFAULT_RATE_PERIOD};
-use server::{router, API_VERSION};
-use axum::{
-    serve,
-    extract::connect_info::IntoMakeServiceWithConnectInfo,
-};
-use tokio::net::TcpListener;
+use axum::{extract::connect_info::IntoMakeServiceWithConnectInfo, serve};
 use clickhouse_lib::ClickhouseReader;
+use server::{API_VERSION, router};
+use tokio::net::TcpListener;
 
 #[derive(Serialize, Row)]
 struct MaxRow {
@@ -28,11 +28,22 @@ async fn spawn_server(client: ClickhouseReader) -> (SocketAddr, tokio::task::Joi
     let app = router(state, vec![]);
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
-    let handle = tokio::spawn(serve(
-        listener,
-        app.into_make_service_with_connect_info::<SocketAddr>(),
-    ));
+    let handle =
+        tokio::spawn(serve(listener, app.into_make_service_with_connect_info::<SocketAddr>()));
     (addr, handle)
+}
+
+async fn wait_for_server(addr: SocketAddr) {
+    let start = Instant::now();
+    loop {
+        if TcpStream::connect(addr).await.is_ok() {
+            break;
+        }
+        if start.elapsed() > Duration::from_secs(5) {
+            panic!("server did not start in time");
+        }
+        sleep(Duration::from_millis(10)).await;
+    }
 }
 
 #[tokio::test]
@@ -46,8 +57,7 @@ async fn l2_head_integration() {
         ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
 
     let (addr, server) = spawn_server(client).await;
-
-    sleep(Duration::from_millis(100)).await;
+    wait_for_server(addr).await;
 
     let resp = reqwest::get(format!("http://{addr}/{API_VERSION}/l2-head")).await.unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
@@ -69,8 +79,7 @@ async fn l1_head_integration() {
         ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
 
     let (addr, server) = spawn_server(client).await;
-
-    sleep(Duration::from_millis(100)).await;
+    wait_for_server(addr).await;
 
     let resp = reqwest::get(format!("http://{addr}/{API_VERSION}/l1-head")).await.unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
@@ -96,8 +105,7 @@ async fn l2_head_block_integration() {
         ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
 
     let (addr, server) = spawn_server(client).await;
-
-    sleep(Duration::from_millis(100)).await;
+    wait_for_server(addr).await;
 
     let resp = reqwest::get(format!("http://{addr}/{API_VERSION}/l2-head-block")).await.unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
@@ -118,8 +126,7 @@ async fn sse_l2_head_integration() {
         ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
 
     let (addr, server) = spawn_server(client).await;
-
-    sleep(Duration::from_millis(100)).await;
+    wait_for_server(addr).await;
 
     let resp = reqwest::Client::new()
         .get(format!("http://{addr}/{API_VERSION}/sse/l2-head"))
@@ -145,8 +152,7 @@ async fn sse_l1_head_integration() {
         ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
 
     let (addr, server) = spawn_server(client).await;
-
-    sleep(Duration::from_millis(100)).await;
+    wait_for_server(addr).await;
 
     let resp = reqwest::Client::new()
         .get(format!("http://{addr}/{API_VERSION}/sse/l1-head"))
