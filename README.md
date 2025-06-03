@@ -1,17 +1,19 @@
 # Taikoscope 🔭
 
-Taikoscope is a collection of tools for monitoring the Taiko network. It pulls
-data from on‑chain sources, stores the results in ClickHouse and exposes them
-through a thin HTTP API consumed by the dashboard frontend.
+Taikoscope is a real‑time monitoring and analytics system for the Taiko
+blockchain. It continuously ingests events from Ethereum (L1) and Taiko (L2),
+persists time‑series metrics in ClickHouse and exposes them via a REST API and a
+React dashboard.
 
 ## Table of Contents
 
 1. [Requirements](#requirements)
 2. [Quick Start](#quick-start)
 3. [Environment](#environment)
-4. [Development](#development)
-5. [Deployment](#deployment)
-6. [License](#license)
+4. [Architecture](#architecture)
+5. [Development](#development)
+6. [Deployment](#deployment)
+7. [License](#license)
 
 ## Requirements
 
@@ -24,22 +26,23 @@ through a thin HTTP API consumed by the dashboard frontend.
 ## Quick Start
 
 1. Clone the repository and install dependencies.
-2. Copy `dev.env` and adjust the values for your setup or provide your own env
+2. Run `just install-dashboard` to fetch dashboard packages.
+3. Copy `dev.env` and adjust the values for your setup or provide your own env
    file via the `ENV_FILE` variable.
-3. (Optional) Start ClickHouse and the dashboard via Docker Compose:
+4. (Optional) Start ClickHouse and the dashboard via Docker Compose:
 
    ```bash
    docker compose up
    ```
 
-4. Start the extractor and API server:
+5. Start the extractor and API server:
 
    ```bash
    just dev         # runs the extractor/driver
    just dev-api     # runs the HTTP API
    ```
 
-5. Start the dashboard (optional if not using Docker Compose):
+6. Start the dashboard (optional if not using Docker Compose):
 
    ```bash
    just dev-dashboard
@@ -67,6 +70,33 @@ API_PORT=3000
 RATE_LIMIT_MAX_REQUESTS=1000
 RATE_LIMIT_PERIOD_SECS=60
 ```
+
+These variables map to the configuration structs defined in
+[`crates/config`](crates/config) (`ClickhouseOpts`, `RpcOpts`,
+`TaikoAddressOpts`, `ApiOpts` and `InstatusOpts`).
+
+## Architecture
+
+Taikoscope follows a layered architecture that keeps data ingestion and
+presentation concerns separate:
+
+1. **Driver and Extractor** – subscribe to L1 and L2 chains, process events
+   such as block headers and batch submissions, and write them to ClickHouse
+   via the `ClickhouseWriter`.
+2. **Storage** – a ClickHouse database holds tables like
+   `l1_head_events`, `l2_head_events`, `batches` and `proved_batches`. Reads and
+   writes use dedicated reader and writer clients.
+3. **API Server** – an Axum based service exposing 20+ REST endpoints and
+   Server‑Sent Events. `ApiState` manages database access and IP based rate
+   limiting.
+4. **Dashboard** – a React application that fetches metrics using the API
+   service layer and renders them with lazy loaded charts.
+5. **Monitoring** – background monitors trigger incidents via Instatus when
+   thresholds are exceeded.
+
+Events flow through the system continuously. The driver handles header and
+batch streams, inserts rows into ClickHouse and the API aggregates this data for
+the dashboard. SSE endpoints such as `/sse/l1-head` provide real‑time updates.
 
 ## Development
 
