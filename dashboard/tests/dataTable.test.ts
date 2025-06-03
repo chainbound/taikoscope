@@ -91,4 +91,20 @@ describe('DataTable', () => {
     expect(html.includes('54')).toBe(false);
     expect(html.includes('Next')).toBe(true);
   });
+
+  it('supports custom rows per page', () => {
+    const rows = Array.from({ length: 10 }, (_, i) => ({ a: String(i) }));
+    const html = renderToStaticMarkup(
+      React.createElement(DataTable, {
+        title: 'Custom',
+        columns: [{ key: 'a', label: 'A' }],
+        rows,
+        onBack: () => {},
+        rowsPerPage: 5,
+      }),
+    );
+    expect(html.includes('4')).toBe(true);
+    expect(html.includes('5')).toBe(false);
+    expect(html.includes('Next')).toBe(true);
+  });
 });

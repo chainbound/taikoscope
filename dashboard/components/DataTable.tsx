@@ -3,7 +3,7 @@ import { TimeRange } from '../types';
 import { TimeRangeSelector, RefreshRateInput } from './DashboardHeader';
 import { TAIKO_PINK } from '../theme';
 
-const ROWS_PER_PAGE = 50;
+const DEFAULT_ROWS_PER_PAGE = 50;
 
 interface Column {
   key: string;
@@ -38,6 +38,7 @@ interface DataTableProps {
   refreshRate?: number;
   onRefreshRateChange?: (rate: number) => void;
   chart?: React.ReactNode;
+  rowsPerPage?: number;
 }
 
 export const DataTable: React.FC<DataTableProps> = ({
@@ -54,6 +55,7 @@ export const DataTable: React.FC<DataTableProps> = ({
   refreshRate,
   onRefreshRateChange,
   chart,
+  rowsPerPage = DEFAULT_ROWS_PER_PAGE,
 }) => {
   const [page, setPage] = React.useState(0);
 
@@ -62,12 +64,12 @@ export const DataTable: React.FC<DataTableProps> = ({
   }, [rows]);
 
   const pageRows = React.useMemo(
-    () => rows.slice(page * ROWS_PER_PAGE, (page + 1) * ROWS_PER_PAGE),
-    [rows, page],
+    () => rows.slice(page * rowsPerPage, (page + 1) * rowsPerPage),
+    [rows, page, rowsPerPage],
   );
 
   const disablePrev = page === 0;
-  const disableNext = (page + 1) * ROWS_PER_PAGE >= rows.length;
+  const disableNext = (page + 1) * rowsPerPage >= rows.length;
 
   return (
     <div className="p-4">
@@ -81,7 +83,11 @@ export const DataTable: React.FC<DataTableProps> = ({
           <span>Back</span>
         </button>
         {extraAction && (
-          <button onClick={extraAction.onClick} className="" style={{ color: TAIKO_PINK }}>
+          <button
+            onClick={extraAction.onClick}
+            className=""
+            style={{ color: TAIKO_PINK }}
+          >
             {extraAction.label}
           </button>
         )}
@@ -99,9 +105,7 @@ export const DataTable: React.FC<DataTableProps> = ({
         )}
       </div>
       <h2 className="text-xl font-semibold mb-2">{title}</h2>
-      {description && (
-        <p className="text-gray-600 mb-2">{description}</p>
-      )}
+      {description && <p className="text-gray-600 mb-2">{description}</p>}
       {chart && <div className="h-64 md:h-80 w-full mb-4">{chart}</div>}
       <div className="overflow-x-auto">
         <table className="min-w-full border divide-y divide-gray-200">
