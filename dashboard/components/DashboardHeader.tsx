@@ -34,6 +34,8 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
           {/* Updated Taiko Pink */}
           Taiko Masaya Testnet
         </h1>
+      </div>
+      <div className="flex items-center space-x-2 mt-4 md:mt-0">
         <a
           href="https://taikoscope.instatus.com/"
           target="_blank"
@@ -43,8 +45,6 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
         >
           Status Page
         </a>
-      </div>
-      <div className="flex items-center space-x-2 mt-4 md:mt-0">
         <TimeRangeSelector
           currentTimeRange={timeRange}
           onTimeRangeChange={onTimeRangeChange}
