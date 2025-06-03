@@ -502,11 +502,12 @@ impl Driver {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chainio::{ITaikoInbox, taiko::wrapper::ITaikoWrapper};
     use clickhouse::{
         AddressBytes, BatchRow, ForcedInclusionProcessedRow, HashBytes, ProvedBatchRow,
         VerifiedBatchRow,
-        test::{Mock, handlers},
     };
+    use clickhouse_rs::test::{Mock, handlers};
     use config::{ApiOpts, ClickhouseOpts, InstatusOpts, Opts, RpcOpts, TaikoAddressOpts};
 
     use alloy_primitives::{Address, B256};
