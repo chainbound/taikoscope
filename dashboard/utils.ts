@@ -23,6 +23,14 @@ export const formatLargeNumber = (value: number): string => {
   return value.toLocaleString();
 };
 
+export const formatTime = (ms: number): string =>
+  new Date(ms).toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  });
+
 export const formatInterval = (ms: number, showMinutes: boolean): string => {
   return showMinutes
     ? `${formatDecimal(ms / 60000)} minutes`

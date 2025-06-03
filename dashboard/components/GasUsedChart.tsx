@@ -10,7 +10,7 @@ import {
   Brush,
 } from 'recharts';
 import { TimeSeriesData } from '../types';
-import { formatLargeNumber } from '../utils';
+import { formatLargeNumber, formatTime } from '../utils';
 
 interface GasUsedChartProps {
   data: TimeSeriesData[];
@@ -115,7 +115,7 @@ export const GasUsedChart: React.FC<GasUsedChartProps> = ({
           startIndex={brushRange.startIndex}
           endIndex={brushRange.endIndex}
           onChange={handleBrushChange}
-          tickFormatter={(v: number) => v.toLocaleString()}
+          tickFormatter={(v: number) => formatTime(v)}
         />
       </LineChart>
     </ResponsiveContainer>
