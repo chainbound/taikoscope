@@ -606,8 +606,8 @@ impl ClickhouseReader {
     }
 
     /// Get the average time in milliseconds it takes for a batch to be verified
-    /// for verifications submitted within the last hour
-    pub async fn get_avg_verify_time_last_hour(&self) -> Result<Option<u64>> {
+    /// for verifications submitted within the given time range
+    pub async fn get_avg_verify_time(&self, range: TimeRange) -> Result<Option<u64>> {
         #[derive(Row, Deserialize)]
         struct AvgRow {
             avg_ms: f64,
@@ -616,7 +616,8 @@ impl ClickhouseReader {
         let query = format!(
             "SELECT COALESCE(avg(verify_time_ms), 0) AS avg_ms \
              FROM {db}.batch_verify_times_mv \
-             WHERE verified_at >= now64() - INTERVAL 1 HOUR",
+             WHERE verified_at >= now64() - INTERVAL {interval}",
+            interval = range.interval(),
             db = self.db_name
         );
 
@@ -627,54 +628,24 @@ impl ClickhouseReader {
         };
 
         if row.avg_ms == 0.0 { Ok(None) } else { Ok(Some(row.avg_ms.round() as u64)) }
+    }
+
+    /// Get the average time in milliseconds it takes for a batch to be verified
+    /// for verifications submitted within the last hour
+    pub async fn get_avg_verify_time_last_hour(&self) -> Result<Option<u64>> {
+        self.get_avg_verify_time(TimeRange::LastHour).await
     }
 
     /// Get the average time in milliseconds it takes for a batch to be verified
     /// for verifications submitted within the last 24 hours
     pub async fn get_avg_verify_time_last_24_hours(&self) -> Result<Option<u64>> {
-        #[derive(Row, Deserialize)]
-        struct AvgRow {
-            avg_ms: f64,
-        }
-
-        let query = format!(
-            "SELECT COALESCE(avg(verify_time_ms), 0) AS avg_ms \
-             FROM {db}.batch_verify_times_mv \
-             WHERE verified_at >= now64() - INTERVAL 24 HOUR",
-            db = self.db_name
-        );
-
-        let rows = self.execute::<AvgRow>(&query).await?;
-        let row = match rows.into_iter().next() {
-            Some(r) => r,
-            None => return Ok(None),
-        };
-
-        if row.avg_ms == 0.0 { Ok(None) } else { Ok(Some(row.avg_ms.round() as u64)) }
+        self.get_avg_verify_time(TimeRange::Last24Hours).await
     }
 
     /// Get the average time in milliseconds it takes for a batch to be verified
     /// for verifications submitted within the last 7 days
     pub async fn get_avg_verify_time_last_7_days(&self) -> Result<Option<u64>> {
-        #[derive(Row, Deserialize)]
-        struct AvgRow {
-            avg_ms: f64,
-        }
-
-        let query = format!(
-            "SELECT COALESCE(avg(verify_time_ms), 0) AS avg_ms \
-             FROM {db}.batch_verify_times_mv \
-             WHERE verified_at >= now64() - INTERVAL 7 DAY",
-            db = self.db_name
-        );
-
-        let rows = self.execute::<AvgRow>(&query).await?;
-        let row = match rows.into_iter().next() {
-            Some(r) => r,
-            None => return Ok(None),
-        };
-
-        if row.avg_ms == 0.0 { Ok(None) } else { Ok(Some(row.avg_ms.round() as u64)) }
+        self.get_avg_verify_time(TimeRange::Last7Days).await
     }
 
     /// Get the average interval in milliseconds between consecutive L2 blocks
