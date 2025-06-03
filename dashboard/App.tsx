@@ -395,6 +395,16 @@ const App: React.FC = () => {
     'Network Health': 3,
     Sequencers: 3,
   };
+
+  const displayGroupName = useCallback(
+    (group: string): string => {
+      if (!selectedSequencer) return group;
+      if (group === 'Network Performance') return 'Sequencer Performance';
+      if (group === 'Network Health') return 'Sequencer Health';
+      return group;
+    },
+    [selectedSequencer],
+  );
   const displayedGroupOrder = selectedSequencer
     ? groupOrder.filter((g) => g !== 'Sequencers')
     : groupOrder;
@@ -515,7 +525,9 @@ const App: React.FC = () => {
           loadingMetrics ? (
             <React.Fragment key={group}>
               {group !== 'Other' && (
-                <h2 className="mt-6 mb-2 text-lg font-semibold">{group}</h2>
+                <h2 className="mt-6 mb-2 text-lg font-semibold">
+                  {displayGroupName(group)}
+                </h2>
               )}
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4 md:gap-6">
                 {Array.from({ length: displayedSkeletonCounts[group] }).map(
@@ -528,7 +540,9 @@ const App: React.FC = () => {
           ) : groupedMetrics[group] && groupedMetrics[group].length > 0 ? (
             <React.Fragment key={group}>
               {group !== 'Other' && (
-                <h2 className="mt-6 mb-2 text-lg font-semibold">{group}</h2>
+                <h2 className="mt-6 mb-2 text-lg font-semibold">
+                  {displayGroupName(group)}
+                </h2>
               )}
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4 md:gap-6">
                 {groupedMetrics[group].map((m, idx) => (
