@@ -38,4 +38,15 @@ describe('MetricCard', () => {
     expect(html.includes('whitespace-nowrap')).toBe(true);
     expect(html.includes('overflow-hidden')).toBe(true);
   });
+
+  it('does not truncate short sequencer names', () => {
+    const names = ['Nethermind A', 'Chainbound B', 'Gattaca C'];
+    for (const name of names) {
+      const html = renderToStaticMarkup(
+        React.createElement(MetricCard, { title: 'Current', value: name }),
+      );
+      expect(html.includes('whitespace-nowrap')).toBe(false);
+      expect(html.includes('overflow-hidden')).toBe(false);
+    }
+  });
 });
