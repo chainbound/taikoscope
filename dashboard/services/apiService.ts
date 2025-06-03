@@ -349,6 +349,25 @@ export const fetchL2BlockTimes = async (
   return { data, badRequest: res.badRequest, error: res.error };
 };
 
+export const fetchBatchPostingTimes = async (
+  range: '1h' | '24h' | '7d',
+): Promise<RequestResult<TimeSeriesData[]>> => {
+  const url = `${API_BASE}/batch-posting-times?range=${range}`;
+  const res = await fetchJson<{
+    batches: { batch_id: number; ms_since_prev_batch: number }[];
+  }>(url);
+  if (!res.data) {
+    return { data: null, badRequest: res.badRequest, error: res.error };
+  }
+  const data = res.data.batches.map(
+    (b): TimeSeriesData => ({
+      value: b.batch_id,
+      timestamp: b.ms_since_prev_batch,
+    }),
+  );
+  return { data, badRequest: res.badRequest, error: res.error };
+};
+
 export const fetchL2GasUsed = async (
   range: '1h' | '24h' | '7d',
   address?: string,

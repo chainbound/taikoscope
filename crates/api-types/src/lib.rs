@@ -5,8 +5,9 @@
 //! depend on them without pulling in the rest of the server implementation.
 
 use clickhouse_lib::{
-    BatchBlobCountRow, BatchProveTimeRow, BatchVerifyTimeRow, ForcedInclusionProcessedRow,
-    L1BlockTimeRow, L2BlockTimeRow, L2GasUsedRow, L2ReorgRow, SlashingEventRow,
+    BatchBlobCountRow, BatchPostingTimeRow, BatchProveTimeRow, BatchVerifyTimeRow,
+    ForcedInclusionProcessedRow, L1BlockTimeRow, L2BlockTimeRow, L2GasUsedRow, L2ReorgRow,
+    SlashingEventRow,
 };
 
 use axum::{Json, http::StatusCode, response::IntoResponse};
@@ -243,6 +244,13 @@ pub struct BatchBlobsResponse {
 pub struct AvgBlobsPerBatchResponse {
     /// Average number of blobs per batch.
     pub avg_blobs: Option<f64>,
+}
+
+/// Interval between consecutive batch postings.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct BatchPostingTimesResponse {
+    /// Interval data for each batch.
+    pub batches: Vec<BatchPostingTimeRow>,
 }
 
 /// Number of the most recent L2 block.

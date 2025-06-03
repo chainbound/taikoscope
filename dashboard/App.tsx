@@ -550,6 +550,9 @@ const App: React.FC = () => {
                               : typeof m.title === 'string' &&
                                   m.title === 'Active Sequencers'
                                 ? () => openGenericTable('gateways')
+                                : typeof m.title === 'string' &&
+                                    m.title === 'Batch Posting Cadence'
+                                  ? () => openGenericTable('batch-posting-cadence')
                                 : undefined
                     }
                   />

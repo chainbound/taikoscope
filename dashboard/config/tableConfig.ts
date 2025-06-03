@@ -6,6 +6,7 @@ import {
   fetchForcedInclusionEvents,
   fetchActiveGatewayAddresses,
   fetchBatchBlobCounts,
+  fetchBatchPostingTimes,
   fetchProveTimes,
   fetchVerifyTimes,
   fetchBlockTransactions,
@@ -102,6 +103,23 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     ],
     mapData: (data) => data as Record<string, string | number>[],
     urlKey: 'blobs-per-batch'
+  },
+
+  'batch-posting-cadence': {
+    title: 'Batch Posting Cadence',
+    fetcher: fetchBatchPostingTimes,
+    columns: [
+      { key: 'value', label: 'Batch' },
+      { key: 'timestamp', label: 'Interval (ms)' }
+    ],
+    mapData: (data) => data as Record<string, string | number>[],
+    chart: (data) => {
+      const BlockTimeChart = React.lazy(() =>
+        import('../components/BlockTimeChart').then(m => ({ default: m.BlockTimeChart }))
+      );
+      return React.createElement(BlockTimeChart, { data, lineColor: '#FF9DA7' });
+    },
+    urlKey: 'batch-posting-cadence'
   },
 
   'prove-time': {
