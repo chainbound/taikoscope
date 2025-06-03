@@ -49,6 +49,7 @@ pub const DEFAULT_RATE_PERIOD: StdDuration = StdDuration::from_secs(60);
         avg_verify_time,
         l2_block_cadence,
         batch_posting_cadence,
+        batch_posting_times,
         avg_l2_tps,
         avg_blobs_per_batch,
         blobs_per_batch,
@@ -80,6 +81,7 @@ pub const DEFAULT_RATE_PERIOD: StdDuration = StdDuration::from_secs(60);
             AvgVerifyTimeResponse,
             L2BlockCadenceResponse,
             BatchPostingCadenceResponse,
+            BatchPostingTimesResponse,
             AvgL2TpsResponse,
             AvgBlobsPerBatchResponse,
             BatchBlobsResponse,
@@ -103,6 +105,7 @@ pub const DEFAULT_RATE_PERIOD: StdDuration = StdDuration::from_secs(60);
             clickhouse_lib::L2BlockTimeRow,
             clickhouse_lib::L2GasUsedRow,
             clickhouse_lib::BatchBlobCountRow,
+            clickhouse_lib::BatchPostingTimeRow,
             api_types::ErrorResponse
         )
     ),
@@ -700,6 +703,36 @@ async fn batch_posting_cadence(
 
 #[utoipa::path(
     get,
+    path = "/batch-posting-times",
+    params(
+        RangeQuery
+    ),
+    responses(
+        (status = 200, description = "Batch posting times", body = BatchPostingTimesResponse)
+    ),
+    tag = "taikoscope"
+)]
+async fn batch_posting_times(
+    Query(params): Query<RangeQuery>,
+    State(state): State<ApiState>,
+) -> Json<BatchPostingTimesResponse> {
+    let rows = match match params.range.as_deref() {
+        Some("24h") => state.client.get_batch_posting_times_last_24_hours().await,
+        Some("7d") => state.client.get_batch_posting_times_last_7_days().await,
+        _ => state.client.get_batch_posting_times_last_hour().await,
+    } {
+        Ok(r) => r,
+        Err(e) => {
+            tracing::error!(error = %e, "Failed to get batch posting times");
+            Vec::new()
+        }
+    };
+    tracing::info!(count = rows.len(), "Returning batch posting times");
+    Json(BatchPostingTimesResponse { batches: rows })
+}
+
+#[utoipa::path(
+    get,
     path = "/avg-l2-tps",
     params(
         RangeQuery
@@ -1153,6 +1186,7 @@ pub fn router(state: ApiState) -> Router {
         .route("/avg-verify-time", get(avg_verify_time))
         .route("/l2-block-cadence", get(l2_block_cadence))
         .route("/batch-posting-cadence", get(batch_posting_cadence))
+        .route("/batch-posting-times", get(batch_posting_times))
         .route("/avg-l2-tps", get(avg_l2_tps))
         .route("/avg-blobs-per-batch", get(avg_blobs_per_batch))
         .route("/blobs-per-batch", get(blobs_per_batch))
@@ -1449,6 +1483,28 @@ mod tests {
         let app = build_app(mock.url());
         let body = send_request(app, "/batch-posting-cadence?range=7d").await;
         assert_eq!(body, json!({ "batch_posting_cadence_ms": 2000 }));
+    }
+
+    #[derive(Serialize, Row)]
+    struct PostingTimeRowTest {
+        batch_id: u64,
+        ts: u64,
+        ms_since_prev_batch: Option<u64>,
+    }
+
+    #[tokio::test]
+    async fn batch_posting_times_endpoint() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(vec![
+            PostingTimeRowTest { batch_id: 1, ts: 1000, ms_since_prev_batch: None },
+            PostingTimeRowTest { batch_id: 2, ts: 2000, ms_since_prev_batch: Some(1000) },
+        ]));
+        let app = build_app(mock.url());
+        let body = send_request(app, "/batch-posting-times?range=1h").await;
+        assert_eq!(
+            body,
+            json!({ "batches": [ { "batch_id": 2, "inserted_at": "1970-01-01T00:00:02Z", "ms_since_prev_batch": 1000 } ] })
+        );
     }
 
     #[derive(Serialize, Row)]

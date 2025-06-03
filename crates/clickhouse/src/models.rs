@@ -205,3 +205,14 @@ pub struct BatchBlobCountRow {
     /// Number of blobs in the batch
     pub blob_count: u8,
 }
+
+/// Row representing the interval between consecutive batch proposals
+#[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
+pub struct BatchPostingTimeRow {
+    /// Batch ID
+    pub batch_id: u64,
+    /// Time the batch was inserted
+    pub inserted_at: DateTime<Utc>,
+    /// Milliseconds since the previous batch
+    pub ms_since_prev_batch: Option<u64>,
+}

@@ -13,9 +13,9 @@ use url::Url;
 
 use crate::{
     models::{
-        BatchBlobCountRow, BatchProveTimeRow, BatchVerifyTimeRow, BlockTransactionRow,
-        ForcedInclusionProcessedRow, L1BlockTimeRow, L2BlockTimeRow, L2GasUsedRow, L2ReorgRow,
-        SequencerBlockRow, SequencerDistributionRow, SlashingEventRow,
+        BatchBlobCountRow, BatchPostingTimeRow, BatchProveTimeRow, BatchVerifyTimeRow,
+        BlockTransactionRow, ForcedInclusionProcessedRow, L1BlockTimeRow, L2BlockTimeRow,
+        L2GasUsedRow, L2ReorgRow, SequencerBlockRow, SequencerDistributionRow, SlashingEventRow,
     },
     types::AddressBytes,
 };
@@ -856,6 +856,114 @@ impl ClickhouseReader {
         } else {
             Ok(None)
         }
+    }
+
+    /// Get the interval in milliseconds between consecutive batch proposals
+    /// observed within the last hour
+    pub async fn get_batch_posting_times_last_hour(&self) -> Result<Vec<BatchPostingTimeRow>> {
+        #[derive(Row, Deserialize)]
+        struct RawRow {
+            batch_id: u64,
+            ts: u64,
+            ms_since_prev_batch: Option<u64>,
+        }
+
+        let query = format!(
+            "SELECT batch_id, \
+                    toUInt64(toUnixTimestamp64Milli(inserted_at)) AS ts, \
+                    toUInt64OrNull(toString(toUnixTimestamp64Milli(inserted_at) - \
+                        lagInFrame(toUnixTimestamp64Milli(inserted_at)) OVER (ORDER BY inserted_at))) \
+                        AS ms_since_prev_batch \
+             FROM {db}.batches \
+             WHERE inserted_at >= now64() - INTERVAL 1 HOUR \
+             ORDER BY inserted_at",
+            db = self.db_name
+        );
+
+        let rows = self.execute::<RawRow>(&query).await?;
+        Ok(rows
+            .into_iter()
+            .filter_map(|r| {
+                let dt = Utc.timestamp_millis_opt(r.ts as i64).single()?;
+                r.ms_since_prev_batch.map(|ms| BatchPostingTimeRow {
+                    batch_id: r.batch_id,
+                    inserted_at: dt,
+                    ms_since_prev_batch: Some(ms),
+                })
+            })
+            .collect())
+    }
+
+    /// Get the interval in milliseconds between consecutive batch proposals
+    /// observed within the last 24 hours
+    pub async fn get_batch_posting_times_last_24_hours(&self) -> Result<Vec<BatchPostingTimeRow>> {
+        #[derive(Row, Deserialize)]
+        struct RawRow {
+            batch_id: u64,
+            ts: u64,
+            ms_since_prev_batch: Option<u64>,
+        }
+
+        let query = format!(
+            "SELECT batch_id, \
+                    toUInt64(toUnixTimestamp64Milli(inserted_at)) AS ts, \
+                    toUInt64OrNull(toString(toUnixTimestamp64Milli(inserted_at) - \
+                        lagInFrame(toUnixTimestamp64Milli(inserted_at)) OVER (ORDER BY inserted_at))) \
+                        AS ms_since_prev_batch \
+             FROM {db}.batches \
+             WHERE inserted_at >= now64() - INTERVAL 24 HOUR \
+             ORDER BY inserted_at",
+            db = self.db_name
+        );
+
+        let rows = self.execute::<RawRow>(&query).await?;
+        Ok(rows
+            .into_iter()
+            .filter_map(|r| {
+                let dt = Utc.timestamp_millis_opt(r.ts as i64).single()?;
+                r.ms_since_prev_batch.map(|ms| BatchPostingTimeRow {
+                    batch_id: r.batch_id,
+                    inserted_at: dt,
+                    ms_since_prev_batch: Some(ms),
+                })
+            })
+            .collect())
+    }
+
+    /// Get the interval in milliseconds between consecutive batch proposals
+    /// observed within the last 7 days
+    pub async fn get_batch_posting_times_last_7_days(&self) -> Result<Vec<BatchPostingTimeRow>> {
+        #[derive(Row, Deserialize)]
+        struct RawRow {
+            batch_id: u64,
+            ts: u64,
+            ms_since_prev_batch: Option<u64>,
+        }
+
+        let query = format!(
+            "SELECT batch_id, \
+                    toUInt64(toUnixTimestamp64Milli(inserted_at)) AS ts, \
+                    toUInt64OrNull(toString(toUnixTimestamp64Milli(inserted_at) - \
+                        lagInFrame(toUnixTimestamp64Milli(inserted_at)) OVER (ORDER BY inserted_at))) \
+                        AS ms_since_prev_batch \
+             FROM {db}.batches \
+             WHERE inserted_at >= now64() - INTERVAL 7 DAY \
+             ORDER BY inserted_at",
+            db = self.db_name
+        );
+
+        let rows = self.execute::<RawRow>(&query).await?;
+        Ok(rows
+            .into_iter()
+            .filter_map(|r| {
+                let dt = Utc.timestamp_millis_opt(r.ts as i64).single()?;
+                r.ms_since_prev_batch.map(|ms| BatchPostingTimeRow {
+                    batch_id: r.batch_id,
+                    inserted_at: dt,
+                    ms_since_prev_batch: Some(ms),
+                })
+            })
+            .collect())
     }
 
     /// Get prove times in seconds for batches proved within the last hour
@@ -1904,6 +2012,64 @@ mod tests {
 
         // The key test: ensure no ClickHouse "Illegal type Int64" errors occur
         // If the toString() wrapper is removed, this test would fail during the query execution
+    }
+
+    #[derive(Serialize, Row)]
+    struct BatchPostingTimeTestRow {
+        batch_id: u64,
+        ts: u64,
+        ms_since_prev_batch: Option<u64>,
+    }
+
+    #[tokio::test]
+    async fn test_get_batch_posting_times_last_hour() {
+        let mock = Mock::new();
+        let data = vec![
+            BatchPostingTimeTestRow { batch_id: 1, ts: 1000, ms_since_prev_batch: None },
+            BatchPostingTimeTestRow { batch_id: 2, ts: 2000, ms_since_prev_batch: Some(1000) },
+        ];
+        mock.add(handlers::provide(data));
+
+        let url = Url::parse(mock.url()).unwrap();
+        let ch =
+            ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+        let result = ch.get_batch_posting_times_last_hour().await.unwrap();
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].batch_id, 2);
+        assert_eq!(result[0].ms_since_prev_batch, Some(1000));
+    }
+
+    #[tokio::test]
+    async fn test_get_batch_posting_times_last_day_empty() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(Vec::<BatchPostingTimeTestRow>::new()));
+
+        let url = Url::parse(mock.url()).unwrap();
+        let ch =
+            ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+        let result = ch.get_batch_posting_times_last_24_hours().await.unwrap();
+        assert_eq!(result.len(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_get_batch_posting_times_last_week() {
+        let mock = Mock::new();
+        let data = vec![
+            BatchPostingTimeTestRow { batch_id: 10, ts: 1000, ms_since_prev_batch: None },
+            BatchPostingTimeTestRow { batch_id: 11, ts: 2500, ms_since_prev_batch: Some(1500) },
+        ];
+        mock.add(handlers::provide(data));
+
+        let url = Url::parse(mock.url()).unwrap();
+        let ch =
+            ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+        let result = ch.get_batch_posting_times_last_7_days().await.unwrap();
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].batch_id, 11);
+        assert_eq!(result[0].ms_since_prev_batch, Some(1500));
     }
 
     #[derive(Serialize, Row)]
