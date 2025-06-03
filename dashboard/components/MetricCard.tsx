@@ -18,6 +18,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
 }) => {
   // Check if value looks like an Ethereum address (0x followed by 40 hex characters)
   const isAddress = /^0x[a-fA-F0-9]{40}$/.test(value);
+  const isShortValue = !isAddress && value.length <= 16;
 
   return (
     <div
@@ -36,7 +37,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
         )}
       </div>
       <p
-        className={`mt-1 font-semibold text-gray-900 ${isAddress ? 'text-base sm:text-lg break-all' : 'text-3xl whitespace-nowrap overflow-hidden text-ellipsis'}`}
+        className={`mt-1 font-semibold text-gray-900 ${isAddress ? 'text-base sm:text-lg break-all' : `text-3xl${isShortValue ? '' : ' whitespace-nowrap overflow-hidden text-ellipsis'}`}`}
       >
         {value}
       </p>
