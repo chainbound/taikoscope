@@ -100,6 +100,20 @@ const App: React.FC = () => {
     () => sequencerDistribution.map((s) => s.name),
     [sequencerDistribution],
   );
+  const searchParams = useSearchParams();
+  const isSequencerPage = searchParams.get('page') === 'sequencer';
+  const navigatePage = useCallback(
+    (page: 'dashboard' | 'sequencer') => {
+      const url = new URL(window.location.href);
+      if (page === 'dashboard') {
+        url.searchParams.delete('page');
+      } else {
+        url.searchParams.set('page', 'sequencer');
+      }
+      window.history.pushState(null, '', url);
+    },
+    [],
+  );
   const [l2HeadBlock, setL2HeadBlock] = useState<string>('0');
   const [l1HeadBlock, setL1HeadBlock] = useState<string>('0');
   const [refreshRate, setRefreshRate] = useState<number>(() =>
@@ -122,6 +136,10 @@ const App: React.FC = () => {
     blockTxData,
     l2BlockTimeData,
   );
+
+  useEffect(() => {
+    if (!isSequencerPage) setSelectedSequencer(null);
+  }, [isSequencerPage]);
 
   useEffect(() => {
     let pollId: NodeJS.Timeout | null = null;
@@ -228,14 +246,18 @@ const App: React.FC = () => {
     ] = await Promise.all([
       fetchL2BlockCadence(
         range,
-        selectedSequencer ? getSequencerAddress(selectedSequencer) : undefined,
+        isSequencerPage && selectedSequencer
+          ? getSequencerAddress(selectedSequencer)
+          : undefined,
       ),
       fetchBatchPostingCadence(range),
       fetchAvgProveTime(range),
       fetchAvgVerifyTime(range),
       fetchAvgL2Tps(
         range,
-        selectedSequencer ? getSequencerAddress(selectedSequencer) : undefined,
+        isSequencerPage && selectedSequencer
+          ? getSequencerAddress(selectedSequencer)
+          : undefined,
       ),
       fetchActiveGateways(range),
       fetchCurrentOperator(),
@@ -250,11 +272,15 @@ const App: React.FC = () => {
       fetchL1BlockTimes(range),
       fetchL2BlockTimes(
         range,
-        selectedSequencer ? getSequencerAddress(selectedSequencer) : undefined,
+        isSequencerPage && selectedSequencer
+          ? getSequencerAddress(selectedSequencer)
+          : undefined,
       ),
       fetchL2GasUsed(
         range,
-        selectedSequencer ? getSequencerAddress(selectedSequencer) : undefined,
+        isSequencerPage && selectedSequencer
+          ? getSequencerAddress(selectedSequencer)
+          : undefined,
       ),
       fetchSequencerDistribution(range),
       fetchBlockTransactions(
@@ -262,7 +288,9 @@ const App: React.FC = () => {
         50,
         undefined,
         undefined,
-        selectedSequencer ? getSequencerAddress(selectedSequencer) : undefined,
+        isSequencerPage && selectedSequencer
+          ? getSequencerAddress(selectedSequencer)
+          : undefined,
       ),
       fetchBatchBlobCounts(range),
     ]);
@@ -313,7 +341,7 @@ const App: React.FC = () => {
       batchBlobCountsRes,
     ]);
 
-    const currentMetrics: MetricData[] = createMetrics({
+    let currentMetrics: MetricData[] = createMetrics({
       avgTps,
       l2Cadence,
       batchCadence,
@@ -328,6 +356,16 @@ const App: React.FC = () => {
       l2Block,
       l1Block,
     });
+
+    if (isSequencerPage) {
+      currentMetrics = currentMetrics.filter(
+        (m) =>
+          !(
+            typeof m.title === 'string' &&
+            (m.title === 'Active Sequencers' || m.title === 'Next Sequencer')
+          ),
+      );
+    }
 
     setMetrics(currentMetrics);
     setSecondsToProveData(proveTimes);
@@ -389,8 +427,6 @@ const App: React.FC = () => {
     'Network Health': 3,
     Sequencers: 3,
   };
-
-  const searchParams = useSearchParams();
 
   const handleRouteChange = useCallback(() => {
     const params = searchParams;
@@ -479,9 +515,13 @@ const App: React.FC = () => {
         onRefreshRateChange={setRefreshRate}
         lastRefresh={lastRefresh}
         onManualRefresh={handleManualRefresh}
-        sequencers={sequencerList}
-        selectedSequencer={selectedSequencer}
-        onSequencerChange={setSelectedSequencer}
+        isSequencerPage={isSequencerPage}
+        onNavigate={() =>
+          navigatePage(isSequencerPage ? 'dashboard' : 'sequencer')
+        }
+        sequencers={isSequencerPage ? sequencerList : undefined}
+        selectedSequencer={isSequencerPage ? selectedSequencer : undefined}
+        onSequencerChange={isSequencerPage ? setSelectedSequencer : undefined}
       />
 
       {errorMessage && (

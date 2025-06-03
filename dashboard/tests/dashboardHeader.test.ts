@@ -13,9 +13,8 @@ describe('DashboardHeader', () => {
         onRefreshRateChange: () => {},
         lastRefresh: Date.now(),
         onManualRefresh: () => {},
-        sequencers: ['seq1', 'seq2'],
-        selectedSequencer: null,
-        onSequencerChange: () => {},
+        isSequencerPage: false,
+        onNavigate: () => {},
       }),
     );
     expect(html.includes('Taiko Masaya Testnet')).toBe(true);
@@ -24,5 +23,6 @@ describe('DashboardHeader', () => {
     expect(html.includes('7D')).toBe(true);
     expect(html.includes('Refresh')).toBe(true);
     expect(html.includes('Status')).toBe(true);
+    expect(html.includes('Sequencer Details')).toBe(true);
   });
 });

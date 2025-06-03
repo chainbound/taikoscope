@@ -10,9 +10,11 @@ interface DashboardHeaderProps {
   onRefreshRateChange: (rate: number) => void;
   lastRefresh: number;
   onManualRefresh: () => void;
-  sequencers: string[];
-  selectedSequencer: string | null;
-  onSequencerChange: (seq: string | null) => void;
+  isSequencerPage: boolean;
+  onNavigate: () => void;
+  sequencers?: string[];
+  selectedSequencer?: string | null;
+  onSequencerChange?: (seq: string | null) => void;
 }
 
 export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
@@ -22,6 +24,8 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   onRefreshRateChange,
   lastRefresh,
   onManualRefresh,
+  isSequencerPage,
+  onNavigate,
   sequencers,
   selectedSequencer,
   onSequencerChange,
@@ -58,11 +62,20 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
           lastRefresh={lastRefresh}
           onRefresh={onManualRefresh}
         />
-        <SequencerSelector
-          sequencers={sequencers}
-          value={selectedSequencer}
-          onChange={onSequencerChange}
-        />
+        {isSequencerPage && sequencers && onSequencerChange ? (
+          <SequencerSelector
+            sequencers={sequencers}
+            value={selectedSequencer ?? null}
+            onChange={onSequencerChange}
+          />
+        ) : null}
+        <button
+          className="text-sm hover:underline"
+          style={{ color: TAIKO_PINK }}
+          onClick={onNavigate}
+        >
+          {isSequencerPage ? 'Dashboard' : 'Sequencer Details'}
+        </button>
         {/* Export button removed as per request */}
       </div>
     </header>
