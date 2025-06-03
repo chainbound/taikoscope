@@ -1,5 +1,6 @@
 //! Thin HTTP API for accessing `ClickHouse` data
 
+use alloy::primitives::Address;
 use api_types::*;
 use async_stream::stream;
 use axum::{
@@ -172,9 +173,13 @@ fn range_duration(range: &Option<String>) -> ChronoDuration {
 
 fn parse_address(addr: &Option<String>) -> Option<AddressBytes> {
     let a = addr.as_deref()?;
-    let trimmed = a.trim_start_matches("0x");
-    let v = hex::decode(trimmed).ok()?;
-    <[u8; 20]>::try_from(v).ok().map(AddressBytes::from)
+    match a.parse::<Address>() {
+        Ok(addr) => Some(AddressBytes::from(addr)),
+        Err(e) => {
+            tracing::warn!(error = %e, "Failed to parse address");
+            None
+        }
+    }
 }
 
 #[utoipa::path(
@@ -983,16 +988,7 @@ async fn sequencer_blocks(
         }
     };
 
-    let filter = if let Some(addr) = params.address.as_deref() {
-        let trimmed = addr.trim_start_matches("0x");
-        if let Ok(v) = hex::decode(trimmed) {
-            <[u8; 20]>::try_from(v).ok().map(AddressBytes::from)
-        } else {
-            None
-        }
-    } else {
-        None
-    };
+    let filter = parse_address(&params.address);
 
     use std::collections::BTreeMap;
     let mut map: BTreeMap<AddressBytes, Vec<u64>> = BTreeMap::new();
