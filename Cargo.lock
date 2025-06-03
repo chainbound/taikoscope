@@ -771,6 +771,7 @@ dependencies = [
 name = "api-types"
 version = "0.1.0"
 dependencies = [
+ "axum",
  "clickhouse 0.1.0",
  "serde",
  "utoipa",
