@@ -40,6 +40,7 @@ export const useDataFetcher = ({
     const fetchInProgressRef = useRef(false);
     
     const fetchData = useCallback(async () => {
+        if (document.visibilityState === 'hidden') return;
         // Prevent duplicate concurrent requests
         if (fetchInProgressRef.current) {
             console.log('Fetch already in progress, skipping duplicate request');
@@ -77,9 +78,38 @@ export const useDataFetcher = ({
     // Auto-refresh effect
     useEffect(() => {
         if (isTableView) return;
-        fetchData();
-        const interval = setInterval(fetchData, Math.max(refreshTimer.refreshRate, 60000));
-        return () => clearInterval(interval);
+
+        let interval: ReturnType<typeof setInterval> | undefined;
+
+        const startInterval = () => {
+            interval = setInterval(() => {
+                if (document.visibilityState === 'visible') {
+                    void fetchData();
+                }
+            }, Math.max(refreshTimer.refreshRate, 60000));
+        };
+
+        if (document.visibilityState === 'visible') {
+            void fetchData();
+            startInterval();
+        }
+
+        const onVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                void fetchData();
+                if (!interval) startInterval();
+            } else if (interval) {
+                clearInterval(interval);
+                interval = undefined;
+            }
+        };
+
+        document.addEventListener('visibilitychange', onVisibilityChange);
+
+        return () => {
+            if (interval) clearInterval(interval);
+            document.removeEventListener('visibilitychange', onVisibilityChange);
+        };
     }, [timeRange, fetchData, refreshTimer.refreshRate, isTableView]);
 
     return {
