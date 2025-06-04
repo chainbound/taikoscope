@@ -2,8 +2,7 @@ import { describe, it, expect, afterEach } from 'vitest';
 
 import {
   fetchAvgProveTime,
-  fetchActiveGateways,
-  fetchActiveGatewayAddresses,
+  fetchActiveSequencerAddresses,
   fetchL2BlockTimes,
   fetchBlockTransactions,
   fetchAvgL2Tps,
@@ -42,15 +41,9 @@ describe('apiService', () => {
     expect(badProve.data).toBeNull();
   });
 
-  it('transforms active gateways', async () => {
-    globalThis.fetch = mockFetch({ gateways: ['a', 'b'] });
-    const gateways = await fetchActiveGateways('1h');
-    expect(gateways.data).toBe(2);
-  });
-
-  it('fetches active gateway addresses', async () => {
-    globalThis.fetch = mockFetch({ gateways: ['a', 'b'] });
-    const gateways = await fetchActiveGatewayAddresses('1h');
+  it('fetches active sequencer addresses from preconf', async () => {
+    globalThis.fetch = mockFetch({ candidates: ['a', 'b'] });
+    const gateways = await fetchActiveSequencerAddresses('1h');
     expect(gateways.data).toStrictEqual(['a', 'b']);
   });
 
