@@ -443,6 +443,8 @@ impl Driver {
         } else {
             match self.extractor.get_l2_block_stats(header.number, header.base_fee_per_gas).await {
                 Ok((sum_gas_used, sum_tx, sum_priority_fee)) => {
+                    let sum_base_fee =
+                        sum_gas_used.saturating_mul(header.base_fee_per_gas.unwrap_or(0) as u128);
                     let event = clickhouse::L2HeadEvent {
                         l2_block_number: header.number,
                         block_hash: HashBytes(*header.hash),
@@ -450,6 +452,7 @@ impl Driver {
                         sum_gas_used,
                         sum_tx,
                         sum_priority_fee,
+                        sum_base_fee,
                         sequencer: AddressBytes(header.beneficiary.into_array()),
                     };
 

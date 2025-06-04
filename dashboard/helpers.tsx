@@ -18,6 +18,7 @@ export interface MetricInputData {
   forcedInclusions: number | null;
   l2Block: number | null;
   l1Block: number | null;
+  l2TxFee: number | null;
 }
 
 export const createMetrics = (data: MetricInputData): MetricData[] => [
@@ -99,6 +100,11 @@ export const createMetrics = (data: MetricInputData): MetricData[] => [
     value:
       data.forcedInclusions != null ? data.forcedInclusions.toString() : 'N/A',
     group: 'Network Health',
+  },
+  {
+    title: 'L2 Transaction Fee',
+    value: data.l2TxFee != null ? formatDecimal(data.l2TxFee) : 'N/A',
+    group: 'Network Economics',
   },
   {
     title: 'L2 Block',

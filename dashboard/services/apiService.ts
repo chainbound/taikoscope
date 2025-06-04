@@ -498,3 +498,18 @@ export const fetchAvgL2Tps = async (
     error: res.error,
   };
 };
+
+export const fetchL2TxFee = async (
+  range: '1h' | '24h' | '7d',
+  address?: string,
+): Promise<RequestResult<number>> => {
+  const url =
+    `${API_BASE}/l2-tx-fee?range=${range}` +
+    (address ? `&address=${address}` : '');
+  const res = await fetchJson<{ tx_fee?: number }>(url);
+  return {
+    data: res.data?.tx_fee ?? null,
+    badRequest: res.badRequest,
+    error: res.error,
+  };
+};
