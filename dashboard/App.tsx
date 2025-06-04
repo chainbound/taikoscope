@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useCallback, lazy } from 'react';
-import { createMetrics, hasBadRequest } from './helpers';
+import { useMetricsData } from './hooks/useMetricsData';
+import { useChartsData } from './hooks/useChartsData';
+import { useBlockData } from './hooks/useBlockData';
+import { useRefreshTimer } from './hooks/useRefreshTimer';
 import { DashboardHeader } from './components/DashboardHeader';
 import { MetricCard } from './components/MetricCard';
 import { MetricCardSkeleton } from './components/MetricCardSkeleton';
@@ -39,41 +42,9 @@ const BlobsPerBatchChart = lazy(() =>
 );
 import {
   TimeRange,
-  TimeSeriesData,
-  PieChartDataItem,
   MetricData,
 } from './types';
-import { loadRefreshRate, saveRefreshRate } from './utils';
-import { getSequencerAddress } from './sequencerConfig';
 import { TAIKO_PINK } from './theme';
-import {
-  fetchAvgProveTime,
-  fetchAvgVerifyTime,
-  fetchL2BlockCadence,
-  fetchBatchPostingCadence,
-  fetchL2Reorgs,
-  fetchSlashingEventCount,
-  fetchForcedInclusionCount,
-  fetchMissedProposalCount,
-  fetchPreconfData,
-  fetchL2HeadBlock,
-  fetchL1HeadBlock,
-  fetchL2HeadNumber,
-  fetchL1HeadNumber,
-  fetchProveTimes,
-  fetchVerifyTimes,
-  fetchL1BlockTimes,
-  fetchL2BlockTimes,
-  fetchL2GasUsed,
-  fetchSequencerDistribution,
-  fetchBlockTransactions,
-  fetchBatchBlobCounts,
-  fetchL2TxFee,
-  fetchCloudCost,
-  fetchAvgL2Tps,
-  type BlockTransaction,
-  type BatchBlobCount,
-} from './services/apiService';
 
 const App: React.FC = () => {
   const searchParams = useSearchParams();
@@ -81,33 +52,17 @@ const App: React.FC = () => {
   const [selectedSequencer, setSelectedSequencer] = useState<string | null>(
     searchParams.get('sequencer'),
   );
-  const [metrics, setMetrics] = useState<MetricData[]>([]);
-  const [loadingMetrics, setLoadingMetrics] = useState(true);
-  const [secondsToProveData, setSecondsToProveData] = useState<
-    TimeSeriesData[]
-  >([]);
-  const [secondsToVerifyData, setSecondsToVerifyData] = useState<
-    TimeSeriesData[]
-  >([]);
-  const [l2BlockTimeData, setL2BlockTimeData] = useState<TimeSeriesData[]>([]);
-  const [l2GasUsedData, setL2GasUsedData] = useState<TimeSeriesData[]>([]);
-  const [l1BlockTimeData, setL1BlockTimeData] = useState<TimeSeriesData[]>([]);
-  const [blockTxData, setBlockTxData] = useState<BlockTransaction[]>([]);
-  const [batchBlobCounts, setBatchBlobCounts] = useState<BatchBlobCount[]>([]);
-  const [sequencerDistribution, setSequencerDistribution] = useState<
-    PieChartDataItem[]
-  >([]);
+
+  // Use new hooks for data management
+  const metricsData = useMetricsData();
+  const chartsData = useChartsData();
+  const blockData = useBlockData();
+  const refreshTimer = useRefreshTimer();
+
   const sequencerList = React.useMemo(
-    () => sequencerDistribution.map((s) => s.name).sort(),
-    [sequencerDistribution],
+    () => chartsData.sequencerDistribution.map((s) => s.name),
+    [chartsData.sequencerDistribution],
   );
-  const [l2HeadBlock, setL2HeadBlock] = useState<string>('0');
-  const [l1HeadBlock, setL1HeadBlock] = useState<string>('0');
-  const [refreshRate, setRefreshRate] = useState<number>(() =>
-    loadRefreshRate(),
-  );
-  const [lastRefresh, setLastRefresh] = useState<number>(Date.now());
-  const [errorMessage, setErrorMessage] = useState<string>('');
   const {
     tableView,
     tableLoading,
@@ -120,8 +75,8 @@ const App: React.FC = () => {
     timeRange,
     setTimeRange,
     selectedSequencer,
-    blockTxData,
-    l2BlockTimeData,
+    chartsData.blockTxData,
+    chartsData.l2BlockTimeData,
   );
 
   useEffect(() => {
@@ -146,259 +101,25 @@ const App: React.FC = () => {
     }
   }, [searchParams]);
 
+  // Update metrics with current block heads whenever they change
   useEffect(() => {
-    const updateHeads = async () => {
-      const [l1, l2] = await Promise.all([
-        fetchL1HeadNumber(),
-        fetchL2HeadNumber(),
-      ]);
-      if (l1.data !== null) {
-        const value = l1.data.toLocaleString();
-        setL1HeadBlock(value);
-        setMetrics((m) =>
-          m.map((metric) =>
-            metric.title === 'L1 Block' ? { ...metric, value } : metric,
-          ),
-        );
-      }
-      if (l2.data !== null) {
-        const value = l2.data.toLocaleString();
-        setL2HeadBlock(value);
-        setMetrics((m) =>
-          m.map((metric) =>
-            metric.title === 'L2 Block' ? { ...metric, value } : metric,
-          ),
-        );
-      }
-    };
+    if (metricsData.metrics.length > 0) {
+      const updatedMetrics = blockData.updateMetricsWithBlockHeads(metricsData.metrics);
+      metricsData.setMetrics(updatedMetrics);
+    }
+  }, [blockData.l1HeadBlock, blockData.l2HeadBlock]);
 
-    updateHeads();
-    const pollId = setInterval(updateHeads, 60000);
-
-    return () => {
-      clearInterval(pollId);
-    };
-  }, []);
 
   const fetchData = useCallback(async () => {
-    setLoadingMetrics(true);
-    setLastRefresh(Date.now());
-    const range = timeRange;
-    const isEconomicsView = searchParams.get('view') === 'economics';
-    if (isEconomicsView) {
-      const [l2TxFeeRes, l2BlockRes, l1BlockRes] = await Promise.all([
-        fetchL2TxFee(
-          range,
-          selectedSequencer ? getSequencerAddress(selectedSequencer) : undefined,
-        ),
-        fetchL2HeadBlock(range),
-        fetchL1HeadBlock(range),
-      ]);
+    refreshTimer.updateLastRefresh();
 
-      const l2TxFee = l2TxFeeRes.data;
-      const l2Block = l2BlockRes.data;
-      const l1Block = l1BlockRes.data;
+    const result = await metricsData.fetchMetricsData(timeRange, selectedSequencer);
 
-      const anyBadRequest = hasBadRequest([l2TxFeeRes, l2BlockRes, l1BlockRes]);
-
-      const currentMetrics: MetricData[] = createMetrics({
-        avgTps: null,
-        l2Cadence: null,
-        batchCadence: null,
-        avgProve: null,
-        avgVerify: null,
-        activeGateways: null,
-        currentOperator: null,
-        nextOperator: null,
-        l2Reorgs: null,
-        slashings: null,
-        forcedInclusions: null,
-        missedProposals: null,
-        l2TxFee,
-        l2Block,
-        l1Block,
-        cloudCost: null,
-      });
-
-      setMetrics(currentMetrics);
-      setL2HeadBlock(
-        currentMetrics.find((m) => m.title === 'L2 Head Block')?.value || 'N/A',
-      );
-      setL1HeadBlock(
-        currentMetrics.find((m) => m.title === 'L1 Head Block')?.value || 'N/A',
-      );
-      if (anyBadRequest) {
-        setErrorMessage(
-          'Invalid parameters provided. Some data may not be available.',
-        );
-      } else {
-        setErrorMessage('');
-      }
-      setLoadingMetrics(false);
-      return;
+    // Update charts data if available (main dashboard view)
+    if (result?.chartData) {
+      chartsData.updateChartsData(result.chartData);
     }
-
-    const [
-      l2CadenceRes,
-      batchCadenceRes,
-      avgProveRes,
-      avgVerifyRes,
-      avgTpsRes,
-      preconfRes,
-      l2ReorgsRes,
-      slashingCountRes,
-      forcedInclusionCountRes,
-      missedProposalCountRes,
-      l2BlockRes,
-      l1BlockRes,
-      proveTimesRes,
-      verifyTimesRes,
-      l1TimesRes,
-      l2TimesRes,
-      l2GasUsedRes,
-      sequencerDistRes,
-      blockTxRes,
-      batchBlobCountsRes,
-      l2TxFeeRes,
-      cloudCostRes,
-    ] = await Promise.all([
-      fetchL2BlockCadence(
-        range,
-        selectedSequencer ? getSequencerAddress(selectedSequencer) : undefined,
-      ),
-      fetchBatchPostingCadence(range),
-      fetchAvgProveTime(range),
-      fetchAvgVerifyTime(range),
-      fetchAvgL2Tps(
-        range,
-        selectedSequencer ? getSequencerAddress(selectedSequencer) : undefined,
-      ),
-      fetchPreconfData(),
-      fetchL2Reorgs(range),
-      fetchSlashingEventCount(range),
-      fetchForcedInclusionCount(range),
-      fetchMissedProposalCount(range),
-      fetchL2HeadBlock(range),
-      fetchL1HeadBlock(range),
-      fetchProveTimes(range),
-      fetchVerifyTimes(range),
-      fetchL1BlockTimes(range),
-      fetchL2BlockTimes(
-        range,
-        selectedSequencer ? getSequencerAddress(selectedSequencer) : undefined,
-      ),
-      fetchL2GasUsed(
-        range,
-        selectedSequencer ? getSequencerAddress(selectedSequencer) : undefined,
-      ),
-      fetchSequencerDistribution(range),
-      fetchBlockTransactions(
-        range,
-        50,
-        undefined,
-        undefined,
-        selectedSequencer ? getSequencerAddress(selectedSequencer) : undefined,
-      ),
-      fetchBatchBlobCounts(range),
-      fetchL2TxFee(
-        range,
-        selectedSequencer ? getSequencerAddress(selectedSequencer) : undefined,
-      ),
-      fetchCloudCost(range),
-    ]);
-
-    const l2Cadence = l2CadenceRes.data;
-    const batchCadence = batchCadenceRes.data;
-    const avgProve = avgProveRes.data;
-    const avgVerify = avgVerifyRes.data;
-    const avgTps = avgTpsRes.data;
-    const preconfData = preconfRes.data;
-    const activeGateways = preconfData ? preconfData.candidates.length : null;
-    const currentOperator = preconfData?.current_operator ?? null;
-    const nextOperator = preconfData?.next_operator ?? null;
-    const l2Reorgs = l2ReorgsRes.data;
-    const slashings = slashingCountRes.data;
-    const forcedInclusions = forcedInclusionCountRes.data;
-    const missedProposals = missedProposalCountRes.data;
-    const l2Block = l2BlockRes.data;
-    const l1Block = l1BlockRes.data;
-    const proveTimes = proveTimesRes.data || [];
-    const verifyTimes = verifyTimesRes.data || [];
-    const l1Times = l1TimesRes.data || [];
-    const l2Times = l2TimesRes.data || [];
-    const l2Gas = l2GasUsedRes.data || [];
-    const sequencerDist = sequencerDistRes.data || [];
-    const txPerBlock = blockTxRes.data || [];
-    const blobsPerBatch = batchBlobCountsRes.data || [];
-    const l2TxFee = l2TxFeeRes.data;
-    const cloudCost = cloudCostRes.data;
-
-    const anyBadRequest = hasBadRequest([
-      l2CadenceRes,
-      batchCadenceRes,
-      avgProveRes,
-      avgVerifyRes,
-      avgTpsRes,
-      preconfRes,
-      l2ReorgsRes,
-      slashingCountRes,
-      forcedInclusionCountRes,
-      missedProposalCountRes,
-      l2BlockRes,
-      l1BlockRes,
-      proveTimesRes,
-      verifyTimesRes,
-      l1TimesRes,
-      l2TimesRes,
-      l2GasUsedRes,
-      sequencerDistRes,
-      blockTxRes,
-      batchBlobCountsRes,
-    ]);
-
-    const currentMetrics: MetricData[] = createMetrics({
-      avgTps,
-      l2Cadence,
-      batchCadence,
-      avgProve,
-      avgVerify,
-      activeGateways,
-      currentOperator,
-      nextOperator,
-      l2Reorgs,
-      slashings,
-      forcedInclusions,
-      missedProposals,
-      l2TxFee,
-      cloudCost,
-      l2Block,
-      l1Block,
-    });
-
-    setMetrics(currentMetrics);
-    setSecondsToProveData(proveTimes);
-    setSecondsToVerifyData(verifyTimes);
-    setL2BlockTimeData(l2Times);
-    setL2GasUsedData(l2Gas);
-    setL1BlockTimeData(l1Times);
-    setBlockTxData(txPerBlock);
-    setBatchBlobCounts(blobsPerBatch);
-    setSequencerDistribution(sequencerDist);
-    setL2HeadBlock(
-      currentMetrics.find((m) => m.title === 'L2 Block')?.value || 'N/A',
-    );
-    setL1HeadBlock(
-      currentMetrics.find((m) => m.title === 'L1 Block')?.value || 'N/A',
-    );
-    if (anyBadRequest) {
-      setErrorMessage(
-        'Invalid parameters provided. Some data may not be available.',
-      );
-    } else {
-      setErrorMessage('');
-    }
-    setLoadingMetrics(false);
-  }, [timeRange, selectedSequencer, searchParams]);
+  }, [timeRange, selectedSequencer, metricsData, chartsData, refreshTimer]);
 
   const handleManualRefresh = useCallback(() => {
     if (tableView && tableView.onRefresh) {
@@ -411,27 +132,23 @@ const App: React.FC = () => {
   }, [fetchData, tableView?.onRefresh]); // Only depend on the onRefresh function, not the entire tableView
 
   useEffect(() => {
-    saveRefreshRate(refreshRate);
-  }, [refreshRate]);
-
-  useEffect(() => {
     const isTableView = tableView || searchParams.get('view') === 'table';
     if (isTableView) return;
     fetchData();
-    const interval = setInterval(fetchData, Math.max(refreshRate, 60000));
+    const interval = setInterval(fetchData, Math.max(refreshTimer.refreshRate, 60000));
     return () => clearInterval(interval);
-  }, [timeRange, fetchData, refreshRate, searchParams]); // Remove tableView dependency
+  }, [timeRange, fetchData, refreshTimer.refreshRate, searchParams]); // Remove tableView dependency
 
   const isEconomicsView = searchParams.get('view') === 'economics';
 
   const visibleMetrics = React.useMemo(
     () =>
-      metrics.filter((m) => {
+      metricsData.metrics.filter((m) => {
         if (selectedSequencer && m.group === 'Sequencers') return false;
         if (isEconomicsView) return m.group === 'Network Economics';
         return m.group !== 'Network Economics';
       }),
-    [metrics, selectedSequencer, isEconomicsView],
+    [metricsData.metrics, selectedSequencer, isEconomicsView],
   );
 
   const groupedMetrics = visibleMetrics.reduce<Record<string, MetricData[]>>(
@@ -481,24 +198,24 @@ const App: React.FC = () => {
         setTableView(null);
         return;
       }
-      
+
       // If we already have a table view and it matches the current URL state, don't reload
       const table = params.get('table');
       const range = (params.get('range') as TimeRange) || timeRange;
-      
+
       if (tableView && tableView.timeRange === range) {
         return;
       }
-      
+
       setTableLoading(true);
-      
+
       // Add error boundary for table operations
       const handleTableError = (tableName: string, error: any) => {
         console.error(`Failed to open ${tableName} table:`, error);
         setTableLoading(false);
-        setErrorMessage(`Failed to load ${tableName} table. Please try again.`);
+        metricsData.setErrorMessage(`Failed to load ${tableName} table. Please try again.`);
       };
-      
+
       switch (table) {
         case 'sequencer-blocks': {
           const addr = params.get('address');
@@ -548,7 +265,7 @@ const App: React.FC = () => {
     } catch (err) {
       console.error('Failed to handle route change:', err);
       setTableLoading(false);
-      setErrorMessage('Navigation error occurred. Please try again.');
+      metricsData.setErrorMessage('Navigation error occurred. Please try again.');
     }
   }, [
     searchParams,
@@ -581,7 +298,7 @@ const App: React.FC = () => {
       console.error('Failed to handle back navigation:', err);
       // Emergency fallback: just clear the table view
       setTableView(null);
-      setErrorMessage('Navigation error occurred.');
+      metricsData.setErrorMessage('Navigation error occurred.');
     }
   }, [searchParams, setTableView]);
 
@@ -590,7 +307,7 @@ const App: React.FC = () => {
       handleRouteChange();
     } catch (err) {
       console.error('Route change effect error:', err);
-      setErrorMessage('Navigation error occurred.');
+      metricsData.setErrorMessage('Navigation error occurred.');
     }
   }, [handleRouteChange, searchParams]);
 
@@ -607,9 +324,9 @@ const App: React.FC = () => {
         extraTable={tableView.extraTable}
         timeRange={tableView.timeRange}
         onTimeRangeChange={tableView.onTimeRangeChange}
-        refreshRate={refreshRate}
-        onRefreshRateChange={setRefreshRate}
-        lastRefresh={lastRefresh}
+        refreshRate={refreshTimer.refreshRate}
+        onRefreshRateChange={refreshTimer.setRefreshRate}
+        lastRefresh={refreshTimer.lastRefresh}
         onManualRefresh={handleManualRefresh}
         sequencers={sequencerList}
         selectedSequencer={selectedSequencer}
@@ -639,20 +356,20 @@ const App: React.FC = () => {
       <DashboardHeader
         timeRange={timeRange}
         onTimeRangeChange={setTimeRange}
-        refreshRate={refreshRate}
-        onRefreshRateChange={setRefreshRate}
-        lastRefresh={lastRefresh}
+        refreshRate={refreshTimer.refreshRate}
+        onRefreshRateChange={refreshTimer.setRefreshRate}
+        lastRefresh={refreshTimer.lastRefresh}
         onManualRefresh={handleManualRefresh}
         sequencers={sequencerList}
         selectedSequencer={selectedSequencer}
         onSequencerChange={handleSequencerChange}
       />
 
-      {(errorMessage || searchParams.navigationState.lastError) && (
+      {(metricsData.errorMessage || searchParams.navigationState.lastError) && (
         <div className="mt-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded">
           <div className="flex justify-between items-start">
             <div className="flex-1">
-              {errorMessage || searchParams.navigationState.lastError}
+              {metricsData.errorMessage || searchParams.navigationState.lastError}
               {searchParams.navigationState.errorCount > 0 && (
                 <div className="text-sm mt-1 text-red-600">
                   Navigation issues detected. Try refreshing the page if problems persist.
@@ -665,7 +382,7 @@ const App: React.FC = () => {
                   onClick={() => {
                     try {
                       searchParams.resetNavigation();
-                      setErrorMessage('');
+                      metricsData.setErrorMessage('');
                     } catch (err) {
                       console.error('Failed to reset navigation:', err);
                     }
@@ -676,7 +393,7 @@ const App: React.FC = () => {
                 </button>
               )}
               <button
-                onClick={() => setErrorMessage('')}
+                onClick={() => metricsData.setErrorMessage('')}
                 className="text-sm text-red-600 hover:text-red-800"
               >
                 ✕
@@ -688,11 +405,11 @@ const App: React.FC = () => {
 
       <main className="mt-6">
         {/* Metrics Grid */}
-        {(loadingMetrics
+        {(metricsData.loadingMetrics
           ? Object.keys(displayedSkeletonCounts)
           : displayedGroupOrder
         ).map((group) =>
-          loadingMetrics ? (
+          metricsData.loadingMetrics ? (
             <React.Fragment key={group}>
               {group !== 'Other' && (
                 <h2 className="mt-6 mb-2 text-lg font-semibold">
@@ -756,84 +473,84 @@ const App: React.FC = () => {
               <ChartCard
                 title="Sequencer Distribution"
                 onMore={() => openSequencerDistributionTable(timeRange, 0)}
-                loading={loadingMetrics}
+                loading={metricsData.loadingMetrics}
               >
                 <SequencerPieChart
                   key={timeRange}
-                  data={sequencerDistribution}
+                  data={chartsData.sequencerDistribution}
                 />
               </ChartCard>
             )}
             <ChartCard
               title="Prove Time"
               onMore={() => openGenericTable('prove-time', timeRange)}
-              loading={loadingMetrics}
+              loading={metricsData.loadingMetrics}
             >
               <BatchProcessChart
                 key={timeRange}
-                data={secondsToProveData}
+                data={chartsData.secondsToProveData}
                 lineColor={TAIKO_PINK}
               />
             </ChartCard>
             <ChartCard
               title="Verify Time"
               onMore={() => openGenericTable('verify-time', timeRange)}
-              loading={loadingMetrics}
+              loading={metricsData.loadingMetrics}
             >
               <BatchProcessChart
                 key={timeRange}
-                data={secondsToVerifyData}
+                data={chartsData.secondsToVerifyData}
                 lineColor="#5DA5DA"
               />
             </ChartCard>
-            <ChartCard title="Gas Used Per Block" loading={loadingMetrics}>
+            <ChartCard title="Gas Used Per Block" loading={metricsData.loadingMetrics}>
               <GasUsedChart
                 key={timeRange}
-                data={l2GasUsedData}
+                data={chartsData.l2GasUsedData}
                 lineColor="#E573B5"
               />
             </ChartCard>
             <ChartCard
               title="Tx Count Per Block"
               onMore={() => openGenericTable('block-tx', timeRange)}
-              loading={loadingMetrics}
+              loading={metricsData.loadingMetrics}
             >
               <BlockTxChart
                 key={timeRange}
-                data={blockTxData}
+                data={chartsData.blockTxData}
                 barColor="#4E79A7"
               />
             </ChartCard>
             <ChartCard
               title="Blobs per Batch"
               onMore={() => openGenericTable('blobs-per-batch', timeRange)}
-              loading={loadingMetrics}
+              loading={metricsData.loadingMetrics}
             >
               <BlobsPerBatchChart
                 key={timeRange}
-                data={batchBlobCounts}
+                data={chartsData.batchBlobCounts}
                 barColor="#A0CBE8"
               />
             </ChartCard>
             <ChartCard
               title="L2 Block Times"
               onMore={() => openGenericTable('l2-block-times', timeRange)}
-              loading={loadingMetrics}
+              loading={metricsData.loadingMetrics}
             >
               <BlockTimeChart
                 key={timeRange}
-                data={l2BlockTimeData}
+                data={chartsData.l2BlockTimeData}
                 lineColor="#FAA43A"
               />
             </ChartCard>
             <ChartCard
               title="L1 Block Times"
               onMore={() => openGenericTable('l1-block-times', timeRange)}
-              loading={loadingMetrics}
+              loading={metricsData.loadingMetrics}
             >
               <BlockTimeChart
                 key={timeRange}
-                data={l1BlockTimeData}
+                data={chartsData.l1BlockTimeData}
                 lineColor="#60BD68"
               />
             </ChartCard>
@@ -847,13 +564,13 @@ const App: React.FC = () => {
           <div>
             <span className="text-sm text-gray-500">L2 Head Block</span>
             <p className="text-2xl font-semibold" style={{ color: TAIKO_PINK }}>
-              {l2HeadBlock}
+              {blockData.l2HeadBlock}
             </p>
           </div>
           <div>
             <span className="text-sm text-gray-500">L1 Head Block</span>
             <p className="text-2xl font-semibold" style={{ color: TAIKO_PINK }}>
-              {l1HeadBlock}
+              {blockData.l1HeadBlock}
             </p>
           </div>
         </div>
