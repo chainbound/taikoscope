@@ -67,8 +67,9 @@ export const useTableActions = (
       });
 
       const newUrl = url.toString();
-      const shouldReplace = newUrl === window.location.href;
-      searchParams.navigate(url, shouldReplace);
+      if (newUrl !== window.location.href) {
+        searchParams.navigate(url, false);
+      }
     },
     [searchParams],
   );
