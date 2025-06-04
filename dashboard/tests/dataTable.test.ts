@@ -100,14 +100,15 @@ describe('DataTable', () => {
         columns: [{ key: 'v', label: 'V' }],
         rows: [{ v: 1 }],
         onBack: () => {},
-        sequencers: ['a', 'b'],
+        sequencers: ['b', 'a'],
         selectedSequencer: null,
         onSequencerChange: () => {},
       }),
     );
-    expect(html.includes('All Sequencers')).toBe(true);
-    expect(html.includes('a')).toBe(true);
-    expect(html.includes('b')).toBe(true);
+    const options = Array.from(html.matchAll(/<option[^>]*>(.*?)<\/option>/g)).map(
+      (m) => m[1],
+    );
+    expect(options).toEqual(['All Sequencers', 'a', 'b']);
   });
 
   it('paginates rows when more than 50 items', () => {

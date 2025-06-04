@@ -189,7 +189,7 @@ export const SequencerSelector: React.FC<SequencerSelectorProps> = ({
       className="p-1 border rounded-md text-sm"
     >
       <option value="">All Sequencers</option>
-      {sequencers.map((s) => (
+      {[...sequencers].sort().map((s) => (
         <option key={s} value={s}>
           {s}
         </option>
