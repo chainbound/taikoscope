@@ -381,11 +381,11 @@ const App: React.FC = () => {
   }, [refreshRate]);
 
   useEffect(() => {
-    if (tableView) return;
+    if (tableView || searchParams.get('view') === 'table') return;
     fetchData();
     const interval = setInterval(fetchData, Math.max(refreshRate, 60000));
     return () => clearInterval(interval);
-  }, [timeRange, fetchData, refreshRate, tableView]);
+  }, [timeRange, fetchData, refreshRate, tableView, searchParams]);
 
   const visibleMetrics = React.useMemo(
     () =>
