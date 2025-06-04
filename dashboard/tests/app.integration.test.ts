@@ -392,17 +392,11 @@ it('app integration', async () => {
   const groupOrder = [
     'Network Performance',
     'Network Health',
-    'Network Economics',
     'Sequencers',
     'Other',
   ];
   const visible = groupOrder.filter((g) => grouped[g] && grouped[g].length > 0);
-  const expected = [
-    'Network Performance',
-    'Network Health',
-    'Network Economics',
-    'Sequencers',
-  ];
+  const expected = ['Network Performance', 'Network Health', 'Sequencers'];
   expect(visible).toStrictEqual(expected);
 
   console.log('App integration tests passed.');

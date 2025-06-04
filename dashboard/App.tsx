@@ -387,10 +387,16 @@ const App: React.FC = () => {
     return () => clearInterval(interval);
   }, [timeRange, fetchData, refreshRate, tableView, searchParams]);
 
+  const isEconomicsView = searchParams.get('view') === 'economics';
+
   const visibleMetrics = React.useMemo(
     () =>
-      metrics.filter((m) => !(selectedSequencer && m.group === 'Sequencers')),
-    [metrics, selectedSequencer],
+      metrics.filter((m) => {
+        if (selectedSequencer && m.group === 'Sequencers') return false;
+        if (isEconomicsView) return m.group === 'Network Economics';
+        return m.group !== 'Network Economics';
+      }),
+    [metrics, selectedSequencer, isEconomicsView],
   );
 
   const groupedMetrics = visibleMetrics.reduce<Record<string, MetricData[]>>(
@@ -402,19 +408,16 @@ const App: React.FC = () => {
     },
     {},
   );
-  const groupOrder = [
-    'Network Performance',
-    'Network Health',
-    'Network Economics',
-    'Sequencers',
-    'Other',
-  ];
-  const skeletonGroupCounts: Record<string, number> = {
-    'Network Performance': 5,
-    'Network Health': 3,
-    'Network Economics': 1,
-    Sequencers: 3,
-  };
+  const groupOrder = isEconomicsView
+    ? ['Network Economics']
+    : ['Network Performance', 'Network Health', 'Sequencers', 'Other'];
+  const skeletonGroupCounts: Record<string, number> = isEconomicsView
+    ? { 'Network Economics': 1 }
+    : {
+      'Network Performance': 5,
+      'Network Health': 3,
+      Sequencers: 3,
+    };
 
   const displayGroupName = useCallback(
     (group: string): string => {
@@ -433,7 +436,7 @@ const App: React.FC = () => {
       selectedSequencer
         ? { ...skeletonGroupCounts, Sequencers: 0 }
         : skeletonGroupCounts,
-    [selectedSequencer],
+    [selectedSequencer, skeletonGroupCounts],
   );
 
   const handleRouteChange = useCallback(() => {
@@ -589,18 +592,18 @@ const App: React.FC = () => {
                         : typeof m.title === 'string' && m.title === 'L2 Reorgs'
                           ? () => openGenericTable('reorgs')
                           : typeof m.title === 'string' &&
-                              m.title === 'Slashing Events'
+                            m.title === 'Slashing Events'
                             ? () => openGenericTable('slashings')
                             : typeof m.title === 'string' &&
-                                m.title === 'Forced Inclusions'
+                              m.title === 'Forced Inclusions'
                               ? () => openGenericTable('forced-inclusions')
                               : typeof m.title === 'string' &&
-                                  m.title === 'Active Sequencers'
+                                m.title === 'Active Sequencers'
                                 ? () => openGenericTable('gateways')
                                 : typeof m.title === 'string' &&
-                                    m.title === 'Batch Posting Cadence'
+                                  m.title === 'Batch Posting Cadence'
                                   ? () =>
-                                      openGenericTable('batch-posting-cadence')
+                                    openGenericTable('batch-posting-cadence')
                                   : undefined
                     }
                   />
@@ -610,92 +613,95 @@ const App: React.FC = () => {
           ) : null,
         )}
 
-        {/* Charts Grid - Reordered: Sequencer Pie Chart first */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mt-6">
-          {!selectedSequencer && (
+        {!isEconomicsView && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mt-6">
+            {!selectedSequencer && (
+              <ChartCard
+                title="Sequencer Distribution"
+                onMore={() => openSequencerDistributionTable(timeRange, 0)}
+                loading={loadingMetrics}
+              >
+                <SequencerPieChart
+                  key={timeRange}
+                  data={sequencerDistribution}
+                />
+              </ChartCard>
+            )}
             <ChartCard
-              title="Sequencer Distribution"
-              onMore={() => openSequencerDistributionTable(timeRange, 0)}
+              title="Prove Time"
+              onMore={() => openGenericTable('prove-time', timeRange)}
               loading={loadingMetrics}
             >
-              <SequencerPieChart key={timeRange} data={sequencerDistribution} />
+              <BatchProcessChart
+                key={timeRange}
+                data={secondsToProveData}
+                lineColor={TAIKO_PINK}
+              />
             </ChartCard>
-          )}
-          <ChartCard
-            title="Prove Time"
-            onMore={() => openGenericTable('prove-time', timeRange)}
-            loading={loadingMetrics}
-          >
-            <BatchProcessChart
-              key={timeRange}
-              data={secondsToProveData}
-              lineColor={TAIKO_PINK}
-            />
-          </ChartCard>
-          <ChartCard
-            title="Verify Time"
-            onMore={() => openGenericTable('verify-time', timeRange)}
-            loading={loadingMetrics}
-          >
-            <BatchProcessChart
-              key={timeRange}
-              data={secondsToVerifyData}
-              lineColor="#5DA5DA"
-            />
-          </ChartCard>
-          <ChartCard title="Gas Used Per Block" loading={loadingMetrics}>
-            <GasUsedChart
-              key={timeRange}
-              data={l2GasUsedData}
-              lineColor="#E573B5"
-            />
-          </ChartCard>
-          <ChartCard
-            title="Tx Count Per Block"
-            onMore={() => openGenericTable('block-tx', timeRange)}
-            loading={loadingMetrics}
-          >
-            <BlockTxChart
-              key={timeRange}
-              data={blockTxData}
-              barColor="#4E79A7"
-            />
-          </ChartCard>
-          <ChartCard
-            title="Blobs per Batch"
-            onMore={() => openGenericTable('blobs-per-batch', timeRange)}
-            loading={loadingMetrics}
-          >
-            <BlobsPerBatchChart
-              key={timeRange}
-              data={batchBlobCounts}
-              barColor="#A0CBE8"
-            />
-          </ChartCard>
-          <ChartCard
-            title="L2 Block Times"
-            onMore={() => openGenericTable('l2-block-times', timeRange)}
-            loading={loadingMetrics}
-          >
-            <BlockTimeChart
-              key={timeRange}
-              data={l2BlockTimeData}
-              lineColor="#FAA43A"
-              histogram
-            />
-          </ChartCard>
-          <ChartCard
-            title="L1 Block Times"
-            onMore={() => openGenericTable('l1-block-times', timeRange)}
-            loading={loadingMetrics}
-          >
-            <BlockTimeChart
-              key={timeRange}
-              data={l1BlockTimeData}
-              lineColor="#60BD68"
-            />
-          </ChartCard>
-        </div>
+            <ChartCard
+              title="Verify Time"
+              onMore={() => openGenericTable('verify-time', timeRange)}
+              loading={loadingMetrics}
+            >
+              <BatchProcessChart
+                key={timeRange}
+                data={secondsToVerifyData}
+                lineColor="#5DA5DA"
+              />
+            </ChartCard>
+            <ChartCard title="Gas Used Per Block" loading={loadingMetrics}>
+              <GasUsedChart
+                key={timeRange}
+                data={l2GasUsedData}
+                lineColor="#E573B5"
+              />
+            </ChartCard>
+            <ChartCard
+              title="Tx Count Per Block"
+              onMore={() => openGenericTable('block-tx', timeRange)}
+              loading={loadingMetrics}
+            >
+              <BlockTxChart
+                key={timeRange}
+                data={blockTxData}
+                barColor="#4E79A7"
+              />
+            </ChartCard>
+            <ChartCard
+              title="Blobs per Batch"
+              onMore={() => openGenericTable('blobs-per-batch', timeRange)}
+              loading={loadingMetrics}
+            >
+              <BlobsPerBatchChart
+                key={timeRange}
+                data={batchBlobCounts}
+                barColor="#A0CBE8"
+              />
+            </ChartCard>
+            <ChartCard
+              title="L2 Block Times"
+              onMore={() => openGenericTable('l2-block-times', timeRange)}
+              loading={loadingMetrics}
+            >
+              <BlockTimeChart
+                key={timeRange}
+                data={l2BlockTimeData}
+                lineColor="#FAA43A"
+              />
+            </ChartCard>
+            <ChartCard
+              title="L1 Block Times"
+              onMore={() => openGenericTable('l1-block-times', timeRange)}
+              loading={loadingMetrics}
+            >
+              <BlockTimeChart
+                key={timeRange}
+                data={l1BlockTimeData}
+                lineColor="#60BD68"
+              />
+            </ChartCard>
+          </div>
+        )}
       </main>
 
       {/* Footer for Block Numbers */}
