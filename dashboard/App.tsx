@@ -55,7 +55,9 @@ import {
   fetchL2Reorgs,
   fetchSlashingEventCount,
   fetchForcedInclusionCount,
-  fetchPreconfData,
+  fetchActiveGateways,
+  fetchCurrentOperator,
+  fetchNextOperator,
   fetchL2HeadBlock,
   fetchL1HeadBlock,
   fetchL2HeadNumber,
@@ -68,9 +70,8 @@ import {
   fetchSequencerDistribution,
   fetchBlockTransactions,
   fetchBatchBlobCounts,
-  fetchL2TxFee,
-  fetchAvgL2Tps,
   fetchAvgL2TxFee,
+  fetchAvgL2Tps,
   type BlockTransaction,
   type BatchBlobCount,
 } from './services/apiService';
@@ -227,7 +228,9 @@ const App: React.FC = () => {
       avgVerifyRes,
       avgTxFeeRes,
       avgTpsRes,
-      preconfRes,
+      activeGatewaysRes,
+      currentOperatorRes,
+      nextOperatorRes,
       l2ReorgsRes,
       slashingCountRes,
       forcedInclusionCountRes,
@@ -258,7 +261,9 @@ const App: React.FC = () => {
         range,
         selectedSequencer ? getSequencerAddress(selectedSequencer) : undefined,
       ),
-      fetchPreconfData(),
+      fetchActiveGateways(range),
+      fetchCurrentOperator(),
+      fetchNextOperator(),
       fetchL2Reorgs(range),
       fetchSlashingEventCount(range),
       fetchForcedInclusionCount(range),
@@ -284,7 +289,7 @@ const App: React.FC = () => {
         selectedSequencer ? getSequencerAddress(selectedSequencer) : undefined,
       ),
       fetchBatchBlobCounts(range),
-      fetchL2TxFee(
+      fetchAvgL2TxFee(
         range,
         selectedSequencer ? getSequencerAddress(selectedSequencer) : undefined,
       ),
@@ -296,10 +301,9 @@ const App: React.FC = () => {
     const avgVerify = avgVerifyRes.data;
     const avgTxFee = avgTxFeeRes.data;
     const avgTps = avgTpsRes.data;
-    const preconfData = preconfRes.data;
-    const activeGateways = preconfData ? preconfData.candidates.length : null;
-    const currentOperator = preconfData?.current_operator ?? null;
-    const nextOperator = preconfData?.next_operator ?? null;
+    const activeGateways = activeGatewaysRes.data;
+    const currentOperator = currentOperatorRes.data;
+    const nextOperator = nextOperatorRes.data;
     const l2Reorgs = l2ReorgsRes.data;
     const slashings = slashingCountRes.data;
     const forcedInclusions = forcedInclusionCountRes.data;
@@ -322,7 +326,9 @@ const App: React.FC = () => {
       avgVerifyRes,
       avgTxFeeRes,
       avgTpsRes,
-      preconfRes,
+      activeGatewaysRes,
+      currentOperatorRes,
+      nextOperatorRes,
       l2ReorgsRes,
       slashingCountRes,
       forcedInclusionCountRes,
@@ -336,6 +342,7 @@ const App: React.FC = () => {
       sequencerDistRes,
       blockTxRes,
       batchBlobCountsRes,
+      l2TxFeeRes,
     ]);
 
     const currentMetrics: MetricData[] = createMetrics({
@@ -415,7 +422,6 @@ const App: React.FC = () => {
     'Network Performance',
     'Network Economics',
     'Network Health',
-    'Network Economics',
     'Sequencers',
     'Other',
   ];
@@ -423,7 +429,6 @@ const App: React.FC = () => {
     'Network Performance': 5,
     'Network Economics': 1,
     'Network Health': 3,
-    'Network Economics': 1,
     Sequencers: 3,
   };
 
@@ -590,18 +595,18 @@ const App: React.FC = () => {
                         : typeof m.title === 'string' && m.title === 'L2 Reorgs'
                           ? () => openGenericTable('reorgs')
                           : typeof m.title === 'string' &&
-                              m.title === 'Slashing Events'
+                            m.title === 'Slashing Events'
                             ? () => openGenericTable('slashings')
                             : typeof m.title === 'string' &&
-                                m.title === 'Forced Inclusions'
+                              m.title === 'Forced Inclusions'
                               ? () => openGenericTable('forced-inclusions')
                               : typeof m.title === 'string' &&
-                                  m.title === 'Active Sequencers'
+                                m.title === 'Active Sequencers'
                                 ? () => openGenericTable('gateways')
                                 : typeof m.title === 'string' &&
-                                    m.title === 'Batch Posting Cadence'
+                                  m.title === 'Batch Posting Cadence'
                                   ? () =>
-                                      openGenericTable('batch-posting-cadence')
+                                    openGenericTable('batch-posting-cadence')
                                   : undefined
                     }
                   />

@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-undef
 const metaEnv = import.meta.env as ImportMetaEnv;
 export const API_BASE: string =
   (metaEnv.VITE_API_BASE ?? metaEnv.API_BASE ?? '') + '/v1';
@@ -233,16 +234,7 @@ export const fetchL1HeadBlock = async (
 };
 
 
-export interface PreconfData {
-  candidates: string[];
-  current_operator?: string;
-  next_operator?: string;
-}
 
-export const fetchPreconfData = async (): Promise<RequestResult<PreconfData>> => {
-  const url = `${API_BASE}/preconf-data`;
-  return fetchJson<PreconfData>(url);
-};
 
 export const fetchL2HeadNumber = async (): Promise<RequestResult<number>> => {
   const url = `${API_BASE}/l2-head-block`;

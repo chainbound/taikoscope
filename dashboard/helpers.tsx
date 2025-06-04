@@ -68,7 +68,7 @@ export const createMetrics = (data: MetricInputData): MetricData[] => [
     group: 'Network Performance',
   },
   {
-    title: 'L2 Transaction Fee',
+    title: 'Avg. L2 Transaction Fee',
     value: data.avgTxFee != null ? formatDecimal(data.avgTxFee) : 'N/A',
     group: 'Network Economics',
   },
