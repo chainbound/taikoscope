@@ -299,9 +299,9 @@ async function fetchData(range: TimeRange, state: State, economics = false) {
   state.forcedInclusionEvents = forcedInclusionEventsData;
   state.l2ReorgEvents = reorgEvents;
   state.l2HeadBlock =
-    currentMetrics.find((m) => m.title === 'L2 Head Block')?.value || 'N/A';
+    currentMetrics.find((m) => m.title === 'L2 Block')?.value || 'N/A';
   state.l1HeadBlock =
-    currentMetrics.find((m) => m.title === 'L1 Head Block')?.value || 'N/A';
+    currentMetrics.find((m) => m.title === 'L1 Block')?.value || 'N/A';
   if (anyBadRequest) {
     state.errorMessage =
       'Invalid parameters provided. Some data may not be available.';
@@ -319,14 +319,14 @@ async function updateHeads(state: State) {
     const value = l1.data.toLocaleString();
     state.l1HeadBlock = value;
     state.metrics = state.metrics.map((m) =>
-      m.title === 'L1 Head Block' ? { ...m, value } : m,
+      m.title === 'L1 Block' ? { ...m, value } : m,
     );
   }
   if (l2.data !== null) {
     const value = l2.data.toLocaleString();
     state.l2HeadBlock = value;
     state.metrics = state.metrics.map((m) =>
-      m.title === 'L2 Head Block' ? { ...m, value } : m,
+      m.title === 'L2 Block' ? { ...m, value } : m,
     );
   }
 }
