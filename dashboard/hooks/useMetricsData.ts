@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { MetricData, TimeRange } from '../types';
 import { createMetrics, type MetricInputData } from '../utils/metricsCreator';
 import { hasBadRequest, getErrorMessage } from '../utils/errorHandler';
@@ -11,12 +11,14 @@ export const useMetricsData = () => {
     const [errorMessage, setErrorMessage] = useState<string>('');
 
     const searchParams = useSearchParams();
+    
+    // Memoize the specific value we need to prevent infinite re-renders
+    const viewParam = searchParams.get('view');
+    const isEconomicsView = useMemo(() => viewParam === 'economics', [viewParam]);
 
     const fetchMetricsData = useCallback(
         async (timeRange: TimeRange, selectedSequencer: string | null) => {
             setLoadingMetrics(true);
-
-            const isEconomicsView = searchParams.get('view') === 'economics';
 
             try {
                 if (isEconomicsView) {
@@ -98,7 +100,7 @@ export const useMetricsData = () => {
                 setLoadingMetrics(false);
             }
         },
-        [searchParams],
+        [isEconomicsView],
     );
 
     return {

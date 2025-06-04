@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams } from './useSearchParams';
 
 interface UseSequencerHandlerProps {
@@ -31,19 +31,24 @@ export const useSequencerHandler = ({
         [chartsData.sequencerDistribution],
     );
 
-    // Sync with URL params
+    // Sync with URL params - extract specific value to avoid object dependency
+    const sequencerParam = searchParams.get('sequencer');
     useEffect(() => {
-        const seq = searchParams.get('sequencer');
-        setSelectedSequencer(seq ?? null);
-    }, [searchParams]);
+        setSelectedSequencer(sequencerParam ?? null);
+    }, [sequencerParam]);
 
     // Update metrics with current block heads whenever they change
+    const lastUpdateRef = useRef<string>('');
+    
     useEffect(() => {
-        if (metricsData.metrics.length > 0) {
+        const currentKey = `${blockData.l1HeadBlock}-${blockData.l2HeadBlock}`;
+        
+        if (metricsData.metrics.length > 0 && lastUpdateRef.current !== currentKey) {
             const updatedMetrics = blockData.updateMetricsWithBlockHeads(metricsData.metrics);
             metricsData.setMetrics(updatedMetrics);
+            lastUpdateRef.current = currentKey;
         }
-    }, [blockData.l1HeadBlock, blockData.l2HeadBlock, blockData.updateMetricsWithBlockHeads]);
+    }, [blockData.l1HeadBlock, blockData.l2HeadBlock]);
 
     return {
         selectedSequencer,

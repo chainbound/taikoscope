@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { TimeRange } from '../types';
 import { useSearchParams } from './useSearchParams';
 import { TableViewState } from './useTableActions';
@@ -26,17 +26,36 @@ export const useTableRouter = ({
 }: UseTableRouterProps) => {
     const searchParams = useSearchParams();
 
+    // Extract specific search param values to avoid unstable object dependencies
+    const urlParams = useMemo(() => ({
+        view: searchParams.get('view'),
+        table: searchParams.get('table'),
+        range: searchParams.get('range') as TimeRange,
+        address: searchParams.get('address'),
+        page: searchParams.get('page'),
+        start: searchParams.get('start'),
+        end: searchParams.get('end'),
+    }), [
+        searchParams.get('view'),
+        searchParams.get('table'),
+        searchParams.get('range'),
+        searchParams.get('address'),
+        searchParams.get('page'),
+        searchParams.get('start'),
+        searchParams.get('end'),
+    ]);
+
     const handleRouteChange = useCallback(() => {
         try {
-            const params = searchParams;
-            if (params.get('view') !== 'table') {
+            const params = urlParams;
+            if (params.view !== 'table') {
                 setTableView(null);
                 return;
             }
 
             // If we already have a table view and it matches the current URL state, don't reload
-            const table = params.get('table');
-            const range = (params.get('range') as TimeRange) || timeRange;
+            const table = params.table;
+            const range = params.range || timeRange;
 
             if (tableView && tableView.timeRange === range) {
                 return;
@@ -53,7 +72,7 @@ export const useTableRouter = ({
 
             switch (table) {
                 case 'sequencer-blocks': {
-                    const addr = params.get('address');
+                    const addr = params.address;
                     if (addr) {
                         openGenericTable('sequencer-blocks', range, { address: addr })
                             .catch((err) => handleTableError('sequencer-blocks', err));
@@ -70,15 +89,15 @@ export const useTableRouter = ({
                     }
                     break;
                 case 'sequencer-dist': {
-                    const pageStr = params.get('page') ?? '0';
+                    const pageStr = params.page ?? '0';
                     const page = parseInt(pageStr, 10);
                     if (isNaN(page) || page < 0) {
                         console.warn('Invalid page parameter:', pageStr);
                         setTableLoading(false);
                         break;
                     }
-                    const start = params.get('start');
-                    const end = params.get('end');
+                    const start = params.start;
+                    const end = params.end;
                     openSequencerDistributionTable(
                         range,
                         page,
@@ -103,7 +122,7 @@ export const useTableRouter = ({
             onError('Navigation error occurred. Please try again.');
         }
     }, [
-        searchParams,
+        urlParams,
         openGenericTable,
         openTpsTable,
         openSequencerDistributionTable,
@@ -122,7 +141,7 @@ export const useTableRouter = ({
             console.error('Route change effect error:', err);
             onError('Navigation error occurred.');
         }
-    }, [handleRouteChange, searchParams]);
+    }, [handleRouteChange]);
 
     return {
         handleRouteChange,

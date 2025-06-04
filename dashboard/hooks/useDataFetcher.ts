@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { TimeRange } from '../types';
 import { useSearchParams } from './useSearchParams';
 import { TableViewState } from './useTableActions';
@@ -28,15 +28,39 @@ export const useDataFetcher = ({
     refreshTimer,
 }: UseDataFetcherProps) => {
     const searchParams = useSearchParams();
+    
+    // Memoize the specific value we need to prevent infinite re-renders
+    const viewParam = searchParams.get('view');
+    const isTableView = useMemo(() => 
+        tableView || viewParam === 'table', 
+        [tableView, viewParam]
+    );
 
+    // Prevent duplicate requests
+    const fetchInProgressRef = useRef(false);
+    
     const fetchData = useCallback(async () => {
-        refreshTimer.updateLastRefresh();
+        // Prevent duplicate concurrent requests
+        if (fetchInProgressRef.current) {
+            console.log('Fetch already in progress, skipping duplicate request');
+            return;
+        }
+        
+        fetchInProgressRef.current = true;
+        
+        try {
+            refreshTimer.updateLastRefresh();
 
-        const result = await metricsData.fetchMetricsData(timeRange, selectedSequencer);
+            const result = await metricsData.fetchMetricsData(timeRange, selectedSequencer);
 
-        // Update charts data if available (main dashboard view)
-        if (result?.chartData) {
-            chartsData.updateChartsData(result.chartData);
+            // Update charts data if available (main dashboard view)
+            if (result?.chartData) {
+                chartsData.updateChartsData(result.chartData);
+            }
+        } catch (error) {
+            console.error('Data fetch failed:', error);
+        } finally {
+            fetchInProgressRef.current = false;
         }
     }, [timeRange, selectedSequencer, metricsData, chartsData, refreshTimer]);
 
@@ -52,12 +76,11 @@ export const useDataFetcher = ({
 
     // Auto-refresh effect
     useEffect(() => {
-        const isTableView = tableView || searchParams.get('view') === 'table';
         if (isTableView) return;
         fetchData();
         const interval = setInterval(fetchData, Math.max(refreshTimer.refreshRate, 60000));
         return () => clearInterval(interval);
-    }, [timeRange, fetchData, refreshTimer.refreshRate, searchParams, tableView]);
+    }, [timeRange, fetchData, refreshTimer.refreshRate, isTableView]);
 
     return {
         fetchData,

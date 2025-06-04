@@ -7,19 +7,23 @@ export const useBlockData = () => {
     const [l1HeadBlock, setL1HeadBlock] = useState<string>('0');
 
     const updateBlockHeads = useCallback(async () => {
-        const [l1, l2] = await Promise.all([
-            fetchL1HeadNumber(),
-            fetchL2HeadNumber(),
-        ]);
+        try {
+            const [l1, l2] = await Promise.all([
+                fetchL1HeadNumber(),
+                fetchL2HeadNumber(),
+            ]);
 
-        if (l1.data !== null) {
-            const value = l1.data.toLocaleString();
-            setL1HeadBlock(value);
-        }
+            if (l1.data !== null) {
+                const value = l1.data.toLocaleString();
+                setL1HeadBlock(value);
+            }
 
-        if (l2.data !== null) {
-            const value = l2.data.toLocaleString();
-            setL2HeadBlock(value);
+            if (l2.data !== null) {
+                const value = l2.data.toLocaleString();
+                setL2HeadBlock(value);
+            }
+        } catch (error) {
+            console.error('Failed to update block heads:', error);
         }
     }, []);
 
