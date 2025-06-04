@@ -21,7 +21,8 @@ export const useSearchParams = (): URLSearchParams & {
   const [params] = useRouterSearchParams();
   const routerNavigate = useNavigate();
   const [navigationState, setNavigationState] = useState<NavigationState>({
-    canGoBack: window.history.length > 1,
+    canGoBack:
+      typeof window !== 'undefined' ? window.history.length > 1 : false,
     isNavigating: false,
     errorCount: 0,
     lastError: undefined,
@@ -43,7 +44,8 @@ export const useSearchParams = (): URLSearchParams & {
         setNavigationState((prev) => ({
           ...prev,
           isNavigating: false,
-          canGoBack: window.history.length > 1,
+          canGoBack:
+            typeof window !== 'undefined' ? window.history.length > 1 : false,
         }));
       }
     },
@@ -59,6 +61,7 @@ export const useSearchParams = (): URLSearchParams & {
   }, [routerNavigate]);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
     const handlePop = () => {
       setNavigationState((prev) => ({
         ...prev,
