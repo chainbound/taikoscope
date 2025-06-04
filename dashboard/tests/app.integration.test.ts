@@ -4,15 +4,13 @@ import {
   fetchAvgVerifyTime,
   fetchL2BlockCadence,
   fetchBatchPostingCadence,
-  fetchActiveGateways,
+  fetchPreconfData,
   fetchL2Reorgs,
   fetchL2ReorgEvents,
   fetchSlashingEventCount,
   fetchForcedInclusionCount,
   fetchSlashingEvents,
   fetchForcedInclusionEvents,
-  fetchCurrentOperator,
-  fetchNextOperator,
   fetchL2HeadBlock,
   fetchL1HeadBlock,
   fetchL2HeadNumber,
@@ -56,9 +54,11 @@ const responses: Record<string, Record<string, unknown>> = {
   '/v1/batch-posting-cadence?range=1h': { batch_posting_cadence_ms: 120000 },
   '/v1/avg-prove-time?range=1h': { avg_prove_time_ms: 1500 },
   '/v1/avg-verify-time?range=1h': { avg_verify_time_ms: 2500 },
-  '/v1/active-gateways?range=1h': { gateways: ['gw1', 'gw2'] },
-  '/v1/current-operator': { operator: '0xaaa' },
-  '/v1/next-operator': { operator: '0xbbb' },
+  '/v1/preconf-data': {
+    candidates: ['gw1', 'gw2'],
+    current_operator: '0xaaa',
+    next_operator: '0xbbb',
+  },
   '/v1/reorgs?range=1h': { events: [{ l2_block_number: 10, depth: 1 }] },
   '/v1/slashings?range=1h': {
     events: [{ l1_block_number: 5, validator_addr: [1, 2] }],
@@ -158,9 +158,7 @@ async function fetchData(range: TimeRange, state: State) {
     batchCadenceRes,
     avgProveRes,
     avgVerifyRes,
-    activeGatewaysRes,
-    currentOperatorRes,
-    nextOperatorRes,
+    preconfRes,
     l2ReorgsRes,
     l2ReorgEventsRes,
     slashingCountRes,
@@ -180,9 +178,7 @@ async function fetchData(range: TimeRange, state: State) {
     fetchBatchPostingCadence(range),
     fetchAvgProveTime(range),
     fetchAvgVerifyTime(range),
-    fetchActiveGateways(range),
-    fetchCurrentOperator(),
-    fetchNextOperator(),
+    fetchPreconfData(),
     fetchL2Reorgs(range),
     fetchL2ReorgEvents(range),
     fetchSlashingEventCount(range),
@@ -203,9 +199,10 @@ async function fetchData(range: TimeRange, state: State) {
   const batchCadence = batchCadenceRes.data;
   const avgProve = avgProveRes.data;
   const avgVerify = avgVerifyRes.data;
-  const activeGateways = activeGatewaysRes.data;
-  const currentOperator = currentOperatorRes.data;
-  const nextOperator = nextOperatorRes.data;
+  const preconfData = preconfRes.data;
+  const activeGateways = preconfData ? preconfData.candidates.length : null;
+  const currentOperator = preconfData?.current_operator ?? null;
+  const nextOperator = preconfData?.next_operator ?? null;
   const l2Reorgs = l2ReorgsRes.data;
   const reorgEvents = l2ReorgEventsRes.data || [];
   const slashings = slashingCountRes.data;
@@ -226,9 +223,7 @@ async function fetchData(range: TimeRange, state: State) {
     batchCadenceRes,
     avgProveRes,
     avgVerifyRes,
-    activeGatewaysRes,
-    currentOperatorRes,
-    nextOperatorRes,
+    preconfRes,
     l2ReorgsRes,
     l2ReorgEventsRes,
     slashingCountRes,

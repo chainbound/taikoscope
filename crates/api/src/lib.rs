@@ -43,6 +43,7 @@ pub const DEFAULT_RATE_PERIOD: StdDuration = StdDuration::from_secs(60);
         forced_inclusions,
         reorgs,
         active_gateways,
+        preconf_data,
         current_operator,
         next_operator,
         avg_prove_time,
@@ -106,6 +107,7 @@ pub const DEFAULT_RATE_PERIOD: StdDuration = StdDuration::from_secs(60);
             clickhouse_lib::L2GasUsedRow,
             clickhouse_lib::BatchBlobCountRow,
             clickhouse_lib::BatchPostingTimeRow,
+            PreconfDataResponse,
             api_types::ErrorResponse
         )
     ),
@@ -560,6 +562,34 @@ async fn next_operator(State(state): State<ApiState>) -> Json<NextOperatorRespon
     };
     tracing::info!(has_value = op.is_some(), "Returning next operator");
     Json(NextOperatorResponse { operator: op })
+}
+
+#[utoipa::path(
+    get,
+    path = "/preconf-data",
+    responses(
+        (status = 200, description = "Latest preconfiguration data", body = PreconfDataResponse)
+    ),
+    tag = "taikoscope"
+)]
+async fn preconf_data(State(state): State<ApiState>) -> Json<PreconfDataResponse> {
+    let data = match state.client.get_last_preconf_data().await {
+        Ok(d) => d,
+        Err(e) => {
+            tracing::error!(error = %e, "Failed to get preconf data");
+            None
+        }
+    };
+    let (candidates, current, next) = match data {
+        Some(d) => (
+            d.candidates.into_iter().map(|a| format!("0x{}", encode(a))).collect(),
+            d.current_operator.map(|a| format!("0x{}", encode(a))),
+            d.next_operator.map(|a| format!("0x{}", encode(a))),
+        ),
+        None => (Vec::new(), None, None),
+    };
+    tracing::info!(count = candidates.len(), "Returning preconf data");
+    Json(PreconfDataResponse { candidates, current_operator: current, next_operator: next })
 }
 
 #[utoipa::path(
@@ -1180,6 +1210,7 @@ pub fn router(state: ApiState) -> Router {
         .route("/forced-inclusions", get(forced_inclusions))
         .route("/reorgs", get(reorgs))
         .route("/active-gateways", get(active_gateways))
+        .route("/preconf-data", get(preconf_data))
         .route("/current-operator", get(current_operator))
         .route("/next-operator", get(next_operator))
         .route("/avg-prove-time", get(avg_prove_time))

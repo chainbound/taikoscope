@@ -212,26 +212,16 @@ export const fetchL1HeadBlock = async (
   return { data: value, badRequest: res.badRequest, error: res.error };
 };
 
-export const fetchCurrentOperator = async (): Promise<
-  RequestResult<string>
-> => {
-  const url = `${API_BASE}/current-operator`;
-  const res = await fetchJson<{ operator?: string }>(url);
-  return {
-    data: res.data?.operator ?? null,
-    badRequest: res.badRequest,
-    error: res.error,
-  };
-};
 
-export const fetchNextOperator = async (): Promise<RequestResult<string>> => {
-  const url = `${API_BASE}/next-operator`;
-  const res = await fetchJson<{ operator?: string }>(url);
-  return {
-    data: res.data?.operator ?? null,
-    badRequest: res.badRequest,
-    error: res.error,
-  };
+export interface PreconfData {
+  candidates: string[];
+  current_operator?: string;
+  next_operator?: string;
+}
+
+export const fetchPreconfData = async (): Promise<RequestResult<PreconfData>> => {
+  const url = `${API_BASE}/preconf-data`;
+  return fetchJson<PreconfData>(url);
 };
 
 export const fetchL2HeadNumber = async (): Promise<RequestResult<number>> => {
