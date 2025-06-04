@@ -43,9 +43,37 @@ export const useBlockData = () => {
     );
 
     useEffect(() => {
-        updateBlockHeads();
-        const pollId = setInterval(updateBlockHeads, 60000);
-        return () => clearInterval(pollId);
+        let pollId: ReturnType<typeof setInterval> | undefined;
+
+        const startPolling = () => {
+            pollId = setInterval(() => {
+                if (document.visibilityState === 'visible') {
+                    void updateBlockHeads();
+                }
+            }, 60000);
+        };
+
+        if (document.visibilityState === 'visible') {
+            void updateBlockHeads();
+            startPolling();
+        }
+
+        const onVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                void updateBlockHeads();
+                if (!pollId) startPolling();
+            } else if (pollId) {
+                clearInterval(pollId);
+                pollId = undefined;
+            }
+        };
+
+        document.addEventListener('visibilitychange', onVisibilityChange);
+
+        return () => {
+            if (pollId) clearInterval(pollId);
+            document.removeEventListener('visibilitychange', onVisibilityChange);
+        };
     }, [updateBlockHeads]);
 
     return {
