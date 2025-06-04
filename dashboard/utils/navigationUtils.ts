@@ -37,7 +37,7 @@ export const isValidUrl = (urlString: string): boolean => {
 export const sanitizeUrl = (url: string | URL): string => {
   try {
     let urlObj: URL;
-    
+
     if (url instanceof URL) {
       urlObj = url;
     } else {
@@ -46,11 +46,11 @@ export const sanitizeUrl = (url: string | URL): string => {
         console.error('Invalid URL provided for sanitization:', url);
         return window.location.pathname;
       }
-      
+
       // Handle relative URLs by using current origin as base
       urlObj = new URL(url, window.location.origin);
     }
-    
+
     // Ensure we're staying within the same origin
     if (urlObj.origin !== window.location.origin) {
       console.warn('Attempted navigation to different origin:', urlObj.origin);
@@ -85,13 +85,13 @@ export const validateSearchParams = (params: URLSearchParams): boolean => {
       console.warn('Invalid view parameter:', view);
       return false;
     }
-    
+
     const page = params.get('page');
     if (page && (isNaN(Number(page)) || Number(page) < 0)) {
       console.warn('Invalid page parameter:', page);
       return false;
     }
-    
+
     const range = params.get('range');
     if (range && !['1h', '24h', '7d'].includes(range)) {
       console.warn('Invalid range parameter:', range);
@@ -144,4 +144,13 @@ export const cleanSearchParams = (params: URLSearchParams): URLSearchParams => {
   } catch {
     return new URLSearchParams();
   }
+};
+
+export const safeNavigate = (
+  routerNavigate: (path: string, opts?: { replace?: boolean }) => void,
+  url: string | URL,
+  replace = false,
+) => {
+  const sanitized = sanitizeUrl(url);
+  routerNavigate(sanitized, { replace });
 };

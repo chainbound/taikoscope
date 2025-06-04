@@ -1,22 +1,23 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { 
-  isValidUrl, 
-  sanitizeUrl, 
-  createSafeUrl, 
-  validateSearchParams, 
-  cleanSearchParams 
+import {
+  isValidUrl,
+  sanitizeUrl,
+  createSafeUrl,
+  validateSearchParams,
+  cleanSearchParams,
+  safeNavigate,
 } from '../utils/navigationUtils';
 
 // Mock window.location
 const mockLocation = {
   origin: 'https://example.com',
   pathname: '/dashboard',
-  href: 'https://example.com/dashboard'
+  href: 'https://example.com/dashboard',
 };
 
 beforeEach(() => {
   vi.stubGlobal('window', {
-    location: mockLocation
+    location: mockLocation,
   });
 });
 
@@ -29,7 +30,9 @@ describe('navigationUtils', () => {
 
     it('should return false for invalid URLs', () => {
       expect(isValidUrl('javascript:alert(1)')).toBe(false);
-      expect(isValidUrl('data:text/html,<script>alert(1)</script>')).toBe(false);
+      expect(isValidUrl('data:text/html,<script>alert(1)</script>')).toBe(
+        false,
+      );
       expect(isValidUrl('')).toBe(false);
       expect(isValidUrl('   ')).toBe(false);
       expect(isValidUrl('https://example.com/evil path')).toBe(false);
@@ -75,7 +78,7 @@ describe('navigationUtils', () => {
     it('should validate allowed view parameters', () => {
       const params = new URLSearchParams('view=table');
       expect(validateSearchParams(params)).toBe(true);
-      
+
       const params2 = new URLSearchParams('view=economics');
       expect(validateSearchParams(params2)).toBe(true);
     });
@@ -88,10 +91,10 @@ describe('navigationUtils', () => {
     it('should validate page parameters', () => {
       const params = new URLSearchParams('page=5');
       expect(validateSearchParams(params)).toBe(true);
-      
+
       const invalidParams = new URLSearchParams('page=-1');
       expect(validateSearchParams(invalidParams)).toBe(false);
-      
+
       const invalidParams2 = new URLSearchParams('page=abc');
       expect(validateSearchParams(invalidParams2)).toBe(false);
     });
@@ -115,9 +118,11 @@ describe('navigationUtils', () => {
 
   describe('cleanSearchParams', () => {
     it('should keep only allowed parameters', () => {
-      const params = new URLSearchParams('view=table&malicious=script&sequencer=test');
+      const params = new URLSearchParams(
+        'view=table&malicious=script&sequencer=test',
+      );
       const cleaned = cleanSearchParams(params);
-      
+
       expect(cleaned.get('view')).toBe('table');
       expect(cleaned.get('sequencer')).toBe('test');
       expect(cleaned.get('malicious')).toBeNull();
@@ -135,7 +140,7 @@ describe('navigationUtils', () => {
     it('should trim parameter values', () => {
       const params = new URLSearchParams('view= table &sequencer= test ');
       const cleaned = cleanSearchParams(params);
-      
+
       expect(cleaned.get('view')).toBe('table');
       expect(cleaned.get('sequencer')).toBe('test');
     });
@@ -143,7 +148,7 @@ describe('navigationUtils', () => {
     it('should handle empty values gracefully', () => {
       const params = new URLSearchParams('view=&sequencer=test');
       const cleaned = cleanSearchParams(params);
-      
+
       expect(cleaned.get('view')).toBeNull();
       expect(cleaned.get('sequencer')).toBe('test');
     });
@@ -154,6 +159,23 @@ describe('navigationUtils', () => {
 
       expect(cleaned.get('sort')).toBeNull();
       expect(cleaned.get('filter')).toBeNull();
+    });
+  });
+
+  describe('safeNavigate', () => {
+    it('sanitizes URL before navigating', () => {
+      const nav = vi.fn();
+      safeNavigate(nav, 'https://malicious.com/evil', true);
+      expect(nav).toHaveBeenCalledWith('/dashboard', { replace: true });
+    });
+
+    it('cleans search params', () => {
+      const nav = vi.fn();
+      safeNavigate(nav, '/dashboard?page=-1&view=table');
+      expect(nav).toHaveBeenCalledWith(
+        'https://example.com/dashboard?view=table',
+        { replace: false },
+      );
     });
   });
 });
