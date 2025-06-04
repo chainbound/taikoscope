@@ -43,7 +43,7 @@ export const useSequencerHandler = ({
             const updatedMetrics = blockData.updateMetricsWithBlockHeads(metricsData.metrics);
             metricsData.setMetrics(updatedMetrics);
         }
-    }, [blockData.l1HeadBlock, blockData.l2HeadBlock, blockData, metricsData]);
+    }, [blockData.l1HeadBlock, blockData.l2HeadBlock, blockData.updateMetricsWithBlockHeads]);
 
     return {
         selectedSequencer,

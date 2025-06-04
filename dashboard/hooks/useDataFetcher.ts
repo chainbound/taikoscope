@@ -57,7 +57,7 @@ export const useDataFetcher = ({
         fetchData();
         const interval = setInterval(fetchData, Math.max(refreshTimer.refreshRate, 60000));
         return () => clearInterval(interval);
-    }, [timeRange, fetchData, refreshTimer.refreshRate, searchParams]);
+    }, [timeRange, fetchData, refreshTimer.refreshRate, searchParams, tableView]);
 
     return {
         fetchData,
