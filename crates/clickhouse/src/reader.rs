@@ -15,7 +15,8 @@ use crate::{
     models::{
         BatchBlobCountRow, BatchPostingTimeRow, BatchProveTimeRow, BatchVerifyTimeRow,
         BlockTransactionRow, ForcedInclusionProcessedRow, L1BlockTimeRow, L2BlockTimeRow,
-        L2GasUsedRow, L2ReorgRow, SequencerBlockRow, SequencerDistributionRow, SlashingEventRow,
+        L2GasUsedRow, L2ReorgRow, PreconfData, SequencerBlockRow, SequencerDistributionRow,
+        SlashingEventRow,
     },
     types::AddressBytes,
 };
@@ -277,6 +278,16 @@ impl ClickhouseReader {
         );
         let rows = self.execute::<OpRow>(&query).await?;
         Ok(rows.into_iter().next().and_then(|r| r.next_operator))
+    }
+
+    /// Get the most recent preconfiguration data
+    pub async fn get_last_preconf_data(&self) -> Result<Option<PreconfData>> {
+        let query = format!(
+            "SELECT slot, candidates, current_operator, next_operator FROM {}.preconf_data ORDER BY inserted_at DESC LIMIT 1",
+            self.db_name
+        );
+        let rows = self.execute::<PreconfData>(&query).await?;
+        Ok(rows.into_iter().next())
     }
 
     /// Get all batches that have not been proven and are older than the given cutoff time

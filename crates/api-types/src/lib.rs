@@ -112,6 +112,17 @@ pub struct NextOperatorResponse {
     pub operator: Option<String>,
 }
 
+/// Preconfiguration data containing sequencer candidates and operators.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct PreconfDataResponse {
+    /// Candidates included in the latest preconfiguration.
+    pub candidates: Vec<String>,
+    /// Current operator address, if any.
+    pub current_operator: Option<String>,
+    /// Address of the next operator, if configured.
+    pub next_operator: Option<String>,
+}
+
 /// Average time in milliseconds to prove a batch.
 #[derive(Debug, Serialize, ToSchema)]
 pub struct AvgProveTimeResponse {

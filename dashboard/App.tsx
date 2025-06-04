@@ -52,12 +52,10 @@ import {
   fetchAvgVerifyTime,
   fetchL2BlockCadence,
   fetchBatchPostingCadence,
-  fetchActiveGateways,
   fetchL2Reorgs,
   fetchSlashingEventCount,
   fetchForcedInclusionCount,
-  fetchCurrentOperator,
-  fetchNextOperator,
+  fetchPreconfData,
   fetchL2HeadBlock,
   fetchL1HeadBlock,
   fetchL2HeadNumber,
@@ -226,9 +224,7 @@ const App: React.FC = () => {
       avgProveRes,
       avgVerifyRes,
       avgTpsRes,
-      activeGatewaysRes,
-      currentOperatorRes,
-      nextOperatorRes,
+      preconfRes,
       l2ReorgsRes,
       slashingCountRes,
       forcedInclusionCountRes,
@@ -254,9 +250,7 @@ const App: React.FC = () => {
         range,
         selectedSequencer ? getSequencerAddress(selectedSequencer) : undefined,
       ),
-      fetchActiveGateways(range),
-      fetchCurrentOperator(),
-      fetchNextOperator(),
+      fetchPreconfData(),
       fetchL2Reorgs(range),
       fetchSlashingEventCount(range),
       fetchForcedInclusionCount(range),
@@ -289,9 +283,10 @@ const App: React.FC = () => {
     const avgProve = avgProveRes.data;
     const avgVerify = avgVerifyRes.data;
     const avgTps = avgTpsRes.data;
-    const activeGateways = activeGatewaysRes.data;
-    const currentOperator = currentOperatorRes.data;
-    const nextOperator = nextOperatorRes.data;
+    const preconfData = preconfRes.data;
+    const activeGateways = preconfData ? preconfData.candidates.length : null;
+    const currentOperator = preconfData?.current_operator ?? null;
+    const nextOperator = preconfData?.next_operator ?? null;
     const l2Reorgs = l2ReorgsRes.data;
     const slashings = slashingCountRes.data;
     const forcedInclusions = forcedInclusionCountRes.data;
@@ -312,9 +307,7 @@ const App: React.FC = () => {
       avgProveRes,
       avgVerifyRes,
       avgTpsRes,
-      activeGatewaysRes,
-      currentOperatorRes,
-      nextOperatorRes,
+      preconfRes,
       l2ReorgsRes,
       slashingCountRes,
       forcedInclusionCountRes,

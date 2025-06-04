@@ -25,7 +25,7 @@ describe('MetricCard', () => {
       React.createElement(MetricCard, { title: 'Blocks', value: '42' }),
     );
     expect(htmlNormal.includes('min-w-0 w-full')).toBe(false);
-    expect(htmlNormal.includes('text-3xl')).toBe(true);
+    expect(htmlNormal.includes('text-2xl')).toBe(true);
     expect(htmlNormal.includes('whitespace-nowrap')).toBe(false);
     expect(htmlNormal.includes('42')).toBe(true);
   });
