@@ -474,12 +474,19 @@ const App: React.FC = () => {
       setTableView(null);
       return;
     }
-    setTableLoading(true);
+    
+    // If we already have a table view and it matches the current URL state, don't reload
     const table = params.get('table');
+    const range = (params.get('range') as TimeRange) || timeRange;
+    
+    if (tableView && tableView.timeRange === range) {
+      return;
+    }
+    
+    setTableLoading(true);
     switch (table) {
       case 'sequencer-blocks': {
         const addr = params.get('address');
-        const range = (params.get('range') as TimeRange) || timeRange;
         if (addr)
           void openGenericTable('sequencer-blocks', range, { address: addr });
         break;
@@ -488,7 +495,6 @@ const App: React.FC = () => {
         void openTpsTable();
         break;
       case 'sequencer-dist': {
-        const range = (params.get('range') as TimeRange) || timeRange;
         const page = parseInt(params.get('page') ?? '0', 10);
         const start = params.get('start');
         const end = params.get('end');
@@ -501,7 +507,6 @@ const App: React.FC = () => {
         break;
       }
       default: {
-        const range = (params.get('range') as TimeRange) || timeRange;
         if (table) void openGenericTable(table, range);
         break;
       }
@@ -513,6 +518,7 @@ const App: React.FC = () => {
     setTableView,
     setTableLoading,
     timeRange,
+    tableView,
   ]);
 
   const handleBack = useCallback(() => {
