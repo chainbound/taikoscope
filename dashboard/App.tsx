@@ -17,6 +17,11 @@ const BlockTimeChart = lazy(() =>
     default: m.BlockTimeChart,
   })),
 );
+const BlockTimeHistogram = lazy(() =>
+  import('./components/BlockTimeHistogram').then((m) => ({
+    default: m.BlockTimeHistogram,
+  })),
+);
 const BatchProcessChart = lazy(() =>
   import('./components/BatchProcessChart').then((m) => ({
     default: m.BatchProcessChart,
@@ -667,10 +672,10 @@ const App: React.FC = () => {
             onMore={() => openGenericTable('l2-block-times', timeRange)}
             loading={loadingMetrics}
           >
-            <BlockTimeChart
+            <BlockTimeHistogram
               key={timeRange}
               data={l2BlockTimeData}
-              lineColor="#FAA43A"
+              barColor="#FAA43A"
             />
           </ChartCard>
           <ChartCard

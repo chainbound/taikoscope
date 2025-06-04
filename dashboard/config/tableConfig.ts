@@ -1,7 +1,12 @@
-import { TimeRange, L2ReorgEvent, SlashingEvent, ForcedInclusionEvent } from '../types';
-import { 
+import {
+  TimeRange,
+  L2ReorgEvent,
+  SlashingEvent,
+  ForcedInclusionEvent,
+} from '../types';
+import {
   fetchSequencerBlocks,
-  fetchL2ReorgEvents, 
+  fetchL2ReorgEvents,
   fetchSlashingEvents,
   fetchForcedInclusionEvents,
   fetchActiveGatewayAddresses,
@@ -12,7 +17,7 @@ import {
   fetchBlockTransactions,
   fetchL2BlockTimes,
   fetchL1BlockTimes,
-  fetchSequencerDistribution
+  fetchSequencerDistribution,
 } from '../services/apiService';
 import { getSequencerName } from '../sequencerConfig';
 import { bytesToHex } from '../utils';
@@ -28,7 +33,10 @@ export interface TableConfig {
   title: string | ((params: Record<string, any>) => string);
   fetcher: (range: TimeRange, ...args: any[]) => Promise<any>;
   columns: TableColumn[];
-  mapData?: (data: any[], params?: Record<string, any>) => Record<string, string | number>[];
+  mapData?: (
+    data: any[],
+    params?: Record<string, any>,
+  ) => Record<string, string | number>[];
   chart?: (data: any[]) => React.ReactNode;
   supportsPagination?: boolean;
   urlKey: string;
@@ -40,39 +48,43 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     fetcher: fetchSequencerBlocks,
     columns: [{ key: 'block', label: 'Block Number' }],
     mapData: (data) => data.map((b) => ({ block: b })),
-    urlKey: 'sequencer-blocks'
+    urlKey: 'sequencer-blocks',
   },
 
-  'reorgs': {
+  reorgs: {
     title: 'L2 Reorgs',
     fetcher: fetchL2ReorgEvents,
     columns: [
       { key: 'l2_block_number', label: 'Block Number' },
-      { key: 'depth', label: 'Depth' }
+      { key: 'depth', label: 'Depth' },
     ],
     mapData: (data) => data as Record<string, string | number>[],
     chart: (data) => {
-      const ReorgDepthChart = React.lazy(() => 
-        import('../components/ReorgDepthChart').then(m => ({ default: m.ReorgDepthChart }))
+      const ReorgDepthChart = React.lazy(() =>
+        import('../components/ReorgDepthChart').then((m) => ({
+          default: m.ReorgDepthChart,
+        })),
       );
-      return React.createElement(ReorgDepthChart, { data: data as L2ReorgEvent[] });
+      return React.createElement(ReorgDepthChart, {
+        data: data as L2ReorgEvent[],
+      });
     },
-    urlKey: 'reorgs'
+    urlKey: 'reorgs',
   },
 
-  'slashings': {
+  slashings: {
     title: 'Slashing Events',
     fetcher: fetchSlashingEvents,
     columns: [
       { key: 'l1_block_number', label: 'L1 Block' },
-      { key: 'validator_addr', label: 'Validator' }
+      { key: 'validator_addr', label: 'Validator' },
     ],
-    mapData: (data) => 
+    mapData: (data) =>
       (data as SlashingEvent[]).map((e) => ({
         l1_block_number: e.l1_block_number,
-        validator_addr: bytesToHex(e.validator_addr)
+        validator_addr: bytesToHex(e.validator_addr),
       })),
-    urlKey: 'slashings'
+    urlKey: 'slashings',
   },
 
   'forced-inclusions': {
@@ -81,17 +93,17 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     columns: [{ key: 'blob_hash', label: 'Blob Hash' }],
     mapData: (data) =>
       (data as ForcedInclusionEvent[]).map((e) => ({
-        blob_hash: bytesToHex(e.blob_hash)
+        blob_hash: bytesToHex(e.blob_hash),
       })),
-    urlKey: 'forced-inclusions'
+    urlKey: 'forced-inclusions',
   },
 
-  'gateways': {
+  gateways: {
     title: 'Active Sequencers',
     fetcher: fetchActiveGatewayAddresses,
     columns: [{ key: 'address', label: 'Address' }],
     mapData: (data) => data.map((g) => ({ address: g })),
-    urlKey: 'gateways'
+    urlKey: 'gateways',
   },
 
   'blobs-per-batch': {
@@ -99,10 +111,10 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     fetcher: fetchBatchBlobCounts,
     columns: [
       { key: 'batch', label: 'Batch' },
-      { key: 'blobs', label: 'Blobs' }
+      { key: 'blobs', label: 'Blobs' },
     ],
     mapData: (data) => data as Record<string, string | number>[],
-    urlKey: 'blobs-per-batch'
+    urlKey: 'blobs-per-batch',
   },
 
   'batch-posting-cadence': {
@@ -110,16 +122,21 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     fetcher: fetchBatchPostingTimes,
     columns: [
       { key: 'value', label: 'Batch' },
-      { key: 'timestamp', label: 'Interval (ms)' }
+      { key: 'timestamp', label: 'Interval (ms)' },
     ],
     mapData: (data) => data as Record<string, string | number>[],
     chart: (data) => {
       const BlockTimeChart = React.lazy(() =>
-        import('../components/BlockTimeChart').then(m => ({ default: m.BlockTimeChart }))
+        import('../components/BlockTimeChart').then((m) => ({
+          default: m.BlockTimeChart,
+        })),
       );
-      return React.createElement(BlockTimeChart, { data, lineColor: '#FF9DA7' });
+      return React.createElement(BlockTimeChart, {
+        data,
+        lineColor: '#FF9DA7',
+      });
     },
-    urlKey: 'batch-posting-cadence'
+    urlKey: 'batch-posting-cadence',
   },
 
   'prove-time': {
@@ -127,16 +144,21 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     fetcher: fetchProveTimes,
     columns: [
       { key: 'name', label: 'Batch' },
-      { key: 'value', label: 'Seconds' }
+      { key: 'value', label: 'Seconds' },
     ],
     mapData: (data) => data as Record<string, string | number>[],
     chart: (data) => {
       const BatchProcessChart = React.lazy(() =>
-        import('../components/BatchProcessChart').then(m => ({ default: m.BatchProcessChart }))
+        import('../components/BatchProcessChart').then((m) => ({
+          default: m.BatchProcessChart,
+        })),
       );
-      return React.createElement(BatchProcessChart, { data, lineColor: TAIKO_PINK });
+      return React.createElement(BatchProcessChart, {
+        data,
+        lineColor: TAIKO_PINK,
+      });
     },
-    urlKey: 'prove-time'
+    urlKey: 'prove-time',
   },
 
   'verify-time': {
@@ -144,16 +166,21 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     fetcher: fetchVerifyTimes,
     columns: [
       { key: 'name', label: 'Batch' },
-      { key: 'value', label: 'Seconds' }
+      { key: 'value', label: 'Seconds' },
     ],
     mapData: (data) => data as Record<string, string | number>[],
     chart: (data) => {
       const BatchProcessChart = React.lazy(() =>
-        import('../components/BatchProcessChart').then(m => ({ default: m.BatchProcessChart }))
+        import('../components/BatchProcessChart').then((m) => ({
+          default: m.BatchProcessChart,
+        })),
       );
-      return React.createElement(BatchProcessChart, { data, lineColor: '#5DA5DA' });
+      return React.createElement(BatchProcessChart, {
+        data,
+        lineColor: '#5DA5DA',
+      });
     },
-    urlKey: 'verify-time'
+    urlKey: 'verify-time',
   },
 
   'block-tx': {
@@ -162,16 +189,18 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     columns: [
       { key: 'block', label: 'Block Number' },
       { key: 'txs', label: 'Tx Count' },
-      { key: 'sequencer', label: 'Sequencer' }
+      { key: 'sequencer', label: 'Sequencer' },
     ],
     mapData: (data) => data as Record<string, string | number>[],
     chart: (data) => {
       const BlockTxChart = React.lazy(() =>
-        import('../components/BlockTxChart').then(m => ({ default: m.BlockTxChart }))
+        import('../components/BlockTxChart').then((m) => ({
+          default: m.BlockTxChart,
+        })),
       );
       return React.createElement(BlockTxChart, { data, barColor: '#4E79A7' });
     },
-    urlKey: 'block-tx'
+    urlKey: 'block-tx',
   },
 
   'l2-block-times': {
@@ -179,16 +208,21 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     fetcher: fetchL2BlockTimes,
     columns: [
       { key: 'value', label: 'Block Number' },
-      { key: 'timestamp', label: 'Interval (ms)' }
+      { key: 'timestamp', label: 'Interval (ms)' },
     ],
     mapData: (data) => data as Record<string, string | number>[],
     chart: (data) => {
-      const BlockTimeChart = React.lazy(() =>
-        import('../components/BlockTimeChart').then(m => ({ default: m.BlockTimeChart }))
+      const BlockTimeHistogram = React.lazy(() =>
+        import('../components/BlockTimeHistogram').then((m) => ({
+          default: m.BlockTimeHistogram,
+        })),
       );
-      return React.createElement(BlockTimeChart, { data, lineColor: '#FAA43A' });
+      return React.createElement(BlockTimeHistogram, {
+        data,
+        barColor: '#FAA43A',
+      });
     },
-    urlKey: 'l2-block-times'
+    urlKey: 'l2-block-times',
   },
 
   'l1-block-times': {
@@ -196,16 +230,21 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     fetcher: fetchL1BlockTimes,
     columns: [
       { key: 'value', label: 'Block Number' },
-      { key: 'timestamp', label: 'Interval (ms)' }
+      { key: 'timestamp', label: 'Interval (ms)' },
     ],
     mapData: (data) => data as Record<string, string | number>[],
     chart: (data) => {
       const BlockTimeChart = React.lazy(() =>
-        import('../components/BlockTimeChart').then(m => ({ default: m.BlockTimeChart }))
+        import('../components/BlockTimeChart').then((m) => ({
+          default: m.BlockTimeChart,
+        })),
       );
-      return React.createElement(BlockTimeChart, { data, lineColor: '#60BD68' });
+      return React.createElement(BlockTimeChart, {
+        data,
+        lineColor: '#60BD68',
+      });
     },
-    urlKey: 'l1-block-times'
+    urlKey: 'l1-block-times',
   },
 
   'sequencer-dist': {
@@ -213,10 +252,10 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     fetcher: fetchSequencerDistribution,
     columns: [
       { key: 'name', label: 'Sequencer' },
-      { key: 'value', label: 'Blocks' }
+      { key: 'value', label: 'Blocks' },
     ],
     mapData: (data) => data as Record<string, string | number>[],
     supportsPagination: true,
-    urlKey: 'sequencer-dist'
-  }
+    urlKey: 'sequencer-dist',
+  },
 };
