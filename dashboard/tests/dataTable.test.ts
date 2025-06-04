@@ -111,6 +111,24 @@ describe('DataTable', () => {
     expect(options).toEqual(['All Sequencers', 'a', 'b']);
   });
 
+  it('handles sequencer list containing All Sequencers entry', () => {
+    const html = renderToStaticMarkup(
+      React.createElement(DataTable, {
+        title: 'Seq',
+        columns: [{ key: 'v', label: 'V' }],
+        rows: [{ v: 1 }],
+        onBack: () => {},
+        sequencers: ['b', 'All Sequencers', 'a'],
+        selectedSequencer: null,
+        onSequencerChange: () => {},
+      }),
+    );
+    const options = Array.from(html.matchAll(/<option[^>]*>(.*?)<\/option>/g)).map(
+      (m) => m[1],
+    );
+    expect(options).toEqual(['All Sequencers', 'a', 'b']);
+  });
+
   it('paginates rows when more than 50 items', () => {
     const rows = Array.from({ length: 55 }, (_, i) => ({ a: String(i) }));
     const html = renderToStaticMarkup(

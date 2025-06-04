@@ -200,6 +200,14 @@ export const SequencerSelector: React.FC<SequencerSelectorProps> = ({
   value,
   onChange,
 }) => {
+  const sorted = React.useMemo(
+    () =>
+      [...sequencers]
+        .filter((s) => s.toLowerCase() !== 'all sequencers')
+        .sort(),
+    [sequencers],
+  );
+
   return (
     <select
       value={value ?? ''}
@@ -207,7 +215,7 @@ export const SequencerSelector: React.FC<SequencerSelectorProps> = ({
       className="p-1 border rounded-md text-sm"
     >
       <option value="">All Sequencers</option>
-      {[...sequencers].sort().map((s) => (
+      {sorted.map((s) => (
         <option key={s} value={s}>
           {s}
         </option>
