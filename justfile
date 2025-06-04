@@ -30,7 +30,7 @@ masaya-api:
 
 # run all recipes required to pass CI workflows
 ci:
-    @just fmt lint test check-dashboard test-dashboard
+    @just fmt lint lint-dashboard test check-dashboard test-dashboard
 
 # run tests
 test:
@@ -176,3 +176,7 @@ check-dashboard:
 # run dashboard tests
 test-dashboard:
     cd dashboard && npm run test
+
+# lint dashboard files for trailing whitespace
+lint-dashboard:
+    cd dashboard && npm run lint:whitespace

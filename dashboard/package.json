@@ -10,7 +10,8 @@
     "check": "tsc --noEmit",
     "test": "vitest run",
     "format": "prettier --write .",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "lint:whitespace": "node scripts/check-trailing-whitespace.cjs"
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.8",

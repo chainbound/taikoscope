@@ -39,10 +39,10 @@ export const useSequencerHandler = ({
 
     // Update metrics with current block heads whenever they change
     const lastUpdateRef = useRef<string>('');
-    
+
     useEffect(() => {
         const currentKey = `${blockData.l1HeadBlock}-${blockData.l2HeadBlock}`;
-        
+
         if (metricsData.metrics.length > 0 && lastUpdateRef.current !== currentKey) {
             const updatedMetrics = blockData.updateMetricsWithBlockHeads(metricsData.metrics);
             metricsData.setMetrics(updatedMetrics);

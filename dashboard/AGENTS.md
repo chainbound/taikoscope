@@ -6,6 +6,7 @@
 - Build for production with `npm run build`.
 - Run tests with `npm run test` or `just test-dashboard`.
 - Run type checks with `npm run check` or `just check-dashboard` whenever you modify dashboard code and ensure this passes before opening a PR.
+- Check for trailing whitespace with `npm run lint:whitespace` or `just lint-dashboard`.
 - Always run `just ci` after any changes.
 
 ## Code Style

@@ -105,8 +105,9 @@ Formatting, linting and tests can be run via `just`:
 ```bash
 just fmt      # format the code
 just lint     # run clippy
+just lint-dashboard # check dashboard whitespace
 just test     # run the test suite
-just ci       # runs fmt, lint and test
+just ci       # runs fmt, lint, lint-dashboard and test
 ```
 
 ## Deployment
