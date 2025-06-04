@@ -9,6 +9,7 @@ repository.workspace = true
 clickhouse_lib = { path = "../clickhouse", package = "clickhouse" }
 runtime = { path = "../runtime" }
 api-types = { path = "../api-types" }
+primitives = { path = "../primitives" }
 
 alloy-primitives.workspace = true
 async-stream.workspace = true

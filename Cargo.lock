@@ -738,6 +738,7 @@ dependencies = [
  "eyre",
  "futures",
  "hex",
+ "primitives",
  "runtime",
  "serde",
  "serde_json",
