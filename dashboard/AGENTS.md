@@ -11,6 +11,7 @@
 ## Code Style
 - Use TypeScript and keep components typed.
 - Format using `prettier`.
+- Avoid lines with trailing whitespace (spaces or tabs)
 
 ## Git
 - Use Conventional Commits for commits.
