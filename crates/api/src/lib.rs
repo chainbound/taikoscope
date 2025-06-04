@@ -2068,4 +2068,78 @@ mod tests {
         let err: api_types::ErrorResponse = serde_json::from_slice(&bytes).unwrap();
         assert_eq!(err.r#type, "rate-limit-exceeded");
     }
+
+    #[test]
+    fn range_duration_default_is_one_hour() {
+        let d = range_duration(&None);
+        assert_eq!(d.num_hours(), 1);
+    }
+
+    #[test]
+    fn range_duration_clamps_long_hours() {
+        let d = range_duration(&Some("200h".to_owned()));
+        assert_eq!(d.num_hours(), 168);
+    }
+
+    #[test]
+    fn range_duration_clamps_long_days() {
+        let d = range_duration(&Some("10d".to_owned()));
+        assert_eq!(d.num_hours(), 168);
+    }
+
+    #[test]
+    fn range_duration_invalid_string_defaults() {
+        let d = range_duration(&Some("invalid".to_owned()));
+        assert_eq!(d.num_hours(), 1);
+    }
+
+    #[tokio::test]
+    async fn sequencer_blocks_invalid_address() {
+        let mock = Mock::new();
+        #[derive(Serialize, Row)]
+        struct SeqBlockRowTest {
+            sequencer: AddressBytes,
+            l2_block_number: u64,
+        }
+        mock.add(handlers::provide(vec![SeqBlockRowTest {
+            sequencer: AddressBytes([1u8; 20]),
+            l2_block_number: 42,
+        }]));
+        let app = build_app(mock.url());
+        let body = send_request(app, "/sequencer-blocks?range=1h&address=zzz").await;
+        assert_eq!(
+            body,
+            json!({
+                "sequencers": [
+                    { "address": "0x0101010101010101010101010101010101010101", "blocks": [42] }
+                ]
+            })
+        );
+    }
+
+    #[tokio::test]
+    async fn block_transactions_invalid_address() {
+        let mock = Mock::new();
+        #[derive(Serialize, Row)]
+        struct TxRowTest {
+            sequencer: AddressBytes,
+            l2_block_number: u64,
+            sum_tx: u32,
+        }
+        mock.add(handlers::provide(vec![TxRowTest {
+            sequencer: AddressBytes([1u8; 20]),
+            l2_block_number: 42,
+            sum_tx: 7,
+        }]));
+        let app = build_app(mock.url());
+        let body = send_request(app, "/block-transactions?range=1h&address=zzz").await;
+        assert_eq!(
+            body,
+            json!({
+                "blocks": [
+                    { "block": 42, "txs": 7, "sequencer": "0x0101010101010101010101010101010101010101" }
+                ]
+            })
+        );
+    }
 }
