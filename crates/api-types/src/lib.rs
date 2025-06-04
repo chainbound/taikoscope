@@ -56,6 +56,13 @@ impl IntoResponse for ErrorResponse {
     }
 }
 
+/// Basic health status response.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct HealthResponse {
+    /// Health status string.
+    pub status: String,
+}
+
 /// Timestamp of the most recent L2 block.
 #[derive(Debug, Serialize, ToSchema)]
 pub struct L2HeadResponse {

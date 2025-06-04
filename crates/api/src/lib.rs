@@ -36,6 +36,7 @@ pub const DEFAULT_RATE_PERIOD: StdDuration = StdDuration::from_secs(60);
 #[derive(Debug, OpenApi)]
 #[openapi(
     paths(
+        health,
         l2_head,
         l1_head,
         l2_head_block,
@@ -114,6 +115,7 @@ pub const DEFAULT_RATE_PERIOD: StdDuration = StdDuration::from_secs(60);
             clickhouse_lib::L2GasUsedRow,
             clickhouse_lib::BatchBlobCountRow,
             clickhouse_lib::BatchPostingTimeRow,
+            HealthResponse,
             PreconfDataResponse,
             api_types::ErrorResponse
         )
@@ -202,6 +204,18 @@ fn range_duration(range: &Option<String>) -> ChronoDuration {
     }
 
     ChronoDuration::hours(1)
+}
+
+#[utoipa::path(
+    get,
+    path = "/health",
+    responses(
+        (status = 200, description = "Service health", body = HealthResponse)
+    ),
+    tag = "taikoscope"
+)]
+async fn health() -> Json<HealthResponse> {
+    Json(HealthResponse { status: "ok".to_owned() })
 }
 
 #[utoipa::path(
@@ -1294,6 +1308,7 @@ async fn rate_limit(
 pub fn router(state: ApiState) -> Router {
     Router::new()
         .merge(SwaggerUi::new("/swagger-ui").url("/api-doc/openapi.json", ApiDoc::openapi()))
+        .route("/health", get(health))
         .route("/l2-head", get(l2_head))
         .route("/l1-head", get(l1_head))
         .route("/l2-head-block", get(l2_head_block))
@@ -1382,6 +1397,14 @@ mod tests {
         assert!(response.status().is_success());
         let bytes = body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
         serde_json::from_slice(&bytes).unwrap()
+    }
+
+    #[tokio::test]
+    async fn health_endpoint() {
+        let mock = Mock::new();
+        let app = build_app(mock.url());
+        let body = send_request(app, "/health").await;
+        assert_eq!(body, json!({ "status": "ok" }));
     }
 
     #[tokio::test]
@@ -2079,6 +2102,7 @@ mod tests {
 
         // Verify all expected endpoints are documented
         let expected_paths = [
+            "/health",
             "/l2-head",
             "/l1-head",
             "/l2-head-block",
