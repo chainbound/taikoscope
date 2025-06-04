@@ -97,3 +97,6 @@ export const saveRefreshRate = (rate: number): void => {
   if (typeof localStorage === 'undefined') return;
   localStorage.setItem('refreshRate', String(rate));
 };
+
+export const isValidRefreshRate = (rate: number): boolean =>
+  Number.isFinite(rate) && rate > 0;

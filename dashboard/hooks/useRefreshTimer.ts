@@ -1,22 +1,30 @@
 import { useState, useEffect, useCallback } from 'react';
-import { loadRefreshRate, saveRefreshRate } from '../utils';
+import { loadRefreshRate, saveRefreshRate, isValidRefreshRate } from '../utils';
 
 export const useRefreshTimer = () => {
-    const [refreshRate, setRefreshRate] = useState<number>(() => loadRefreshRate());
-    const [lastRefresh, setLastRefresh] = useState<number>(Date.now());
+  const [refreshRate, setRefreshRateState] = useState<number>(() =>
+    loadRefreshRate(),
+  );
+  const [lastRefresh, setLastRefresh] = useState<number>(Date.now());
 
-    useEffect(() => {
-        saveRefreshRate(refreshRate);
-    }, [refreshRate]);
+  const setRefreshRate = useCallback((rate: number) => {
+    if (isValidRefreshRate(rate)) {
+      setRefreshRateState(rate);
+    }
+  }, []);
 
-    const updateLastRefresh = useCallback(() => {
-        setLastRefresh(Date.now());
-    }, []);
+  useEffect(() => {
+    saveRefreshRate(refreshRate);
+  }, [refreshRate]);
 
-    return {
-        refreshRate,
-        setRefreshRate,
-        lastRefresh,
-        updateLastRefresh,
-    };
+  const updateLastRefresh = useCallback(() => {
+    setLastRefresh(Date.now());
+  }, []);
+
+  return {
+    refreshRate,
+    setRefreshRate,
+    lastRefresh,
+    updateLastRefresh,
+  };
 };

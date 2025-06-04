@@ -2,6 +2,7 @@ import React from 'react';
 import { TimeRange } from '../types';
 import { RefreshCountdown } from './RefreshCountdown';
 import { TAIKO_PINK } from '../theme';
+import { isValidRefreshRate } from '../utils';
 
 const metaEnv = (import.meta as any).env as ImportMetaEnv | undefined;
 const NETWORK_NAME =
@@ -165,7 +166,9 @@ export const RefreshRateInput: React.FC<RefreshRateInputProps> = ({
 
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = Number(e.target.value);
-    onRefreshRateChange(value);
+    if (isValidRefreshRate(value)) {
+      onRefreshRateChange(value);
+    }
   };
 
   return (
