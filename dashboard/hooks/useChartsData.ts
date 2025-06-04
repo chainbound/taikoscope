@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { TimeSeriesData, PieChartDataItem } from '../types';
 import type { BlockTransaction, BatchBlobCount } from '../services/apiService';
 
@@ -12,7 +12,7 @@ export const useChartsData = () => {
     const [batchBlobCounts, setBatchBlobCounts] = useState<BatchBlobCount[]>([]);
     const [sequencerDistribution, setSequencerDistribution] = useState<PieChartDataItem[]>([]);
 
-    const updateChartsData = (data: {
+    const updateChartsData = useCallback((data: {
         proveTimes: TimeSeriesData[];
         verifyTimes: TimeSeriesData[];
         l2Times: TimeSeriesData[];
@@ -30,17 +30,30 @@ export const useChartsData = () => {
         setBlockTxData(data.txPerBlock);
         setBatchBlobCounts(data.blobsPerBatch);
         setSequencerDistribution(data.sequencerDist);
-    };
+    }, []);
 
-    return {
-        secondsToProveData,
-        secondsToVerifyData,
-        l2BlockTimeData,
-        l2GasUsedData,
-        l1BlockTimeData,
-        blockTxData,
-        batchBlobCounts,
-        sequencerDistribution,
-        updateChartsData,
-    };
+    return useMemo(
+        () => ({
+            secondsToProveData,
+            secondsToVerifyData,
+            l2BlockTimeData,
+            l2GasUsedData,
+            l1BlockTimeData,
+            blockTxData,
+            batchBlobCounts,
+            sequencerDistribution,
+            updateChartsData,
+        }),
+        [
+            secondsToProveData,
+            secondsToVerifyData,
+            l2BlockTimeData,
+            l2GasUsedData,
+            l1BlockTimeData,
+            blockTxData,
+            batchBlobCounts,
+            sequencerDistribution,
+            updateChartsData,
+        ],
+    );
 };

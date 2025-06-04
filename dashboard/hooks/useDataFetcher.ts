@@ -7,25 +7,20 @@ interface UseDataFetcherProps {
     timeRange: TimeRange;
     selectedSequencer: string | null;
     tableView: TableViewState | null;
-    metricsData: {
-        fetchMetricsData: (timeRange: TimeRange, selectedSequencer: string | null) => Promise<any>;
-    };
-    chartsData: {
-        updateChartsData: (data: any) => void;
-    };
-    refreshTimer: {
-        refreshRate: number;
-        updateLastRefresh: () => void;
-    };
+    fetchMetricsData: (timeRange: TimeRange, selectedSequencer: string | null) => Promise<any>;
+    updateChartsData: (data: any) => void;
+    refreshRate: number;
+    updateLastRefresh: () => void;
 }
 
 export const useDataFetcher = ({
     timeRange,
     selectedSequencer,
     tableView,
-    metricsData,
-    chartsData,
-    refreshTimer,
+    fetchMetricsData,
+    updateChartsData,
+    refreshRate,
+    updateLastRefresh,
 }: UseDataFetcherProps) => {
     const searchParams = useSearchParams();
     
@@ -50,20 +45,20 @@ export const useDataFetcher = ({
         fetchInProgressRef.current = true;
         
         try {
-            refreshTimer.updateLastRefresh();
+            updateLastRefresh();
 
-            const result = await metricsData.fetchMetricsData(timeRange, selectedSequencer);
+            const result = await fetchMetricsData(timeRange, selectedSequencer);
 
             // Update charts data if available (main dashboard view)
             if (result?.chartData) {
-                chartsData.updateChartsData(result.chartData);
+                updateChartsData(result.chartData);
             }
         } catch (error) {
             console.error('Data fetch failed:', error);
         } finally {
             fetchInProgressRef.current = false;
         }
-    }, [timeRange, selectedSequencer, metricsData, chartsData, refreshTimer]);
+    }, [timeRange, selectedSequencer, fetchMetricsData, updateChartsData, updateLastRefresh]);
 
     const handleManualRefresh = useCallback(() => {
         if (tableView && tableView.onRefresh) {
@@ -86,7 +81,7 @@ export const useDataFetcher = ({
                 if (document.visibilityState === 'visible') {
                     void fetchData();
                 }
-            }, Math.max(refreshTimer.refreshRate, 60000));
+            }, Math.max(refreshRate, 60000));
         };
 
         if (document.visibilityState === 'visible') {
@@ -110,7 +105,7 @@ export const useDataFetcher = ({
             if (interval) clearInterval(interval);
             document.removeEventListener('visibilitychange', onVisibilityChange);
         };
-    }, [timeRange, fetchData, refreshTimer.refreshRate, isTableView]);
+    }, [timeRange, fetchData, refreshRate, isTableView]);
 
     return {
         fetchData,
