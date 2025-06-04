@@ -16,7 +16,7 @@ interface ReorgDepthChartProps {
   data: L2ReorgEvent[];
 }
 
-export const ReorgDepthChart: React.FC<ReorgDepthChartProps> = ({ data }) => {
+const ReorgDepthChartComponent: React.FC<ReorgDepthChartProps> = ({ data }) => {
   if (!data || data.length === 0) {
     return (
       <div className="flex items-center justify-center h-full text-gray-500">
@@ -109,3 +109,5 @@ export const ReorgDepthChart: React.FC<ReorgDepthChartProps> = ({ data }) => {
     </ResponsiveContainer>
   );
 };
+
+export const ReorgDepthChart = React.memo(ReorgDepthChartComponent);

@@ -17,7 +17,7 @@ interface GasUsedChartProps {
   lineColor: string;
 }
 
-export const GasUsedChart: React.FC<GasUsedChartProps> = ({
+const GasUsedChartComponent: React.FC<GasUsedChartProps> = ({
   data,
   lineColor,
 }) => {
@@ -121,3 +121,5 @@ export const GasUsedChart: React.FC<GasUsedChartProps> = ({
     </ResponsiveContainer>
   );
 };
+
+export const GasUsedChart = React.memo(GasUsedChartComponent);

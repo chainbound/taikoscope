@@ -25,7 +25,7 @@ interface BlockTimeChartProps {
   histogram?: boolean;
 }
 
-export const BlockTimeChart: React.FC<BlockTimeChartProps> = ({
+const BlockTimeChartComponent: React.FC<BlockTimeChartProps> = ({
   data,
   lineColor,
   histogram = false,
@@ -140,3 +140,5 @@ export const BlockTimeChart: React.FC<BlockTimeChartProps> = ({
     </ResponsiveContainer>
   );
 };
+
+export const BlockTimeChart = React.memo(BlockTimeChartComponent);

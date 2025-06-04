@@ -16,7 +16,9 @@ interface MissedBlockChartProps {
   data: MissedBlockProposal[];
 }
 
-export const MissedBlockChart: React.FC<MissedBlockChartProps> = ({ data }) => {
+const MissedBlockChartComponent: React.FC<MissedBlockChartProps> = ({
+  data,
+}) => {
   if (!data || data.length === 0) {
     return (
       <div className="flex items-center justify-center h-full text-gray-500">
@@ -39,11 +41,17 @@ export const MissedBlockChart: React.FC<MissedBlockChartProps> = ({ data }) => {
     setBrushRange({ startIndex: 0, endIndex: sortedData.length - 1 });
   }, [sortedData]);
 
-  const handleBrushChange = (range: { startIndex?: number; endIndex?: number }) => {
+  const handleBrushChange = (range: {
+    startIndex?: number;
+    endIndex?: number;
+  }) => {
     if (range.startIndex == null || range.endIndex == null) return;
     const maxRange = 500;
     if (range.endIndex - range.startIndex > maxRange) {
-      setBrushRange({ startIndex: range.endIndex - maxRange, endIndex: range.endIndex });
+      setBrushRange({
+        startIndex: range.endIndex - maxRange,
+        endIndex: range.endIndex,
+      });
     } else {
       setBrushRange({ startIndex: range.startIndex, endIndex: range.endIndex });
     }
@@ -51,7 +59,10 @@ export const MissedBlockChart: React.FC<MissedBlockChartProps> = ({ data }) => {
 
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <BarChart data={sortedData} margin={{ top: 5, right: 70, left: 20, bottom: 40 }}>
+      <BarChart
+        data={sortedData}
+        margin={{ top: 5, right: 70, left: 20, bottom: 40 }}
+      >
         <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
         <XAxis
           dataKey="slot"
@@ -84,7 +95,10 @@ export const MissedBlockChart: React.FC<MissedBlockChartProps> = ({ data }) => {
         <Tooltip
           labelFormatter={(label: number) => `Slot ${label.toLocaleString()}`}
           formatter={() => [1, 'missed']}
-          contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.8)', borderColor: TAIKO_PINK }}
+          contentStyle={{
+            backgroundColor: 'rgba(255, 255, 255, 0.8)',
+            borderColor: TAIKO_PINK,
+          }}
           labelStyle={{ color: '#333' }}
         />
         <Bar dataKey={() => 1} fill={TAIKO_PINK} name="Missed" />
@@ -100,3 +114,5 @@ export const MissedBlockChart: React.FC<MissedBlockChartProps> = ({ data }) => {
     </ResponsiveContainer>
   );
 };
+
+export const MissedBlockChart = React.memo(MissedBlockChartComponent);

@@ -29,7 +29,7 @@ const FALLBACK_COLORS = [
   '#F15854',
 ];
 
-export const SequencerPieChart: React.FC<SequencerPieChartProps> = ({
+const SequencerPieChartComponent: React.FC<SequencerPieChartProps> = ({
   data,
 }) => {
   if (!data || data.length === 0) {
@@ -69,3 +69,5 @@ export const SequencerPieChart: React.FC<SequencerPieChartProps> = ({
     </ResponsiveContainer>
   );
 };
+
+export const SequencerPieChart = React.memo(SequencerPieChartComponent);

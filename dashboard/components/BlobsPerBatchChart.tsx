@@ -16,7 +16,7 @@ interface BlobsPerBatchChartProps {
   barColor: string;
 }
 
-export const BlobsPerBatchChart: React.FC<BlobsPerBatchChartProps> = ({
+const BlobsPerBatchChartComponent: React.FC<BlobsPerBatchChartProps> = ({
   data,
   barColor,
 }) => {
@@ -114,3 +114,5 @@ export const BlobsPerBatchChart: React.FC<BlobsPerBatchChartProps> = ({
     </ResponsiveContainer>
   );
 };
+
+export const BlobsPerBatchChart = React.memo(BlobsPerBatchChartComponent);
