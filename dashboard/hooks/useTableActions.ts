@@ -33,17 +33,6 @@ export interface TableViewState {
   chart?: React.ReactNode;
 }
 
-const paramsEqual = (
-  a: URLSearchParams,
-  b: URLSearchParams,
-): boolean => {
-  if (a.size !== b.size) return false;
-  for (const [k, v] of a) {
-    if (b.get(k) !== v) return false;
-  }
-  return true;
-};
-
 export const useTableActions = (
   timeRange: TimeRange,
   setTimeRange: (range: TimeRange) => void,
