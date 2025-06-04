@@ -3,6 +3,7 @@ import { TimeRange } from '../types';
 import { RefreshCountdown } from './RefreshCountdown';
 import { TAIKO_PINK } from '../theme';
 import { isValidRefreshRate } from '../utils';
+import { useSearchParams } from '../hooks/useSearchParams';
 
 const metaEnv = (import.meta as any).env as ImportMetaEnv | undefined;
 const NETWORK_NAME =
@@ -31,6 +32,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   selectedSequencer,
   onSequencerChange,
 }) => {
+  const searchParams = useSearchParams();
   return (
     <header className="flex flex-col md:flex-row justify-between items-center pb-4 border-b border-gray-200">
       <div className="flex items-baseline space-x-4">
@@ -46,7 +48,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
               url.searchParams.delete('page');
               url.searchParams.delete('start');
               url.searchParams.delete('end');
-              window.history.pushState(null, '', url.toString());
+              searchParams.navigate(url);
             } catch (err) {
               console.error('Failed to navigate to home:', err);
               // Fallback: reload page
@@ -70,7 +72,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
                 url.searchParams.set('view', 'economics');
               }
               url.searchParams.delete('table');
-              window.history.pushState(null, '', url.toString());
+              searchParams.navigate(url);
             } catch (err) {
               console.error('Failed to toggle economics view:', err);
               // Fallback: just reload the page with economics parameter
