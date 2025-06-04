@@ -147,10 +147,20 @@ export const cleanSearchParams = (params: URLSearchParams): URLSearchParams => {
 };
 
 export const safeNavigate = (
-  routerNavigate: (path: string, opts?: { replace?: boolean }) => void,
+  navigateFn: (to: string, opts?: { replace?: boolean }) => void,
   url: string | URL,
   replace = false,
 ) => {
   const sanitized = sanitizeUrl(url);
-  routerNavigate(sanitized, { replace });
+  const safeUrl = createSafeUrl(sanitized);
+  const cleaned = cleanSearchParams(safeUrl.searchParams);
+
+  if (!validateSearchParams(cleaned)) {
+    for (const key of Array.from(cleaned.keys())) {
+      cleaned.delete(key);
+    }
+  }
+
+  safeUrl.search = cleaned.toString();
+  navigateFn(safeUrl.toString(), { replace });
 };

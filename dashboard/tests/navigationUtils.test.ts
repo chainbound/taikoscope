@@ -128,7 +128,7 @@ describe('navigationUtils', () => {
       expect(cleaned.get('malicious')).toBeNull();
     });
 
-    it('should keep new sort and filter parameters', () => {
+    it('should keep valid sort and filter parameters', () => {
       const params = new URLSearchParams('sort=desc&filter=name&bad=1');
       const cleaned = cleanSearchParams(params);
 
@@ -163,19 +163,31 @@ describe('navigationUtils', () => {
   });
 
   describe('safeNavigate', () => {
-    it('sanitizes URL before navigating', () => {
-      const nav = vi.fn();
-      safeNavigate(nav, 'https://malicious.com/evil', true);
-      expect(nav).toHaveBeenCalledWith('/dashboard', { replace: true });
+    it('sanitizes URL and navigates with proper parameter cleaning', () => {
+      const navigateFn = vi.fn();
+      safeNavigate(navigateFn, 'https://malicious.com/evil', true);
+      expect(navigateFn).toHaveBeenCalledWith('https://example.com/dashboard', { replace: true });
     });
 
-    it('cleans search params', () => {
-      const nav = vi.fn();
-      safeNavigate(nav, '/dashboard?page=-1&view=table');
-      expect(nav).toHaveBeenCalledWith(
+    it('cleans search params and navigates', () => {
+      const navigateFn = vi.fn();
+      safeNavigate(navigateFn, '/dashboard?page=-1&view=table');
+      expect(navigateFn).toHaveBeenCalledWith(
         'https://example.com/dashboard?view=table',
         { replace: false },
       );
+    });
+
+    it('removes invalid parameters completely', () => {
+      const navigateFn = vi.fn();
+      safeNavigate(
+        navigateFn,
+        'https://example.com/dashboard?view=invalid&page=-1',
+        true,
+      );
+      expect(navigateFn).toHaveBeenCalledWith('https://example.com/dashboard', {
+        replace: true,
+      });
     });
   });
 });
