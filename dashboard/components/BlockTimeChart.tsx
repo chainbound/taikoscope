@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import {
   LineChart,
   Line,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -20,11 +22,13 @@ import {
 interface BlockTimeChartProps {
   data: TimeSeriesData[];
   lineColor: string;
+  histogram?: boolean;
 }
 
 export const BlockTimeChart: React.FC<BlockTimeChartProps> = ({
   data,
   lineColor,
+  histogram = false,
 }) => {
   if (!data || data.length === 0) {
     return (
@@ -61,9 +65,10 @@ export const BlockTimeChart: React.FC<BlockTimeChartProps> = ({
       setBrushRange({ startIndex: range.startIndex, endIndex: range.endIndex });
     }
   };
+  const ChartComponent = histogram ? BarChart : LineChart;
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <LineChart
+      <ChartComponent
         data={data}
         margin={{ top: 5, right: 90, left: 20, bottom: 40 }}
       >
@@ -109,15 +114,19 @@ export const BlockTimeChart: React.FC<BlockTimeChartProps> = ({
           }}
           labelStyle={{ color: '#333' }}
         />
-        <Line
-          type="monotone"
-          dataKey="timestamp"
-          stroke={lineColor}
-          strokeWidth={2}
-          dot={false}
-          activeDot={data.length <= 100 ? { r: 6 } : false}
-          name="Time"
-        />
+        {histogram ? (
+          <Bar dataKey="timestamp" fill={lineColor} name="Time" />
+        ) : (
+          <Line
+            type="monotone"
+            dataKey="timestamp"
+            stroke={lineColor}
+            strokeWidth={2}
+            dot={false}
+            activeDot={data.length <= 100 ? { r: 6 } : false}
+            name="Time"
+          />
+        )}
         <Brush
           dataKey="timestamp"
           height={20}
@@ -127,7 +136,7 @@ export const BlockTimeChart: React.FC<BlockTimeChartProps> = ({
           onChange={handleBrushChange}
           tickFormatter={(v: number) => formatTime(v)}
         />
-      </LineChart>
+      </ChartComponent>
     </ResponsiveContainer>
   );
 };
