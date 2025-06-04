@@ -402,18 +402,19 @@ const App: React.FC = () => {
       // Otherwise refresh the main dashboard data
       void fetchData();
     }
-  }, [fetchData, tableView]);
+  }, [fetchData, tableView?.onRefresh]); // Only depend on the onRefresh function, not the entire tableView
 
   useEffect(() => {
     saveRefreshRate(refreshRate);
   }, [refreshRate]);
 
   useEffect(() => {
-    if (tableView || searchParams.get('view') === 'table') return;
+    const isTableView = tableView || searchParams.get('view') === 'table';
+    if (isTableView) return;
     fetchData();
     const interval = setInterval(fetchData, Math.max(refreshRate, 60000));
     return () => clearInterval(interval);
-  }, [timeRange, fetchData, refreshRate, tableView, searchParams]);
+  }, [timeRange, fetchData, refreshRate, searchParams]); // Remove tableView dependency
 
   const isEconomicsView = searchParams.get('view') === 'economics';
 

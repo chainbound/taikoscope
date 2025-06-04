@@ -144,15 +144,16 @@ export const useTableActions = (
 
         setTableUrl(config.urlKey, { range, ...extraParams });
 
-        // Create a refresh function that refetches data without changing the URL
+        // Create a refresh function that fetches fresh data
         const refreshData = async () => {
           try {
+            console.log(`Refreshing ${tableKey} table data`);
             const refreshRes = await config.fetcher(range, ...fetcherArgs);
-            const refreshData = refreshRes.data || [];
+            const refreshDataResult = refreshRes.data || [];
             const refreshMappedData = config.mapData
-              ? config.mapData(refreshData, extraParams)
-              : refreshData;
-            const refreshChart = config.chart ? config.chart(refreshData) : undefined;
+              ? config.mapData(refreshDataResult, extraParams)
+              : refreshDataResult;
+            const refreshChart = config.chart ? config.chart(refreshDataResult) : undefined;
 
             setTableView(prev => prev ? {
               ...prev,
