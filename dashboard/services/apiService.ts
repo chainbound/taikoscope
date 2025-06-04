@@ -3,6 +3,7 @@ export const API_BASE: string =
   (metaEnv.VITE_API_BASE ?? metaEnv.API_BASE ?? '') + '/v1';
 
 import { getSequencerName } from '../sequencerConfig';
+import { showToast } from '../utils/toast';
 
 import type {
   TimeSeriesData,
@@ -24,6 +25,9 @@ const fetchJson = async <T>(url: string): Promise<RequestResult<T>> => {
   try {
     const res = await fetch(url);
     if (!res.ok) {
+      if (res.status === 429) {
+        showToast('Too many requests, please slow down.');
+      }
       let error: ErrorResponse | null = null;
       try {
         error = (await res.json()) as ErrorResponse;
