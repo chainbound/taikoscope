@@ -6,6 +6,7 @@ use async_stream::stream;
 use axum::{
     Json, Router,
     extract::{Query, State},
+    http::StatusCode,
     middleware,
     response::{
         IntoResponse,
@@ -208,80 +209,96 @@ fn range_duration(range: &Option<String>) -> ChronoDuration {
     get,
     path = "/l2-head",
     responses(
-        (status = 200, description = "L2 head timestamp", body = L2HeadResponse)
+        (status = 200, description = "L2 head timestamp", body = L2HeadResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
     ),
     tag = "taikoscope"
 )]
-async fn l2_head(State(state): State<ApiState>) -> Json<L2HeadResponse> {
-    let ts = match state.client.get_last_l2_head_time().await {
-        Ok(time) => time,
-        Err(e) => {
-            tracing::error!("Failed to get L2 head time: {}", e);
-            None
-        }
-    };
+async fn l2_head(State(state): State<ApiState>) -> Result<Json<L2HeadResponse>, ErrorResponse> {
+    let ts = state.client.get_last_l2_head_time().await.map_err(|e| {
+        tracing::error!("Failed to get L2 head time: {}", e);
+        ErrorResponse::new(
+            "database-error",
+            "Database error",
+            StatusCode::INTERNAL_SERVER_ERROR,
+            e.to_string(),
+        )
+    })?;
 
     let resp = L2HeadResponse { last_l2_head_time: ts.map(|t| t.to_rfc3339()) };
-    Json(resp)
+    Ok(Json(resp))
 }
 
 #[utoipa::path(
     get,
     path = "/l1-head",
     responses(
-        (status = 200, description = "L1 head timestamp", body = L1HeadResponse)
+        (status = 200, description = "L1 head timestamp", body = L1HeadResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
     ),
     tag = "taikoscope"
 )]
-async fn l1_head(State(state): State<ApiState>) -> Json<L1HeadResponse> {
-    let ts = match state.client.get_last_l1_head_time().await {
-        Ok(time) => time,
-        Err(e) => {
-            tracing::error!("Failed to get L1 head time: {}", e);
-            None
-        }
-    };
+async fn l1_head(State(state): State<ApiState>) -> Result<Json<L1HeadResponse>, ErrorResponse> {
+    let ts = state.client.get_last_l1_head_time().await.map_err(|e| {
+        tracing::error!("Failed to get L1 head time: {}", e);
+        ErrorResponse::new(
+            "database-error",
+            "Database error",
+            StatusCode::INTERNAL_SERVER_ERROR,
+            e.to_string(),
+        )
+    })?;
 
     let resp = L1HeadResponse { last_l1_head_time: ts.map(|t| t.to_rfc3339()) };
-    Json(resp)
+    Ok(Json(resp))
 }
 
 #[utoipa::path(
     get,
     path = "/l2-head-block",
     responses(
-        (status = 200, description = "L2 head block number", body = L2HeadBlockResponse)
+        (status = 200, description = "L2 head block number", body = L2HeadBlockResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
     ),
     tag = "taikoscope"
 )]
-async fn l2_head_block(State(state): State<ApiState>) -> Json<L2HeadBlockResponse> {
-    let num = match state.client.get_last_l2_block_number().await {
-        Ok(num) => num,
-        Err(e) => {
-            tracing::error!("Failed to get L2 head block number: {}", e);
-            None
-        }
-    };
-    Json(L2HeadBlockResponse { l2_head_block: num })
+async fn l2_head_block(
+    State(state): State<ApiState>,
+) -> Result<Json<L2HeadBlockResponse>, ErrorResponse> {
+    let num = state.client.get_last_l2_block_number().await.map_err(|e| {
+        tracing::error!("Failed to get L2 head block number: {}", e);
+        ErrorResponse::new(
+            "database-error",
+            "Database error",
+            StatusCode::INTERNAL_SERVER_ERROR,
+            e.to_string(),
+        )
+    })?;
+    Ok(Json(L2HeadBlockResponse { l2_head_block: num }))
 }
 
 #[utoipa::path(
     get,
     path = "/l1-head-block",
     responses(
-        (status = 200, description = "L1 head block number", body = L1HeadBlockResponse)
+        (status = 200, description = "L1 head block number", body = L1HeadBlockResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
     ),
     tag = "taikoscope"
 )]
-async fn l1_head_block(State(state): State<ApiState>) -> Json<L1HeadBlockResponse> {
-    let num = match state.client.get_last_l1_block_number().await {
-        Ok(num) => num,
-        Err(e) => {
-            tracing::error!("Failed to get L1 head block number: {}", e);
-            None
-        }
-    };
-    Json(L1HeadBlockResponse { l1_head_block: num })
+async fn l1_head_block(
+    State(state): State<ApiState>,
+) -> Result<Json<L1HeadBlockResponse>, ErrorResponse> {
+    let num = state.client.get_last_l1_block_number().await.map_err(|e| {
+        tracing::error!("Failed to get L1 head block number: {}", e);
+        ErrorResponse::new(
+            "database-error",
+            "Database error",
+            StatusCode::INTERNAL_SERVER_ERROR,
+            e.to_string(),
+        )
+    })?;
+    Ok(Json(L1HeadBlockResponse { l1_head_block: num }))
 }
 
 async fn sse_l2_head(
@@ -429,24 +446,27 @@ async fn sse_l1_head(
         RangeQuery
     ),
     responses(
-        (status = 200, description = "Slashing events", body = SlashingEventsResponse)
+        (status = 200, description = "Slashing events", body = SlashingEventsResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
     ),
     tag = "taikoscope"
 )]
 async fn slashings(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
-) -> Json<SlashingEventsResponse> {
+) -> Result<Json<SlashingEventsResponse>, ErrorResponse> {
     let since = Utc::now() - range_duration(&params.range);
-    let events = match state.client.get_slashing_events_since(since).await {
-        Ok(evts) => evts,
-        Err(e) => {
-            tracing::error!(error = %e, "Failed to get slashing events");
-            Vec::new()
-        }
-    };
+    let events = state.client.get_slashing_events_since(since).await.map_err(|e| {
+        tracing::error!(error = %e, "Failed to get slashing events");
+        ErrorResponse::new(
+            "database-error",
+            "Database error",
+            StatusCode::INTERNAL_SERVER_ERROR,
+            e.to_string(),
+        )
+    })?;
     tracing::info!(count = events.len(), "Returning slashing events");
-    Json(SlashingEventsResponse { events })
+    Ok(Json(SlashingEventsResponse { events }))
 }
 
 #[utoipa::path(
@@ -456,24 +476,27 @@ async fn slashings(
         RangeQuery
     ),
     responses(
-        (status = 200, description = "Forced inclusion events", body = ForcedInclusionEventsResponse)
+        (status = 200, description = "Forced inclusion events", body = ForcedInclusionEventsResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
     ),
     tag = "taikoscope"
 )]
 async fn forced_inclusions(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
-) -> Json<ForcedInclusionEventsResponse> {
+) -> Result<Json<ForcedInclusionEventsResponse>, ErrorResponse> {
     let since = Utc::now() - range_duration(&params.range);
-    let events = match state.client.get_forced_inclusions_since(since).await {
-        Ok(evts) => evts,
-        Err(e) => {
-            tracing::error!(error = %e, "Failed to get forced inclusion events");
-            Vec::new()
-        }
-    };
+    let events = state.client.get_forced_inclusions_since(since).await.map_err(|e| {
+        tracing::error!(error = %e, "Failed to get forced inclusion events");
+        ErrorResponse::new(
+            "database-error",
+            "Database error",
+            StatusCode::INTERNAL_SERVER_ERROR,
+            e.to_string(),
+        )
+    })?;
     tracing::info!(count = events.len(), "Returning forced inclusion events");
-    Json(ForcedInclusionEventsResponse { events })
+    Ok(Json(ForcedInclusionEventsResponse { events }))
 }
 
 #[utoipa::path(
@@ -483,24 +506,27 @@ async fn forced_inclusions(
         RangeQuery
     ),
     responses(
-        (status = 200, description = "Missed block proposal events", body = MissedBlockProposalsResponse)
+        (status = 200, description = "Missed block proposal events", body = MissedBlockProposalsResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
     ),
     tag = "taikoscope"
 )]
 async fn missed_block_proposals(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
-) -> Json<MissedBlockProposalsResponse> {
+) -> Result<Json<MissedBlockProposalsResponse>, ErrorResponse> {
     let since = Utc::now() - range_duration(&params.range);
-    let events = match state.client.get_missed_block_proposals_since(since).await {
-        Ok(evts) => evts,
-        Err(e) => {
-            tracing::error!(error = %e, "Failed to get missed block proposals");
-            Vec::new()
-        }
-    };
+    let events = state.client.get_missed_block_proposals_since(since).await.map_err(|e| {
+        tracing::error!(error = %e, "Failed to get missed block proposals");
+        ErrorResponse::new(
+            "database-error",
+            "Database error",
+            StatusCode::INTERNAL_SERVER_ERROR,
+            e.to_string(),
+        )
+    })?;
     tracing::info!(count = events.len(), "Returning missed block proposals");
-    Json(MissedBlockProposalsResponse { events })
+    Ok(Json(MissedBlockProposalsResponse { events }))
 }
 
 #[utoipa::path(
@@ -510,24 +536,27 @@ async fn missed_block_proposals(
         RangeQuery
     ),
     responses(
-        (status = 200, description = "Reorg events", body = ReorgEventsResponse)
+        (status = 200, description = "Reorg events", body = ReorgEventsResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
     ),
     tag = "taikoscope"
 )]
 async fn reorgs(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
-) -> Json<ReorgEventsResponse> {
+) -> Result<Json<ReorgEventsResponse>, ErrorResponse> {
     let since = Utc::now() - range_duration(&params.range);
-    let events = match state.client.get_l2_reorgs_since(since).await {
-        Ok(evts) => evts,
-        Err(e) => {
-            tracing::error!(error = %e, "Failed to get reorg events");
-            Vec::new()
-        }
-    };
+    let events = state.client.get_l2_reorgs_since(since).await.map_err(|e| {
+        tracing::error!(error = %e, "Failed to get reorg events");
+        ErrorResponse::new(
+            "database-error",
+            "Database error",
+            StatusCode::INTERNAL_SERVER_ERROR,
+            e.to_string(),
+        )
+    })?;
     tracing::info!(count = events.len(), "Returning reorg events");
-    Json(ReorgEventsResponse { events })
+    Ok(Json(ReorgEventsResponse { events }))
 }
 
 #[utoipa::path(
@@ -537,83 +566,111 @@ async fn reorgs(
         RangeQuery
     ),
     responses(
-        (status = 200, description = "Active gateways", body = ActiveGatewaysResponse)
+        (status = 200, description = "Active gateways", body = ActiveGatewaysResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
     ),
     tag = "taikoscope"
 )]
 async fn active_gateways(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
-) -> Json<ActiveGatewaysResponse> {
+) -> Result<Json<ActiveGatewaysResponse>, ErrorResponse> {
     let since = Utc::now() - range_duration(&params.range);
-    let gateways = match state.client.get_active_gateways_since(since).await {
-        Ok(g) => g,
-        Err(e) => {
-            tracing::error!(error = %e, "Failed to get active gateways");
-            Vec::new()
-        }
-    };
+    let gateways = state.client.get_active_gateways_since(since).await.map_err(|e| {
+        tracing::error!(error = %e, "Failed to get active gateways");
+        ErrorResponse::new(
+            "database-error",
+            "Database error",
+            StatusCode::INTERNAL_SERVER_ERROR,
+            e.to_string(),
+        )
+    })?;
     let gateways: Vec<String> = gateways.into_iter().map(|a| format!("0x{}", encode(a))).collect();
     tracing::info!(count = gateways.len(), "Returning active gateways");
-    Json(ActiveGatewaysResponse { gateways })
+    Ok(Json(ActiveGatewaysResponse { gateways }))
 }
 
 #[utoipa::path(
     get,
     path = "/current-operator",
     responses(
-        (status = 200, description = "Current operator", body = CurrentOperatorResponse)
+        (status = 200, description = "Current operator", body = CurrentOperatorResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
     ),
     tag = "taikoscope"
 )]
-async fn current_operator(State(state): State<ApiState>) -> Json<CurrentOperatorResponse> {
-    let op = match state.client.get_last_current_operator().await {
-        Ok(o) => o.map(|a| format!("0x{}", encode(a))),
-        Err(e) => {
+async fn current_operator(
+    State(state): State<ApiState>,
+) -> Result<Json<CurrentOperatorResponse>, ErrorResponse> {
+    let op = state
+        .client
+        .get_last_current_operator()
+        .await
+        .map_err(|e| {
             tracing::error!(error = %e, "Failed to get current operator");
-            None
-        }
-    };
+            ErrorResponse::new(
+                "database-error",
+                "Database error",
+                StatusCode::INTERNAL_SERVER_ERROR,
+                e.to_string(),
+            )
+        })?
+        .map(|a| format!("0x{}", encode(a)));
     tracing::info!(has_value = op.is_some(), "Returning current operator");
-    Json(CurrentOperatorResponse { operator: op })
+    Ok(Json(CurrentOperatorResponse { operator: op }))
 }
 
 #[utoipa::path(
     get,
     path = "/next-operator",
     responses(
-        (status = 200, description = "Next operator", body = NextOperatorResponse)
+        (status = 200, description = "Next operator", body = NextOperatorResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
     ),
     tag = "taikoscope"
 )]
-async fn next_operator(State(state): State<ApiState>) -> Json<NextOperatorResponse> {
-    let op = match state.client.get_last_next_operator().await {
-        Ok(o) => o.map(|a| format!("0x{}", encode(a))),
-        Err(e) => {
+async fn next_operator(
+    State(state): State<ApiState>,
+) -> Result<Json<NextOperatorResponse>, ErrorResponse> {
+    let op = state
+        .client
+        .get_last_next_operator()
+        .await
+        .map_err(|e| {
             tracing::error!(error = %e, "Failed to get next operator");
-            None
-        }
-    };
+            ErrorResponse::new(
+                "database-error",
+                "Database error",
+                StatusCode::INTERNAL_SERVER_ERROR,
+                e.to_string(),
+            )
+        })?
+        .map(|a| format!("0x{}", encode(a)));
     tracing::info!(has_value = op.is_some(), "Returning next operator");
-    Json(NextOperatorResponse { operator: op })
+    Ok(Json(NextOperatorResponse { operator: op }))
 }
 
 #[utoipa::path(
     get,
     path = "/preconf-data",
     responses(
-        (status = 200, description = "Latest preconfiguration data", body = PreconfDataResponse)
+        (status = 200, description = "Latest preconfiguration data", body = PreconfDataResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
     ),
     tag = "taikoscope"
 )]
-async fn preconf_data(State(state): State<ApiState>) -> Json<PreconfDataResponse> {
-    let data = match state.client.get_last_preconf_data().await {
-        Ok(d) => d,
-        Err(e) => {
-            tracing::error!(error = %e, "Failed to get preconf data");
-            None
-        }
-    };
+async fn preconf_data(
+    State(state): State<ApiState>,
+) -> Result<Json<PreconfDataResponse>, ErrorResponse> {
+    let data = state.client.get_last_preconf_data().await.map_err(|e| {
+        tracing::error!(error = %e, "Failed to get preconf data");
+        ErrorResponse::new(
+            "database-error",
+            "Database error",
+            StatusCode::INTERNAL_SERVER_ERROR,
+            e.to_string(),
+        )
+    })?;
     let (candidates, current, next) = match data {
         Some(d) => (
             d.candidates.into_iter().map(|a| format!("0x{}", encode(a))).collect(),
@@ -623,7 +680,7 @@ async fn preconf_data(State(state): State<ApiState>) -> Json<PreconfDataResponse
         None => (Vec::new(), None, None),
     };
     tracing::info!(count = candidates.len(), "Returning preconf data");
-    Json(PreconfDataResponse { candidates, current_operator: current, next_operator: next })
+    Ok(Json(PreconfDataResponse { candidates, current_operator: current, next_operator: next }))
 }
 
 #[utoipa::path(
@@ -633,14 +690,15 @@ async fn preconf_data(State(state): State<ApiState>) -> Json<PreconfDataResponse
         RangeQuery
     ),
     responses(
-        (status = 200, description = "Average prove time", body = AvgProveTimeResponse)
+        (status = 200, description = "Average prove time", body = AvgProveTimeResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
     ),
     tag = "taikoscope"
 )]
 async fn avg_prove_time(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
-) -> Json<AvgProveTimeResponse> {
+) -> Result<Json<AvgProveTimeResponse>, ErrorResponse> {
     let duration = range_duration(&params.range);
     let avg = match if duration.num_hours() <= 1 {
         state.client.get_avg_prove_time_last_hour().await
@@ -652,11 +710,16 @@ async fn avg_prove_time(
         Ok(val) => val,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get avg prove time");
-            None
+            return Err(ErrorResponse::new(
+                "database-error",
+                "Database error",
+                StatusCode::INTERNAL_SERVER_ERROR,
+                e.to_string(),
+            ));
         }
     };
     tracing::info!(avg_prove_time_ms = ?avg, "Returning avg prove time");
-    Json(AvgProveTimeResponse { avg_prove_time_ms: avg })
+    Ok(Json(AvgProveTimeResponse { avg_prove_time_ms: avg }))
 }
 
 #[utoipa::path(
@@ -666,14 +729,15 @@ async fn avg_prove_time(
         RangeQuery
     ),
     responses(
-        (status = 200, description = "Average verify time", body = AvgVerifyTimeResponse)
+        (status = 200, description = "Average verify time", body = AvgVerifyTimeResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
     ),
     tag = "taikoscope"
 )]
 async fn avg_verify_time(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
-) -> Json<AvgVerifyTimeResponse> {
+) -> Result<Json<AvgVerifyTimeResponse>, ErrorResponse> {
     let duration = range_duration(&params.range);
     let avg = match if duration.num_hours() <= 1 {
         state.client.get_avg_verify_time_last_hour().await
@@ -685,11 +749,16 @@ async fn avg_verify_time(
         Ok(val) => val,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get avg verify time");
-            None
+            return Err(ErrorResponse::new(
+                "database-error",
+                "Database error",
+                StatusCode::INTERNAL_SERVER_ERROR,
+                e.to_string(),
+            ));
         }
     };
     tracing::info!(avg_verify_time_ms = ?avg, "Returning avg verify time");
-    Json(AvgVerifyTimeResponse { avg_verify_time_ms: avg })
+    Ok(Json(AvgVerifyTimeResponse { avg_verify_time_ms: avg }))
 }
 
 #[utoipa::path(
@@ -699,14 +768,15 @@ async fn avg_verify_time(
         RangeQuery
     ),
     responses(
-        (status = 200, description = "L2 block cadence", body = L2BlockCadenceResponse)
+        (status = 200, description = "L2 block cadence", body = L2BlockCadenceResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
     ),
     tag = "taikoscope"
 )]
 async fn l2_block_cadence(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
-) -> Json<L2BlockCadenceResponse> {
+) -> Result<Json<L2BlockCadenceResponse>, ErrorResponse> {
     let duration = range_duration(&params.range);
     let address = params.address.as_ref().and_then(|addr| match addr.parse::<Address>() {
         Ok(a) => Some(AddressBytes::from(a)),
@@ -725,11 +795,16 @@ async fn l2_block_cadence(
         Ok(val) => val,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get L2 block cadence");
-            None
+            return Err(ErrorResponse::new(
+                "database-error",
+                "Database error",
+                StatusCode::INTERNAL_SERVER_ERROR,
+                e.to_string(),
+            ));
         }
     };
     tracing::info!(l2_block_cadence_ms = ?avg, "Returning L2 block cadence");
-    Json(L2BlockCadenceResponse { l2_block_cadence_ms: avg })
+    Ok(Json(L2BlockCadenceResponse { l2_block_cadence_ms: avg }))
 }
 
 #[utoipa::path(
@@ -739,14 +814,15 @@ async fn l2_block_cadence(
         RangeQuery
     ),
     responses(
-        (status = 200, description = "Batch posting cadence", body = BatchPostingCadenceResponse)
+        (status = 200, description = "Batch posting cadence", body = BatchPostingCadenceResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
     ),
     tag = "taikoscope"
 )]
 async fn batch_posting_cadence(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
-) -> Json<BatchPostingCadenceResponse> {
+) -> Result<Json<BatchPostingCadenceResponse>, ErrorResponse> {
     let duration = range_duration(&params.range);
     let avg = match if duration.num_hours() <= 1 {
         state.client.get_batch_posting_cadence_last_hour().await
@@ -758,11 +834,16 @@ async fn batch_posting_cadence(
         Ok(val) => val,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get batch posting cadence");
-            None
+            return Err(ErrorResponse::new(
+                "database-error",
+                "Database error",
+                StatusCode::INTERNAL_SERVER_ERROR,
+                e.to_string(),
+            ));
         }
     };
     tracing::info!(batch_posting_cadence_ms = ?avg, "Returning batch posting cadence");
-    Json(BatchPostingCadenceResponse { batch_posting_cadence_ms: avg })
+    Ok(Json(BatchPostingCadenceResponse { batch_posting_cadence_ms: avg }))
 }
 
 #[utoipa::path(
@@ -772,14 +853,15 @@ async fn batch_posting_cadence(
         RangeQuery
     ),
     responses(
-        (status = 200, description = "Batch posting times", body = BatchPostingTimesResponse)
+        (status = 200, description = "Batch posting times", body = BatchPostingTimesResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
     ),
     tag = "taikoscope"
 )]
 async fn batch_posting_times(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
-) -> Json<BatchPostingTimesResponse> {
+) -> Result<Json<BatchPostingTimesResponse>, ErrorResponse> {
     let rows = match match params.range.as_deref() {
         Some("24h") => state.client.get_batch_posting_times_last_24_hours().await,
         Some("7d") => state.client.get_batch_posting_times_last_7_days().await,
@@ -788,11 +870,16 @@ async fn batch_posting_times(
         Ok(r) => r,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get batch posting times");
-            Vec::new()
+            return Err(ErrorResponse::new(
+                "database-error",
+                "Database error",
+                StatusCode::INTERNAL_SERVER_ERROR,
+                e.to_string(),
+            ));
         }
     };
     tracing::info!(count = rows.len(), "Returning batch posting times");
-    Json(BatchPostingTimesResponse { batches: rows })
+    Ok(Json(BatchPostingTimesResponse { batches: rows }))
 }
 
 #[utoipa::path(
@@ -802,14 +889,15 @@ async fn batch_posting_times(
         RangeQuery
     ),
     responses(
-        (status = 200, description = "Average L2 TPS", body = AvgL2TpsResponse)
+        (status = 200, description = "Average L2 TPS", body = AvgL2TpsResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
     ),
     tag = "taikoscope"
 )]
 async fn avg_l2_tps(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
-) -> Json<AvgL2TpsResponse> {
+) -> Result<Json<AvgL2TpsResponse>, ErrorResponse> {
     let duration = range_duration(&params.range);
     let address = params.address.as_ref().and_then(|addr| match addr.parse::<Address>() {
         Ok(a) => Some(AddressBytes::from(a)),
@@ -828,11 +916,16 @@ async fn avg_l2_tps(
         Ok(val) => val,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get avg L2 TPS");
-            None
+            return Err(ErrorResponse::new(
+                "database-error",
+                "Database error",
+                StatusCode::INTERNAL_SERVER_ERROR,
+                e.to_string(),
+            ));
         }
     };
     tracing::info!(avg_tps = ?avg, "Returning avg L2 TPS");
-    Json(AvgL2TpsResponse { avg_tps: avg })
+    Ok(Json(AvgL2TpsResponse { avg_tps: avg }))
 }
 
 #[utoipa::path(
@@ -842,14 +935,15 @@ async fn avg_l2_tps(
         RangeQuery
     ),
     responses(
-        (status = 200, description = "Total L2 transaction fee", body = L2TxFeeResponse)
+        (status = 200, description = "Total L2 transaction fee", body = L2TxFeeResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
     ),
     tag = "taikoscope"
 )]
 async fn l2_transaction_fee(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
-) -> Json<L2TxFeeResponse> {
+) -> Result<Json<L2TxFeeResponse>, ErrorResponse> {
     let duration = range_duration(&params.range);
     let address = params.address.as_ref().and_then(|addr| match addr.parse::<Address>() {
         Ok(a) => Some(AddressBytes::from(a)),
@@ -868,11 +962,16 @@ async fn l2_transaction_fee(
         Ok(val) => val,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get L2 tx fee");
-            None
+            return Err(ErrorResponse::new(
+                "database-error",
+                "Database error",
+                StatusCode::INTERNAL_SERVER_ERROR,
+                e.to_string(),
+            ));
         }
     };
     tracing::info!(l2_tx_fee = ?fee, "Returning L2 tx fee");
-    Json(L2TxFeeResponse { tx_fee: fee })
+    Ok(Json(L2TxFeeResponse { tx_fee: fee }))
 }
 
 #[utoipa::path(
@@ -902,14 +1001,15 @@ async fn cloud_cost(Query(params): Query<RangeQuery>) -> Json<CloudCostResponse>
         RangeQuery
     ),
     responses(
-        (status = 200, description = "Average blobs per batch", body = AvgBlobsPerBatchResponse)
+        (status = 200, description = "Average blobs per batch", body = AvgBlobsPerBatchResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
     ),
     tag = "taikoscope"
 )]
 async fn avg_blobs_per_batch(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
-) -> Json<AvgBlobsPerBatchResponse> {
+) -> Result<Json<AvgBlobsPerBatchResponse>, ErrorResponse> {
     let duration = range_duration(&params.range);
     let avg = match if duration.num_hours() <= 1 {
         state.client.get_avg_blobs_per_batch_last_hour().await
@@ -921,11 +1021,16 @@ async fn avg_blobs_per_batch(
         Ok(val) => val,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get avg blobs per batch");
-            None
+            return Err(ErrorResponse::new(
+                "database-error",
+                "Database error",
+                StatusCode::INTERNAL_SERVER_ERROR,
+                e.to_string(),
+            ));
         }
     };
     tracing::info!(avg_blobs_per_batch = ?avg, "Returning avg blobs per batch");
-    Json(AvgBlobsPerBatchResponse { avg_blobs: avg })
+    Ok(Json(AvgBlobsPerBatchResponse { avg_blobs: avg }))
 }
 
 #[utoipa::path(
@@ -935,14 +1040,15 @@ async fn avg_blobs_per_batch(
         RangeQuery
     ),
     responses(
-        (status = 200, description = "Blobs per batch", body = BatchBlobsResponse)
+        (status = 200, description = "Blobs per batch", body = BatchBlobsResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
     ),
     tag = "taikoscope"
 )]
 async fn blobs_per_batch(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
-) -> Json<BatchBlobsResponse> {
+) -> Result<Json<BatchBlobsResponse>, ErrorResponse> {
     let batches = match match params.range.as_deref() {
         Some("24h") => state.client.get_blobs_per_batch_last_24_hours().await,
         Some("7d") => state.client.get_blobs_per_batch_last_7_days().await,
@@ -951,11 +1057,16 @@ async fn blobs_per_batch(
         Ok(rows) => rows,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get blobs per batch");
-            Vec::new()
+            return Err(ErrorResponse::new(
+                "database-error",
+                "Database error",
+                StatusCode::INTERNAL_SERVER_ERROR,
+                e.to_string(),
+            ));
         }
     };
     tracing::info!(count = batches.len(), "Returning blobs per batch");
-    Json(BatchBlobsResponse { batches })
+    Ok(Json(BatchBlobsResponse { batches }))
 }
 
 #[utoipa::path(
@@ -965,14 +1076,15 @@ async fn blobs_per_batch(
         RangeQuery
     ),
     responses(
-        (status = 200, description = "Prove times", body = ProveTimesResponse)
+        (status = 200, description = "Prove times", body = ProveTimesResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
     ),
     tag = "taikoscope"
 )]
 async fn prove_times(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
-) -> Json<ProveTimesResponse> {
+) -> Result<Json<ProveTimesResponse>, ErrorResponse> {
     let batches = match match params.range.as_deref() {
         Some("24h") => state.client.get_prove_times_last_24_hours().await,
         Some("7d") => state.client.get_prove_times_last_7_days().await,
@@ -981,11 +1093,16 @@ async fn prove_times(
         Ok(rows) => rows,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get prove times");
-            Vec::new()
+            return Err(ErrorResponse::new(
+                "database-error",
+                "Database error",
+                StatusCode::INTERNAL_SERVER_ERROR,
+                e.to_string(),
+            ));
         }
     };
     tracing::info!(count = batches.len(), "Returning prove times");
-    Json(ProveTimesResponse { batches })
+    Ok(Json(ProveTimesResponse { batches }))
 }
 
 #[utoipa::path(
@@ -995,14 +1112,15 @@ async fn prove_times(
         RangeQuery
     ),
     responses(
-        (status = 200, description = "Verify times", body = VerifyTimesResponse)
+        (status = 200, description = "Verify times", body = VerifyTimesResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
     ),
     tag = "taikoscope"
 )]
 async fn verify_times(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
-) -> Json<VerifyTimesResponse> {
+) -> Result<Json<VerifyTimesResponse>, ErrorResponse> {
     let batches = match match params.range.as_deref() {
         Some("24h") => state.client.get_verify_times_last_24_hours().await,
         Some("7d") => state.client.get_verify_times_last_7_days().await,
@@ -1011,11 +1129,16 @@ async fn verify_times(
         Ok(rows) => rows,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get verify times");
-            Vec::new()
+            return Err(ErrorResponse::new(
+                "database-error",
+                "Database error",
+                StatusCode::INTERNAL_SERVER_ERROR,
+                e.to_string(),
+            ));
         }
     };
     tracing::info!(count = batches.len(), "Returning verify times");
-    Json(VerifyTimesResponse { batches })
+    Ok(Json(VerifyTimesResponse { batches }))
 }
 
 #[utoipa::path(
@@ -1025,14 +1148,15 @@ async fn verify_times(
         RangeQuery
     ),
     responses(
-        (status = 200, description = "L1 block times", body = L1BlockTimesResponse)
+        (status = 200, description = "L1 block times", body = L1BlockTimesResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
     ),
     tag = "taikoscope"
 )]
 async fn l1_block_times(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
-) -> Json<L1BlockTimesResponse> {
+) -> Result<Json<L1BlockTimesResponse>, ErrorResponse> {
     let blocks = match match params.range.as_deref() {
         Some("24h") => state.client.get_l1_block_times_last_24_hours().await,
         Some("7d") => state.client.get_l1_block_times_last_7_days().await,
@@ -1041,11 +1165,16 @@ async fn l1_block_times(
         Ok(rows) => rows,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get L1 block times");
-            Vec::new()
+            return Err(ErrorResponse::new(
+                "database-error",
+                "Database error",
+                StatusCode::INTERNAL_SERVER_ERROR,
+                e.to_string(),
+            ));
         }
     };
     tracing::info!(count = blocks.len(), "Returning L1 block times");
-    Json(L1BlockTimesResponse { blocks })
+    Ok(Json(L1BlockTimesResponse { blocks }))
 }
 
 #[utoipa::path(
@@ -1055,14 +1184,15 @@ async fn l1_block_times(
         RangeQuery
     ),
     responses(
-        (status = 200, description = "L2 block times", body = L2BlockTimesResponse)
+        (status = 200, description = "L2 block times", body = L2BlockTimesResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
     ),
     tag = "taikoscope"
 )]
 async fn l2_block_times(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
-) -> Json<L2BlockTimesResponse> {
+) -> Result<Json<L2BlockTimesResponse>, ErrorResponse> {
     let address = params.address.as_ref().and_then(|addr| match addr.parse::<Address>() {
         Ok(a) => Some(AddressBytes::from(a)),
         Err(e) => {
@@ -1078,11 +1208,16 @@ async fn l2_block_times(
         Ok(rows) => rows,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get L2 block times");
-            Vec::new()
+            return Err(ErrorResponse::new(
+                "database-error",
+                "Database error",
+                StatusCode::INTERNAL_SERVER_ERROR,
+                e.to_string(),
+            ));
         }
     };
     tracing::info!(count = blocks.len(), "Returning L2 block times");
-    Json(L2BlockTimesResponse { blocks })
+    Ok(Json(L2BlockTimesResponse { blocks }))
 }
 
 #[utoipa::path(
@@ -1092,14 +1227,15 @@ async fn l2_block_times(
         RangeQuery
     ),
     responses(
-        (status = 200, description = "L2 gas used", body = L2GasUsedResponse)
+        (status = 200, description = "L2 gas used", body = L2GasUsedResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
     ),
     tag = "taikoscope"
 )]
 async fn l2_gas_used(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
-) -> Json<L2GasUsedResponse> {
+) -> Result<Json<L2GasUsedResponse>, ErrorResponse> {
     let address = params.address.as_ref().and_then(|addr| match addr.parse::<Address>() {
         Ok(a) => Some(AddressBytes::from(a)),
         Err(e) => {
@@ -1115,10 +1251,15 @@ async fn l2_gas_used(
         Ok(rows) => rows,
         Err(e) => {
             tracing::error!("Failed to get L2 gas used: {}", e);
-            Vec::new()
+            return Err(ErrorResponse::new(
+                "database-error",
+                "Database error",
+                StatusCode::INTERNAL_SERVER_ERROR,
+                e.to_string(),
+            ));
         }
     };
-    Json(L2GasUsedResponse { blocks })
+    Ok(Json(L2GasUsedResponse { blocks }))
 }
 
 #[utoipa::path(
@@ -1128,22 +1269,25 @@ async fn l2_gas_used(
         RangeQuery
     ),
     responses(
-        (status = 200, description = "Sequencer distribution", body = SequencerDistributionResponse)
+        (status = 200, description = "Sequencer distribution", body = SequencerDistributionResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
     ),
     tag = "taikoscope"
 )]
 async fn sequencer_distribution(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
-) -> Json<SequencerDistributionResponse> {
+) -> Result<Json<SequencerDistributionResponse>, ErrorResponse> {
     let since = Utc::now() - range_duration(&params.range);
-    let rows = match state.client.get_sequencer_distribution_since(since).await {
-        Ok(r) => r,
-        Err(e) => {
-            tracing::error!(error = %e, "Failed to get sequencer distribution");
-            Vec::new()
-        }
-    };
+    let rows = state.client.get_sequencer_distribution_since(since).await.map_err(|e| {
+        tracing::error!(error = %e, "Failed to get sequencer distribution");
+        ErrorResponse::new(
+            "database-error",
+            "Database error",
+            StatusCode::INTERNAL_SERVER_ERROR,
+            e.to_string(),
+        )
+    })?;
     let sequencers: Vec<SequencerDistributionItem> = rows
         .into_iter()
         .map(|r| SequencerDistributionItem {
@@ -1152,7 +1296,7 @@ async fn sequencer_distribution(
         })
         .collect();
     tracing::info!(count = sequencers.len(), "Returning sequencer distribution");
-    Json(SequencerDistributionResponse { sequencers })
+    Ok(Json(SequencerDistributionResponse { sequencers }))
 }
 
 #[utoipa::path(
@@ -1162,22 +1306,25 @@ async fn sequencer_distribution(
         SequencerBlocksQuery
     ),
     responses(
-        (status = 200, description = "Sequencer blocks", body = SequencerBlocksResponse)
+        (status = 200, description = "Sequencer blocks", body = SequencerBlocksResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
     ),
     tag = "taikoscope"
 )]
 async fn sequencer_blocks(
     Query(params): Query<SequencerBlocksQuery>,
     State(state): State<ApiState>,
-) -> Json<SequencerBlocksResponse> {
+) -> Result<Json<SequencerBlocksResponse>, ErrorResponse> {
     let since = Utc::now() - range_duration(&params.range);
-    let rows = match state.client.get_sequencer_blocks_since(since).await {
-        Ok(r) => r,
-        Err(e) => {
-            tracing::error!(error = %e, "Failed to get sequencer blocks");
-            Vec::new()
-        }
-    };
+    let rows = state.client.get_sequencer_blocks_since(since).await.map_err(|e| {
+        tracing::error!(error = %e, "Failed to get sequencer blocks");
+        ErrorResponse::new(
+            "database-error",
+            "Database error",
+            StatusCode::INTERNAL_SERVER_ERROR,
+            e.to_string(),
+        )
+    })?;
 
     let filter = params.address.as_ref().and_then(|addr| match addr.parse::<Address>() {
         Ok(a) => Some(AddressBytes::from(a)),
@@ -1203,7 +1350,7 @@ async fn sequencer_blocks(
         .map(|(seq, blocks)| SequencerBlocksItem { address: format!("0x{}", encode(seq)), blocks })
         .collect();
     tracing::info!(count = sequencers.len(), "Returning sequencer blocks");
-    Json(SequencerBlocksResponse { sequencers })
+    Ok(Json(SequencerBlocksResponse { sequencers }))
 }
 
 #[utoipa::path(
@@ -1213,14 +1360,15 @@ async fn sequencer_blocks(
         BlockTransactionsQuery
     ),
     responses(
-        (status = 200, description = "Block transactions", body = BlockTransactionsResponse)
+        (status = 200, description = "Block transactions", body = BlockTransactionsResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
     ),
     tag = "taikoscope"
 )]
 async fn block_transactions(
     Query(params): Query<BlockTransactionsQuery>,
     State(state): State<ApiState>,
-) -> Json<BlockTransactionsResponse> {
+) -> Result<Json<BlockTransactionsResponse>, ErrorResponse> {
     let since = Utc::now() - range_duration(&params.range);
     let limit = params.limit.unwrap_or(50);
     if params.starting_after.is_some() && params.ending_before.is_some() {
@@ -1246,7 +1394,12 @@ async fn block_transactions(
         Ok(r) => r,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get block transactions");
-            Vec::new()
+            return Err(ErrorResponse::new(
+                "database-error",
+                "Database error",
+                StatusCode::INTERNAL_SERVER_ERROR,
+                e.to_string(),
+            ));
         }
     };
 
@@ -1260,7 +1413,7 @@ async fn block_transactions(
         .collect();
 
     tracing::info!(count = blocks.len(), "Returning block transactions");
-    Json(BlockTransactionsResponse { blocks })
+    Ok(Json(BlockTransactionsResponse { blocks }))
 }
 
 async fn rate_limit(
