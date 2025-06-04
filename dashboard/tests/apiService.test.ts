@@ -7,6 +7,7 @@ import {
   fetchL2BlockTimes,
   fetchBlockTransactions,
   fetchAvgL2Tps,
+  fetchAvgL2TxFee,
 } from '../services/apiService.ts';
 
 const originalFetch = globalThis.fetch;
@@ -86,6 +87,22 @@ describe('apiService', () => {
   it('handles bad request for fetchAvgL2Tps', async () => {
     globalThis.fetch = mockFetch({}, 400, false);
     const res = await fetchAvgL2Tps('1h');
+    expect(res.badRequest).toBe(true);
+    expect(res.error).toStrictEqual({});
+    expect(res.data).toBeNull();
+  });
+
+  it('fetchAvgL2TxFee succeeds', async () => {
+    globalThis.fetch = mockFetch({ avg_tx_fee: 0.05 });
+    const res = await fetchAvgL2TxFee('1h');
+    expect(res.badRequest).toBe(false);
+    expect(res.error).toBeNull();
+    expect(res.data).toBe(0.05);
+  });
+
+  it('handles bad request for fetchAvgL2TxFee', async () => {
+    globalThis.fetch = mockFetch({}, 400, false);
+    const res = await fetchAvgL2TxFee('1h');
     expect(res.badRequest).toBe(true);
     expect(res.error).toStrictEqual({});
     expect(res.data).toBeNull();

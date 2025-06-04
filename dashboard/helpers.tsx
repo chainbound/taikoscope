@@ -10,6 +10,7 @@ export interface MetricInputData {
   batchCadence: number | null;
   avgProve: number | null;
   avgVerify: number | null;
+  avgTxFee: number | null;
   activeGateways: number | null;
   currentOperator: string | null;
   nextOperator: string | null;
@@ -65,6 +66,11 @@ export const createMetrics = (data: MetricInputData): MetricData[] => [
         ? formatSeconds(data.avgVerify / 1000)
         : 'N/A',
     group: 'Network Performance',
+  },
+  {
+    title: 'L2 Transaction Fee',
+    value: data.avgTxFee != null ? formatDecimal(data.avgTxFee) : 'N/A',
+    group: 'Network Economics',
   },
   {
     title: 'Active Sequencers',

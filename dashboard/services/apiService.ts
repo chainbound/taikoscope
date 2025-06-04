@@ -116,6 +116,26 @@ export const fetchActiveGatewayAddresses = async (
   };
 };
 
+export const fetchCurrentOperator = async (): Promise<RequestResult<string>> => {
+  const url = `${API_BASE}/current-operator`;
+  const res = await fetchJson<{ operator?: string }>(url);
+  return {
+    data: res.data?.operator ?? null,
+    badRequest: res.badRequest,
+    error: res.error,
+  };
+};
+
+export const fetchNextOperator = async (): Promise<RequestResult<string>> => {
+  const url = `${API_BASE}/next-operator`;
+  const res = await fetchJson<{ operator?: string }>(url);
+  return {
+    data: res.data?.operator ?? null,
+    badRequest: res.badRequest,
+    error: res.error,
+  };
+};
+
 export const fetchL2Reorgs = async (
   range: '1h' | '24h' | '7d',
 ): Promise<RequestResult<number>> => {
@@ -254,10 +274,10 @@ export const fetchProveTimes = async (
   return {
     data: res.data
       ? res.data.batches.map((b) => ({
-          name: b.batch_id.toString(),
-          value: b.seconds_to_prove,
-          timestamp: 0,
-        }))
+        name: b.batch_id.toString(),
+        value: b.seconds_to_prove,
+        timestamp: 0,
+      }))
       : null,
     badRequest: res.badRequest,
     error: res.error,
@@ -274,10 +294,10 @@ export const fetchVerifyTimes = async (
   return {
     data: res.data
       ? res.data.batches.map((b) => ({
-          name: b.batch_id.toString(),
-          value: b.seconds_to_verify,
-          timestamp: 0,
-        }))
+        name: b.batch_id.toString(),
+        value: b.seconds_to_verify,
+        timestamp: 0,
+      }))
       : null,
     badRequest: res.badRequest,
     error: res.error,
@@ -390,9 +410,9 @@ export const fetchSequencerDistribution = async (
   return {
     data: res.data
       ? res.data.sequencers.map((s) => ({
-          name: getSequencerName(s.address),
-          value: s.blocks,
-        }))
+        name: getSequencerName(s.address),
+        value: s.blocks,
+      }))
       : null,
     badRequest: res.badRequest,
     error: res.error,
@@ -439,9 +459,9 @@ export const fetchBlockTransactions = async (
   return {
     data: res.data?.blocks
       ? res.data.blocks.map((b) => ({
-          ...b,
-          sequencer: getSequencerName(b.sequencer),
-        }))
+        ...b,
+        sequencer: getSequencerName(b.sequencer),
+      }))
       : null,
     badRequest: res.badRequest,
     error: res.error,
@@ -463,9 +483,9 @@ export const fetchBatchBlobCounts = async (
   return {
     data: res.data
       ? res.data.batches.map((b) => ({
-          batch: b.batch_id,
-          blobs: b.blob_count,
-        }))
+        batch: b.batch_id,
+        blobs: b.blob_count,
+      }))
       : null,
     badRequest: res.badRequest,
     error: res.error,
@@ -499,16 +519,16 @@ export const fetchAvgL2Tps = async (
   };
 };
 
-export const fetchL2TxFee = async (
+export const fetchAvgL2TxFee = async (
   range: '1h' | '24h' | '7d',
   address?: string,
 ): Promise<RequestResult<number>> => {
   const url =
-    `${API_BASE}/l2-tx-fee?range=${range}` +
+    `${API_BASE}/avg-l2-tx-fee?range=${range}` +
     (address ? `&address=${address}` : '');
-  const res = await fetchJson<{ tx_fee?: number }>(url);
+  const res = await fetchJson<{ avg_tx_fee?: number }>(url);
   return {
-    data: res.data?.tx_fee ?? null,
+    data: res.data?.avg_tx_fee ?? null,
     badRequest: res.badRequest,
     error: res.error,
   };

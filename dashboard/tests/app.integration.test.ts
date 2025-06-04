@@ -2,9 +2,12 @@ import { it, expect } from 'vitest';
 import {
   fetchAvgProveTime,
   fetchAvgVerifyTime,
+  fetchAvgL2TxFee,
   fetchL2BlockCadence,
   fetchBatchPostingCadence,
-  fetchPreconfData,
+  fetchActiveGateways,
+  fetchCurrentOperator,
+  fetchNextOperator,
   fetchL2Reorgs,
   fetchL2ReorgEvents,
   fetchSlashingEventCount,
@@ -21,7 +24,6 @@ import {
   fetchL2BlockTimes,
   fetchL2GasUsed,
   fetchSequencerDistribution,
-  fetchL2TxFee,
   API_BASE,
 } from '../services/apiService.ts';
 import { createMetrics, hasBadRequest } from '../helpers';
@@ -55,11 +57,10 @@ const responses: Record<string, Record<string, unknown>> = {
   '/v1/batch-posting-cadence?range=1h': { batch_posting_cadence_ms: 120000 },
   '/v1/avg-prove-time?range=1h': { avg_prove_time_ms: 1500 },
   '/v1/avg-verify-time?range=1h': { avg_verify_time_ms: 2500 },
-  '/v1/preconf-data': {
-    candidates: ['gw1', 'gw2'],
-    current_operator: '0xaaa',
-    next_operator: '0xbbb',
-  },
+  '/v1/avg-l2-tx-fee?range=1h': { avg_tx_fee: 0.05 },
+  '/v1/active-gateways?range=1h': { gateways: ['gw1', 'gw2'] },
+  '/v1/current-operator': { operator: '0xaaa' },
+  '/v1/next-operator': { operator: '0xbbb' },
   '/v1/reorgs?range=1h': { events: [{ l2_block_number: 10, depth: 1 }] },
   '/v1/slashings?range=1h': {
     events: [{ l1_block_number: 5, validator_addr: [1, 2] }],
@@ -89,14 +90,11 @@ const responses: Record<string, Record<string, unknown>> = {
       { l2_block_number: 2, gas_used: 150 },
     ],
   },
-  '/v1/l2-tx-fee?range=1h': { tx_fee: 1000 },
   '/v1/sequencer-distribution?range=1h': {
     sequencers: [{ address: 'addr1', blocks: 10 }],
   },
   '/v1/l2-head-block': { l2_head_block: 123 },
   '/v1/l1-head-block': { l1_head_block: 456 },
-  '/v1/l2-tx-fee?range=24h': { tx_fee: 2000 },
-  '/v1/l2-tx-fee?range=7d': { tx_fee: 3000 },
 };
 
 (
@@ -146,10 +144,10 @@ let intervals: IntervalId[] = [];
   fn: () => Promise<void> | void,
   ms: number,
 ): NodeJS.Timeout => {
-  const id: IntervalId = { fn, ms };
-  intervals.push(id);
-  return id as unknown as NodeJS.Timeout;
-};
+    const id: IntervalId = { fn, ms };
+    intervals.push(id);
+    return id as unknown as NodeJS.Timeout;
+  };
 (
   globalThis as unknown as { clearInterval: (id: NodeJS.Timeout) => void }
 ).clearInterval = (id: NodeJS.Timeout) => {
@@ -162,7 +160,10 @@ async function fetchData(range: TimeRange, state: State) {
     batchCadenceRes,
     avgProveRes,
     avgVerifyRes,
-    preconfRes,
+    avgTxFeeRes,
+    activeGatewaysRes,
+    currentOperatorRes,
+    nextOperatorRes,
     l2ReorgsRes,
     l2ReorgEventsRes,
     slashingCountRes,
@@ -177,13 +178,15 @@ async function fetchData(range: TimeRange, state: State) {
     l2TimesRes,
     l2GasUsedRes,
     sequencerDistRes,
-    l2TxFeeRes,
   ] = await Promise.all([
     fetchL2BlockCadence(range, undefined),
     fetchBatchPostingCadence(range),
     fetchAvgProveTime(range),
     fetchAvgVerifyTime(range),
-    fetchPreconfData(),
+    fetchAvgL2TxFee(range),
+    fetchActiveGateways(range),
+    fetchCurrentOperator(),
+    fetchNextOperator(),
     fetchL2Reorgs(range),
     fetchL2ReorgEvents(range),
     fetchSlashingEventCount(range),
@@ -198,17 +201,16 @@ async function fetchData(range: TimeRange, state: State) {
     fetchL2BlockTimes(range, undefined),
     fetchL2GasUsed(range, undefined),
     fetchSequencerDistribution(range),
-    fetchL2TxFee(range, undefined),
   ]);
 
   const l2Cadence = l2CadenceRes.data;
   const batchCadence = batchCadenceRes.data;
   const avgProve = avgProveRes.data;
   const avgVerify = avgVerifyRes.data;
-  const preconfData = preconfRes.data;
-  const activeGateways = preconfData ? preconfData.candidates.length : null;
-  const currentOperator = preconfData?.current_operator ?? null;
-  const nextOperator = preconfData?.next_operator ?? null;
+  const avgTxFee = avgTxFeeRes.data;
+  const activeGateways = activeGatewaysRes.data;
+  const currentOperator = currentOperatorRes.data;
+  const nextOperator = nextOperatorRes.data;
   const l2Reorgs = l2ReorgsRes.data;
   const reorgEvents = l2ReorgEventsRes.data || [];
   const slashings = slashingCountRes.data;
@@ -223,14 +225,16 @@ async function fetchData(range: TimeRange, state: State) {
   const l2Times = l2TimesRes.data || [];
   const l2Gas = l2GasUsedRes.data || [];
   const sequencerDist = sequencerDistRes.data || [];
-  const l2TxFee = l2TxFeeRes.data;
 
   const anyBadRequest = hasBadRequest([
     l2CadenceRes,
     batchCadenceRes,
     avgProveRes,
     avgVerifyRes,
-    preconfRes,
+    avgTxFeeRes,
+    activeGatewaysRes,
+    currentOperatorRes,
+    nextOperatorRes,
     l2ReorgsRes,
     l2ReorgEventsRes,
     slashingCountRes,
@@ -251,15 +255,16 @@ async function fetchData(range: TimeRange, state: State) {
     batchCadence,
     avgProve,
     avgVerify,
+    avgTxFee,
     activeGateways,
     currentOperator,
     nextOperator,
     l2Reorgs,
     slashings,
     forcedInclusions,
-    l2TxFee,
     l2Block,
     l1Block,
+    l2TxFee: avgTxFee,
   });
 
   state.metrics = currentMetrics;
@@ -387,6 +392,7 @@ it('app integration', async () => {
   );
   const groupOrder = [
     'Network Performance',
+    'Network Economics',
     'Network Health',
     'Network Economics',
     'Sequencers',
@@ -395,8 +401,8 @@ it('app integration', async () => {
   const visible = groupOrder.filter((g) => grouped[g] && grouped[g].length > 0);
   const expected = [
     'Network Performance',
-    'Network Health',
     'Network Economics',
+    'Network Health',
     'Sequencers',
   ];
   expect(visible).toStrictEqual(expected);

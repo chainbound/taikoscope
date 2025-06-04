@@ -70,6 +70,7 @@ import {
   fetchBatchBlobCounts,
   fetchL2TxFee,
   fetchAvgL2Tps,
+  fetchAvgL2TxFee,
   type BlockTransaction,
   type BatchBlobCount,
 } from './services/apiService';
@@ -224,6 +225,7 @@ const App: React.FC = () => {
       batchCadenceRes,
       avgProveRes,
       avgVerifyRes,
+      avgTxFeeRes,
       avgTpsRes,
       preconfRes,
       l2ReorgsRes,
@@ -248,6 +250,10 @@ const App: React.FC = () => {
       fetchBatchPostingCadence(range),
       fetchAvgProveTime(range),
       fetchAvgVerifyTime(range),
+      fetchAvgL2TxFee(
+        range,
+        selectedSequencer ? getSequencerAddress(selectedSequencer) : undefined,
+      ),
       fetchAvgL2Tps(
         range,
         selectedSequencer ? getSequencerAddress(selectedSequencer) : undefined,
@@ -288,6 +294,7 @@ const App: React.FC = () => {
     const batchCadence = batchCadenceRes.data;
     const avgProve = avgProveRes.data;
     const avgVerify = avgVerifyRes.data;
+    const avgTxFee = avgTxFeeRes.data;
     const avgTps = avgTpsRes.data;
     const preconfData = preconfRes.data;
     const activeGateways = preconfData ? preconfData.candidates.length : null;
@@ -313,6 +320,7 @@ const App: React.FC = () => {
       batchCadenceRes,
       avgProveRes,
       avgVerifyRes,
+      avgTxFeeRes,
       avgTpsRes,
       preconfRes,
       l2ReorgsRes,
@@ -336,6 +344,7 @@ const App: React.FC = () => {
       batchCadence,
       avgProve,
       avgVerify,
+      avgTxFee,
       activeGateways,
       currentOperator,
       nextOperator,
@@ -404,6 +413,7 @@ const App: React.FC = () => {
   );
   const groupOrder = [
     'Network Performance',
+    'Network Economics',
     'Network Health',
     'Network Economics',
     'Sequencers',
@@ -411,6 +421,7 @@ const App: React.FC = () => {
   ];
   const skeletonGroupCounts: Record<string, number> = {
     'Network Performance': 5,
+    'Network Economics': 1,
     'Network Health': 3,
     'Network Economics': 1,
     Sequencers: 3,

@@ -7,6 +7,7 @@ const metrics = createMetrics({
   batchCadence: null,
   avgProve: 1200,
   avgVerify: 0,
+  avgTxFee: 0.05,
   activeGateways: 2,
   currentOperator: '0xabc',
   nextOperator: null,
@@ -29,6 +30,7 @@ const metricsAllNull = createMetrics({
   batchCadence: null,
   avgProve: null,
   avgVerify: null,
+  avgTxFee: null,
   activeGateways: null,
   l2Reorgs: null,
   slashings: null,
@@ -52,20 +54,20 @@ describe('helpers', () => {
     expect(metrics[3].group).toBe('Network Performance');
     expect(metrics[4].value).toBe('N/A');
     expect(metrics[4].group).toBe('Network Performance');
-    expect(metrics[5].value).toBe('2');
-    expect(metrics[5].group).toBe('Sequencers');
-    expect(metrics[6].value).toBe('0xabc');
+    expect(metrics[5].value).toBe('0.05');
+    expect(metrics[5].group).toBe('Network Economics');
+    expect(metrics[6].value).toBe('2');
     expect(metrics[6].group).toBe('Sequencers');
-    expect(metrics[7].value).toBe('N/A');
+    expect(metrics[7].value).toBe('0xabc');
     expect(metrics[7].group).toBe('Sequencers');
-    expect(metrics[8].value).toBe('1');
-    expect(metrics[8].group).toBe('Network Health');
-    expect(metrics[9].value).toBe('N/A');
+    expect(metrics[8].value).toBe('N/A');
+    expect(metrics[8].group).toBe('Sequencers');
+    expect(metrics[9].value).toBe('1');
     expect(metrics[9].group).toBe('Network Health');
-    expect(metrics[10].value).toBe('0');
+    expect(metrics[10].value).toBe('N/A');
     expect(metrics[10].group).toBe('Network Health');
-    expect(metrics[11].value).toBe('42.0');
-    expect(metrics[11].group).toBe('Network Economics');
+    expect(metrics[11].value).toBe('0');
+    expect(metrics[11].group).toBe('Network Health');
     expect(metrics[12].value).toBe('100');
     expect(metrics[12].group).toBe('Block Information');
     expect(metrics[13].value).toBe('50');
@@ -88,13 +90,13 @@ describe('helpers', () => {
     expect(metricsAllNull[2].group).toBe('Network Performance');
     expect(metricsAllNull[3].group).toBe('Network Performance');
     expect(metricsAllNull[4].group).toBe('Network Performance');
-    expect(metricsAllNull[5].group).toBe('Sequencers');
+    expect(metricsAllNull[5].group).toBe('Network Economics');
     expect(metricsAllNull[6].group).toBe('Sequencers');
     expect(metricsAllNull[7].group).toBe('Sequencers');
-    expect(metricsAllNull[8].group).toBe('Network Health');
+    expect(metricsAllNull[8].group).toBe('Sequencers');
     expect(metricsAllNull[9].group).toBe('Network Health');
     expect(metricsAllNull[10].group).toBe('Network Health');
-    expect(metricsAllNull[11].group).toBe('Network Economics');
+    expect(metricsAllNull[11].group).toBe('Network Health');
     expect(metricsAllNull[12].group).toBe('Block Information');
     expect(metricsAllNull[13].group).toBe('Block Information');
   });
