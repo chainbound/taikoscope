@@ -2,23 +2,32 @@
 
 export const isValidUrl = (urlString: string): boolean => {
   try {
-    if (!urlString || urlString.trim() === '') {
+    if (!urlString || urlString.trim() === '' || /\s/.test(urlString)) {
       return false;
     }
-    
+
+    // Basic traversal checks
+    if (urlString.includes('..')) {
+      return false;
+    }
+
     // Check if it's a relative URL by trying to parse it with base
     new URL(urlString, window.location.origin);
-    
+
     // If it starts with a protocol but isn't http/https, reject it
-    if (urlString.includes('://') && !urlString.startsWith('http://') && !urlString.startsWith('https://')) {
+    if (
+      urlString.includes('://') &&
+      !urlString.startsWith('http://') &&
+      !urlString.startsWith('https://')
+    ) {
       return false;
     }
-    
+
     // Reject obviously invalid patterns
-    if (urlString.includes('javascript:') || urlString.includes('data:') || urlString.includes('vbscript:')) {
+    if (/^(javascript|data|vbscript):/i.test(urlString)) {
       return false;
     }
-    
+
     return true;
   } catch {
     return false;
@@ -47,7 +56,11 @@ export const sanitizeUrl = (url: string | URL): string => {
       console.warn('Attempted navigation to different origin:', urlObj.origin);
       return window.location.pathname;
     }
-    
+
+    // Sanitize search parameters and drop fragments
+    urlObj.search = cleanSearchParams(urlObj.searchParams).toString();
+    urlObj.hash = '';
+
     return urlObj.toString();
   } catch (err) {
     console.error('Failed to sanitize URL:', err);
@@ -84,7 +97,19 @@ export const validateSearchParams = (params: URLSearchParams): boolean => {
       console.warn('Invalid range parameter:', range);
       return false;
     }
-    
+
+    const sort = params.get('sort');
+    if (sort && !['asc', 'desc'].includes(sort)) {
+      console.warn('Invalid sort parameter:', sort);
+      return false;
+    }
+
+    const filter = params.get('filter');
+    if (filter && !/^[a-zA-Z0-9_-]+$/.test(filter)) {
+      console.warn('Invalid filter parameter:', filter);
+      return false;
+    }
+
     return true;
   } catch {
     return false;
@@ -93,17 +118,28 @@ export const validateSearchParams = (params: URLSearchParams): boolean => {
 
 export const cleanSearchParams = (params: URLSearchParams): URLSearchParams => {
   const cleaned = new URLSearchParams();
-  
+
   try {
-    // Only keep known valid parameters
-    const allowedParams = ['view', 'table', 'sequencer', 'address', 'page', 'start', 'end', 'range'];
-    
+    const validators: Record<string, (v: string) => boolean> = {
+      view: (v) => ['table', 'economics'].includes(v),
+      page: (v) => /^\d+$/.test(v),
+      start: (v) => /^\d+$/.test(v),
+      end: (v) => /^\d+$/.test(v),
+      range: (v) => ['1h', '24h', '7d'].includes(v),
+      sequencer: (v) => /^[0-9a-zA-Z]+$/.test(v),
+      address: (v) => /^[0-9a-zA-Z]+$/.test(v),
+      sort: (v) => ['asc', 'desc'].includes(v),
+      filter: (v) => /^[a-zA-Z0-9_-]+$/.test(v),
+    };
+
     for (const [key, value] of params.entries()) {
-      if (allowedParams.includes(key) && value.trim()) {
-        cleaned.set(key, value.trim());
+      const trimmed = value.trim();
+      const validate = validators[key];
+      if (validate && trimmed && validate(trimmed)) {
+        cleaned.set(key, trimmed);
       }
     }
-    
+
     return cleaned;
   } catch {
     return new URLSearchParams();
