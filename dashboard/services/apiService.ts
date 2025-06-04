@@ -10,6 +10,7 @@ import type {
   L2ReorgEvent,
   SlashingEvent,
   ForcedInclusionEvent,
+  MissedBlockProposal,
   ErrorResponse,
 } from '../types';
 
@@ -176,6 +177,30 @@ export const fetchForcedInclusionEvents = async (
 ): Promise<RequestResult<ForcedInclusionEvent[]>> => {
   const url = `${API_BASE}/forced-inclusions?range=${range}`;
   const res = await fetchJson<{ events: ForcedInclusionEvent[] }>(url);
+  return {
+    data: res.data ? res.data.events : null,
+    badRequest: res.badRequest,
+    error: res.error,
+  };
+};
+
+export const fetchMissedProposalCount = async (
+  range: '1h' | '24h' | '7d',
+): Promise<RequestResult<number>> => {
+  const url = `${API_BASE}/missed-block-proposals?range=${range}`;
+  const res = await fetchJson<{ events: unknown[] }>(url);
+  return {
+    data: res.data ? res.data.events.length : null,
+    badRequest: res.badRequest,
+    error: res.error,
+  };
+};
+
+export const fetchMissedProposals = async (
+  range: '1h' | '24h' | '7d',
+): Promise<RequestResult<MissedBlockProposal[]>> => {
+  const url = `${API_BASE}/missed-block-proposals?range=${range}`;
+  const res = await fetchJson<{ events: MissedBlockProposal[] }>(url);
   return {
     data: res.data ? res.data.events : null,
     badRequest: res.badRequest,

@@ -54,6 +54,7 @@ import {
   fetchL2Reorgs,
   fetchSlashingEventCount,
   fetchForcedInclusionCount,
+  fetchMissedProposalCount,
   fetchPreconfData,
   fetchL2HeadBlock,
   fetchL1HeadBlock,
@@ -206,6 +207,7 @@ const App: React.FC = () => {
         l2Reorgs: null,
         slashings: null,
         forcedInclusions: null,
+        missedProposals: null,
         l2TxFee,
         l2Block,
         l1Block,
@@ -240,6 +242,7 @@ const App: React.FC = () => {
       l2ReorgsRes,
       slashingCountRes,
       forcedInclusionCountRes,
+      missedProposalCountRes,
       l2BlockRes,
       l1BlockRes,
       proveTimesRes,
@@ -268,6 +271,7 @@ const App: React.FC = () => {
       fetchL2Reorgs(range),
       fetchSlashingEventCount(range),
       fetchForcedInclusionCount(range),
+      fetchMissedProposalCount(range),
       fetchL2HeadBlock(range),
       fetchL1HeadBlock(range),
       fetchProveTimes(range),
@@ -309,6 +313,7 @@ const App: React.FC = () => {
     const l2Reorgs = l2ReorgsRes.data;
     const slashings = slashingCountRes.data;
     const forcedInclusions = forcedInclusionCountRes.data;
+    const missedProposals = missedProposalCountRes.data;
     const l2Block = l2BlockRes.data;
     const l1Block = l1BlockRes.data;
     const proveTimes = proveTimesRes.data || [];
@@ -332,6 +337,7 @@ const App: React.FC = () => {
       l2ReorgsRes,
       slashingCountRes,
       forcedInclusionCountRes,
+      missedProposalCountRes,
       l2BlockRes,
       l1BlockRes,
       proveTimesRes,
@@ -356,6 +362,7 @@ const App: React.FC = () => {
       l2Reorgs,
       slashings,
       forcedInclusions,
+      missedProposals,
       l2TxFee,
       cloudCost,
       l2Block,
@@ -436,7 +443,7 @@ const App: React.FC = () => {
     ? { 'Network Economics': 1 }
     : {
       'Network Performance': 5,
-      'Network Health': 3,
+      'Network Health': 4,
       Sequencers: 3,
     };
 
@@ -621,13 +628,16 @@ const App: React.FC = () => {
                               m.title === 'Forced Inclusions'
                               ? () => openGenericTable('forced-inclusions')
                               : typeof m.title === 'string' &&
-                                m.title === 'Active Sequencers'
-                                ? () => openGenericTable('gateways')
+                                m.title === 'Missed Proposals'
+                                ? () => openGenericTable('missed-proposals')
                                 : typeof m.title === 'string' &&
-                                  m.title === 'Batch Posting Cadence'
-                                  ? () =>
-                                    openGenericTable('batch-posting-cadence')
-                                  : undefined
+                                  m.title === 'Active Sequencers'
+                                  ? () => openGenericTable('gateways')
+                                  : typeof m.title === 'string' &&
+                                    m.title === 'Batch Posting Cadence'
+                                    ? () =>
+                                      openGenericTable('batch-posting-cadence')
+                                    : undefined
                     }
                   />
                 ))}

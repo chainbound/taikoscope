@@ -15,8 +15,8 @@ use crate::{
     models::{
         BatchBlobCountRow, BatchPostingTimeRow, BatchProveTimeRow, BatchVerifyTimeRow,
         BlockTransactionRow, ForcedInclusionProcessedRow, L1BlockTimeRow, L2BlockTimeRow,
-        L2GasUsedRow, L2ReorgRow, PreconfData, SequencerBlockRow, SequencerDistributionRow,
-        SlashingEventRow,
+        L2GasUsedRow, L2ReorgRow, MissedBlockProposalRow, PreconfData, SequencerBlockRow,
+        SequencerDistributionRow, SlashingEventRow,
     },
     types::AddressBytes,
 };
@@ -411,6 +411,25 @@ impl ClickhouseReader {
             .execute::<ForcedInclusionProcessedRow>(&query)
             .await
             .context("fetching forced inclusion events failed")?;
+        Ok(rows)
+    }
+
+    /// Get all missed block proposals that occurred after the given cutoff time
+    pub async fn get_missed_block_proposals_since(
+        &self,
+        since: DateTime<Utc>,
+    ) -> Result<Vec<MissedBlockProposalRow>> {
+        let query = format!(
+            "SELECT slot, sequencer, l2_block_number FROM {}.missed_block_proposals \
+             WHERE inserted_at > toDateTime64({}, 3) \
+             ORDER BY slot ASC",
+            self.db_name,
+            since.timestamp_millis() as f64 / 1000.0,
+        );
+        let rows = self
+            .execute::<MissedBlockProposalRow>(&query)
+            .await
+            .context("fetching missed block proposals failed")?;
         Ok(rows)
     }
 

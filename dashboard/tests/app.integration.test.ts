@@ -291,6 +291,7 @@ async function fetchData(range: TimeRange, state: State, economics = false) {
     l2Reorgs,
     slashings,
     forcedInclusions,
+    missedProposals: 0,
     l2TxFee,
     cloudCost,
     l2Block,

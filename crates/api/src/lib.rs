@@ -42,6 +42,7 @@ pub const DEFAULT_RATE_PERIOD: StdDuration = StdDuration::from_secs(60);
         l1_head_block,
         slashings,
         forced_inclusions,
+        missed_block_proposals,
         reorgs,
         active_gateways,
         preconf_data,
@@ -77,8 +78,9 @@ pub const DEFAULT_RATE_PERIOD: StdDuration = StdDuration::from_secs(60);
             L1HeadBlockResponse,
             SlashingEventsResponse,
             ForcedInclusionEventsResponse,
-            ReorgEventsResponse,
-            ActiveGatewaysResponse,
+        ReorgEventsResponse,
+        MissedBlockProposalsResponse,
+        ActiveGatewaysResponse,
             CurrentOperatorResponse,
             NextOperatorResponse,
             AvgProveTimeResponse,
@@ -472,6 +474,33 @@ async fn forced_inclusions(
     };
     tracing::info!(count = events.len(), "Returning forced inclusion events");
     Json(ForcedInclusionEventsResponse { events })
+}
+
+#[utoipa::path(
+    get,
+    path = "/missed-block-proposals",
+    params(
+        RangeQuery
+    ),
+    responses(
+        (status = 200, description = "Missed block proposal events", body = MissedBlockProposalsResponse)
+    ),
+    tag = "taikoscope"
+)]
+async fn missed_block_proposals(
+    Query(params): Query<RangeQuery>,
+    State(state): State<ApiState>,
+) -> Json<MissedBlockProposalsResponse> {
+    let since = Utc::now() - range_duration(&params.range);
+    let events = match state.client.get_missed_block_proposals_since(since).await {
+        Ok(evts) => evts,
+        Err(e) => {
+            tracing::error!(error = %e, "Failed to get missed block proposals");
+            Vec::new()
+        }
+    };
+    tracing::info!(count = events.len(), "Returning missed block proposals");
+    Json(MissedBlockProposalsResponse { events })
 }
 
 #[utoipa::path(
@@ -1273,6 +1302,7 @@ pub fn router(state: ApiState) -> Router {
         .route("/sse/l2-head", get(sse_l2_head))
         .route("/slashings", get(slashings))
         .route("/forced-inclusions", get(forced_inclusions))
+        .route("/missed-block-proposals", get(missed_block_proposals))
         .route("/reorgs", get(reorgs))
         .route("/active-gateways", get(active_gateways))
         .route("/preconf-data", get(preconf_data))
@@ -1466,6 +1496,25 @@ mod tests {
             clickhouse_lib::ForcedInclusionProcessedRow { blob_hash: HashBytes([2u8; 32]) };
         let app = build_app(mock.url());
         let body = send_request(app, "/forced-inclusions?range=24h").await;
+        assert_eq!(body, json!({ "events": [expected] }));
+    }
+
+    #[tokio::test]
+    async fn missed_block_proposals_endpoint() {
+        let mock = Mock::new();
+        let event = clickhouse_lib::MissedBlockProposalRow {
+            slot: 1,
+            sequencer: AddressBytes([1u8; 20]),
+            l2_block_number: 42,
+        };
+        mock.add(handlers::provide(vec![event]));
+        let expected = clickhouse_lib::MissedBlockProposalRow {
+            slot: 1,
+            sequencer: AddressBytes([1u8; 20]),
+            l2_block_number: 42,
+        };
+        let app = build_app(mock.url());
+        let body = send_request(app, "/missed-block-proposals?range=1h").await;
         assert_eq!(body, json!({ "events": [expected] }));
     }
 
@@ -2036,6 +2085,7 @@ mod tests {
             "/l1-head-block",
             "/slashings",
             "/forced-inclusions",
+            "/missed-block-proposals",
             "/reorgs",
             "/active-gateways",
             "/current-operator",
