@@ -132,10 +132,10 @@ let intervals: IntervalId[] = [];
   fn: () => Promise<void> | void,
   ms: number,
 ): NodeJS.Timeout => {
-  const id: IntervalId = { fn, ms };
-  intervals.push(id);
-  return id as unknown as NodeJS.Timeout;
-};
+    const id: IntervalId = { fn, ms };
+    intervals.push(id);
+    return id as unknown as NodeJS.Timeout;
+  };
 (
   globalThis as unknown as { clearInterval: (id: NodeJS.Timeout) => void }
 ).clearInterval = (id: NodeJS.Timeout) => {
@@ -175,6 +175,7 @@ async function fetchData(range: TimeRange, state: State, economics = false) {
       l2TxFee,
       l2Block,
       l1Block,
+      cloudCost: null,
     });
 
     state.metrics = currentMetrics;

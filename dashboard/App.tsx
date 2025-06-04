@@ -209,6 +209,7 @@ const App: React.FC = () => {
         l2TxFee,
         l2Block,
         l1Block,
+        cloudCost: null,
       });
 
       setMetrics(currentMetrics);
@@ -428,10 +429,10 @@ const App: React.FC = () => {
   const skeletonGroupCounts: Record<string, number> = isEconomicsView
     ? { 'Network Economics': 1 }
     : {
-        'Network Performance': 5,
-        'Network Health': 3,
-        Sequencers: 3,
-      };
+      'Network Performance': 5,
+      'Network Health': 3,
+      Sequencers: 3,
+    };
 
   const displayGroupName = useCallback(
     (group: string): string => {
@@ -608,18 +609,18 @@ const App: React.FC = () => {
                         : typeof m.title === 'string' && m.title === 'L2 Reorgs'
                           ? () => openGenericTable('reorgs')
                           : typeof m.title === 'string' &&
-                              m.title === 'Slashing Events'
+                            m.title === 'Slashing Events'
                             ? () => openGenericTable('slashings')
                             : typeof m.title === 'string' &&
-                                m.title === 'Forced Inclusions'
+                              m.title === 'Forced Inclusions'
                               ? () => openGenericTable('forced-inclusions')
                               : typeof m.title === 'string' &&
-                                  m.title === 'Active Sequencers'
+                                m.title === 'Active Sequencers'
                                 ? () => openGenericTable('gateways')
                                 : typeof m.title === 'string' &&
-                                    m.title === 'Batch Posting Cadence'
+                                  m.title === 'Batch Posting Cadence'
                                   ? () =>
-                                      openGenericTable('batch-posting-cadence')
+                                    openGenericTable('batch-posting-cadence')
                                   : undefined
                     }
                   />
