@@ -509,3 +509,15 @@ export const fetchL2TxFee = async (
     error: res.error,
   };
 };
+
+export const fetchCloudCost = async (
+  range: '1h' | '24h' | '7d',
+): Promise<RequestResult<number>> => {
+  const url = `${API_BASE}/cloud-cost?range=${range}`;
+  const res = await fetchJson<{ cost_usd: number }>(url);
+  return {
+    data: res.data?.cost_usd ?? null,
+    badRequest: res.badRequest,
+    error: res.error,
+  };
+};

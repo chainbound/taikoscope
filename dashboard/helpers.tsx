@@ -19,6 +19,7 @@ export interface MetricInputData {
   l2Block: number | null;
   l1Block: number | null;
   l2TxFee: number | null;
+  cloudCost: number | null;
 }
 
 export const createMetrics = (data: MetricInputData): MetricData[] => [
@@ -104,6 +105,11 @@ export const createMetrics = (data: MetricInputData): MetricData[] => [
   {
     title: 'L2 Transaction Fee',
     value: data.l2TxFee != null ? formatEth(data.l2TxFee) : 'N/A',
+    group: 'Network Economics',
+  },
+  {
+    title: 'Estimated Cloud Cost',
+    value: data.cloudCost != null ? `$${data.cloudCost.toFixed(2)}` : 'N/A',
     group: 'Network Economics',
   },
   {

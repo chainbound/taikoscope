@@ -18,6 +18,7 @@ use chrono::{Duration as ChronoDuration, Utc};
 use clickhouse_lib::HashBytes;
 use clickhouse_lib::{AddressBytes, ClickhouseReader};
 use dashmap::DashMap;
+use primitives::hardware::TOTAL_HARDWARE_COST_USD;
 use futures::stream::Stream;
 use hex::encode;
 use runtime::rate_limiter::RateLimiter;
@@ -53,6 +54,7 @@ pub const DEFAULT_RATE_PERIOD: StdDuration = StdDuration::from_secs(60);
         batch_posting_times,
         avg_l2_tps,
         l2_transaction_fee,
+        cloud_cost,
         avg_blobs_per_batch,
         blobs_per_batch,
         prove_times,
@@ -86,6 +88,7 @@ pub const DEFAULT_RATE_PERIOD: StdDuration = StdDuration::from_secs(60);
             BatchPostingTimesResponse,
             AvgL2TpsResponse,
             L2TxFeeResponse,
+            CloudCostResponse,
             AvgBlobsPerBatchResponse,
             BatchBlobsResponse,
             ProveTimesResponse,
@@ -845,6 +848,26 @@ async fn l2_transaction_fee(
 
 #[utoipa::path(
     get,
+    path = "/cloud-cost",
+    params(
+        RangeQuery
+    ),
+    responses(
+        (status = 200, description = "Estimated cloud cost", body = CloudCostResponse)
+    ),
+    tag = "taikoscope"
+)]
+async fn cloud_cost(Query(params): Query<RangeQuery>) -> Json<CloudCostResponse> {
+    let duration = range_duration(&params.range);
+    let hours = duration.num_hours() as f64;
+    let hourly_rate = TOTAL_HARDWARE_COST_USD / (30.0 * 24.0);
+    let cost = hourly_rate * hours;
+    tracing::info!(cost_usd = cost, "Returning cloud cost");
+    Json(CloudCostResponse { cost_usd: cost })
+}
+
+#[utoipa::path(
+    get,
     path = "/avg-blobs-per-batch",
     params(
         RangeQuery
@@ -1262,6 +1285,7 @@ pub fn router(state: ApiState) -> Router {
         .route("/batch-posting-times", get(batch_posting_times))
         .route("/avg-l2-tps", get(avg_l2_tps))
         .route("/l2-tx-fee", get(l2_transaction_fee))
+        .route("/cloud-cost", get(cloud_cost))
         .route("/avg-blobs-per-batch", get(avg_blobs_per_batch))
         .route("/blobs-per-batch", get(blobs_per_batch))
         .route("/prove-times", get(prove_times))
@@ -1289,6 +1313,7 @@ mod tests {
     };
     use serde::Serialize;
     use serde_json::{Value, json};
+    use primitives::hardware::TOTAL_HARDWARE_COST_USD;
     use std::time::Duration as StdDuration;
     use tower::util::ServiceExt;
     use url::Url;
@@ -1843,6 +1868,14 @@ mod tests {
         assert_eq!(body, json!({ "tx_fee": 84 }));
     }
 
+    #[tokio::test]
+    async fn cloud_cost_endpoint() {
+        let app = build_app(Mock::new().url());
+        let body = send_request(app, "/cloud-cost?range=24h").await;
+        let expected = TOTAL_HARDWARE_COST_USD / 30.0;
+        assert_eq!(body, json!({ "cost_usd": expected }));
+    }
+
     #[derive(Serialize, Row)]
     struct SequencerRowTest {
         sequencer: AddressBytes,
@@ -2013,6 +2046,7 @@ mod tests {
             "/batch-posting-cadence",
             "/avg-l2-tps",
             "/l2-tx-fee",
+            "/cloud-cost",
             "/avg-blobs-per-batch",
             "/blobs-per-batch",
             "/prove-times",

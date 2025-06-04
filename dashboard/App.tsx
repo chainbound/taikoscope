@@ -68,6 +68,7 @@ import {
   fetchBlockTransactions,
   fetchBatchBlobCounts,
   fetchL2TxFee,
+  fetchCloudCost,
   fetchAvgL2Tps,
   type BlockTransaction,
   type BatchBlobCount,
@@ -249,6 +250,7 @@ const App: React.FC = () => {
       blockTxRes,
       batchBlobCountsRes,
       l2TxFeeRes,
+      cloudCostRes,
     ] = await Promise.all([
       fetchL2BlockCadence(
         range,
@@ -291,6 +293,7 @@ const App: React.FC = () => {
         range,
         selectedSequencer ? getSequencerAddress(selectedSequencer) : undefined,
       ),
+      fetchCloudCost(range),
     ]);
 
     const l2Cadence = l2CadenceRes.data;
@@ -316,6 +319,7 @@ const App: React.FC = () => {
     const txPerBlock = blockTxRes.data || [];
     const blobsPerBatch = batchBlobCountsRes.data || [];
     const l2TxFee = l2TxFeeRes.data;
+    const cloudCost = cloudCostRes.data;
 
     const anyBadRequest = hasBadRequest([
       l2CadenceRes,
@@ -352,6 +356,7 @@ const App: React.FC = () => {
       slashings,
       forcedInclusions,
       l2TxFee,
+      cloudCost,
       l2Block,
       l1Block,
     });

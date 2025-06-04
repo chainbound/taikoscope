@@ -165,6 +165,13 @@ pub struct L2TxFeeResponse {
     pub tx_fee: Option<u128>,
 }
 
+/// Estimated cloud infrastructure cost in USD.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct CloudCostResponse {
+    /// Estimated infrastructure cost in USD for the requested range.
+    pub cost_usd: f64,
+}
+
 /// Time to prove individual batches.
 #[derive(Debug, Serialize, ToSchema)]
 pub struct ProveTimesResponse {
