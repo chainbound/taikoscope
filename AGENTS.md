@@ -28,6 +28,7 @@
 - Prefer `#[derive(Debug)]` on structs and enums
 - Use trace/debug/info/warn/error logs properly with `tracing` crate
 - Error handling: Prefer `?` operator with contextual error info
+- Avoid lines with trailing whitespace (spaces or tabs)
 
 ## Git
 - Use Conventional Commits for commits
