@@ -1,17 +1,32 @@
 import { useCallback, useEffect, useState } from 'react';
+import { sanitizeUrl, createSafeUrl, validateSearchParams, cleanSearchParams } from '../utils/navigationUtils';
 
 interface NavigationState {
   canGoBack: boolean;
   isNavigating: boolean;
+  errorCount: number;
+  lastError?: string;
 }
 
 export const useSearchParams = (): URLSearchParams & {
   navigate: (url: string | URL, replace?: boolean) => void;
   goBack: () => void;
   navigationState: NavigationState;
+  resetNavigation: () => void;
 } => {
   const getParams = useCallback(
-    () => new URLSearchParams(window.location.search),
+    () => {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        if (!validateSearchParams(params)) {
+          console.warn('Invalid search parameters detected, cleaning...');
+          return cleanSearchParams(params);
+        }
+        return params;
+      } catch {
+        return new URLSearchParams();
+      }
+    },
     [],
   );
 
@@ -19,6 +34,8 @@ export const useSearchParams = (): URLSearchParams & {
   const [navigationState, setNavigationState] = useState<NavigationState>({
     canGoBack: window.history.length > 1,
     isNavigating: false,
+    errorCount: 0,
+    lastError: undefined,
   });
 
   const navigate = useCallback(
@@ -30,20 +47,58 @@ export const useSearchParams = (): URLSearchParams & {
       try {
         const urlString = url instanceof URL ? url.toString() : url;
 
+        // Validate and sanitize URL
+        const sanitizedUrl = sanitizeUrl(urlString);
+        if (sanitizedUrl !== urlString) {
+          console.warn('URL was sanitized:', { original: urlString, sanitized: sanitizedUrl });
+        }
+
         try {
           if (replace) {
-            window.history.replaceState(null, '', urlString);
+            window.history.replaceState(null, '', sanitizedUrl);
           } else {
-            window.history.pushState(null, '', urlString);
+            window.history.pushState(null, '', sanitizedUrl);
           }
 
           window.dispatchEvent(new Event('popstate'));
+          
+          // Clear error state on successful navigation
+          setNavigationState((prev) => ({
+            ...prev,
+            errorCount: 0,
+            lastError: undefined,
+          }));
         } catch (err) {
-          // eslint-disable-next-line no-console
           console.error('Failed to update history:', err);
-          window.location.assign(urlString);
+          
+          // Track navigation errors
+          setNavigationState((prev) => ({
+            ...prev,
+            errorCount: prev.errorCount + 1,
+            lastError: err instanceof Error ? err.message : 'Navigation failed',
+          }));
+
+          // Fallback to location.assign only if error count is low to prevent loops
+          if (navigationState.errorCount < 3) {
+            try {
+              window.location.assign(sanitizedUrl);
+            } catch (assignErr) {
+              console.error('Failed to assign location:', assignErr);
+              setNavigationState((prev) => ({
+                ...prev,
+                lastError: 'Complete navigation failure',
+              }));
+            }
+          }
           return;
         }
+      } catch (outerErr) {
+        console.error('Unexpected navigation error:', outerErr);
+        setNavigationState((prev) => ({
+          ...prev,
+          errorCount: prev.errorCount + 1,
+          lastError: 'Unexpected navigation error',
+        }));
       } finally {
         setTimeout(() => {
           setNavigationState((prev) => ({
@@ -54,35 +109,101 @@ export const useSearchParams = (): URLSearchParams & {
         }, 100);
       }
     },
-    [navigationState.isNavigating],
+    [navigationState.isNavigating, navigationState.errorCount],
   );
 
   const goBack = useCallback(() => {
     if (navigationState.isNavigating) return;
 
-    if (window.history.length > 1) {
-      setNavigationState((prev) => ({ ...prev, isNavigating: true }));
-      window.history.back();
-    } else {
-      // Fallback: navigate to dashboard home
+    setNavigationState((prev) => ({ ...prev, isNavigating: true }));
+
+    try {
+      if (window.history.length > 1) {
+        // Add a timeout to detect if back() fails
+        const backTimeout = setTimeout(() => {
+          console.warn('Back navigation appears to have failed, using fallback');
+          const url = new URL(window.location.href);
+          url.search = '';
+          navigate(url.toString(), true);
+        }, 1000);
+
+        const handleBackSuccess = () => {
+          clearTimeout(backTimeout);
+          window.removeEventListener('popstate', handleBackSuccess);
+        };
+
+        window.addEventListener('popstate', handleBackSuccess, { once: true });
+        window.history.back();
+      } else {
+        // Fallback: navigate to dashboard home
+        const url = createSafeUrl();
+        url.search = '';
+        navigate(sanitizeUrl(url), true);
+      }
+    } catch (err) {
+      console.error('Failed to go back:', err);
+      setNavigationState((prev) => ({
+        ...prev,
+        errorCount: prev.errorCount + 1,
+        lastError: 'Back navigation failed',
+      }));
+      
+      // Fallback to home
       const url = new URL(window.location.href);
       url.search = '';
       navigate(url.toString(), true);
     }
   }, [navigationState.isNavigating, navigate]);
 
-  useEffect(() => {
-    const handleChange = () => {
-      setParams(getParams());
-      setNavigationState((prev) => ({
-        ...prev,
+  const resetNavigation = useCallback(() => {
+    try {
+      setNavigationState({
         canGoBack: window.history.length > 1,
         isNavigating: false,
-      }));
+        errorCount: 0,
+        lastError: undefined,
+      });
+      
+      // Clear URL parameters and go to clean dashboard state
+      const url = createSafeUrl();
+      url.search = '';
+      const cleanUrl = sanitizeUrl(url);
+      window.history.replaceState(null, '', cleanUrl);
+      window.dispatchEvent(new Event('popstate'));
+    } catch (err) {
+      console.error('Failed to reset navigation:', err);
+      // Last resort: reload the page
+      window.location.href = window.location.pathname;
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleChange = () => {
+      try {
+        setParams(getParams());
+        setNavigationState((prev) => ({
+          ...prev,
+          canGoBack: window.history.length > 1,
+          isNavigating: false,
+        }));
+      } catch (err) {
+        console.error('Failed to handle navigation change:', err);
+        setNavigationState((prev) => ({
+          ...prev,
+          isNavigating: false,
+          errorCount: prev.errorCount + 1,
+          lastError: 'Failed to parse URL parameters',
+        }));
+      }
     };
 
     const handleBeforeUnload = () => {
-      setNavigationState((prev) => ({ ...prev, isNavigating: false }));
+      setNavigationState((prev) => ({ 
+        ...prev, 
+        isNavigating: false,
+        errorCount: 0,
+        lastError: undefined,
+      }));
     };
 
     window.addEventListener('popstate', handleChange);
@@ -93,17 +214,27 @@ export const useSearchParams = (): URLSearchParams & {
     window.history.pushState = (
       ...args: Parameters<History['pushState']>
     ): void => {
-      if (args[2] instanceof URL) args[2] = args[2].toString();
-      pushState.apply(window.history, args);
-      window.dispatchEvent(new Event('popstate'));
+      try {
+        if (args[2] instanceof URL) args[2] = args[2].toString();
+        pushState.apply(window.history, args);
+        window.dispatchEvent(new Event('popstate'));
+      } catch (err) {
+        console.error('pushState failed:', err);
+        // Don't throw to prevent breaking the application
+      }
     };
 
     window.history.replaceState = (
       ...args: Parameters<History['replaceState']>
     ): void => {
-      if (args[2] instanceof URL) args[2] = args[2].toString();
-      replaceState.apply(window.history, args);
-      window.dispatchEvent(new Event('popstate'));
+      try {
+        if (args[2] instanceof URL) args[2] = args[2].toString();
+        replaceState.apply(window.history, args);
+        window.dispatchEvent(new Event('popstate'));
+      } catch (err) {
+        console.error('replaceState failed:', err);
+        // Don't throw to prevent breaking the application
+      }
     };
 
     return () => {
@@ -114,5 +245,5 @@ export const useSearchParams = (): URLSearchParams & {
     };
   }, [getParams]);
 
-  return Object.assign(params, { navigate, goBack, navigationState });
+  return Object.assign(params, { navigate, goBack, navigationState, resetNavigation });
 };

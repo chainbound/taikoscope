@@ -130,14 +130,20 @@ const App: React.FC = () => {
   }, [searchParams]);
 
   const handleSequencerChange = useCallback((seq: string | null) => {
-    setSelectedSequencer(seq);
-    const url = new URL(window.location.href);
-    if (seq) {
-      url.searchParams.set('sequencer', seq);
-    } else {
-      url.searchParams.delete('sequencer');
+    try {
+      setSelectedSequencer(seq);
+      const url = new URL(window.location.href);
+      if (seq) {
+        url.searchParams.set('sequencer', seq);
+      } else {
+        url.searchParams.delete('sequencer');
+      }
+      searchParams.navigate(url);
+    } catch (err) {
+      console.error('Failed to handle sequencer change:', err);
+      // Fallback: just update state without navigation
+      setSelectedSequencer(seq);
     }
-    searchParams.navigate(url);
   }, [searchParams]);
 
   useEffect(() => {
@@ -469,49 +475,83 @@ const App: React.FC = () => {
   );
 
   const handleRouteChange = useCallback(() => {
-    const params = searchParams;
-    if (params.get('view') !== 'table') {
-      setTableView(null);
-      return;
-    }
-    
-    // If we already have a table view and it matches the current URL state, don't reload
-    const table = params.get('table');
-    const range = (params.get('range') as TimeRange) || timeRange;
-    
-    if (tableView && tableView.timeRange === range) {
-      return;
-    }
-    
-    setTableLoading(true);
-    switch (table) {
-      case 'sequencer-blocks': {
-        const addr = params.get('address');
-        if (addr)
-          void openGenericTable('sequencer-blocks', range, { address: addr });
-        break;
+    try {
+      const params = searchParams;
+      if (params.get('view') !== 'table') {
+        setTableView(null);
+        return;
       }
-      case 'tps':
-        void openTpsTable();
-        break;
-      case 'sequencer-dist': {
-        const page = parseInt(params.get('page') ?? '0', 10);
-        const start = params.get('start');
-        const end = params.get('end');
-        void openSequencerDistributionTable(
-          range,
-          page,
-          start ? Number(start) : undefined,
-          end ? Number(end) : undefined,
-        );
-        break;
+      
+      // If we already have a table view and it matches the current URL state, don't reload
+      const table = params.get('table');
+      const range = (params.get('range') as TimeRange) || timeRange;
+      
+      if (tableView && tableView.timeRange === range) {
+        return;
       }
-      default: {
-        if (table) void openGenericTable(table, range);
-        break;
+      
+      setTableLoading(true);
+      
+      // Add error boundary for table operations
+      const handleTableError = (tableName: string, error: any) => {
+        console.error(`Failed to open ${tableName} table:`, error);
+        setTableLoading(false);
+        setErrorMessage(`Failed to load ${tableName} table. Please try again.`);
+      };
+      
+      switch (table) {
+        case 'sequencer-blocks': {
+          const addr = params.get('address');
+          if (addr) {
+            openGenericTable('sequencer-blocks', range, { address: addr })
+              .catch((err) => handleTableError('sequencer-blocks', err));
+          } else {
+            setTableLoading(false);
+          }
+          break;
+        }
+        case 'tps':
+          try {
+            openTpsTable();
+          } catch (err) {
+            handleTableError('TPS', err);
+          }
+          break;
+        case 'sequencer-dist': {
+          const pageStr = params.get('page') ?? '0';
+          const page = parseInt(pageStr, 10);
+          if (isNaN(page) || page < 0) {
+            console.warn('Invalid page parameter:', pageStr);
+            setTableLoading(false);
+            break;
+          }
+          const start = params.get('start');
+          const end = params.get('end');
+          openSequencerDistributionTable(
+            range,
+            page,
+            start ? Number(start) : undefined,
+            end ? Number(end) : undefined,
+          ).catch((err) => handleTableError('sequencer-distribution', err));
+          break;
+        }
+        default: {
+          if (table) {
+            openGenericTable(table, range)
+              .catch((err) => handleTableError(table, err));
+          } else {
+            setTableLoading(false);
+          }
+          break;
+        }
       }
+    } catch (err) {
+      console.error('Failed to handle route change:', err);
+      setTableLoading(false);
+      setErrorMessage('Navigation error occurred. Please try again.');
     }
   }, [
+    searchParams,
     openGenericTable,
     openTpsTable,
     openSequencerDistributionTable,
@@ -522,24 +562,36 @@ const App: React.FC = () => {
   ]);
 
   const handleBack = useCallback(() => {
-    if (searchParams.navigationState.canGoBack) {
-      searchParams.goBack();
-    } else {
-      // Fallback: navigate to dashboard home
-      const url = new URL(window.location.href);
-      url.searchParams.delete('view');
-      url.searchParams.delete('table');
-      url.searchParams.delete('address');
-      url.searchParams.delete('page');
-      url.searchParams.delete('start');
-      url.searchParams.delete('end');
-      searchParams.navigate(url, true);
+    try {
+      if (searchParams.navigationState.canGoBack) {
+        searchParams.goBack();
+      } else {
+        // Fallback: navigate to dashboard home
+        const url = new URL(window.location.href);
+        url.searchParams.delete('view');
+        url.searchParams.delete('table');
+        url.searchParams.delete('address');
+        url.searchParams.delete('page');
+        url.searchParams.delete('start');
+        url.searchParams.delete('end');
+        searchParams.navigate(url, true);
+      }
+      setTableView(null);
+    } catch (err) {
+      console.error('Failed to handle back navigation:', err);
+      // Emergency fallback: just clear the table view
+      setTableView(null);
+      setErrorMessage('Navigation error occurred.');
     }
-    setTableView(null);
   }, [searchParams, setTableView]);
 
   useEffect(() => {
-    handleRouteChange();
+    try {
+      handleRouteChange();
+    } catch (err) {
+      console.error('Route change effect error:', err);
+      setErrorMessage('Navigation error occurred.');
+    }
   }, [handleRouteChange, searchParams]);
 
   if (tableView) {
@@ -596,9 +648,41 @@ const App: React.FC = () => {
         onSequencerChange={handleSequencerChange}
       />
 
-      {errorMessage && (
+      {(errorMessage || searchParams.navigationState.lastError) && (
         <div className="mt-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded">
-          {errorMessage}
+          <div className="flex justify-between items-start">
+            <div className="flex-1">
+              {errorMessage || searchParams.navigationState.lastError}
+              {searchParams.navigationState.errorCount > 0 && (
+                <div className="text-sm mt-1 text-red-600">
+                  Navigation issues detected. Try refreshing the page if problems persist.
+                </div>
+              )}
+            </div>
+            <div className="flex space-x-2 ml-4">
+              {searchParams.navigationState.errorCount > 2 && (
+                <button
+                  onClick={() => {
+                    try {
+                      searchParams.resetNavigation();
+                      setErrorMessage('');
+                    } catch (err) {
+                      console.error('Failed to reset navigation:', err);
+                    }
+                  }}
+                  className="text-sm bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700"
+                >
+                  Reset
+                </button>
+              )}
+              <button
+                onClick={() => setErrorMessage('')}
+                className="text-sm text-red-600 hover:text-red-800"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

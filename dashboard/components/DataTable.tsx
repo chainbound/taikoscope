@@ -84,11 +84,15 @@ export const DataTable: React.FC<DataTableProps> = ({
     const handleKeyDown = (event: KeyboardEvent) => {
       if (isNavigating) return;
       
-      if (event.key === 'Escape') {
-        onBack();
-      } else if (event.altKey && event.key === 'ArrowLeft') {
-        event.preventDefault();
-        onBack();
+      try {
+        if (event.key === 'Escape') {
+          onBack();
+        } else if (event.altKey && event.key === 'ArrowLeft') {
+          event.preventDefault();
+          onBack();
+        }
+      } catch (err) {
+        console.error('Failed to handle keyboard navigation:', err);
       }
     };
 
@@ -108,7 +112,13 @@ export const DataTable: React.FC<DataTableProps> = ({
     <div className="p-4">
       <div className="flex items-center mb-4 space-x-4">
         <button
-          onClick={onBack}
+          onClick={() => {
+            try {
+              onBack();
+            } catch (err) {
+              console.error('Failed to navigate back:', err);
+            }
+          }}
           disabled={isNavigating}
           className={`flex items-center space-x-1 ${isNavigating ? 'opacity-50 cursor-not-allowed' : ''}`}
           style={{ color: TAIKO_PINK }}
@@ -195,7 +205,13 @@ export const DataTable: React.FC<DataTableProps> = ({
                 <tr
                   key={idx}
                   className={`border-t hover:bg-gray-50 ${onRowClick && !isNavigating ? 'cursor-pointer' : ''} ${isNavigating ? 'pointer-events-none opacity-50' : ''}`}
-                  onClick={onRowClick && !isNavigating ? () => onRowClick(row) : undefined}
+                  onClick={onRowClick && !isNavigating ? () => {
+                    try {
+                      onRowClick(row);
+                    } catch (err) {
+                      console.error('Failed to handle row click:', err);
+                    }
+                  } : undefined}
                 >
                   {columns.map((col) => (
                     <td key={col.key} className="px-2 py-1">
@@ -261,7 +277,13 @@ export const DataTable: React.FC<DataTableProps> = ({
                       className={`border-t hover:bg-gray-50 ${extraTable.onRowClick && !isNavigating ? 'cursor-pointer' : ''} ${isNavigating ? 'pointer-events-none opacity-50' : ''}`}
                       onClick={
                         extraTable.onRowClick && !isNavigating
-                          ? () => extraTable.onRowClick!(row)
+                          ? () => {
+                            try {
+                              extraTable.onRowClick!(row);
+                            } catch (err) {
+                              console.error('Failed to handle extra table row click:', err);
+                            }
+                          }
                           : undefined
                       }
                     >

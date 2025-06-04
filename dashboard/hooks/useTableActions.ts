@@ -53,22 +53,27 @@ export const useTableActions = (
       name: string,
       params: Record<string, string | number | undefined> = {},
     ) => {
-      const url = new URL(window.location.href);
-      url.searchParams.set('view', 'table');
-      url.searchParams.set('table', name);
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.set('view', 'table');
+        url.searchParams.set('table', name);
 
-      // remove stale parameters when switching tables
-      ['address', 'page', 'start', 'end'].forEach((key) => {
-        url.searchParams.delete(key);
-      });
+        // remove stale parameters when switching tables
+        ['address', 'page', 'start', 'end'].forEach((key) => {
+          url.searchParams.delete(key);
+        });
 
-      Object.entries(params).forEach(([k, v]) => {
-        if (v !== undefined) url.searchParams.set(k, String(v));
-      });
+        Object.entries(params).forEach(([k, v]) => {
+          if (v !== undefined) url.searchParams.set(k, String(v));
+        });
 
-      const newUrl = url.toString();
-      if (newUrl !== window.location.href) {
-        searchParams.navigate(url, false);
+        const newUrl = url.toString();
+        if (newUrl !== window.location.href) {
+          searchParams.navigate(url, false);
+        }
+      } catch (err) {
+        console.error('Failed to set table URL:', err);
+        // Don't throw to prevent breaking the table functionality
       }
     },
     [searchParams],
@@ -163,6 +168,11 @@ export const useTableActions = (
             } : null);
           } catch (error) {
             console.error(`Failed to refresh ${tableKey} table:`, error);
+            // Optionally show user-facing error
+            setTableView(prev => prev ? {
+              ...prev,
+              rows: [], // Clear data on error to prevent stale data
+            } : null);
           }
         };
 
@@ -298,6 +308,15 @@ export const useTableActions = (
           } : null);
         } catch (error) {
           console.error('Failed to refresh sequencer distribution table:', error);
+          // Clear data on error to prevent showing stale information
+          setTableView(prev => prev ? {
+            ...prev,
+            rows: [],
+            extraTable: prev.extraTable ? {
+              ...prev.extraTable,
+              rows: [],
+            } : undefined,
+          } : null);
         }
       };
 

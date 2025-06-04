@@ -37,14 +37,20 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
           className="text-3xl font-bold cursor-pointer hover:underline"
           style={{ color: TAIKO_PINK }}
           onClick={() => {
-            const url = new URL(window.location.href);
-            url.searchParams.delete('view');
-            url.searchParams.delete('table');
-            url.searchParams.delete('address');
-            url.searchParams.delete('page');
-            url.searchParams.delete('start');
-            url.searchParams.delete('end');
-            window.history.pushState(null, '', url.toString());
+            try {
+              const url = new URL(window.location.href);
+              url.searchParams.delete('view');
+              url.searchParams.delete('table');
+              url.searchParams.delete('address');
+              url.searchParams.delete('page');
+              url.searchParams.delete('start');
+              url.searchParams.delete('end');
+              window.history.pushState(null, '', url.toString());
+            } catch (err) {
+              console.error('Failed to navigate to home:', err);
+              // Fallback: reload page
+              window.location.href = window.location.pathname;
+            }
           }}
         >
           {' '}
@@ -55,14 +61,26 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
       <div className="flex items-center space-x-2 mt-4 md:mt-0">
         <button
           onClick={() => {
-            const url = new URL(window.location.href);
-            if (url.searchParams.get('view') === 'economics') {
-              url.searchParams.delete('view');
-            } else {
-              url.searchParams.set('view', 'economics');
+            try {
+              const url = new URL(window.location.href);
+              if (url.searchParams.get('view') === 'economics') {
+                url.searchParams.delete('view');
+              } else {
+                url.searchParams.set('view', 'economics');
+              }
+              url.searchParams.delete('table');
+              window.history.pushState(null, '', url.toString());
+            } catch (err) {
+              console.error('Failed to toggle economics view:', err);
+              // Fallback: just reload the page with economics parameter
+              const fallbackUrl = new URL(window.location.href);
+              try {
+                fallbackUrl.searchParams.set('view', 'economics');
+                window.location.href = fallbackUrl.toString();
+              } catch (fallbackErr) {
+                console.error('Fallback navigation also failed:', fallbackErr);
+              }
             }
-            url.searchParams.delete('table');
-            window.history.pushState(null, '', url.toString());
           }}
           className="text-sm hover:underline"
           style={{ color: TAIKO_PINK }}
