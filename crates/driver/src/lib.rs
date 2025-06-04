@@ -2,6 +2,7 @@
 
 use std::time::Duration;
 
+use alloy_primitives::Address;
 use eyre::Result;
 use tokio_stream::StreamExt;
 use tracing::info;
