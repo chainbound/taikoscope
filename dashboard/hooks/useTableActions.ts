@@ -58,7 +58,11 @@ export const useTableActions = (
       Object.entries(params).forEach(([k, v]) => {
         if (v !== undefined) url.searchParams.set(k, String(v));
       });
-      window.history.pushState(null, '', url);
+
+      const newSearch = url.search;
+      if (window.location.search !== newSearch) {
+        window.history.pushState(null, '', url);
+      }
     },
     [],
   );
