@@ -136,8 +136,8 @@ const App: React.FC = () => {
     } else {
       url.searchParams.delete('sequencer');
     }
-    window.history.pushState(null, '', url);
-  }, []);
+    searchParams.navigate(url);
+  }, [searchParams]);
 
   useEffect(() => {
     const updateHeads = async () => {
@@ -508,16 +508,21 @@ const App: React.FC = () => {
   ]);
 
   const handleBack = useCallback(() => {
-    const url = new URL(window.location.href);
-    url.searchParams.delete('view');
-    url.searchParams.delete('table');
-    url.searchParams.delete('address');
-    url.searchParams.delete('page');
-    url.searchParams.delete('start');
-    url.searchParams.delete('end');
-    window.history.pushState(null, '', url);
+    if (searchParams.navigationState.canGoBack) {
+      searchParams.goBack();
+    } else {
+      // Fallback: navigate to dashboard home
+      const url = new URL(window.location.href);
+      url.searchParams.delete('view');
+      url.searchParams.delete('table');
+      url.searchParams.delete('address');
+      url.searchParams.delete('page');
+      url.searchParams.delete('start');
+      url.searchParams.delete('end');
+      searchParams.navigate(url, true);
+    }
     setTableView(null);
-  }, [setTableView]);
+  }, [searchParams, setTableView]);
 
   useEffect(() => {
     handleRouteChange();
@@ -544,12 +549,20 @@ const App: React.FC = () => {
         selectedSequencer={selectedSequencer}
         onSequencerChange={handleSequencerChange}
         chart={tableView.chart}
+        isNavigating={searchParams.navigationState.isNavigating}
       />
     );
   }
 
-  if (tableLoading) {
-    return <div className="p-4">Loading...</div>;
+  if (tableLoading || searchParams.navigationState.isNavigating) {
+    return (
+      <div className="p-4">
+        <div className="flex items-center space-x-2">
+          <div className="animate-spin rounded-full h-4 w-4 border-b-2" style={{ borderColor: TAIKO_PINK }}></div>
+          <span>{searchParams.navigationState.isNavigating ? 'Navigating...' : 'Loading...'}</span>
+        </div>
+      </div>
+    );
   }
 
   return (

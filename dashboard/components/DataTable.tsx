@@ -49,6 +49,7 @@ interface DataTableProps {
   onSequencerChange?: (seq: string | null) => void;
   chart?: React.ReactNode;
   rowsPerPage?: number;
+  isNavigating?: boolean;
 }
 
 export const DataTable: React.FC<DataTableProps> = ({
@@ -71,12 +72,29 @@ export const DataTable: React.FC<DataTableProps> = ({
   onSequencerChange,
   chart,
   rowsPerPage = DEFAULT_ROWS_PER_PAGE,
+  isNavigating = false,
 }) => {
   const [page, setPage] = React.useState(0);
 
   React.useEffect(() => {
     setPage(0);
   }, [rows]);
+
+  React.useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (isNavigating) return;
+      
+      if (event.key === 'Escape') {
+        onBack();
+      } else if (event.altKey && event.key === 'ArrowLeft') {
+        event.preventDefault();
+        onBack();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onBack, isNavigating]);
 
   const pageRows = React.useMemo(
     () => rows.slice(page * rowsPerPage, (page + 1) * rowsPerPage),
@@ -91,7 +109,8 @@ export const DataTable: React.FC<DataTableProps> = ({
       <div className="flex items-center mb-4 space-x-4">
         <button
           onClick={onBack}
-          className="flex items-center space-x-1"
+          disabled={isNavigating}
+          className={`flex items-center space-x-1 ${isNavigating ? 'opacity-50 cursor-not-allowed' : ''}`}
           style={{ color: TAIKO_PINK }}
         >
           <span>&larr;</span>
@@ -175,8 +194,8 @@ export const DataTable: React.FC<DataTableProps> = ({
               pageRows.map((row, idx) => (
                 <tr
                   key={idx}
-                  className="border-t hover:bg-gray-50 cursor-pointer"
-                  onClick={onRowClick ? () => onRowClick(row) : undefined}
+                  className={`border-t hover:bg-gray-50 ${onRowClick && !isNavigating ? 'cursor-pointer' : ''} ${isNavigating ? 'pointer-events-none opacity-50' : ''}`}
+                  onClick={onRowClick && !isNavigating ? () => onRowClick(row) : undefined}
                 >
                   {columns.map((col) => (
                     <td key={col.key} className="px-2 py-1">
@@ -193,18 +212,18 @@ export const DataTable: React.FC<DataTableProps> = ({
         <div className="flex items-center justify-between mt-2">
           <button
             onClick={() => setPage((p) => p - 1)}
-            disabled={disablePrev}
-            className="disabled:text-gray-400"
-            style={disablePrev ? undefined : { color: TAIKO_PINK }}
+            disabled={disablePrev || isNavigating}
+            className={`disabled:text-gray-400 ${isNavigating ? 'opacity-50' : ''}`}
+            style={disablePrev || isNavigating ? undefined : { color: TAIKO_PINK }}
           >
             Prev
           </button>
           <span>Page {page + 1}</span>
           <button
             onClick={() => setPage((p) => p + 1)}
-            disabled={disableNext}
-            className="disabled:text-gray-400"
-            style={disableNext ? undefined : { color: TAIKO_PINK }}
+            disabled={disableNext || isNavigating}
+            className={`disabled:text-gray-400 ${isNavigating ? 'opacity-50' : ''}`}
+            style={disableNext || isNavigating ? undefined : { color: TAIKO_PINK }}
           >
             Next
           </button>
@@ -239,9 +258,9 @@ export const DataTable: React.FC<DataTableProps> = ({
                   extraTable.rows.map((row, idx) => (
                     <tr
                       key={idx}
-                      className="border-t hover:bg-gray-50 cursor-pointer"
+                      className={`border-t hover:bg-gray-50 ${extraTable.onRowClick && !isNavigating ? 'cursor-pointer' : ''} ${isNavigating ? 'pointer-events-none opacity-50' : ''}`}
                       onClick={
-                        extraTable.onRowClick
+                        extraTable.onRowClick && !isNavigating
                           ? () => extraTable.onRowClick!(row)
                           : undefined
                       }
@@ -261,10 +280,10 @@ export const DataTable: React.FC<DataTableProps> = ({
             <div className="flex items-center justify-between mt-2">
               <button
                 onClick={extraTable.pagination.onPrev}
-                disabled={extraTable.pagination.disablePrev}
-                className="disabled:text-gray-400"
+                disabled={extraTable.pagination.disablePrev || isNavigating}
+                className={`disabled:text-gray-400 ${isNavigating ? 'opacity-50' : ''}`}
                 style={
-                  extraTable.pagination.disablePrev
+                  extraTable.pagination.disablePrev || isNavigating
                     ? undefined
                     : { color: TAIKO_PINK }
                 }
@@ -274,10 +293,10 @@ export const DataTable: React.FC<DataTableProps> = ({
               <span>Page {extraTable.pagination.page + 1}</span>
               <button
                 onClick={extraTable.pagination.onNext}
-                disabled={extraTable.pagination.disableNext}
-                className="disabled:text-gray-400"
+                disabled={extraTable.pagination.disableNext || isNavigating}
+                className={`disabled:text-gray-400 ${isNavigating ? 'opacity-50' : ''}`}
                 style={
-                  extraTable.pagination.disableNext
+                  extraTable.pagination.disableNext || isNavigating
                     ? undefined
                     : { color: TAIKO_PINK }
                 }

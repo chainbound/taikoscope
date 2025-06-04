@@ -1,16 +1,82 @@
 import { useCallback, useEffect, useState } from 'react';
 
-export const useSearchParams = (): URLSearchParams => {
+interface NavigationState {
+  canGoBack: boolean;
+  isNavigating: boolean;
+}
+
+export const useSearchParams = (): URLSearchParams & {
+  navigate: (url: string | URL, replace?: boolean) => void;
+  goBack: () => void;
+  navigationState: NavigationState;
+} => {
   const getParams = useCallback(
     () => new URLSearchParams(window.location.search),
     [],
   );
 
   const [params, setParams] = useState<URLSearchParams>(getParams);
+  const [navigationState, setNavigationState] = useState<NavigationState>({
+    canGoBack: window.history.length > 1,
+    isNavigating: false,
+  });
+
+  const navigate = useCallback((url: string | URL, replace = false) => {
+    if (navigationState.isNavigating) return;
+    
+    setNavigationState(prev => ({ ...prev, isNavigating: true }));
+    
+    try {
+      const urlString = url instanceof URL ? url.toString() : url;
+      
+      if (replace) {
+        window.history.replaceState(null, '', urlString);
+      } else {
+        window.history.pushState(null, '', urlString);
+      }
+      
+      window.dispatchEvent(new Event('popstate'));
+    } finally {
+      setTimeout(() => {
+        setNavigationState(prev => ({ 
+          ...prev, 
+          isNavigating: false,
+          canGoBack: window.history.length > 1
+        }));
+      }, 100);
+    }
+  }, [navigationState.isNavigating]);
+
+  const goBack = useCallback(() => {
+    if (navigationState.isNavigating) return;
+    
+    if (window.history.length > 1) {
+      setNavigationState(prev => ({ ...prev, isNavigating: true }));
+      window.history.back();
+    } else {
+      // Fallback: navigate to dashboard home
+      const url = new URL(window.location.href);
+      url.search = '';
+      navigate(url.toString(), true);
+    }
+  }, [navigationState.isNavigating, navigate]);
 
   useEffect(() => {
-    const handleChange = () => setParams(getParams());
+    const handleChange = () => {
+      setParams(getParams());
+      setNavigationState(prev => ({ 
+        ...prev, 
+        canGoBack: window.history.length > 1,
+        isNavigating: false
+      }));
+    };
+    
+    const handleBeforeUnload = () => {
+      setNavigationState(prev => ({ ...prev, isNavigating: false }));
+    };
+
     window.addEventListener('popstate', handleChange);
+    window.addEventListener('beforeunload', handleBeforeUnload);
 
     const { pushState, replaceState } = window.history;
 
@@ -32,10 +98,11 @@ export const useSearchParams = (): URLSearchParams => {
 
     return () => {
       window.removeEventListener('popstate', handleChange);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
       window.history.pushState = pushState;
       window.history.replaceState = replaceState;
     };
   }, [getParams]);
 
-  return params;
+  return Object.assign(params, { navigate, goBack, navigationState });
 };

@@ -1,4 +1,4 @@
-const metaEnv = import.meta.env as ImportMetaEnv;
+const metaEnv = import.meta.env as any;
 export const API_BASE: string =
   (metaEnv.VITE_API_BASE ?? metaEnv.API_BASE ?? '') + '/v1';
 
@@ -92,9 +92,7 @@ export const fetchBatchPostingCadence = async (
   };
 };
 
-export const fetchActiveSequencerAddresses = async (
-  _range: '1h' | '24h' | '7d',
-): Promise<RequestResult<string[]>> => {
+export const fetchActiveSequencerAddresses = async (): Promise<RequestResult<string[]>> => {
   const res = await fetchPreconfData();
   return {
     data: res.data?.candidates ?? null,

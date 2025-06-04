@@ -67,13 +67,10 @@ export const useTableActions = (
       });
 
       const newUrl = url.toString();
-      if (newUrl === window.location.href) {
-        window.history.replaceState(null, '', url);
-      } else {
-        window.history.pushState(null, '', url);
-      }
+      const shouldReplace = newUrl === window.location.href;
+      searchParams.navigate(url, shouldReplace);
     },
-    [],
+    [searchParams],
   );
 
   const openTable = useCallback(
