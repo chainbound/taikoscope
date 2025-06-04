@@ -16,6 +16,7 @@ export interface MetricInputData {
   l2Reorgs: number | null;
   slashings: number | null;
   forcedInclusions: number | null;
+  missedProposals: number | null;
   l2Block: number | null;
   l1Block: number | null;
   l2TxFee: number | null;
@@ -100,6 +101,12 @@ export const createMetrics = (data: MetricInputData): MetricData[] => [
     title: 'Forced Inclusions',
     value:
       data.forcedInclusions != null ? data.forcedInclusions.toString() : 'N/A',
+    group: 'Network Health',
+  },
+  {
+    title: 'Missed Proposals',
+    value:
+      data.missedProposals != null ? data.missedProposals.toString() : 'N/A',
     group: 'Network Health',
   },
   {

@@ -3,12 +3,14 @@ import {
   L2ReorgEvent,
   SlashingEvent,
   ForcedInclusionEvent,
+  MissedBlockProposal,
 } from '../types';
 import {
   fetchSequencerBlocks,
   fetchL2ReorgEvents,
   fetchSlashingEvents,
   fetchForcedInclusionEvents,
+  fetchMissedProposals,
   fetchActiveSequencerAddresses,
   fetchBatchBlobCounts,
   fetchBatchPostingTimes,
@@ -102,6 +104,33 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
         blob_hash: bytesToHex(e.blob_hash),
       })),
     urlKey: 'forced-inclusions',
+  },
+
+  'missed-proposals': {
+    title: 'Missed Block Proposals',
+    fetcher: fetchMissedProposals,
+    columns: [
+      { key: 'slot', label: 'Slot' },
+      { key: 'l2_block_number', label: 'Block Number' },
+      { key: 'sequencer', label: 'Sequencer' },
+    ],
+    mapData: (data) =>
+      (data as MissedBlockProposal[]).map((e) => ({
+        slot: e.slot,
+        l2_block_number: e.l2_block_number,
+        sequencer: getSequencerName(e.sequencer),
+      })),
+    chart: (data) => {
+      const MissedBlockChart = React.lazy(() =>
+        import('../components/MissedBlockChart').then((m) => ({
+          default: m.MissedBlockChart,
+        })),
+      );
+      return React.createElement(MissedBlockChart, {
+        data: data as MissedBlockProposal[],
+      });
+    },
+    urlKey: 'missed-proposals',
   },
 
   gateways: {
