@@ -5,6 +5,7 @@ import {
   RefreshRateInput,
   SequencerSelector,
 } from './DashboardHeader';
+import { RefreshCountdown } from './RefreshCountdown';
 import { TAIKO_PINK } from '../theme';
 
 const DEFAULT_ROWS_PER_PAGE = 50;
@@ -41,6 +42,8 @@ interface DataTableProps {
   onTimeRangeChange?: (range: TimeRange) => void;
   refreshRate?: number;
   onRefreshRateChange?: (rate: number) => void;
+  lastRefresh?: number;
+  onManualRefresh?: () => void;
   sequencers?: string[];
   selectedSequencer?: string | null;
   onSequencerChange?: (seq: string | null) => void;
@@ -61,6 +64,8 @@ export const DataTable: React.FC<DataTableProps> = ({
   onTimeRangeChange,
   refreshRate,
   onRefreshRateChange,
+  lastRefresh,
+  onManualRefresh,
   sequencers,
   selectedSequencer,
   onSequencerChange,
@@ -113,6 +118,15 @@ export const DataTable: React.FC<DataTableProps> = ({
             onRefreshRateChange={onRefreshRateChange}
           />
         )}
+        {refreshRate !== undefined &&
+          lastRefresh !== undefined &&
+          onManualRefresh && (
+            <RefreshCountdown
+              refreshRate={refreshRate}
+              lastRefresh={lastRefresh}
+              onRefresh={onManualRefresh}
+            />
+          )}
         {sequencers && onSequencerChange && (
           <SequencerSelector
             sequencers={sequencers}

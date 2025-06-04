@@ -517,6 +517,8 @@ const App: React.FC = () => {
         onTimeRangeChange={tableView.onTimeRangeChange}
         refreshRate={refreshRate}
         onRefreshRateChange={setRefreshRate}
+        lastRefresh={lastRefresh}
+        onManualRefresh={handleManualRefresh}
         sequencers={sequencerList}
         selectedSequencer={selectedSequencer}
         onSequencerChange={handleSequencerChange}
