@@ -17,6 +17,7 @@ export const useSearchParams = (): URLSearchParams => {
     window.history.pushState = (
       ...args: Parameters<History['pushState']>
     ): void => {
+      if (args[2] instanceof URL) args[2] = args[2].toString();
       pushState.apply(window.history, args);
       window.dispatchEvent(new Event('popstate'));
     };
@@ -24,6 +25,7 @@ export const useSearchParams = (): URLSearchParams => {
     window.history.replaceState = (
       ...args: Parameters<History['replaceState']>
     ): void => {
+      if (args[2] instanceof URL) args[2] = args[2].toString();
       replaceState.apply(window.history, args);
       window.dispatchEvent(new Event('popstate'));
     };

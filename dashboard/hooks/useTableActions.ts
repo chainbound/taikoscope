@@ -70,9 +70,9 @@ export const useTableActions = (
         if (v !== undefined) url.searchParams.set(k, String(v));
       });
 
-      const current = new URLSearchParams(window.location.search);
-      if (!paramsEqual(current, url.searchParams)) {
-        window.history.pushState(null, '', url);
+      const newSearch = url.search;
+      if (window.location.search !== newSearch) {
+        window.history.pushState(null, '', url.toString());
       }
     },
     [],
@@ -150,16 +150,15 @@ export const useTableActions = (
         openTable(
           title,
           tableKey === 'reorgs'
-            ?
-                'An L2 reorg occurs when the chain replaces previously published blocks. Depth shows how many blocks were replaced.'
+            ? 'An L2 reorg occurs when the chain replaces previously published blocks. Depth shows how many blocks were replaced.'
             : undefined,
           config.columns,
           mappedData,
           tableKey === 'sequencer-dist'
             ? (row) =>
-                openGenericTable('sequencer-blocks', range, {
-                  address: row.name,
-                })
+              openGenericTable('sequencer-blocks', range, {
+                address: row.name,
+              })
             : undefined,
           undefined,
           undefined,
