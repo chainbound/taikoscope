@@ -9,7 +9,7 @@ import {
   fetchL2ReorgEvents,
   fetchSlashingEvents,
   fetchForcedInclusionEvents,
-  fetchActiveGatewayAddresses,
+  fetchActiveSequencerAddresses,
   fetchBatchBlobCounts,
   fetchBatchPostingTimes,
   fetchProveTimes,
@@ -106,7 +106,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
 
   gateways: {
     title: 'Active Sequencers',
-    fetcher: fetchActiveGatewayAddresses,
+    fetcher: fetchActiveSequencerAddresses,
     columns: [{ key: 'address', label: 'Address' }],
     mapData: (data) => data.map((g) => ({ address: g })),
     urlKey: 'gateways',

@@ -92,25 +92,12 @@ export const fetchBatchPostingCadence = async (
   };
 };
 
-export const fetchActiveGateways = async (
-  range: '1h' | '24h' | '7d',
-): Promise<RequestResult<number>> => {
-  const url = `${API_BASE}/active-gateways?range=${range}`;
-  const res = await fetchJson<{ gateways: string[] }>(url);
-  return {
-    data: res.data ? res.data.gateways.length : null,
-    badRequest: res.badRequest,
-    error: res.error,
-  };
-};
-
-export const fetchActiveGatewayAddresses = async (
-  range: '1h' | '24h' | '7d',
+export const fetchActiveSequencerAddresses = async (
+  _range: '1h' | '24h' | '7d',
 ): Promise<RequestResult<string[]>> => {
-  const url = `${API_BASE}/active-gateways?range=${range}`;
-  const res = await fetchJson<{ gateways: string[] }>(url);
+  const res = await fetchPreconfData();
   return {
-    data: res.data?.gateways ?? null,
+    data: res.data?.candidates ?? null,
     badRequest: res.badRequest,
     error: res.error,
   };
