@@ -18,9 +18,9 @@ use chrono::{Duration as ChronoDuration, Utc};
 use clickhouse_lib::HashBytes;
 use clickhouse_lib::{AddressBytes, ClickhouseReader};
 use dashmap::DashMap;
-use primitives::hardware::TOTAL_HARDWARE_COST_USD;
 use futures::stream::Stream;
 use hex::encode;
+use primitives::hardware::TOTAL_HARDWARE_COST_USD;
 use runtime::rate_limiter::RateLimiter;
 use serde::Deserialize;
 use std::{convert::Infallible, time::Duration as StdDuration};
@@ -1311,9 +1311,9 @@ mod tests {
         Row,
         test::{Mock, handlers},
     };
+    use primitives::hardware::TOTAL_HARDWARE_COST_USD;
     use serde::Serialize;
     use serde_json::{Value, json};
-    use primitives::hardware::TOTAL_HARDWARE_COST_USD;
     use std::time::Duration as StdDuration;
     use tower::util::ServiceExt;
     use url::Url;
