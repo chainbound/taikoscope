@@ -15,7 +15,7 @@ const metrics = createMetrics({
   forcedInclusions: 0,
   l2Block: 100,
   l1Block: 50,
-  l2TxFee: 42,
+  l2TxFee: 42e18,
 });
 
 const results = [
@@ -64,7 +64,7 @@ describe('helpers', () => {
     expect(metrics[9].group).toBe('Network Health');
     expect(metrics[10].value).toBe('0');
     expect(metrics[10].group).toBe('Network Health');
-    expect(metrics[11].value).toBe('42.0');
+    expect(metrics[11].value).toBe('42.0 ETH');
     expect(metrics[11].group).toBe('Network Economics');
     expect(metrics[12].value).toBe('100');
     expect(metrics[12].group).toBe('Block Information');
