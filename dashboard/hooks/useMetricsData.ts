@@ -103,12 +103,15 @@ export const useMetricsData = () => {
         [isEconomicsView],
     );
 
-    return {
-        metrics,
-        setMetrics,
-        loadingMetrics,
-        errorMessage,
-        setErrorMessage,
-        fetchMetricsData,
-    };
+    return useMemo(
+        () => ({
+            metrics,
+            setMetrics,
+            loadingMetrics,
+            errorMessage,
+            setErrorMessage,
+            fetchMetricsData,
+        }),
+        [metrics, loadingMetrics, errorMessage, fetchMetricsData],
+    );
 };

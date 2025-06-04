@@ -50,9 +50,10 @@ export const useDashboardController = () => {
         timeRange,
         selectedSequencer,
         tableView,
-        metricsData,
-        chartsData,
-        refreshTimer,
+        fetchMetricsData: metricsData.fetchMetricsData,
+        updateChartsData: chartsData.updateChartsData,
+        refreshRate: refreshTimer.refreshRate,
+        updateLastRefresh: refreshTimer.updateLastRefresh,
     });
 
     // Navigation handling
