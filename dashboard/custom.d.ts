@@ -5,6 +5,8 @@ declare module '*.css';
 interface ImportMetaEnv {
   readonly VITE_API_BASE?: string;
   readonly API_BASE?: string;
+  readonly VITE_NETWORK_NAME?: string;
+  readonly NETWORK_NAME?: string;
 }
 
 interface ImportMeta {
