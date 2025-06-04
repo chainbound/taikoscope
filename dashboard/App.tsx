@@ -47,7 +47,6 @@ import { loadRefreshRate, saveRefreshRate } from './utils';
 import { getSequencerAddress } from './sequencerConfig';
 import { TAIKO_PINK } from './theme';
 import {
-  API_BASE,
   fetchAvgProveTime,
   fetchAvgVerifyTime,
   fetchL2BlockCadence,
@@ -140,8 +139,6 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    let pollId: NodeJS.Timeout | null = null;
-
     const updateHeads = async () => {
       const [l1, l2] = await Promise.all([
         fetchL1HeadNumber(),
@@ -167,51 +164,11 @@ const App: React.FC = () => {
       }
     };
 
-    const startPolling = () => {
-      if (!pollId) {
-        setErrorMessage(
-          'Realtime updates unavailable, falling back to polling.',
-        );
-        updateHeads();
-        pollId = setInterval(updateHeads, 60000);
-      }
-    };
-
-    const l1Source = new EventSource(`${API_BASE}/sse/l1-head`);
-    const l2Source = new EventSource(`${API_BASE}/sse/l2-head`);
-
-    l1Source.onmessage = (e) => {
-      const value = Number(e.data).toLocaleString();
-      setL1HeadBlock(value);
-      setMetrics((m) =>
-        m.map((metric) =>
-          metric.title === 'L1 Head Block' ? { ...metric, value } : metric,
-        ),
-      );
-    };
-    l2Source.onmessage = (e) => {
-      const value = Number(e.data).toLocaleString();
-      setL2HeadBlock(value);
-      setMetrics((m) =>
-        m.map((metric) =>
-          metric.title === 'L2 Head Block' ? { ...metric, value } : metric,
-        ),
-      );
-    };
-
-    const handleError = () => {
-      l1Source.close();
-      l2Source.close();
-      startPolling();
-    };
-
-    l1Source.onerror = handleError;
-    l2Source.onerror = handleError;
+    updateHeads();
+    const pollId = setInterval(updateHeads, 60000);
 
     return () => {
-      l1Source.close();
-      l2Source.close();
-      if (pollId) clearInterval(pollId);
+      clearInterval(pollId);
     };
   }, []);
 
@@ -414,10 +371,10 @@ const App: React.FC = () => {
   const skeletonGroupCounts: Record<string, number> = isEconomicsView
     ? { 'Network Economics': 1 }
     : {
-      'Network Performance': 5,
-      'Network Health': 3,
-      Sequencers: 3,
-    };
+        'Network Performance': 5,
+        'Network Health': 3,
+        Sequencers: 3,
+      };
 
   const displayGroupName = useCallback(
     (group: string): string => {
@@ -594,18 +551,18 @@ const App: React.FC = () => {
                         : typeof m.title === 'string' && m.title === 'L2 Reorgs'
                           ? () => openGenericTable('reorgs')
                           : typeof m.title === 'string' &&
-                            m.title === 'Slashing Events'
+                              m.title === 'Slashing Events'
                             ? () => openGenericTable('slashings')
                             : typeof m.title === 'string' &&
-                              m.title === 'Forced Inclusions'
+                                m.title === 'Forced Inclusions'
                               ? () => openGenericTable('forced-inclusions')
                               : typeof m.title === 'string' &&
-                                m.title === 'Active Sequencers'
+                                  m.title === 'Active Sequencers'
                                 ? () => openGenericTable('gateways')
                                 : typeof m.title === 'string' &&
-                                  m.title === 'Batch Posting Cadence'
+                                    m.title === 'Batch Posting Cadence'
                                   ? () =>
-                                    openGenericTable('batch-posting-cadence')
+                                      openGenericTable('batch-posting-cadence')
                                   : undefined
                     }
                   />

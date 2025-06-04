@@ -96,7 +96,7 @@ presentation concerns separate:
 
 Events flow through the system continuously. The driver handles header and
 batch streams, inserts rows into ClickHouse and the API aggregates this data for
-the dashboard. SSE endpoints such as `/sse/l1-head` provide real‑time updates.
+the dashboard. The UI now polls the API periodically to update metrics.
 
 ## Development
 
