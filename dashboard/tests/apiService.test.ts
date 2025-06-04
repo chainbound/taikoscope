@@ -63,7 +63,10 @@ describe('apiService', () => {
     });
     const blockTimes = await fetchL2BlockTimes('1h');
     expect(blockTimes.error).toBeNull();
-    expect(blockTimes.data).toStrictEqual([{ value: 2, timestamp: 20 }]);
+    expect(blockTimes.data).toStrictEqual([
+      { value: 1, timestamp: 10 },
+      { value: 2, timestamp: 20 },
+    ]);
   });
 
   it('transforms block transactions', async () => {
