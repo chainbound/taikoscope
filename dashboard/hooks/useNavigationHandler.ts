@@ -26,7 +26,8 @@ export const useNavigationHandler = ({
                 url.searchParams.delete('page');
                 url.searchParams.delete('start');
                 url.searchParams.delete('end');
-                searchParams.navigate(url, true);
+                const relative = url.pathname + url.search;
+                searchParams.navigate(relative, true);
             }
             setTableView(null);
         } catch (err) {
@@ -45,7 +46,8 @@ export const useNavigationHandler = ({
             } else {
                 url.searchParams.delete('sequencer');
             }
-            searchParams.navigate(url);
+            const relative = url.pathname + url.search;
+            searchParams.navigate(relative);
         } catch (err) {
             console.error('Failed to handle sequencer change:', err);
             onError('Failed to update sequencer selection.');

@@ -69,7 +69,8 @@ export const useTableActions = (
 
         const newUrl = url.toString();
         if (newUrl !== window.location.href) {
-          searchParams.navigate(url, false);
+          const relative = url.pathname + url.search;
+          searchParams.navigate(relative, false);
         }
       } catch (err) {
         console.error('Failed to set table URL:', err);
