@@ -1518,7 +1518,7 @@ impl ClickhouseReader {
         }
 
         let mut query = format!(
-            "SELECT sum(sum_priority_fee) AS total \
+            "SELECT sum(sum_priority_fee + sum_base_fee * 3 / 4) AS total \
              FROM {db}.l2_head_events \
              WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})",
             interval = range.interval(),
