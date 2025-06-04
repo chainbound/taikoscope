@@ -22,7 +22,6 @@ import {
   fetchL2GasUsed,
   fetchSequencerDistribution,
   fetchL2TxFee,
-  API_BASE,
 } from '../services/apiService.ts';
 import { createMetrics, hasBadRequest } from '../helpers';
 import type { MetricData } from '../types';
@@ -115,27 +114,6 @@ const responses: Record<string, Record<string, unknown>> = {
     json: async () => responses[key] ?? {},
   };
 };
-
-class MockEventSource {
-  url: string;
-  onmessage: ((e: { data: string }) => void) | null = null;
-  onerror: (() => void) | null = null;
-  closed = false;
-  constructor(url: string) {
-    this.url = url;
-  }
-  emitMessage(data: string) {
-    this.onmessage?.({ data });
-  }
-  emitError() {
-    this.onerror?.();
-  }
-  close() {
-    this.closed = true;
-  }
-}
-(globalThis as unknown as { EventSource: unknown }).EventSource =
-  MockEventSource as unknown as EventSource;
 
 interface IntervalId {
   fn: () => Promise<void> | void;
@@ -309,45 +287,9 @@ async function updateHeads(state: State) {
   }
 }
 
-function setupSSE(state: State) {
-  let pollId: ReturnType<typeof setInterval> | null = null;
-  const startPolling = () => {
-    if (!pollId) {
-      state.errorMessage =
-        'Realtime updates unavailable, falling back to polling.';
-      updateHeads(state);
-      pollId = setInterval(() => updateHeads(state), 60000);
-    }
-  };
-
-  const l1Source = new EventSource(`${API_BASE}/sse/l1-head`);
-  const l2Source = new EventSource(`${API_BASE}/sse/l2-head`);
-
-  l1Source.onmessage = (e) => {
-    const value = Number(e.data).toLocaleString();
-    state.l1HeadBlock = value;
-    state.metrics = state.metrics.map((m) =>
-      m.title === 'L1 Head Block' ? { ...m, value } : m,
-    );
-  };
-  l2Source.onmessage = (e) => {
-    const value = Number(e.data).toLocaleString();
-    state.l2HeadBlock = value;
-    state.metrics = state.metrics.map((m) =>
-      m.title === 'L2 Head Block' ? { ...m, value } : m,
-    );
-  };
-
-  const handleError = () => {
-    l1Source.close();
-    l2Source.close();
-    startPolling();
-  };
-
-  l1Source.onerror = handleError;
-  l2Source.onerror = handleError;
-
-  return { l1Source, l2Source };
+function setupPolling(state: State) {
+  updateHeads(state);
+  return setInterval(() => updateHeads(state), 60000);
 }
 
 it('app integration', async () => {
@@ -372,9 +314,7 @@ it('app integration', async () => {
   expect(state.secondsToProveData.length).toBe(1);
   expect(state.l2GasUsedData.length).toBe(1);
 
-  const { l1Source } = setupSSE(state);
-  (l1Source as unknown as MockEventSource).emitError();
-  expect(state.errorMessage.includes('falling back to polling')).toBe(true);
+  setupPolling(state);
   expect(intervals.length).toBe(1);
   await intervals[0].fn();
   expect(state.l1HeadBlock).toBe('456');

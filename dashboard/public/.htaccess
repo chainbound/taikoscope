@@ -16,7 +16,7 @@
     Header set Content-Type "font/woff2"
 </Files>
 
-# Enable CORS for fonts and SSE
+# Enable CORS for fonts
 <IfModule mod_headers.c>
     # Allow cross-origin requests for fonts
     <FilesMatch "\.(ttf|otf|eot|woff|woff2)$">
