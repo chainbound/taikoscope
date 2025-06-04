@@ -29,7 +29,20 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   return (
     <header className="flex flex-col md:flex-row justify-between items-center pb-4 border-b border-gray-200">
       <div className="flex items-baseline space-x-4">
-        <h1 className="text-3xl font-bold" style={{ color: TAIKO_PINK }}>
+        <h1
+          className="text-3xl font-bold cursor-pointer hover:underline"
+          style={{ color: TAIKO_PINK }}
+          onClick={() => {
+            const url = new URL(window.location.href);
+            url.searchParams.delete('view');
+            url.searchParams.delete('table');
+            url.searchParams.delete('address');
+            url.searchParams.delete('page');
+            url.searchParams.delete('start');
+            url.searchParams.delete('end');
+            window.history.pushState(null, '', url);
+          }}
+        >
           {' '}
           {/* Updated Taiko Pink */}
           Taiko Masaya Testnet
