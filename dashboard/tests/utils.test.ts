@@ -13,6 +13,7 @@ import {
   bytesToHex,
   loadRefreshRate,
   saveRefreshRate,
+  isValidRefreshRate,
 } from '../utils';
 
 describe('utils', () => {
@@ -109,5 +110,11 @@ describe('utils', () => {
     expect(store.refreshRate).toBe('60000');
     store.refreshRate = '2000';
     expect(loadRefreshRate()).toBe(2000);
+  });
+
+  it('validates refresh rate', () => {
+    expect(isValidRefreshRate(1000)).toBe(true);
+    expect(isValidRefreshRate(-1)).toBe(false);
+    expect(isValidRefreshRate(NaN)).toBe(false);
   });
 });
