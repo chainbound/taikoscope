@@ -176,6 +176,58 @@ const App: React.FC = () => {
     setLoadingMetrics(true);
     setLastRefresh(Date.now());
     const range = timeRange;
+    const isEconomicsView = searchParams.get('view') === 'economics';
+    if (isEconomicsView) {
+      const [l2TxFeeRes, l2BlockRes, l1BlockRes] = await Promise.all([
+        fetchL2TxFee(
+          range,
+          selectedSequencer ? getSequencerAddress(selectedSequencer) : undefined,
+        ),
+        fetchL2HeadBlock(range),
+        fetchL1HeadBlock(range),
+      ]);
+
+      const l2TxFee = l2TxFeeRes.data;
+      const l2Block = l2BlockRes.data;
+      const l1Block = l1BlockRes.data;
+
+      const anyBadRequest = hasBadRequest([l2TxFeeRes, l2BlockRes, l1BlockRes]);
+
+      const currentMetrics: MetricData[] = createMetrics({
+        avgTps: null,
+        l2Cadence: null,
+        batchCadence: null,
+        avgProve: null,
+        avgVerify: null,
+        activeGateways: null,
+        currentOperator: null,
+        nextOperator: null,
+        l2Reorgs: null,
+        slashings: null,
+        forcedInclusions: null,
+        l2TxFee,
+        l2Block,
+        l1Block,
+      });
+
+      setMetrics(currentMetrics);
+      setL2HeadBlock(
+        currentMetrics.find((m) => m.title === 'L2 Head Block')?.value || 'N/A',
+      );
+      setL1HeadBlock(
+        currentMetrics.find((m) => m.title === 'L1 Head Block')?.value || 'N/A',
+      );
+      if (anyBadRequest) {
+        setErrorMessage(
+          'Invalid parameters provided. Some data may not be available.',
+        );
+      } else {
+        setErrorMessage('');
+      }
+      setLoadingMetrics(false);
+      return;
+    }
+
     const [
       l2CadenceRes,
       batchCadenceRes,
@@ -327,7 +379,7 @@ const App: React.FC = () => {
       setErrorMessage('');
     }
     setLoadingMetrics(false);
-  }, [timeRange, selectedSequencer]);
+  }, [timeRange, selectedSequencer, searchParams]);
 
   const handleManualRefresh = useCallback(() => {
     void fetchData();
