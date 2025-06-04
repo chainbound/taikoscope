@@ -11,7 +11,28 @@ export const useSearchParams = (): URLSearchParams => {
   useEffect(() => {
     const handleChange = () => setParams(getParams());
     window.addEventListener('popstate', handleChange);
-    return () => window.removeEventListener('popstate', handleChange);
+
+    const { pushState, replaceState } = window.history;
+
+    window.history.pushState = (
+      ...args: Parameters<History['pushState']>
+    ): void => {
+      pushState.apply(window.history, args);
+      window.dispatchEvent(new Event('popstate'));
+    };
+
+    window.history.replaceState = (
+      ...args: Parameters<History['replaceState']>
+    ): void => {
+      replaceState.apply(window.history, args);
+      window.dispatchEvent(new Event('popstate'));
+    };
+
+    return () => {
+      window.removeEventListener('popstate', handleChange);
+      window.history.pushState = pushState;
+      window.history.replaceState = replaceState;
+    };
   }, [getParams]);
 
   return params;
