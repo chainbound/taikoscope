@@ -52,7 +52,6 @@ pub const TABLE_SCHEMAS: &[TableSchema] = &[
                  sum_gas_used UInt128,
                  sum_tx UInt32,
                  sum_priority_fee UInt128,
-                 sum_base_fee UInt128,
                  sequencer FixedString(20),
                  inserted_at DateTime64(3) DEFAULT now64()",
         order_by: "l2_block_number",

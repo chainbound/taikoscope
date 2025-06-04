@@ -47,8 +47,6 @@ pub struct L2HeadEvent {
     pub sum_tx: u32,
     /// Sum of priority fees paid
     pub sum_priority_fee: u128,
-    /// Sum of base fees paid
-    pub sum_base_fee: u128,
     /// Sequencer sequencing the block
     pub sequencer: AddressBytes,
 }
