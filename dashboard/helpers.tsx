@@ -108,12 +108,14 @@ export const createMetrics = (data: MetricInputData): MetricData[] => [
   },
   {
     title: 'L2 Block',
-    value: data.l2Block != null ? data.l2Block.toString() : 'N/A',
+    value:
+      data.l2Block != null ? data.l2Block.toLocaleString() : 'N/A',
     group: 'Block Information',
   },
   {
     title: 'L1 Block',
-    value: data.l1Block != null ? data.l1Block.toString() : 'N/A',
+    value:
+      data.l1Block != null ? data.l1Block.toLocaleString() : 'N/A',
     group: 'Block Information',
   },
 ];
