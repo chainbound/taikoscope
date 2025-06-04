@@ -32,6 +32,8 @@ describe('navigationUtils', () => {
       expect(isValidUrl('data:text/html,<script>alert(1)</script>')).toBe(false);
       expect(isValidUrl('')).toBe(false);
       expect(isValidUrl('   ')).toBe(false);
+      expect(isValidUrl('https://example.com/evil path')).toBe(false);
+      expect(isValidUrl('/../secret')).toBe(false);
     });
   });
 
@@ -49,6 +51,11 @@ describe('navigationUtils', () => {
     it('should handle invalid URLs gracefully', () => {
       expect(sanitizeUrl('javascript:alert(1)')).toBe('/dashboard');
       expect(sanitizeUrl('data:text/html,evil')).toBe('/dashboard');
+    });
+
+    it('should remove invalid search parameters', () => {
+      const url = 'https://example.com/dashboard?view=table&page=-1&bad=1';
+      expect(sanitizeUrl(url)).toBe('https://example.com/dashboard?view=table');
     });
   });
 
@@ -92,9 +99,17 @@ describe('navigationUtils', () => {
     it('should validate range parameters', () => {
       const params = new URLSearchParams('range=1h');
       expect(validateSearchParams(params)).toBe(true);
-      
+
       const invalidParams = new URLSearchParams('range=invalid');
       expect(validateSearchParams(invalidParams)).toBe(false);
+    });
+
+    it('should validate sort and filter parameters', () => {
+      const params = new URLSearchParams('sort=asc&filter=test');
+      expect(validateSearchParams(params)).toBe(true);
+
+      const invalid = new URLSearchParams('sort=up&filter=<bad>');
+      expect(validateSearchParams(invalid)).toBe(false);
     });
   });
 
@@ -106,6 +121,15 @@ describe('navigationUtils', () => {
       expect(cleaned.get('view')).toBe('table');
       expect(cleaned.get('sequencer')).toBe('test');
       expect(cleaned.get('malicious')).toBeNull();
+    });
+
+    it('should keep new sort and filter parameters', () => {
+      const params = new URLSearchParams('sort=desc&filter=name&bad=1');
+      const cleaned = cleanSearchParams(params);
+
+      expect(cleaned.get('sort')).toBe('desc');
+      expect(cleaned.get('filter')).toBe('name');
+      expect(cleaned.get('bad')).toBeNull();
     });
 
     it('should trim parameter values', () => {
@@ -122,6 +146,14 @@ describe('navigationUtils', () => {
       
       expect(cleaned.get('view')).toBeNull();
       expect(cleaned.get('sequencer')).toBe('test');
+    });
+
+    it('should drop invalid parameter values', () => {
+      const params = new URLSearchParams('sort=up&filter=<bad>');
+      const cleaned = cleanSearchParams(params);
+
+      expect(cleaned.get('sort')).toBeNull();
+      expect(cleaned.get('filter')).toBeNull();
     });
   });
 });
