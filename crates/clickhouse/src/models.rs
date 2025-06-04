@@ -94,6 +94,8 @@ pub struct L2ReorgRow {
     pub l2_block_number: u64,
     /// Depth
     pub depth: u16,
+    /// Time the reorg was recorded
+    pub inserted_at: DateTime<Utc>,
 }
 
 /// Forced inclusion processed row

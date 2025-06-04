@@ -60,7 +60,11 @@ const responses: Record<string, Record<string, unknown>> = {
     current_operator: '0xaaa',
     next_operator: '0xbbb',
   },
-  '/v1/reorgs?range=1h': { events: [{ l2_block_number: 10, depth: 1 }] },
+  '/v1/reorgs?range=1h': {
+    events: [
+      { l2_block_number: 10, depth: 1, inserted_at: '1970-01-01T00:00:00Z' },
+    ],
+  },
   '/v1/slashings?range=1h': {
     events: [{ l1_block_number: 5, validator_addr: [1, 2] }],
   },
