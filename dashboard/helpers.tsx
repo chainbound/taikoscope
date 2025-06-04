@@ -1,6 +1,6 @@
 import React from 'react';
 import { type MetricData } from './types';
-import { formatSeconds, formatDecimal } from './utils';
+import { formatSeconds, formatDecimal, formatEth } from './utils';
 import { getSequencerName } from './sequencerConfig';
 import type { RequestResult } from './services/apiService';
 
@@ -103,7 +103,7 @@ export const createMetrics = (data: MetricInputData): MetricData[] => [
   },
   {
     title: 'L2 Transaction Fee',
-    value: data.l2TxFee != null ? formatDecimal(data.l2TxFee) : 'N/A',
+    value: data.l2TxFee != null ? formatEth(data.l2TxFee) : 'N/A',
     group: 'Network Economics',
   },
   {

@@ -9,6 +9,7 @@ import {
   findMetricValue,
   formatSequencerTooltip,
   formatLargeNumber,
+  formatEth,
   bytesToHex,
   loadRefreshRate,
   saveRefreshRate,
@@ -80,6 +81,10 @@ describe('utils', () => {
     expect(formatLargeNumber(1500)).toBe('1.5K');
     expect(formatLargeNumber(15_000_000)).toBe('15M');
     expect(formatLargeNumber(50)).toBe('50');
+  });
+
+  it('formats ETH amounts', () => {
+    expect(formatEth(42e18)).toBe('42.0 ETH');
   });
 
   it('converts bytes to hex', () => {

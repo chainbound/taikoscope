@@ -23,6 +23,9 @@ export const formatLargeNumber = (value: number): string => {
   return value.toLocaleString();
 };
 
+export const formatEth = (wei: number): string =>
+  `${formatDecimal(wei / 1e18)} ETH`;
+
 export const formatTime = (ms: number): string =>
   new Date(ms).toLocaleTimeString([], {
     hour: '2-digit',
