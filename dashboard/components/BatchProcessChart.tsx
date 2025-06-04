@@ -21,7 +21,7 @@ interface BatchProcessChartProps {
   lineColor: string;
 }
 
-export const BatchProcessChart: React.FC<BatchProcessChartProps> = ({
+const BatchProcessChartComponent: React.FC<BatchProcessChartProps> = ({
   data,
   lineColor,
 }) => {
@@ -135,3 +135,5 @@ export const BatchProcessChart: React.FC<BatchProcessChartProps> = ({
     </ResponsiveContainer>
   );
 };
+
+export const BatchProcessChart = React.memo(BatchProcessChartComponent);

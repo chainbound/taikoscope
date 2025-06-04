@@ -19,7 +19,7 @@ interface TpsChartProps {
   lineColor: string;
 }
 
-export const TpsChart: React.FC<TpsChartProps> = ({ data, lineColor }) => {
+const TpsChartComponent: React.FC<TpsChartProps> = ({ data, lineColor }) => {
   if (!data || data.length === 0) {
     return (
       <div className="flex items-center justify-center h-full text-gray-500">
@@ -83,3 +83,5 @@ export const TpsChart: React.FC<TpsChartProps> = ({ data, lineColor }) => {
     </ResponsiveContainer>
   );
 };
+
+export const TpsChart = React.memo(TpsChartComponent);

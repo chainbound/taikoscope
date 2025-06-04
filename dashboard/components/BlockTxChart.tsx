@@ -16,7 +16,7 @@ interface BlockTxChartProps {
   barColor: string;
 }
 
-export const BlockTxChart: React.FC<BlockTxChartProps> = ({
+const BlockTxChartComponent: React.FC<BlockTxChartProps> = ({
   data,
   barColor,
 }) => {
@@ -117,3 +117,5 @@ export const BlockTxChart: React.FC<BlockTxChartProps> = ({
     </ResponsiveContainer>
   );
 };
+
+export const BlockTxChart = React.memo(BlockTxChartComponent);
