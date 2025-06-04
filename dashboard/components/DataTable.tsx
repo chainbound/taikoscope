@@ -137,7 +137,19 @@ export const DataTable: React.FC<DataTableProps> = ({
       </div>
       <h2 className="text-xl font-semibold mb-2">{title}</h2>
       {description && <p className="text-gray-600 mb-2">{description}</p>}
-      {chart && <div className="h-64 md:h-80 w-full mb-4">{chart}</div>}
+      {chart && (
+        <div className="h-64 md:h-80 w-full mb-4">
+          <React.Suspense
+            fallback={
+              <div className="flex items-center justify-center h-full text-gray-500">
+                Loading...
+              </div>
+            }
+          >
+            {chart}
+          </React.Suspense>
+        </div>
+      )}
       <div className="overflow-x-auto">
         <table className="min-w-full border divide-y divide-gray-200">
           <thead>
