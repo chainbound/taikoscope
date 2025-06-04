@@ -6,9 +6,14 @@ use chrono::Utc;
 use clickhouse::Client;
 use derive_more::Debug;
 use eyre::{Context, Result};
+use include_dir::{Dir, include_dir};
+use regex::Regex;
 use sqlparser::{dialect::GenericDialect, parser::Parser};
 use tracing::info;
 use url::Url;
+
+/// Embedded migrations directory
+static MIGRATIONS_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/migrations");
 
 /// Split a SQL script into individual statements using sqlparser-rs.
 ///
@@ -139,6 +144,11 @@ fn split_statements_manually(sql: &str) -> Vec<String> {
     statements
 }
 
+/// Validate migration file name (e.g. `001_description.sql`)
+fn validate_migration_name(name: &str) -> bool {
+    Regex::new(r"^\d{3}_[a-z0-9_]+\.sql$").map(|re| re.is_match(name)).unwrap_or(false)
+}
+
 use crate::{
     L1Header,
     models::{
@@ -229,77 +239,37 @@ impl ClickhouseWriter {
             self.create_table(schema).await?;
         }
 
-        // Apply materialized views migration
-        self.apply_materialized_views_migration().await?;
+        let mut migrations: Vec<_> = MIGRATIONS_DIR
+            .files()
+            .filter(|f| f.path().extension().and_then(|s| s.to_str()) == Some("sql"))
+            .collect();
+        migrations.sort_by_key(|f| f.path().file_name().map(|n| n.to_owned()));
 
-        // Apply sum_base_fee column migration
-        self.apply_sum_base_fee_migration().await?;
+        for file in migrations {
+            let name = file.path().file_name().and_then(|n| n.to_str()).unwrap_or_default();
+            if !validate_migration_name(name) {
+                eyre::bail!("Invalid migration name: {name}");
+            }
 
-        Ok(())
-    }
+            let sql = file
+                .contents_utf8()
+                .ok_or_else(|| eyre::eyre!("Invalid UTF-8 in migration {name}"))?;
+            let statements = parse_sql_statements(sql);
+            info!(migration = name, statement_count = statements.len(), "Applying migration");
 
-    /// Apply materialized views migration
-    async fn apply_materialized_views_migration(&self) -> Result<()> {
-        info!("Applying materialized views migration...");
-        static MV_SQL: &str = include_str!("../migrations/002_create_materialized_views.sql");
-
-        let statements = parse_sql_statements(MV_SQL);
-        info!(
-            statement_count = statements.len(),
-            "Found {} SQL statements in migration",
-            statements.len()
-        );
-
-        for (i, stmt) in statements.iter().enumerate() {
-            let stmt = stmt.replace("${DB}", &self.db_name);
-
-            info!(
-                statement_index = i,
-                "Executing migration statement: {}",
-                stmt.chars().take(100).collect::<String>()
-            );
-
-            self.base.query(&stmt).execute().await.wrap_err_with(|| {
-                format!("Failed to execute materialized view migration statement {}: {}", i, stmt)
-            })?;
-
-            info!(statement_index = i, "Successfully executed migration statement");
+            for (i, stmt) in statements.iter().enumerate() {
+                let stmt = stmt.replace("${DB}", &self.db_name);
+                info!(
+                    statement_index = i,
+                    "Executing migration statement: {}",
+                    stmt.chars().take(100).collect::<String>()
+                );
+                self.base.query(&stmt).execute().await.wrap_err_with(|| {
+                    format!("Failed to execute migration {name} statement {i}: {stmt}")
+                })?;
+            }
         }
 
-        info!("✅ Materialized views migration completed");
-        Ok(())
-    }
-
-    /// Apply `sum_base_fee` column migration
-    async fn apply_sum_base_fee_migration(&self) -> Result<()> {
-        info!("Applying sum_base_fee column migration...");
-        static SUM_BASE_FEE_SQL: &str =
-            include_str!("../migrations/003_add_sum_base_fee_column.sql");
-
-        let statements = parse_sql_statements(SUM_BASE_FEE_SQL);
-        info!(
-            statement_count = statements.len(),
-            "Found {} SQL statements in sum_base_fee migration",
-            statements.len()
-        );
-
-        for (i, stmt) in statements.iter().enumerate() {
-            let stmt = stmt.replace("${DB}", &self.db_name);
-
-            info!(
-                statement_index = i,
-                "Executing migration statement: {}",
-                stmt.chars().take(100).collect::<String>()
-            );
-
-            self.base.query(&stmt).execute().await.wrap_err_with(|| {
-                format!("Failed to execute sum_base_fee migration statement {}: {}", i, stmt)
-            })?;
-
-            info!(statement_index = i, "Successfully executed migration statement");
-        }
-
-        info!("✅ sum_base_fee column migration completed");
         Ok(())
     }
 
@@ -700,35 +670,6 @@ mod tests {
         );
     }
 
-    #[tokio::test]
-    async fn apply_materialized_views_migration_executes_all_statements() {
-        let mock = Mock::new();
-        let expected_views = [
-            "batch_prove_times_mv",
-            "batch_verify_times_mv",
-            "hourly_avg_prove_times_mv",
-            "hourly_avg_verify_times_mv",
-            "daily_avg_prove_times_mv",
-            "daily_avg_verify_times_mv",
-        ];
-
-        let mut ctrls = Vec::with_capacity(expected_views.len());
-        for _ in expected_views {
-            ctrls.push(mock.add(handlers::record_ddl()));
-        }
-
-        let url = Url::parse(mock.url()).unwrap();
-        let writer =
-            ClickhouseWriter::new(url, "db".to_owned(), "user".into(), "pass".into()).unwrap();
-
-        writer.apply_materialized_views_migration().await.unwrap();
-
-        for (ctrl, view) in ctrls.into_iter().zip(expected_views) {
-            let query = ctrl.query().await;
-            assert!(query.contains(&format!("db.{view}")));
-        }
-    }
-
     #[test]
     fn parse_sql_handles_semicolons_in_strings() {
         let sql = "CREATE TABLE t(a String DEFAULT ';');\nCREATE TABLE t2(b String);";
@@ -740,7 +681,11 @@ mod tests {
     #[tokio::test]
     async fn init_schema_runs_create_and_migration_queries() {
         let mock = Mock::new();
-        let migration_count = 7; // 6 from materialized views + 1 from sum_base_fee migration
+        let migration_count: usize = MIGRATIONS_DIR
+            .files()
+            .filter(|f| f.path().extension().and_then(|s| s.to_str()) == Some("sql"))
+            .map(|f| parse_sql_statements(f.contents_utf8().unwrap()).len())
+            .sum();
         let total = TABLE_SCHEMAS.len() + migration_count;
 
         let ctrls: Vec<_> =
