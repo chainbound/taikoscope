@@ -138,7 +138,51 @@ let intervals: IntervalId[] = [];
   intervals = intervals.filter((i) => i !== (id as unknown as IntervalId));
 };
 
-async function fetchData(range: TimeRange, state: State) {
+async function fetchData(range: TimeRange, state: State, economics = false) {
+  if (economics) {
+    const [l2TxFeeRes, l2BlockRes, l1BlockRes] = await Promise.all([
+      fetchL2TxFee(range, undefined),
+      fetchL2HeadBlock(range),
+      fetchL1HeadBlock(range),
+    ]);
+
+    const l2TxFee = l2TxFeeRes.data;
+    const l2Block = l2BlockRes.data;
+    const l1Block = l1BlockRes.data;
+
+    const anyBadRequest = hasBadRequest([
+      l2TxFeeRes,
+      l2BlockRes,
+      l1BlockRes,
+    ]);
+
+    const currentMetrics: MetricData[] = createMetrics({
+      avgTps: 3,
+      l2Cadence: null,
+      batchCadence: null,
+      avgProve: null,
+      avgVerify: null,
+      activeGateways: null,
+      currentOperator: null,
+      nextOperator: null,
+      l2Reorgs: null,
+      slashings: null,
+      forcedInclusions: null,
+      l2TxFee,
+      l2Block,
+      l1Block,
+    });
+
+    state.metrics = currentMetrics;
+    state.l2HeadBlock =
+      currentMetrics.find((m) => m.title === 'L2 Head Block')?.value || 'N/A';
+    state.l1HeadBlock =
+      currentMetrics.find((m) => m.title === 'L1 Head Block')?.value || 'N/A';
+    state.errorMessage = anyBadRequest
+      ? 'Invalid parameters provided. Some data may not be available.'
+      : '';
+    return;
+  }
   const [
     l2CadenceRes,
     batchCadenceRes,
@@ -313,6 +357,12 @@ it('app integration', async () => {
   expect(state.metrics.length > 0).toBe(true);
   expect(state.secondsToProveData.length).toBe(1);
   expect(state.l2GasUsedData.length).toBe(1);
+
+  await fetchData('1h', state, true);
+  const econMetric = state.metrics.find(
+    (m) => m.group === 'Network Economics',
+  );
+  expect(econMetric).toBeDefined();
 
   setupPolling(state);
   expect(intervals.length).toBe(1);
