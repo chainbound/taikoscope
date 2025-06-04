@@ -232,6 +232,9 @@ impl ClickhouseWriter {
         // Apply materialized views migration
         self.apply_materialized_views_migration().await?;
 
+        // Apply sum_base_fee column migration
+        self.apply_sum_base_fee_migration().await?;
+
         Ok(())
     }
 
@@ -264,6 +267,38 @@ impl ClickhouseWriter {
         }
 
         info!("✅ Materialized views migration completed");
+        Ok(())
+    }
+
+    /// Apply sum_base_fee column migration
+    async fn apply_sum_base_fee_migration(&self) -> Result<()> {
+        info!("Applying sum_base_fee column migration...");
+        static SUM_BASE_FEE_SQL: &str = include_str!("../migrations/003_add_sum_base_fee_column.sql");
+
+        let statements = parse_sql_statements(SUM_BASE_FEE_SQL);
+        info!(
+            statement_count = statements.len(),
+            "Found {} SQL statements in sum_base_fee migration",
+            statements.len()
+        );
+
+        for (i, stmt) in statements.iter().enumerate() {
+            let stmt = stmt.replace("${DB}", &self.db_name);
+
+            info!(
+                statement_index = i,
+                "Executing migration statement: {}",
+                stmt.chars().take(100).collect::<String>()
+            );
+
+            self.base.query(&stmt).execute().await.wrap_err_with(|| {
+                format!("Failed to execute sum_base_fee migration statement {}: {}", i, stmt)
+            })?;
+
+            info!(statement_index = i, "Successfully executed migration statement");
+        }
+
+        info!("✅ sum_base_fee column migration completed");
         Ok(())
     }
 
