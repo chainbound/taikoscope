@@ -147,6 +147,13 @@ pub struct AvgL2TpsResponse {
     pub avg_tps: Option<f64>,
 }
 
+/// Total L2 transaction fee.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct L2TxFeeResponse {
+    /// Sum of priority fee and 75% of base fee for the range.
+    pub tx_fee: Option<u128>,
+}
+
 /// Time to prove individual batches.
 #[derive(Debug, Serialize, ToSchema)]
 pub struct ProveTimesResponse {

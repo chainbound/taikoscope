@@ -1495,6 +1495,60 @@ impl ClickhouseReader {
             .collect())
     }
 
+    /// Get the total L2 transaction fee for the given range
+    pub async fn get_l2_tx_fee(
+        &self,
+        sequencer: Option<AddressBytes>,
+        range: TimeRange,
+    ) -> Result<Option<u128>> {
+        #[derive(Row, Deserialize)]
+        struct SumRow {
+            total: u128,
+        }
+
+        let mut query = format!(
+            "SELECT sum(sum_priority_fee + sum_base_fee * 3 / 4) AS total \
+             FROM {db}.l2_head_events \
+             WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})",
+            interval = range.interval(),
+            db = self.db_name
+        );
+        if let Some(addr) = sequencer {
+            query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
+        }
+
+        let rows = self.execute::<SumRow>(&query).await?;
+        let row = match rows.into_iter().next() {
+            Some(r) => r,
+            None => return Ok(None),
+        };
+        Ok(Some(row.total))
+    }
+
+    /// Get the total L2 transaction fee for the last hour
+    pub async fn get_l2_tx_fee_last_hour(
+        &self,
+        sequencer: Option<AddressBytes>,
+    ) -> Result<Option<u128>> {
+        self.get_l2_tx_fee(sequencer, TimeRange::LastHour).await
+    }
+
+    /// Get the total L2 transaction fee for the last 24 hours
+    pub async fn get_l2_tx_fee_last_24_hours(
+        &self,
+        sequencer: Option<AddressBytes>,
+    ) -> Result<Option<u128>> {
+        self.get_l2_tx_fee(sequencer, TimeRange::Last24Hours).await
+    }
+
+    /// Get the total L2 transaction fee for the last 7 days
+    pub async fn get_l2_tx_fee_last_7_days(
+        &self,
+        sequencer: Option<AddressBytes>,
+    ) -> Result<Option<u128>> {
+        self.get_l2_tx_fee(sequencer, TimeRange::Last7Days).await
+    }
+
     /// Get the blob count for each batch in the last hour
     pub async fn get_blobs_per_batch_last_hour(&self) -> Result<Vec<BatchBlobCountRow>> {
         let query = format!(

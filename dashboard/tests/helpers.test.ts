@@ -15,6 +15,7 @@ const metrics = createMetrics({
   forcedInclusions: 0,
   l2Block: 100,
   l1Block: 50,
+  l2TxFee: 42,
 });
 
 const results = [
@@ -36,6 +37,7 @@ const metricsAllNull = createMetrics({
   l1Block: null,
   currentOperator: null,
   nextOperator: null,
+  l2TxFee: null,
 });
 
 describe('helpers', () => {
@@ -62,10 +64,12 @@ describe('helpers', () => {
     expect(metrics[9].group).toBe('Network Health');
     expect(metrics[10].value).toBe('0');
     expect(metrics[10].group).toBe('Network Health');
-    expect(metrics[11].value).toBe('100');
-    expect(metrics[11].group).toBe('Block Information');
-    expect(metrics[12].value).toBe('50');
+    expect(metrics[11].value).toBe('42.0');
+    expect(metrics[11].group).toBe('Network Economics');
+    expect(metrics[12].value).toBe('100');
     expect(metrics[12].group).toBe('Block Information');
+    expect(metrics[13].value).toBe('50');
+    expect(metrics[13].group).toBe('Block Information');
   });
 
   it('detects bad requests', () => {
@@ -90,8 +94,9 @@ describe('helpers', () => {
     expect(metricsAllNull[8].group).toBe('Network Health');
     expect(metricsAllNull[9].group).toBe('Network Health');
     expect(metricsAllNull[10].group).toBe('Network Health');
-    expect(metricsAllNull[11].group).toBe('Block Information');
+    expect(metricsAllNull[11].group).toBe('Network Economics');
     expect(metricsAllNull[12].group).toBe('Block Information');
+    expect(metricsAllNull[13].group).toBe('Block Information');
   });
 
   it('handles all successful requests', () => {

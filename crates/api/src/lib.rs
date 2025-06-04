@@ -51,6 +51,7 @@ pub const DEFAULT_RATE_PERIOD: StdDuration = StdDuration::from_secs(60);
         batch_posting_cadence,
         batch_posting_times,
         avg_l2_tps,
+        l2_transaction_fee,
         avg_blobs_per_batch,
         blobs_per_batch,
         prove_times,
@@ -83,6 +84,7 @@ pub const DEFAULT_RATE_PERIOD: StdDuration = StdDuration::from_secs(60);
             BatchPostingCadenceResponse,
             BatchPostingTimesResponse,
             AvgL2TpsResponse,
+            L2TxFeeResponse,
             AvgBlobsPerBatchResponse,
             BatchBlobsResponse,
             ProveTimesResponse,
@@ -773,6 +775,46 @@ async fn avg_l2_tps(
 
 #[utoipa::path(
     get,
+    path = "/l2-tx-fee",
+    params(
+        RangeQuery
+    ),
+    responses(
+        (status = 200, description = "Total L2 transaction fee", body = L2TxFeeResponse)
+    ),
+    tag = "taikoscope"
+)]
+async fn l2_transaction_fee(
+    Query(params): Query<RangeQuery>,
+    State(state): State<ApiState>,
+) -> Json<L2TxFeeResponse> {
+    let duration = range_duration(&params.range);
+    let address = params.address.as_ref().and_then(|addr| match addr.parse::<Address>() {
+        Ok(a) => Some(AddressBytes::from(a)),
+        Err(e) => {
+            tracing::warn!(error = %e, "Failed to parse address");
+            None
+        }
+    });
+    let fee = match if duration.num_hours() <= 1 {
+        state.client.get_l2_tx_fee_last_hour(address).await
+    } else if duration.num_hours() <= 24 {
+        state.client.get_l2_tx_fee_last_24_hours(address).await
+    } else {
+        state.client.get_l2_tx_fee_last_7_days(address).await
+    } {
+        Ok(val) => val,
+        Err(e) => {
+            tracing::error!(error = %e, "Failed to get L2 tx fee");
+            None
+        }
+    };
+    tracing::info!(l2_tx_fee = ?fee, "Returning L2 tx fee");
+    Json(L2TxFeeResponse { tx_fee: fee })
+}
+
+#[utoipa::path(
+    get,
     path = "/avg-blobs-per-batch",
     params(
         RangeQuery
@@ -1188,6 +1230,7 @@ pub fn router(state: ApiState) -> Router {
         .route("/batch-posting-cadence", get(batch_posting_cadence))
         .route("/batch-posting-times", get(batch_posting_times))
         .route("/avg-l2-tps", get(avg_l2_tps))
+        .route("/l2-tx-fee", get(l2_transaction_fee))
         .route("/avg-blobs-per-batch", get(avg_blobs_per_batch))
         .route("/blobs-per-batch", get(blobs_per_batch))
         .route("/prove-times", get(prove_times))
@@ -1738,6 +1781,38 @@ mod tests {
     }
 
     #[derive(Serialize, Row)]
+    struct FeeRowTest {
+        total: u128,
+    }
+
+    #[tokio::test]
+    async fn l2_tx_fee_endpoint() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(vec![FeeRowTest { total: 42 }]));
+        let app = build_app(mock.url());
+        let body = send_request(app, "/l2-tx-fee").await;
+        assert_eq!(body, json!({ "tx_fee": 42 }));
+    }
+
+    #[tokio::test]
+    async fn l2_tx_fee_24h_endpoint() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(vec![FeeRowTest { total: 84 }]));
+        let app = build_app(mock.url());
+        let body = send_request(app, "/l2-tx-fee?range=24h").await;
+        assert_eq!(body, json!({ "tx_fee": 84 }));
+    }
+
+    #[tokio::test]
+    async fn l2_tx_fee_7d_endpoint() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(vec![FeeRowTest { total: 84 }]));
+        let app = build_app(mock.url());
+        let body = send_request(app, "/l2-tx-fee?range=7d").await;
+        assert_eq!(body, json!({ "tx_fee": 84 }));
+    }
+
+    #[derive(Serialize, Row)]
     struct SequencerRowTest {
         sequencer: AddressBytes,
         blocks: u64,
@@ -1906,6 +1981,7 @@ mod tests {
             "/l2-block-cadence",
             "/batch-posting-cadence",
             "/avg-l2-tps",
+            "/l2-tx-fee",
             "/avg-blobs-per-batch",
             "/blobs-per-batch",
             "/prove-times",

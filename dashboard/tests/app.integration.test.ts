@@ -23,6 +23,7 @@ import {
   fetchL2BlockTimes,
   fetchL2GasUsed,
   fetchSequencerDistribution,
+  fetchL2TxFee,
   API_BASE,
 } from '../services/apiService.ts';
 import { createMetrics, hasBadRequest } from '../helpers';
@@ -88,11 +89,14 @@ const responses: Record<string, Record<string, unknown>> = {
       { l2_block_number: 2, gas_used: 150 },
     ],
   },
+  '/v1/l2-tx-fee?range=1h': { tx_fee: 1000 },
   '/v1/sequencer-distribution?range=1h': {
     sequencers: [{ address: 'addr1', blocks: 10 }],
   },
   '/v1/l2-head-block': { l2_head_block: 123 },
   '/v1/l1-head-block': { l1_head_block: 456 },
+  '/v1/l2-tx-fee?range=24h': { tx_fee: 2000 },
+  '/v1/l2-tx-fee?range=7d': { tx_fee: 3000 },
 };
 
 (
@@ -175,6 +179,7 @@ async function fetchData(range: TimeRange, state: State) {
     l2TimesRes,
     l2GasUsedRes,
     sequencerDistRes,
+    l2TxFeeRes,
   ] = await Promise.all([
     fetchL2BlockCadence(range, undefined),
     fetchBatchPostingCadence(range),
@@ -197,6 +202,7 @@ async function fetchData(range: TimeRange, state: State) {
     fetchL2BlockTimes(range, undefined),
     fetchL2GasUsed(range, undefined),
     fetchSequencerDistribution(range),
+    fetchL2TxFee(range, undefined),
   ]);
 
   const l2Cadence = l2CadenceRes.data;
@@ -220,6 +226,7 @@ async function fetchData(range: TimeRange, state: State) {
   const l2Times = l2TimesRes.data || [];
   const l2Gas = l2GasUsedRes.data || [];
   const sequencerDist = sequencerDistRes.data || [];
+  const l2TxFee = l2TxFeeRes.data;
 
   const anyBadRequest = hasBadRequest([
     l2CadenceRes,
@@ -255,6 +262,7 @@ async function fetchData(range: TimeRange, state: State) {
     l2Reorgs,
     slashings,
     forcedInclusions,
+    l2TxFee,
     l2Block,
     l1Block,
   });
@@ -385,11 +393,17 @@ it('app integration', async () => {
   const groupOrder = [
     'Network Performance',
     'Network Health',
+    'Network Economics',
     'Sequencers',
     'Other',
   ];
   const visible = groupOrder.filter((g) => grouped[g] && grouped[g].length > 0);
-  const expected = ['Network Performance', 'Network Health', 'Sequencers'];
+  const expected = [
+    'Network Performance',
+    'Network Health',
+    'Network Economics',
+    'Sequencers',
+  ];
   expect(visible).toStrictEqual(expected);
 
   console.log('App integration tests passed.');

@@ -70,6 +70,7 @@ import {
   fetchSequencerDistribution,
   fetchBlockTransactions,
   fetchBatchBlobCounts,
+  fetchL2TxFee,
   fetchAvgL2Tps,
   type BlockTransaction,
   type BatchBlobCount,
@@ -242,6 +243,7 @@ const App: React.FC = () => {
       sequencerDistRes,
       blockTxRes,
       batchBlobCountsRes,
+      l2TxFeeRes,
     ] = await Promise.all([
       fetchL2BlockCadence(
         range,
@@ -282,6 +284,10 @@ const App: React.FC = () => {
         selectedSequencer ? getSequencerAddress(selectedSequencer) : undefined,
       ),
       fetchBatchBlobCounts(range),
+      fetchL2TxFee(
+        range,
+        selectedSequencer ? getSequencerAddress(selectedSequencer) : undefined,
+      ),
     ]);
 
     const l2Cadence = l2CadenceRes.data;
@@ -305,6 +311,7 @@ const App: React.FC = () => {
     const sequencerDist = sequencerDistRes.data || [];
     const txPerBlock = blockTxRes.data || [];
     const blobsPerBatch = batchBlobCountsRes.data || [];
+    const l2TxFee = l2TxFeeRes.data;
 
     const anyBadRequest = hasBadRequest([
       l2CadenceRes,
@@ -342,6 +349,7 @@ const App: React.FC = () => {
       l2Reorgs,
       slashings,
       forcedInclusions,
+      l2TxFee,
       l2Block,
       l1Block,
     });
@@ -404,12 +412,14 @@ const App: React.FC = () => {
   const groupOrder = [
     'Network Performance',
     'Network Health',
+    'Network Economics',
     'Sequencers',
     'Other',
   ];
   const skeletonGroupCounts: Record<string, number> = {
     'Network Performance': 5,
     'Network Health': 3,
+    'Network Economics': 1,
     Sequencers: 3,
   };
 
