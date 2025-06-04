@@ -55,13 +55,21 @@ export const useTableActions = (
       const url = new URL(window.location.href);
       url.searchParams.set('view', 'table');
       url.searchParams.set('table', name);
+
+      // remove stale parameters when switching tables
+      ['address', 'page', 'start', 'end'].forEach((key) => {
+        url.searchParams.delete(key);
+      });
+
       Object.entries(params).forEach(([k, v]) => {
         if (v !== undefined) url.searchParams.set(k, String(v));
       });
 
-      const newSearch = url.search;
-      if (window.location.search !== newSearch) {
-        window.history.pushState(null, '', url.toString());
+      const newUrl = url.toString();
+      if (newUrl === window.location.href) {
+        window.history.replaceState(null, '', url);
+      } else {
+        window.history.pushState(null, '', url);
       }
     },
     [],
