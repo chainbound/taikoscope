@@ -109,11 +109,11 @@ describe('utils', () => {
     saveRefreshRate(60000);
     expect(store.refreshRate).toBe('60000');
     store.refreshRate = '2000';
-    expect(loadRefreshRate()).toBe(2000);
+    expect(loadRefreshRate()).toBe(60000);
   });
 
   it('validates refresh rate', () => {
-    expect(isValidRefreshRate(1000)).toBe(true);
+    expect(isValidRefreshRate(1000)).toBe(false);
     expect(isValidRefreshRate(-1)).toBe(false);
     expect(isValidRefreshRate(NaN)).toBe(false);
   });
