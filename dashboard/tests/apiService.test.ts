@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 
 import {
   fetchAvgProveTime,
@@ -82,5 +82,16 @@ describe('apiService', () => {
     expect(res.badRequest).toBe(true);
     expect(res.error).toStrictEqual({});
     expect(res.data).toBeNull();
+  });
+
+  it('retries failed fetches and then throws', async () => {
+    let attempts = 0;
+    globalThis.fetch = vi.fn(async () => {
+      attempts += 1;
+      throw new Error('network');
+    });
+
+    await expect(fetchAvgProveTime('1h')).rejects.toThrow('network');
+    expect(attempts).toBe(3); // initial try + two retries
   });
 });
