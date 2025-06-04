@@ -61,12 +61,12 @@ export const ReorgDepthChart: React.FC<ReorgDepthChartProps> = ({ data }) => {
       >
         <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
         <XAxis
-          dataKey="l2_block_number"
-          tickFormatter={(v: number) => v.toLocaleString()}
+          dataKey="timestamp"
+          tickFormatter={(v: number) => new Date(v).toLocaleString()}
           stroke="#666666"
           fontSize={12}
           label={{
-            value: 'Block Number',
+            value: 'Time',
             position: 'insideBottom',
             offset: -35,
             fontSize: 10,
@@ -88,7 +88,7 @@ export const ReorgDepthChart: React.FC<ReorgDepthChartProps> = ({ data }) => {
           }}
         />
         <Tooltip
-          labelFormatter={(label: number) => `Block ${label.toLocaleString()}`}
+          labelFormatter={(label: number) => new Date(label).toLocaleString()}
           formatter={(value: number) => [value.toString(), 'depth']}
           contentStyle={{
             backgroundColor: 'rgba(255, 255, 255, 0.8)',
@@ -98,7 +98,7 @@ export const ReorgDepthChart: React.FC<ReorgDepthChartProps> = ({ data }) => {
         />
         <Bar dataKey="depth" fill={TAIKO_PINK} name="Depth" />
         <Brush
-          dataKey="l2_block_number"
+          dataKey="timestamp"
           height={20}
           stroke={TAIKO_PINK}
           startIndex={brushRange.startIndex}

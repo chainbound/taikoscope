@@ -416,16 +416,34 @@ impl ClickhouseReader {
 
     /// Get all L2 reorg events that occurred after the given cutoff time
     pub async fn get_l2_reorgs_since(&self, since: DateTime<Utc>) -> Result<Vec<L2ReorgRow>> {
+        #[derive(Row, Deserialize)]
+        struct RawRow {
+            l2_block_number: u64,
+            depth: u16,
+            ts: u64,
+        }
+
         let query = format!(
-            "SELECT l2_block_number, depth FROM {}.l2_reorgs \
+            "SELECT l2_block_number, depth, \
+                    toUInt64(toUnixTimestamp64Milli(inserted_at)) AS ts \
+             FROM {}.l2_reorgs \
              WHERE inserted_at > toDateTime64({}, 3) \
              ORDER BY inserted_at ASC",
             self.db_name,
             since.timestamp_millis() as f64 / 1000.0,
         );
-        let rows =
-            self.execute::<L2ReorgRow>(&query).await.context("fetching reorg events failed")?;
-        Ok(rows)
+        let rows = self.execute::<RawRow>(&query).await.context("fetching reorg events failed")?;
+        Ok(rows
+            .into_iter()
+            .filter_map(|r| {
+                let ts = Utc.timestamp_millis_opt(r.ts as i64).single()?;
+                Some(L2ReorgRow {
+                    l2_block_number: r.l2_block_number,
+                    depth: r.depth,
+                    inserted_at: ts,
+                })
+            })
+            .collect())
     }
 
     /// Get all active gateway addresses observed since the given cutoff time

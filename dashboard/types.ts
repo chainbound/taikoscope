@@ -25,6 +25,7 @@ export interface MetricData {
 export interface L2ReorgEvent {
   l2_block_number: number;
   depth: number;
+  timestamp: number;
 }
 
 export interface SlashingEvent {

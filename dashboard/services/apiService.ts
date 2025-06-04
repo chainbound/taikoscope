@@ -132,9 +132,17 @@ export const fetchL2ReorgEvents = async (
   range: '1h' | '24h' | '7d',
 ): Promise<RequestResult<L2ReorgEvent[]>> => {
   const url = `${API_BASE}/reorgs?range=${range}`;
-  const res = await fetchJson<{ events: L2ReorgEvent[] }>(url);
+  const res = await fetchJson<{
+    events: { l2_block_number: number; depth: number; inserted_at: string }[];
+  }>(url);
   return {
-    data: res.data ? res.data.events : null,
+    data: res.data
+      ? res.data.events.map((e) => ({
+          l2_block_number: e.l2_block_number,
+          depth: e.depth,
+          timestamp: Date.parse(e.inserted_at),
+        }))
+      : null,
     badRequest: res.badRequest,
     error: res.error,
   };
@@ -212,14 +220,15 @@ export const fetchL1HeadBlock = async (
   return { data: value, badRequest: res.badRequest, error: res.error };
 };
 
-
 export interface PreconfData {
   candidates: string[];
   current_operator?: string;
   next_operator?: string;
 }
 
-export const fetchPreconfData = async (): Promise<RequestResult<PreconfData>> => {
+export const fetchPreconfData = async (): Promise<
+  RequestResult<PreconfData>
+> => {
   const url = `${API_BASE}/preconf-data`;
   return fetchJson<PreconfData>(url);
 };
