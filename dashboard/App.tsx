@@ -98,7 +98,7 @@ const App: React.FC = () => {
     PieChartDataItem[]
   >([]);
   const sequencerList = React.useMemo(
-    () => sequencerDistribution.map((s) => s.name),
+    () => sequencerDistribution.map((s) => s.name).sort(),
     [sequencerDistribution],
   );
   const [l2HeadBlock, setL2HeadBlock] = useState<string>('0');
