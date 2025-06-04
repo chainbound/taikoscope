@@ -31,4 +31,12 @@ describe('ErrorBoundary', () => {
     boundary.componentDidCatch(error, info);
     expect(report).toHaveBeenCalledWith(error, info);
   });
+
+  it('resetError clears error state', () => {
+    const boundary = new ErrorBoundary({});
+    boundary.setState({ hasError: true, error: new Error('oops'), info: undefined });
+    (boundary as any).resetError();
+    expect(boundary.state.hasError).toBe(false);
+    expect(boundary.state.error).toBeUndefined();
+  });
 });
