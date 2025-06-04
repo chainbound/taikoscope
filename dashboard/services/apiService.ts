@@ -21,26 +21,49 @@ export interface RequestResult<T> {
   error: ErrorResponse | null;
 }
 
-const fetchJson = async <T>(url: string): Promise<RequestResult<T>> => {
-  try {
-    const res = await fetch(url);
-    if (!res.ok) {
-      if (res.status === 429) {
-        showToast('Too many requests, please slow down.');
+const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+interface FetchOptions {
+  retries?: number;
+  retryDelay?: number;
+  timeout?: number;
+}
+
+const fetchJson = async <T>(
+  url: string,
+  { retries = 2, retryDelay = 500, timeout = 10_000 }: FetchOptions = {},
+): Promise<RequestResult<T>> => {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeout);
+    try {
+      const res = await fetch(url, { signal: controller.signal });
+      clearTimeout(id);
+      if (!res.ok) {
+        if (res.status === 429) {
+          showToast('Too many requests, please slow down.');
+        }
+        let error: ErrorResponse | null = null;
+        try {
+          error = (await res.json()) as ErrorResponse;
+        } catch {
+          // ignore JSON parse errors
+        }
+        return { data: null, badRequest: res.status === 400, error };
       }
-      let error: ErrorResponse | null = null;
-      try {
-        error = (await res.json()) as ErrorResponse;
-      } catch {
-        // ignore JSON parse errors
+      return { data: (await res.json()) as T, badRequest: false, error: null };
+    } catch (error: unknown) {
+      clearTimeout(id);
+      if (attempt < retries) {
+        console.warn(`Failed to fetch ${url}, retrying...`, error);
+        await wait(retryDelay * (attempt + 1));
+        continue;
       }
-      return { data: null, badRequest: res.status === 400, error };
+      console.error(`Failed to fetch ${url}`, error);
+      throw error;
     }
-    return { data: (await res.json()) as T, badRequest: false, error: null };
-  } catch (error: unknown) {
-    console.error(`Failed to fetch ${url}`, error);
-    throw error;
   }
+  throw new Error('unreachable');
 };
 
 export interface AvgTimeResponse {
@@ -97,7 +120,9 @@ export const fetchBatchPostingCadence = async (
   };
 };
 
-export const fetchActiveSequencerAddresses = async (): Promise<RequestResult<string[]>> => {
+export const fetchActiveSequencerAddresses = async (): Promise<
+  RequestResult<string[]>
+> => {
   const res = await fetchPreconfData();
   return {
     data: res.data?.candidates ?? null,
