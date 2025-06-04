@@ -30,6 +30,7 @@ export interface TableViewState {
   };
   timeRange?: TimeRange;
   onTimeRangeChange?: (range: TimeRange) => void;
+  onRefresh?: () => void;
   chart?: React.ReactNode;
 }
 
@@ -86,6 +87,7 @@ export const useTableActions = (
       extraTable?: TableViewState['extraTable'],
       range?: TimeRange,
       onRangeChange?: (range: TimeRange) => void,
+      onRefresh?: () => void,
       chart?: React.ReactNode,
     ) => {
       setTableView({
@@ -98,6 +100,7 @@ export const useTableActions = (
         extraTable,
         timeRange: range,
         onTimeRangeChange: onRangeChange,
+        onRefresh,
         chart,
       });
       setTableLoading(false);
@@ -118,7 +121,7 @@ export const useTableActions = (
       setTimeRange(range);
 
       try {
-        const fetcherArgs = [];
+        const fetcherArgs: any[] = [];
         if (tableKey === 'sequencer-blocks' && extraParams.address) {
           fetcherArgs.push(extraParams.address);
         } else if (['l2-block-times', 'l2-gas-used'].includes(tableKey)) {
@@ -144,6 +147,26 @@ export const useTableActions = (
 
         setTableUrl(config.urlKey, { range, ...extraParams });
 
+        // Create a refresh function that refetches data without changing the URL
+        const refreshData = async () => {
+          try {
+            const refreshRes = await config.fetcher(range, ...fetcherArgs);
+            const refreshData = refreshRes.data || [];
+            const refreshMappedData = config.mapData
+              ? config.mapData(refreshData, extraParams)
+              : refreshData;
+            const refreshChart = config.chart ? config.chart(refreshData) : undefined;
+
+            setTableView(prev => prev ? {
+              ...prev,
+              rows: refreshMappedData,
+              chart: refreshChart,
+            } : null);
+          } catch (error) {
+            console.error(`Failed to refresh ${tableKey} table:`, error);
+          }
+        };
+
         openTable(
           title,
           tableKey === 'reorgs'
@@ -161,6 +184,7 @@ export const useTableActions = (
           undefined,
           range,
           (r) => openGenericTable(tableKey, r, extraParams),
+          refreshData,
           chart,
         );
       } catch (error) {
@@ -168,7 +192,7 @@ export const useTableActions = (
         setTableLoading(false);
       }
     },
-    [timeRange, setTimeRange, selectedSequencer, openTable, setTableUrl],
+    [timeRange, setTimeRange, selectedSequencer, openTable, setTableUrl, setTableView],
   );
 
   const openTpsTable = useCallback(() => {
@@ -208,6 +232,7 @@ export const useTableActions = (
       undefined,
       undefined,
       undefined,
+      undefined, // No refresh function for TPS table since it depends on other data
       React.createElement(TpsChart, { data, lineColor: '#4E79A7' }),
     );
   }, [blockTxData, l2BlockTimeData, openTable, setTableUrl]);
@@ -248,6 +273,34 @@ export const useTableActions = (
       const nextCursor =
         txData.length > 0 ? txData[txData.length - 1].block : undefined;
       const prevCursor = txData.length > 0 ? txData[0].block : undefined;
+
+      const refreshSeqDist = async () => {
+        try {
+          const [refreshDistRes, refreshTxRes] = await Promise.all([
+            TABLE_CONFIGS['sequencer-dist'].fetcher(range),
+            fetchBlockTransactions(
+              range,
+              50,
+              undefined, // Reset pagination on refresh
+              undefined,
+              selectedSequencer
+                ? getSequencerAddress(selectedSequencer)
+                : undefined,
+            ),
+          ]);
+
+          setTableView(prev => prev ? {
+            ...prev,
+            rows: (refreshDistRes.data || []) as unknown as Record<string, string | number>[],
+            extraTable: prev.extraTable ? {
+              ...prev.extraTable,
+              rows: (refreshTxRes.data || []) as unknown as Record<string, string | number>[],
+            } : undefined,
+          } : null);
+        } catch (error) {
+          console.error('Failed to refresh sequencer distribution table:', error);
+        }
+      };
 
       openTable(
         'Sequencer Distribution',
@@ -293,6 +346,7 @@ export const useTableActions = (
         },
         range,
         (r) => openSequencerDistributionTable(r, 0),
+        refreshSeqDist,
         undefined,
       );
     },

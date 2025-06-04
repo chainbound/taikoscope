@@ -388,8 +388,14 @@ const App: React.FC = () => {
   }, [timeRange, selectedSequencer, searchParams]);
 
   const handleManualRefresh = useCallback(() => {
-    void fetchData();
-  }, [fetchData]);
+    if (tableView && tableView.onRefresh) {
+      // If we're in a table view and it has a refresh function, use that
+      tableView.onRefresh();
+    } else {
+      // Otherwise refresh the main dashboard data
+      void fetchData();
+    }
+  }, [fetchData, tableView]);
 
   useEffect(() => {
     saveRefreshRate(refreshRate);
