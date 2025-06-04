@@ -489,6 +489,7 @@ mod tests {
             sum_gas_used: 20,
             sum_tx: 3,
             sum_priority_fee: 30,
+            sum_base_fee: 40,
             sequencer: AddressBytes::from([5u8; 20]),
         };
 

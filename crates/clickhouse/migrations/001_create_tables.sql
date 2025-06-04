@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS ${DB}.l2_head_events (
     sum_gas_used UInt128,
     sum_tx UInt32,
     sum_priority_fee UInt128,
+    sum_base_fee UInt128,
     sequencer FixedString(20),
     inserted_at DateTime64(3) DEFAULT now64()
 ) ENGINE = MergeTree()
