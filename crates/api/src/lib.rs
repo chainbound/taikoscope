@@ -1306,9 +1306,7 @@ async fn rate_limit(
 
 /// Build the router with all API endpoints.
 pub fn router(state: ApiState) -> Router {
-    Router::new()
-        .merge(SwaggerUi::new("/swagger-ui").url("/api-doc/openapi.json", ApiDoc::openapi()))
-        .route("/health", get(health))
+    let rate_limited = Router::new()
         .route("/l2-head", get(l2_head))
         .route("/l1-head", get(l1_head))
         .route("/l2-head-block", get(l2_head_block))
@@ -1341,7 +1339,12 @@ pub fn router(state: ApiState) -> Router {
         .route("/sequencer-distribution", get(sequencer_distribution))
         .route("/sequencer-blocks", get(sequencer_blocks))
         .route("/block-transactions", get(block_transactions))
-        .layer(middleware::from_fn_with_state(state.clone(), rate_limit))
+        .layer(middleware::from_fn_with_state(state.clone(), rate_limit));
+
+    Router::new()
+        .merge(SwaggerUi::new("/swagger-ui").url("/api-doc/openapi.json", ApiDoc::openapi()))
+        .route("/health", get(health))
+        .merge(rate_limited)
         .with_state(state)
 }
 #[cfg(test)]
@@ -1405,6 +1408,29 @@ mod tests {
         let app = build_app(mock.url());
         let body = send_request(app, "/health").await;
         assert_eq!(body, json!({ "status": "ok" }));
+    }
+
+    #[tokio::test]
+    async fn health_not_rate_limited() {
+        let mock = Mock::new();
+        let url = Url::parse(mock.url()).unwrap();
+        let client =
+            ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
+        let state = ApiState::new(client, 1, StdDuration::from_secs(60));
+        let app = router(state);
+
+        let resp1 = app
+            .clone()
+            .oneshot(Request::builder().uri("/health").body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        assert_eq!(resp1.status(), StatusCode::OK);
+
+        let resp2 = app
+            .oneshot(Request::builder().uri("/health").body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        assert_eq!(resp2.status(), StatusCode::OK);
     }
 
     #[tokio::test]
