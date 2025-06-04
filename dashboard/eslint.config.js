@@ -37,6 +37,7 @@ export default [
             ...reactPlugin.configs.recommended.rules,
             quotes: ['error', 'single', { avoidEscape: true }],
             '@typescript-eslint/no-explicit-any': 'warn',
+            'no-trailing-spaces': 'error',
         },
         settings: {
             react: {

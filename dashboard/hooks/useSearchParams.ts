@@ -65,10 +65,9 @@ export const useSearchParams = (): URLSearchParams & {
         canGoBack: window.history.length > 1,
       }));
     };
+
     window.addEventListener('popstate', handlePop);
-    return () => {
-      window.removeEventListener('popstate', handlePop);
-    };
+    return () => window.removeEventListener('popstate', handlePop);
   }, []);
 
   return Object.assign(params, {

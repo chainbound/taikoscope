@@ -83,7 +83,7 @@ export const DataTable: React.FC<DataTableProps> = ({
   React.useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (isNavigating) return;
-      
+
       try {
         if (event.key === 'Escape') {
           onBack();

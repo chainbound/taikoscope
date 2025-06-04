@@ -16,3 +16,5 @@ This contains everything you need to run your app locally.
    `npm run dev`
 4. Build for production:
    `npm run build`
+5. Check for trailing whitespace:
+   `npm run lint:whitespace`
