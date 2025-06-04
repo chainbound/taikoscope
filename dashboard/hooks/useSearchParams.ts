@@ -21,37 +21,47 @@ export const useSearchParams = (): URLSearchParams & {
     isNavigating: false,
   });
 
-  const navigate = useCallback((url: string | URL, replace = false) => {
-    if (navigationState.isNavigating) return;
-    
-    setNavigationState(prev => ({ ...prev, isNavigating: true }));
-    
-    try {
-      const urlString = url instanceof URL ? url.toString() : url;
-      
-      if (replace) {
-        window.history.replaceState(null, '', urlString);
-      } else {
-        window.history.pushState(null, '', urlString);
+  const navigate = useCallback(
+    (url: string | URL, replace = false) => {
+      if (navigationState.isNavigating) return;
+
+      setNavigationState((prev) => ({ ...prev, isNavigating: true }));
+
+      try {
+        const urlString = url instanceof URL ? url.toString() : url;
+
+        try {
+          if (replace) {
+            window.history.replaceState(null, '', urlString);
+          } else {
+            window.history.pushState(null, '', urlString);
+          }
+
+          window.dispatchEvent(new Event('popstate'));
+        } catch (err) {
+          // eslint-disable-next-line no-console
+          console.error('Failed to update history:', err);
+          window.location.assign(urlString);
+          return;
+        }
+      } finally {
+        setTimeout(() => {
+          setNavigationState((prev) => ({
+            ...prev,
+            isNavigating: false,
+            canGoBack: window.history.length > 1,
+          }));
+        }, 100);
       }
-      
-      window.dispatchEvent(new Event('popstate'));
-    } finally {
-      setTimeout(() => {
-        setNavigationState(prev => ({ 
-          ...prev, 
-          isNavigating: false,
-          canGoBack: window.history.length > 1
-        }));
-      }, 100);
-    }
-  }, [navigationState.isNavigating]);
+    },
+    [navigationState.isNavigating],
+  );
 
   const goBack = useCallback(() => {
     if (navigationState.isNavigating) return;
-    
+
     if (window.history.length > 1) {
-      setNavigationState(prev => ({ ...prev, isNavigating: true }));
+      setNavigationState((prev) => ({ ...prev, isNavigating: true }));
       window.history.back();
     } else {
       // Fallback: navigate to dashboard home
@@ -64,15 +74,15 @@ export const useSearchParams = (): URLSearchParams & {
   useEffect(() => {
     const handleChange = () => {
       setParams(getParams());
-      setNavigationState(prev => ({ 
-        ...prev, 
+      setNavigationState((prev) => ({
+        ...prev,
         canGoBack: window.history.length > 1,
-        isNavigating: false
+        isNavigating: false,
       }));
     };
-    
+
     const handleBeforeUnload = () => {
-      setNavigationState(prev => ({ ...prev, isNavigating: false }));
+      setNavigationState((prev) => ({ ...prev, isNavigating: false }));
     };
 
     window.addEventListener('popstate', handleChange);
