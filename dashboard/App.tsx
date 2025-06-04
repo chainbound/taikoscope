@@ -1,87 +1,37 @@
-import React, { useState } from 'react';
-import { useMetricsData } from './hooks/useMetricsData';
-import { useChartsData } from './hooks/useChartsData';
-import { useBlockData } from './hooks/useBlockData';
-import { useRefreshTimer } from './hooks/useRefreshTimer';
-import { useTableRouter } from './hooks/useTableRouter';
-import { useNavigationHandler } from './hooks/useNavigationHandler';
-import { useDataFetcher } from './hooks/useDataFetcher';
-import { useSequencerHandler } from './hooks/useSequencerHandler';
+import React from 'react';
+import { useDashboardController } from './hooks/useDashboardController';
 import { DashboardView } from './components/views/DashboardView';
 import { TableView } from './components/views/TableView';
-import { useTableActions } from './hooks/useTableActions';
-import { useSearchParams } from './hooks/useSearchParams';
-import {
-  TimeRange,
-} from './types';
 
 const App: React.FC = () => {
-  const [timeRange, setTimeRange] = useState<TimeRange>('1h');
-  const searchParams = useSearchParams();
-
-  // Data management hooks
-  const metricsData = useMetricsData();
-  const chartsData = useChartsData();
-  const blockData = useBlockData();
-  const refreshTimer = useRefreshTimer();
-
-  // Sequencer handling
-  const { selectedSequencer, setSelectedSequencer, sequencerList } = useSequencerHandler({
-    chartsData,
-    blockData,
-    metricsData,
-  });
-
-  // Table actions
   const {
-    tableView,
-    tableLoading,
-    setTableView,
-    setTableLoading,
-    openGenericTable,
-    openTpsTable,
-    openSequencerDistributionTable,
-  } = useTableActions(
+    // State
     timeRange,
     setTimeRange,
     selectedSequencer,
-    chartsData.blockTxData,
-    chartsData.l2BlockTimeData,
-  );
+    sequencerList,
 
-  // Data fetching coordination
-  const { handleManualRefresh } = useDataFetcher({
-    timeRange,
-    selectedSequencer,
-    tableView,
+    // Data
     metricsData,
     chartsData,
+    blockData,
     refreshTimer,
-  });
+    searchParams,
 
-  // Navigation handling
-  const { handleBack, handleSequencerChange } = useNavigationHandler({
-    setTableView,
-    onError: metricsData.setErrorMessage,
-  });
-
-  // Table routing
-  useTableRouter({
-    timeRange,
-    setTableView,
-    setTableLoading,
+    // Table state
     tableView,
+    tableLoading,
+
+    // Handlers
+    handleSequencerChangeWithState,
+    handleBack,
+    handleManualRefresh,
+
+    // Table actions
     openGenericTable,
     openTpsTable,
     openSequencerDistributionTable,
-    onError: metricsData.setErrorMessage,
-  });
-
-  // Combined sequencer change handler
-  const handleSequencerChangeWithState = (seq: string | null) => {
-    setSelectedSequencer(seq);
-    handleSequencerChange(seq);
-  };
+  } = useDashboardController();
 
   if (tableView) {
     return (
