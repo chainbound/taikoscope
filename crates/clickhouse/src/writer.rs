@@ -270,10 +270,11 @@ impl ClickhouseWriter {
         Ok(())
     }
 
-    /// Apply sum_base_fee column migration
+    /// Apply `sum_base_fee` column migration
     async fn apply_sum_base_fee_migration(&self) -> Result<()> {
         info!("Applying sum_base_fee column migration...");
-        static SUM_BASE_FEE_SQL: &str = include_str!("../migrations/003_add_sum_base_fee_column.sql");
+        static SUM_BASE_FEE_SQL: &str =
+            include_str!("../migrations/003_add_sum_base_fee_column.sql");
 
         let statements = parse_sql_statements(SUM_BASE_FEE_SQL);
         info!(
@@ -739,7 +740,7 @@ mod tests {
     #[tokio::test]
     async fn init_schema_runs_create_and_migration_queries() {
         let mock = Mock::new();
-        let migration_count = 6;
+        let migration_count = 7; // 6 from materialized views + 1 from sum_base_fee migration
         let total = TABLE_SCHEMAS.len() + migration_count;
 
         let ctrls: Vec<_> =
