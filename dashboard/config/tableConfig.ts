@@ -226,6 +226,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
       return React.createElement(BlockTimeChart, {
         data,
         lineColor: '#FAA43A',
+        histogram: true,
       });
     },
     urlKey: 'l2-block-times',

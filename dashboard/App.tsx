@@ -681,6 +681,7 @@ const App: React.FC = () => {
               key={timeRange}
               data={l2BlockTimeData}
               lineColor="#FAA43A"
+              histogram
             />
           </ChartCard>
           <ChartCard
