@@ -77,6 +77,22 @@ describe('DataTable', () => {
     expect(html.includes('Refresh')).toBe(true);
   });
 
+  it('renders refresh countdown when props provided', () => {
+    const html = renderToStaticMarkup(
+      React.createElement(DataTable, {
+        title: 'Countdown',
+        columns: [{ key: 'v', label: 'V' }],
+        rows: [{ v: 1 }],
+        onBack: () => {},
+        refreshRate: 60000,
+        onRefreshRateChange: () => {},
+        lastRefresh: Date.now(),
+        onManualRefresh: () => {},
+      }),
+    );
+    expect(html.includes('Refresh now')).toBe(true);
+  });
+
   it('renders sequencer selector', () => {
     const html = renderToStaticMarkup(
       React.createElement(DataTable, {
