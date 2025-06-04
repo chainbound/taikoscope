@@ -40,7 +40,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
             url.searchParams.delete('page');
             url.searchParams.delete('start');
             url.searchParams.delete('end');
-            window.history.pushState(null, '', url);
+            window.history.pushState(null, '', url.toString());
           }}
         >
           {' '}
@@ -58,7 +58,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
               url.searchParams.set('view', 'economics');
             }
             url.searchParams.delete('table');
-            window.history.pushState(null, '', url);
+            window.history.pushState(null, '', url.toString());
           }}
           className="text-sm hover:underline"
           style={{ color: TAIKO_PINK }}
