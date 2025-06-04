@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { ErrorBoundary } from '../components/ErrorBoundary';
@@ -21,5 +21,14 @@ describe('ErrorBoundary', () => {
       ),
     );
     expect(html).toContain('oops');
+  });
+
+  it('calls reportError when provided', () => {
+    const report = vi.fn();
+    const boundary = new ErrorBoundary({ reportError: report });
+    const error = new Error('boom');
+    const info = { componentStack: 'stack' } as React.ErrorInfo;
+    boundary.componentDidCatch(error, info);
+    expect(report).toHaveBeenCalledWith(error, info);
   });
 });
