@@ -149,7 +149,7 @@ const App: React.FC = () => {
         setL1HeadBlock(value);
         setMetrics((m) =>
           m.map((metric) =>
-            metric.title === 'L1 Head Block' ? { ...metric, value } : metric,
+            metric.title === 'L1 Block' ? { ...metric, value } : metric,
           ),
         );
       }
@@ -158,7 +158,7 @@ const App: React.FC = () => {
         setL2HeadBlock(value);
         setMetrics((m) =>
           m.map((metric) =>
-            metric.title === 'L2 Head Block' ? { ...metric, value } : metric,
+            metric.title === 'L2 Block' ? { ...metric, value } : metric,
           ),
         );
       }
@@ -314,10 +314,10 @@ const App: React.FC = () => {
     setBatchBlobCounts(blobsPerBatch);
     setSequencerDistribution(sequencerDist);
     setL2HeadBlock(
-      currentMetrics.find((m) => m.title === 'L2 Head Block')?.value || 'N/A',
+      currentMetrics.find((m) => m.title === 'L2 Block')?.value || 'N/A',
     );
     setL1HeadBlock(
-      currentMetrics.find((m) => m.title === 'L1 Head Block')?.value || 'N/A',
+      currentMetrics.find((m) => m.title === 'L1 Block')?.value || 'N/A',
     );
     if (anyBadRequest) {
       setErrorMessage(
