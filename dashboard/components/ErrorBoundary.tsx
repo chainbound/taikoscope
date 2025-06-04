@@ -42,17 +42,21 @@ export class ErrorBoundary extends React.Component<
     }
   }
 
+  private resetError() {
+    this.setState({ hasError: false, error: undefined, info: undefined });
+  }
+
   render() {
     if (this.state.hasError) {
       return (
         this.props.fallback || (
           <div className="p-4 bg-red-50 border border-red-200 rounded text-red-700 space-y-2">
-            <div>Oops! Something went wrong. Please reload the page.</div>
+            <div>Oops! Something went wrong.</div>
             <button
-              onClick={() => window.location.reload()}
+              onClick={() => this.resetError()}
               className="text-sm bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700"
             >
-              Reload
+              Retry
             </button>
           </div>
         )
