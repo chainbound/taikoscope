@@ -20,6 +20,8 @@ sqlparser = "0.48"
 tracing.workspace = true
 url.workspace = true
 hex.workspace = true
+include_dir = "0.7"
+regex = "1"
 utoipa = { version = "5.3", features = ["chrono"] }
 
 [dev-dependencies]
