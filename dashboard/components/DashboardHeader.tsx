@@ -3,6 +3,10 @@ import { TimeRange } from '../types';
 import { RefreshCountdown } from './RefreshCountdown';
 import { TAIKO_PINK } from '../theme';
 
+const metaEnv = (import.meta as any).env as ImportMetaEnv | undefined;
+const NETWORK_NAME =
+  metaEnv?.VITE_NETWORK_NAME ?? metaEnv?.NETWORK_NAME ?? 'Taiko Masaya Testnet';
+
 interface DashboardHeaderProps {
   timeRange: TimeRange;
   onTimeRangeChange: (range: TimeRange) => void;
@@ -45,7 +49,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
         >
           {' '}
           {/* Updated Taiko Pink */}
-          Taiko Masaya Testnet
+          {NETWORK_NAME}
         </h1>
       </div>
       <div className="flex items-center space-x-2 mt-4 md:mt-0">
