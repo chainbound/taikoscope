@@ -36,6 +36,22 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
         </h1>
       </div>
       <div className="flex items-center space-x-2 mt-4 md:mt-0">
+        <button
+          onClick={() => {
+            const url = new URL(window.location.href);
+            if (url.searchParams.get('view') === 'economics') {
+              url.searchParams.delete('view');
+            } else {
+              url.searchParams.set('view', 'economics');
+            }
+            url.searchParams.delete('table');
+            window.history.pushState(null, '', url);
+          }}
+          className="text-sm hover:underline"
+          style={{ color: TAIKO_PINK }}
+        >
+          Economics
+        </button>
         <a
           href="https://taikoscope.instatus.com/"
           target="_blank"
