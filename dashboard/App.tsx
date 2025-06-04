@@ -483,6 +483,18 @@ const App: React.FC = () => {
     timeRange,
   ]);
 
+  const handleBack = useCallback(() => {
+    const url = new URL(window.location.href);
+    url.searchParams.delete('view');
+    url.searchParams.delete('table');
+    url.searchParams.delete('address');
+    url.searchParams.delete('page');
+    url.searchParams.delete('start');
+    url.searchParams.delete('end');
+    window.history.pushState(null, '', url);
+    setTableView(null);
+  }, [setTableView]);
+
   useEffect(() => {
     handleRouteChange();
   }, [handleRouteChange, searchParams]);
@@ -494,9 +506,7 @@ const App: React.FC = () => {
         description={tableView.description}
         columns={tableView.columns}
         rows={tableView.rows}
-        onBack={() => {
-          window.history.back();
-        }}
+        onBack={handleBack}
         onRowClick={tableView.onRowClick}
         extraAction={tableView.extraAction}
         extraTable={tableView.extraTable}
