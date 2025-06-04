@@ -33,6 +33,17 @@ export interface TableViewState {
   chart?: React.ReactNode;
 }
 
+const paramsEqual = (
+  a: URLSearchParams,
+  b: URLSearchParams,
+): boolean => {
+  if (a.size !== b.size) return false;
+  for (const [k, v] of a) {
+    if (b.get(k) !== v) return false;
+  }
+  return true;
+};
+
 export const useTableActions = (
   timeRange: TimeRange,
   setTimeRange: (range: TimeRange) => void,
@@ -59,8 +70,8 @@ export const useTableActions = (
         if (v !== undefined) url.searchParams.set(k, String(v));
       });
 
-      const newSearch = url.search;
-      if (window.location.search !== newSearch) {
+      const current = new URLSearchParams(window.location.search);
+      if (!paramsEqual(current, url.searchParams)) {
         window.history.pushState(null, '', url);
       }
     },
