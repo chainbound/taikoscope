@@ -45,7 +45,13 @@ const MissedBlockChartComponent: React.FC<MissedBlockChartProps> = ({
     startIndex?: number;
     endIndex?: number;
   }) => {
-    if (range.startIndex == null || range.endIndex == null) return;
+    if (
+      range.startIndex == null ||
+      range.endIndex == null ||
+      !Number.isFinite(range.startIndex) ||
+      !Number.isFinite(range.endIndex)
+    )
+      return;
     const maxRange = 500;
     if (range.endIndex - range.startIndex > maxRange) {
       setBrushRange({
