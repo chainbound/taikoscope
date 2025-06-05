@@ -28,20 +28,25 @@ const BlobsPerBatchChartComponent: React.FC<BlobsPerBatchChartProps> = ({
   }
 
 
+  const sortedData = React.useMemo(
+    () => [...data].sort((a, b) => a.block - b.block),
+    [data],
+  );
+
   return (
     <ResponsiveContainer width="100%" height="100%">
       <BarChart
-        data={data}
+        data={sortedData}
         margin={{ top: 5, right: 70, left: 80, bottom: 40 }}
       >
         <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
         <XAxis
-          dataKey="batch"
+          dataKey="block"
           tickFormatter={(v: number) => v.toLocaleString()}
           stroke="#666666"
           fontSize={12}
           label={{
-            value: 'Batch',
+            value: 'L1 Block',
             position: 'insideBottom',
             offset: -35,
             fontSize: 10,
@@ -65,7 +70,10 @@ const BlobsPerBatchChartComponent: React.FC<BlobsPerBatchChartProps> = ({
           }}
         />
         <Tooltip
-          labelFormatter={(label: number) => `Batch ${label.toLocaleString()}`}
+          labelFormatter={(label: number, payload) => {
+            const batch = payload?.[0]?.payload.batch as number;
+            return `Block ${label.toLocaleString()} (Batch ${batch.toLocaleString()})`;
+          }}
           formatter={(value: number) => [value.toLocaleString(), 'blobs']}
           contentStyle={{
             backgroundColor: 'rgba(255, 255, 255, 0.8)',
