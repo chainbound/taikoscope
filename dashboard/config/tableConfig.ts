@@ -265,6 +265,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
 
   'l2-gas-used': {
     title: 'Gas Used Per Block',
+    description: 'Gas used by each block.',
     fetcher: fetchL2GasUsed,
     columns: [
       { key: 'value', label: 'Block Number' },
