@@ -80,8 +80,10 @@ export const computeBatchDurationFlags = (data: { value: number }[]) => {
   return { showHours, showMinutes };
 };
 
-export const shouldShowMinutes = (data: { timestamp: number }[]) => {
-  return data.some((d) => d.timestamp >= 120000);
+export const shouldShowMinutes = (data: { timestamp: number }[]): boolean => {
+  if (data.length === 0) return false;
+  const max = data.reduce((acc, cur) => Math.max(acc, cur.timestamp), 0);
+  return max >= 120000;
 };
 
 export const findMetricValue = (
