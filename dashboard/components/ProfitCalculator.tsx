@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { MetricData } from '../types';
 import { findMetricValue } from '../utils';
+import { getEthPrice } from '../services/priceService';
 
 interface ProfitCalculatorProps {
   metrics: MetricData[];
@@ -14,14 +15,22 @@ export const ProfitCalculator: React.FC<ProfitCalculatorProps> = ({
 
   const [cloudCost, setCloudCost] = useState(0);
   const [proverCost, setProverCost] = useState(0);
-  const profit = fee - cloudCost - proverCost;
+  const [ethPrice, setEthPrice] = useState(0);
+
+  useEffect(() => {
+    getEthPrice()
+      .then((p) => setEthPrice(p))
+      .catch((err) => console.error('Failed to fetch ETH price', err));
+  }, []);
+
+  const profit = fee * ethPrice - cloudCost - proverCost;
 
   return (
     <div className="mt-6 p-4 border border-gray-200 dark:border-gray-700 rounded-md bg-gray-50 dark:bg-gray-800">
       <h2 className="text-lg font-semibold mb-2">Profit Calculator</h2>
       <div className="flex flex-col sm:flex-row sm:space-x-4 space-y-2 sm:space-y-0">
         <label className="flex flex-col text-sm">
-          Monthly Cloud Cost
+          Monthly Cloud Cost ($)
           <input
             type="number"
             className="p-1 border rounded-md"
@@ -30,7 +39,7 @@ export const ProfitCalculator: React.FC<ProfitCalculatorProps> = ({
           />
         </label>
         <label className="flex flex-col text-sm">
-          Prover Cost
+          Prover Cost ($)
           <input
             type="number"
             className="p-1 border rounded-md"
@@ -40,7 +49,7 @@ export const ProfitCalculator: React.FC<ProfitCalculatorProps> = ({
         </label>
       </div>
       <p className="mt-3 text-sm">
-        Profit: <span className="font-semibold">{profit.toFixed(2)}</span>
+        Profit: <span className="font-semibold">${profit.toFixed(2)}</span>
       </p>
     </div>
   );
