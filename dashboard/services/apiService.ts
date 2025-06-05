@@ -486,12 +486,12 @@ export const fetchBatchBlobCounts = async (
 ): Promise<RequestResult<BatchBlobCount[]>> => {
   const url = `${API_BASE}/blobs-per-batch?range=${range}`;
   const res = await fetchJson<{
-    batches: { l1_block_number: number; batch_id: number; blob_count: number }[];
+    batches: { l1_block_number?: number; batch_id: number; blob_count: number }[];
   }>(url);
   return {
     data: res.data
       ? res.data.batches.map((b) => ({
-          block: b.l1_block_number,
+          block: b.l1_block_number ?? b.batch_id, // Fallback to batch_id for backward compatibility
           batch: b.batch_id,
           blobs: b.blob_count,
         }))

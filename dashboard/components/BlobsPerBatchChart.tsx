@@ -66,8 +66,11 @@ const BlobsPerBatchChartComponent: React.FC<BlobsPerBatchChartProps> = ({
         />
         <Tooltip
           labelFormatter={(label: number, payload) => {
-            const batch = payload?.[0]?.payload.batch as number;
-            return `Block ${label.toLocaleString()} (Batch ${batch.toLocaleString()})`;
+            const batch = payload?.[0]?.payload?.batch as number;
+            if (batch && label) {
+              return `Block ${label.toLocaleString()} (Batch ${batch.toLocaleString()})`;
+            }
+            return label ? `Block ${label.toLocaleString()}` : 'Unknown';
           }}
           formatter={(value: number) => [value.toLocaleString(), 'blobs']}
           contentStyle={{
