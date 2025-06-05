@@ -9,10 +9,12 @@ import { useSequencerHandler } from './useSequencerHandler';
 import { useTableActions } from './useTableActions';
 import { useTimeRangeSync } from './useTimeRangeSync';
 import { useSearchParams } from 'react-router-dom';
+import { useErrorHandler } from './useErrorHandler';
 
 export const useDashboardController = () => {
     const { timeRange, setTimeRange } = useTimeRangeSync();
     const [searchParams] = useSearchParams();
+    const { setErrorMessage } = useErrorHandler();
 
     // Data management hooks
     const metricsData = useMetricsData();
@@ -57,7 +59,7 @@ export const useDashboardController = () => {
 
     // Navigation handling
     const { handleBack, handleSequencerChange } = useNavigationHandler({
-        onError: metricsData.setErrorMessage,
+        onError: setErrorMessage,
     });
 
     // Table routing
@@ -69,7 +71,7 @@ export const useDashboardController = () => {
         openGenericTable,
         openTpsTable,
         openSequencerDistributionTable,
-        onError: metricsData.setErrorMessage,
+        onError: setErrorMessage,
     });
 
     // Combined sequencer change handler

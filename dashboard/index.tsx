@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ToastProvider } from './components/ToastProvider';
+import { ErrorProvider } from './hooks/useErrorHandler';
 import { BrowserRouter } from 'react-router-dom';
 import './index.css';
 
@@ -16,9 +17,11 @@ root.render(
   <React.StrictMode>
     <ToastProvider>
       <ErrorBoundary>
-        <BrowserRouter>
-          <App />
-        </BrowserRouter>
+        <ErrorProvider>
+          <BrowserRouter>
+            <App />
+          </BrowserRouter>
+        </ErrorProvider>
       </ErrorBoundary>
     </ToastProvider>
   </React.StrictMode>,
