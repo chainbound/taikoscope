@@ -113,7 +113,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
 
   gateways: {
     title: 'Active Sequencers',
-    description: 'Sequencer addresses currently registered.',
+    description: 'Current candidates to be the sequencer.',
     fetcher: fetchActiveSequencerAddresses,
     columns: [
       { key: 'sequencer', label: 'Sequencer' },
