@@ -1,69 +1,20 @@
 import React from 'react';
-import { useDashboardController } from './hooks/useDashboardController';
-import { DashboardView } from './components/views/DashboardView';
-import { TableView } from './components/views/TableView';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { DashboardLayout } from './components/layout/DashboardLayout';
+import { DashboardRoute } from './components/routes/DashboardRoute';
+import { TableRoute } from './components/routes/TableRoute';
+import { SequencerRoute } from './components/routes/SequencerRoute';
 
 const App: React.FC = () => {
-  const {
-    // State
-    timeRange,
-    setTimeRange,
-    selectedSequencer,
-    sequencerList,
-
-    // Data
-    metricsData,
-    chartsData,
-    blockData,
-    refreshTimer,
-
-    // Table state
-    tableView,
-    tableLoading,
-
-    // Handlers
-    handleSequencerChangeWithState,
-    handleBack,
-    handleManualRefresh,
-
-    // Table actions
-    openGenericTable,
-    openTpsTable,
-    openSequencerDistributionTable,
-  } = useDashboardController();
-
-  if (tableView) {
-    return (
-      <TableView
-        tableView={tableView}
-        tableLoading={tableLoading}
-        isNavigating={false}
-        refreshTimer={refreshTimer}
-        sequencerList={sequencerList}
-        selectedSequencer={selectedSequencer}
-        onSequencerChange={handleSequencerChangeWithState}
-        onBack={handleBack}
-        onManualRefresh={handleManualRefresh}
-      />
-    );
-  }
-
   return (
-    <DashboardView
-      timeRange={timeRange}
-      onTimeRangeChange={setTimeRange}
-      selectedSequencer={selectedSequencer}
-      onSequencerChange={handleSequencerChangeWithState}
-      sequencerList={sequencerList}
-      metricsData={metricsData}
-      chartsData={chartsData}
-      blockData={blockData}
-      refreshTimer={refreshTimer}
-      onManualRefresh={handleManualRefresh}
-      onOpenTable={openGenericTable}
-      onOpenTpsTable={openTpsTable}
-      onOpenSequencerDistributionTable={openSequencerDistributionTable}
-    />
+    <Routes>
+      <Route path="/" element={<DashboardLayout />}>
+        <Route index element={<DashboardRoute />} />
+        <Route path="table/:tableType" element={<TableRoute />} />
+        <Route path="sequencer/:address" element={<SequencerRoute />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Route>
+    </Routes>
   );
 };
 

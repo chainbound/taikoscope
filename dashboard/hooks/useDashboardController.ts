@@ -57,7 +57,6 @@ export const useDashboardController = () => {
 
     // Navigation handling
     const { handleBack, handleSequencerChange } = useNavigationHandler({
-        setTableView,
         onError: metricsData.setErrorMessage,
     });
 

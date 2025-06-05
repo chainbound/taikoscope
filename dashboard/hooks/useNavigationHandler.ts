@@ -1,51 +1,41 @@
 import { useCallback } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { TableViewState } from './useTableActions';
+import { useNavigate } from 'react-router-dom';
+import { useRouterNavigation } from './useRouterNavigation';
 
 interface UseNavigationHandlerProps {
-  setTableView: (view: TableViewState | null) => void;
   onError: (message: string) => void;
 }
 
 export const useNavigationHandler = ({
-  setTableView,
   onError,
 }: UseNavigationHandlerProps) => {
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const { updateSearchParams, navigateToDashboard } = useRouterNavigation();
 
   const handleBack = useCallback(() => {
     try {
       if (window.history.length > 1) {
         navigate(-1);
       } else {
-        setSearchParams({});
+        navigateToDashboard();
       }
-      setTableView(null);
     } catch (err) {
       console.error('Failed to handle back navigation:', err);
-      // Emergency fallback: just clear the table view
-      setTableView(null);
+      navigateToDashboard();
       onError('Navigation error occurred.');
     }
-  }, [navigate, setSearchParams, setTableView, onError]);
+  }, [navigate, navigateToDashboard, onError]);
 
   const handleSequencerChange = useCallback(
     (seq: string | null) => {
       try {
-        const params = new URLSearchParams(searchParams);
-        if (seq) {
-          params.set('sequencer', seq);
-        } else {
-          params.delete('sequencer');
-        }
-        navigate({ pathname: '/', search: params.toString() });
+        updateSearchParams({ sequencer: seq });
       } catch (err) {
         console.error('Failed to handle sequencer change:', err);
         onError('Failed to update sequencer selection.');
       }
     },
-    [navigate, searchParams, onError],
+    [updateSearchParams, onError],
   );
 
   return {

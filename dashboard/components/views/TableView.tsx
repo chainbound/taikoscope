@@ -4,7 +4,7 @@ import { LoadingState } from '../layout/LoadingState';
 import { TableViewState } from '../../hooks/useTableActions';
 
 interface TableViewProps {
-    tableView: TableViewState;
+    tableView?: TableViewState;
     tableLoading: boolean;
     isNavigating: boolean;
     refreshTimer: {
@@ -36,6 +36,10 @@ export const TableView: React.FC<TableViewProps> = ({
                 message={isNavigating ? 'Navigating...' : 'Loading...'}
             />
         );
+    }
+
+    if (!tableView) {
+        return <div>No table data available</div>;
     }
 
     return (

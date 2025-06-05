@@ -1,8 +1,8 @@
 import React, { useState, useCallback } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
 import { TimeRange } from '../types';
 import { TABLE_CONFIGS } from '../config/tableConfig';
 import { getSequencerAddress } from '../sequencerConfig';
+import { useRouterNavigation } from './useRouterNavigation';
 import {
   fetchBlockTransactions,
   type BlockTransaction,
@@ -42,12 +42,9 @@ export const useTableActions = (
   l2BlockTimeData: any[],
 ) => {
   const [tableView, setTableView] = useState<TableViewState | null>(null);
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const [tableLoading, setTableLoading] = useState<boolean>(
-    searchParams.get('view') === 'table',
-  );
+  const [tableLoading, setTableLoading] = useState<boolean>(false);
   const [seqDistTxPage, setSeqDistTxPage] = useState<number>(0);
+  const { navigateToTable } = useRouterNavigation();
 
   const setTableUrl = useCallback(
     (
@@ -55,27 +52,17 @@ export const useTableActions = (
       params: Record<string, string | number | undefined> = {},
     ) => {
       try {
-        const newParams = new URLSearchParams(searchParams);
-        newParams.set('view', 'table');
-        newParams.set('table', name);
-
-        ['address', 'page', 'start', 'end'].forEach((key) => {
-          newParams.delete(key);
-        });
-
+        const cleanParams: Record<string, string | number> = {};
         Object.entries(params).forEach(([k, v]) => {
-          if (v !== undefined) newParams.set(k, String(v));
+          if (v !== undefined) cleanParams[k] = v;
         });
 
-        navigate(
-          { pathname: '/', search: newParams.toString() },
-          { replace: false },
-        );
+        navigateToTable(name, cleanParams, timeRange);
       } catch (err) {
         console.error('Failed to set table URL:', err);
       }
     },
-    [navigate, searchParams],
+    [navigateToTable, timeRange],
   );
 
   const openTable = useCallback(
@@ -165,10 +152,10 @@ export const useTableActions = (
             setTableView((prev) =>
               prev
                 ? {
-                    ...prev,
-                    rows: refreshMappedData,
-                    chart: refreshChart,
-                  }
+                  ...prev,
+                  rows: refreshMappedData,
+                  chart: refreshChart,
+                }
                 : null,
             );
           } catch (error) {
@@ -177,9 +164,9 @@ export const useTableActions = (
             setTableView((prev) =>
               prev
                 ? {
-                    ...prev,
-                    rows: [], // Clear data on error to prevent stale data
-                  }
+                  ...prev,
+                  rows: [], // Clear data on error to prevent stale data
+                }
                 : null,
             );
           }
@@ -194,9 +181,9 @@ export const useTableActions = (
           mappedData,
           tableKey === 'sequencer-dist'
             ? (row) =>
-                openGenericTable('sequencer-blocks', range, {
-                  address: row.name,
-                })
+              openGenericTable('sequencer-blocks', range, {
+                address: row.name,
+              })
             : undefined,
           undefined,
           undefined,
@@ -317,21 +304,21 @@ export const useTableActions = (
           setTableView((prev) =>
             prev
               ? {
-                  ...prev,
-                  rows: (refreshDistRes.data || []) as unknown as Record<
-                    string,
-                    string | number
-                  >[],
-                  extraTable: prev.extraTable
-                    ? {
-                        ...prev.extraTable,
-                        rows: (refreshTxRes.data || []) as unknown as Record<
-                          string,
-                          string | number
-                        >[],
-                      }
-                    : undefined,
-                }
+                ...prev,
+                rows: (refreshDistRes.data || []) as unknown as Record<
+                  string,
+                  string | number
+                >[],
+                extraTable: prev.extraTable
+                  ? {
+                    ...prev.extraTable,
+                    rows: (refreshTxRes.data || []) as unknown as Record<
+                      string,
+                      string | number
+                    >[],
+                  }
+                  : undefined,
+              }
               : null,
           );
         } catch (error) {
@@ -343,15 +330,15 @@ export const useTableActions = (
           setTableView((prev) =>
             prev
               ? {
-                  ...prev,
-                  rows: [],
-                  extraTable: prev.extraTable
-                    ? {
-                        ...prev.extraTable,
-                        rows: [],
-                      }
-                    : undefined,
-                }
+                ...prev,
+                rows: [],
+                extraTable: prev.extraTable
+                  ? {
+                    ...prev.extraTable,
+                    rows: [],
+                  }
+                  : undefined,
+              }
               : null,
           );
         }
@@ -365,8 +352,10 @@ export const useTableActions = (
           { key: 'value', label: 'Blocks' },
         ],
         (distRes.data || []) as unknown as Record<string, string | number>[],
-        (row) =>
-          openGenericTable('sequencer-blocks', range, { address: row.name }),
+        (row) => {
+          const cleanParams: Record<string, string | number> = { address: String(row.name) };
+          navigateToTable('sequencer-blocks', cleanParams, range);
+        },
         undefined,
         {
           title: 'Transactions',
