@@ -4,7 +4,6 @@ import { RefreshCountdown } from './RefreshCountdown';
 import { TAIKO_PINK } from '../theme';
 import { isValidRefreshRate } from '../utils';
 import { useRouterNavigation } from '../hooks/useRouterNavigation';
-import { ThemeToggle } from './ThemeToggle';
 
 const metaEnv = (import.meta as any).env as ImportMetaEnv | undefined;
 const NETWORK_NAME =
@@ -70,7 +69,6 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
         />
         {/* Sequencer filter can still be set via URL parameters, but the
             dropdown selector is hidden from the UI. */}
-        <ThemeToggle />
         {/* Export button removed as per request */}
       </div>
     </header>
@@ -129,7 +127,10 @@ export const RefreshRateInput: React.FC<RefreshRateInputProps> = ({
 
   return (
     <div className="flex items-center space-x-1">
-      <label htmlFor="refreshRate" className="text-sm text-gray-600 dark:text-gray-300">
+      <label
+        htmlFor="refreshRate"
+        className="text-sm text-gray-600 dark:text-gray-300"
+      >
         Refresh
       </label>
       <select
