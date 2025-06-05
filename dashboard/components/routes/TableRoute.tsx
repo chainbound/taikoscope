@@ -131,6 +131,7 @@ export const TableRoute: React.FC = () => {
           const mappedData = config.mapData
             ? config.mapData(data, extraParams)
             : data;
+          const chart = config.chart ? config.chart(data) : undefined;
 
           setTableView({
             title,
@@ -139,6 +140,7 @@ export const TableRoute: React.FC = () => {
               : undefined,
             columns: config.columns,
             rows: mappedData,
+            chart,
           });
         }
       } catch (error) {
