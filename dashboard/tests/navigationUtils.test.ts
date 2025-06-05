@@ -116,7 +116,7 @@ describe('navigationUtils', () => {
     });
 
     it('should validate table parameters', () => {
-      const params = new URLSearchParams('table=missed-proposals');
+      const params = new URLSearchParams('table=reorgs');
       expect(validateSearchParams(params)).toBe(true);
 
       const invalid = new URLSearchParams('table=../../etc');
@@ -170,10 +170,10 @@ describe('navigationUtils', () => {
     });
 
     it('should keep valid table parameter', () => {
-      const params = new URLSearchParams('table=missed-proposals&bad=1');
+      const params = new URLSearchParams('table=reorgs&bad=1');
       const cleaned = cleanSearchParams(params);
 
-      expect(cleaned.get('table')).toBe('missed-proposals');
+      expect(cleaned.get('table')).toBe('reorgs');
       expect(cleaned.get('bad')).toBeNull();
     });
   });

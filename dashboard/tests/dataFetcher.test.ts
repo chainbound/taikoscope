@@ -36,7 +36,6 @@ describe('dataFetcher', () => {
       fetchL2Reorgs: ok(6),
       fetchSlashingEventCount: ok(7),
       fetchForcedInclusionCount: ok(8),
-      fetchMissedProposalCount: ok(9),
       fetchL2HeadBlock: ok(10),
       fetchL1HeadBlock: ok(11),
       fetchProveTimes: ok([{ name: '1', value: 1, timestamp: 0 }]),
@@ -55,7 +54,7 @@ describe('dataFetcher', () => {
     expect(res.avgVerify).toBe(4);
     expect(res.sequencerDist[0].name).toBe('foo');
     expect(res.txPerBlock).toHaveLength(1);
-    expect(res.badRequestResults).toHaveLength(19);
+    expect(res.badRequestResults).toHaveLength(18);
   });
 
   it('defaults to empty arrays when service data missing', async () => {
@@ -69,7 +68,6 @@ describe('dataFetcher', () => {
       fetchL2Reorgs: ok(null),
       fetchSlashingEventCount: ok(null),
       fetchForcedInclusionCount: ok(null),
-      fetchMissedProposalCount: ok(null),
       fetchL2HeadBlock: ok(null),
       fetchL1HeadBlock: ok(null),
       fetchProveTimes: ok(null),

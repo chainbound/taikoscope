@@ -79,10 +79,3 @@ CREATE TABLE IF NOT EXISTS ${DB}.slashing_events (
 ) ENGINE = MergeTree()
 ORDER BY (l1_block_number, validator_addr);
 
-CREATE TABLE IF NOT EXISTS ${DB}.missed_block_proposals (
-    slot UInt64,
-    sequencer FixedString(20),
-    l2_block_number UInt64,
-    inserted_at DateTime64(3) DEFAULT now64()
-) ENGINE = MergeTree()
-ORDER BY (slot, l2_block_number);

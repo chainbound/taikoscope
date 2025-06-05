@@ -97,7 +97,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             'L2 Reorgs': () => onOpenTable('reorgs'),
             'Slashing Events': () => onOpenTable('slashings'),
             'Forced Inclusions': () => onOpenTable('forced-inclusions'),
-            'Missed Proposals': () => onOpenTable('missed-proposals'),
             'Active Sequencers': () => onOpenTable('gateways'),
             'Batch Posting Cadence': () => onOpenTable('batch-posting-cadence'),
         };

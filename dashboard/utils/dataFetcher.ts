@@ -8,7 +8,6 @@ import {
     fetchL2Reorgs,
     fetchSlashingEventCount,
     fetchForcedInclusionCount,
-    fetchMissedProposalCount,
     fetchPreconfData,
     fetchL2HeadBlock,
     fetchL1HeadBlock,
@@ -34,7 +33,6 @@ export interface MainDashboardData {
     l2Reorgs: number | null;
     slashings: number | null;
     forcedInclusions: number | null;
-    missedProposals: number | null;
     l2Block: number | null;
     l1Block: number | null;
     proveTimes: any[];
@@ -70,7 +68,6 @@ export const fetchMainDashboardData = async (
         l2ReorgsRes,
         slashingCountRes,
         forcedInclusionCountRes,
-        missedProposalCountRes,
         l2BlockRes,
         l1BlockRes,
         proveTimesRes,
@@ -98,7 +95,6 @@ export const fetchMainDashboardData = async (
         fetchL2Reorgs(timeRange),
         fetchSlashingEventCount(timeRange),
         fetchForcedInclusionCount(timeRange),
-        fetchMissedProposalCount(timeRange),
         fetchL2HeadBlock(timeRange),
         fetchL1HeadBlock(timeRange),
         fetchProveTimes(timeRange),
@@ -137,7 +133,6 @@ export const fetchMainDashboardData = async (
         l2ReorgsRes,
         slashingCountRes,
         forcedInclusionCountRes,
-        missedProposalCountRes,
         l2BlockRes,
         l1BlockRes,
         proveTimesRes,
@@ -159,7 +154,6 @@ export const fetchMainDashboardData = async (
         l2Reorgs: l2ReorgsRes.data,
         slashings: slashingCountRes.data,
         forcedInclusions: forcedInclusionCountRes.data,
-        missedProposals: missedProposalCountRes.data,
         l2Block: l2BlockRes.data,
         l1Block: l1BlockRes.data,
         proveTimes: proveTimesRes.data || [],
