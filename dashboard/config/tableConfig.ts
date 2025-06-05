@@ -135,8 +135,9 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
   gateways: {
     title: 'Active Sequencers',
     fetcher: fetchActiveSequencerAddresses,
-    columns: [{ key: 'address', label: 'Address' }],
-    mapData: (data) => data.map((g) => ({ address: g })),
+    columns: [{ key: 'sequencer', label: 'Sequencer' }],
+    mapData: (data) =>
+      data.map((g) => ({ sequencer: getSequencerName(g) })),
     urlKey: 'gateways',
   },
 
