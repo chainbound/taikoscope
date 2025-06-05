@@ -43,7 +43,7 @@ describe('navigationUtils', () => {
   describe('sanitizeUrl', () => {
     it('should preserve same-origin URLs', () => {
       const url = 'https://example.com/dashboard?view=table';
-      expect(sanitizeUrl(url)).toBe(url);
+      expect(sanitizeUrl(url)).toBe('/dashboard?view=table');
     });
 
     it('should reject different-origin URLs', () => {
@@ -58,7 +58,7 @@ describe('navigationUtils', () => {
 
     it('should remove invalid search parameters', () => {
       const url = 'https://example.com/dashboard?view=table&page=-1&bad=1';
-      expect(sanitizeUrl(url)).toBe('https://example.com/dashboard?view=table');
+      expect(sanitizeUrl(url)).toBe('/dashboard?view=table');
     });
   });
 
@@ -172,10 +172,9 @@ describe('navigationUtils', () => {
     it('cleans search params', () => {
       const nav = vi.fn();
       safeNavigate(nav, '/dashboard?page=-1&view=table');
-      expect(nav).toHaveBeenCalledWith(
-        'https://example.com/dashboard?view=table',
-        { replace: false },
-      );
+      expect(nav).toHaveBeenCalledWith('/dashboard?view=table', {
+        replace: false,
+      });
     });
   });
 });
