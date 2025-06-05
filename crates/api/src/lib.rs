@@ -2364,6 +2364,42 @@ mod tests {
         assert_eq!(d.num_hours(), 1);
     }
 
+    #[test]
+    fn range_duration_handles_zero() {
+        let d = range_duration(&Some("0h".to_owned()));
+        assert_eq!(d.num_hours(), 0);
+
+        let d = range_duration(&Some("0d".to_owned()));
+        assert_eq!(d.num_hours(), 0);
+    }
+
+    #[test]
+    fn range_duration_trims_whitespace() {
+        let d = range_duration(&Some(" 2h ".to_owned()));
+        assert_eq!(d.num_hours(), 2);
+
+        let d = range_duration(&Some(" 1d ".to_owned()));
+        assert_eq!(d.num_hours(), 24);
+    }
+
+    #[test]
+    fn range_duration_empty_string_defaults() {
+        let d = range_duration(&Some(String::new()));
+        assert_eq!(d.num_hours(), 1);
+    }
+
+    #[test]
+    fn range_duration_invalid_decimal() {
+        let d = range_duration(&Some("1.5h".to_owned()));
+        assert_eq!(d.num_hours(), 1);
+    }
+
+    #[test]
+    fn range_duration_parses_days() {
+        let d = range_duration(&Some("3d".to_owned()));
+        assert_eq!(d.num_hours(), 72);
+    }
+
     #[tokio::test]
     async fn sequencer_blocks_invalid_address() {
         let mock = Mock::new();
