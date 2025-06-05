@@ -141,6 +141,7 @@ const BatchProcessChartComponent: React.FC<BatchProcessChartProps> = ({
           dataKey="name"
           height={20}
           stroke={lineColor}
+          padding={{ left: 20, right: 20 }}
           startIndex={clampedRange.startIndex}
           endIndex={clampedRange.endIndex}
           onChange={handleBrushChange}

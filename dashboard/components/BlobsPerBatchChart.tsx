@@ -120,6 +120,7 @@ const BlobsPerBatchChartComponent: React.FC<BlobsPerBatchChartProps> = ({
           dataKey="batch"
           height={20}
           stroke={barColor}
+          padding={{ left: 20, right: 20 }}
           startIndex={clampedRange.startIndex}
           endIndex={clampedRange.endIndex}
           onChange={handleBrushChange}

@@ -126,6 +126,7 @@ const MissedBlockChartComponent: React.FC<MissedBlockChartProps> = ({
           dataKey="slot"
           height={20}
           stroke={TAIKO_PINK}
+          padding={{ left: 20, right: 20 }}
           startIndex={clampedRange.startIndex}
           endIndex={clampedRange.endIndex}
           onChange={handleBrushChange}

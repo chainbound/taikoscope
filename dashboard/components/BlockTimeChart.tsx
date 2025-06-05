@@ -145,6 +145,7 @@ const BlockTimeChartComponent: React.FC<BlockTimeChartProps> = ({
           dataKey="timestamp"
           height={20}
           stroke={lineColor}
+          padding={{ left: 20, right: 20 }}
           startIndex={clampedRange.startIndex}
           endIndex={clampedRange.endIndex}
           onChange={handleBrushChange}
