@@ -3,7 +3,7 @@ import { TimeRange } from '../types';
 import { RefreshCountdown } from './RefreshCountdown';
 import { TAIKO_PINK } from '../theme';
 import { isValidRefreshRate } from '../utils';
-import { useSearchParams } from '../hooks/useSearchParams';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 const metaEnv = (import.meta as any).env as ImportMetaEnv | undefined;
 const NETWORK_NAME =
@@ -32,7 +32,8 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   selectedSequencer,
   onSequencerChange,
 }) => {
-  const searchParams = useSearchParams();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   return (
     <header className="flex flex-col md:flex-row justify-between items-center pb-4 border-b border-gray-200">
       <div className="flex items-baseline space-x-4">
@@ -41,17 +42,10 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
           style={{ color: TAIKO_PINK }}
           onClick={() => {
             try {
-              const url = new URL(window.location.href);
-              url.searchParams.delete('view');
-              url.searchParams.delete('table');
-              url.searchParams.delete('address');
-              url.searchParams.delete('page');
-              url.searchParams.delete('start');
-              url.searchParams.delete('end');
-              searchParams.navigate(url);
+              setSearchParams({});
+              navigate('/');
             } catch (err) {
               console.error('Failed to navigate to home:', err);
-              // Fallback: reload page
               window.location.href = window.location.pathname;
             }
           }}
@@ -65,17 +59,16 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
         <button
           onClick={() => {
             try {
-              const url = new URL(window.location.href);
-              if (url.searchParams.get('view') === 'economics') {
-                url.searchParams.delete('view');
+              const params = new URLSearchParams(searchParams);
+              if (params.get('view') === 'economics') {
+                params.delete('view');
               } else {
-                url.searchParams.set('view', 'economics');
+                params.set('view', 'economics');
               }
-              url.searchParams.delete('table');
-              searchParams.navigate(url);
+              params.delete('table');
+              navigate({ search: params.toString() });
             } catch (err) {
               console.error('Failed to toggle economics view:', err);
-              // Fallback: just reload the page with economics parameter
               const fallbackUrl = new URL(window.location.href);
               try {
                 fallbackUrl.searchParams.set('view', 'economics');

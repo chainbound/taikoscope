@@ -3,7 +3,7 @@ import React from 'react';
 interface ErrorDisplayProps {
     errorMessage: string;
     navigationError?: string;
-    errorCount: number;
+    errorCount?: number;
     onResetNavigation: () => void;
     onClearError: () => void;
 }
@@ -16,6 +16,7 @@ export const ErrorDisplay: React.FC<ErrorDisplayProps> = ({
     onClearError,
 }) => {
     const displayError = errorMessage || navigationError;
+    const count = errorCount ?? 0;
 
     if (!displayError) return null;
 
@@ -24,14 +25,14 @@ export const ErrorDisplay: React.FC<ErrorDisplayProps> = ({
             <div className="flex justify-between items-start">
                 <div className="flex-1">
                     {displayError}
-                    {errorCount > 0 && (
+                    {count > 0 && (
                         <div className="text-sm mt-1 text-red-600">
                             Navigation issues detected. Try refreshing the page if problems persist.
                         </div>
                     )}
                 </div>
                 <div className="flex space-x-2 ml-4">
-                    {errorCount > 2 && (
+                    {count > 2 && (
                         <button
                             onClick={onResetNavigation}
                             className="text-sm bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700"
