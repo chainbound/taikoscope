@@ -11,6 +11,14 @@ import {
 import { TimeSeriesData } from '../types';
 import { formatInterval, shouldShowMinutes } from '../utils';
 
+// Constants for histogram configuration
+const MIN_BIN_COUNT = 5;
+const MAX_BIN_COUNT = 20;
+const DEFAULT_BIN_COUNT = 20;
+const MIN_REASONABLE_BLOCK_TIME_MS = 0;
+const MAX_REASONABLE_BLOCK_TIME_MS = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+const CHART_MARGINS = { top: 5, right: 70, left: 80, bottom: 40 };
+
 interface BlockTimeDistributionChartProps {
   data: TimeSeriesData[];
   barColor: string;
@@ -31,28 +39,53 @@ const BlockTimeDistributionChartComponent: React.FC<BlockTimeDistributionChartPr
   const showMinutes = shouldShowMinutes(data);
 
   const distributionData = useMemo(() => {
-    const times = data.map((d) => d.timestamp);
+    // Extract block times (values) and filter for reasonable bounds
+    const times = data
+      .map((d) => d.value)
+      .filter((time) => time >= MIN_REASONABLE_BLOCK_TIME_MS && time <= MAX_REASONABLE_BLOCK_TIME_MS);
+    
+    if (times.length === 0) {
+      return [];
+    }
+    
     const min = Math.min(...times);
     const max = Math.max(...times);
+    
     if (min === max) {
       return [{ interval: min, count: times.length }];
     }
-    const binCount = 20;
+    
+    // Adaptive bin count based on data size
+    const binCount = Math.min(
+      MAX_BIN_COUNT,
+      Math.max(MIN_BIN_COUNT, Math.floor(Math.sqrt(times.length)))
+    );
+    
     const binSize = (max - min) / binCount;
     const bins = Array.from({ length: binCount }, (_, i) => ({
       interval: min + (i + 0.5) * binSize,
       count: 0,
     }));
+    
     times.forEach((t) => {
       const idx = Math.min(Math.floor((t - min) / binSize), binCount - 1);
       bins[idx].count += 1;
     });
+    
     return bins;
   }, [data]);
 
+  if (distributionData.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-full text-gray-500">
+        No valid block time data available
+      </div>
+    );
+  }
+
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <BarChart data={distributionData} margin={{ top: 5, right: 70, left: 80, bottom: 40 }}>
+      <BarChart data={distributionData} margin={CHART_MARGINS}>
         <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
         <XAxis
           dataKey="interval"
@@ -86,6 +119,8 @@ const BlockTimeDistributionChartComponent: React.FC<BlockTimeDistributionChartPr
           contentStyle={{
             backgroundColor: 'rgba(255, 255, 255, 0.8)',
             borderColor: barColor,
+            borderWidth: 1,
+            borderRadius: 4,
           }}
           labelStyle={{ color: '#333' }}
         />
