@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useSearchParams, useOutletContext, useNavigate } from 'react-router-dom';
 import { TableView } from '../views/TableView';
+import { DashboardHeader } from '../DashboardHeader';
 import { TableViewState } from '../../hooks/useTableActions';
 import { TimeRange } from '../../types';
 import { TABLE_CONFIGS } from '../../config/tableConfig';
 import { getSequencerAddress } from '../../sequencerConfig';
+import { useDataFetcher } from '../../hooks/useDataFetcher';
 
 interface DashboardContextType {
   timeRange: TimeRange;
@@ -25,6 +27,7 @@ export const TableRoute: React.FC = () => {
   
   const {
     timeRange,
+    setTimeRange,
     selectedSequencer,
     setSelectedSequencer,
     sequencerList,
@@ -35,6 +38,16 @@ export const TableRoute: React.FC = () => {
 
   const [tableView, setTableView] = useState<TableViewState | undefined>(undefined);
   const [tableLoading, setTableLoading] = useState(false);
+
+  const { handleManualRefresh } = useDataFetcher({
+    timeRange,
+    selectedSequencer,
+    tableView: tableView || null,
+    fetchMetricsData: metricsData.fetchMetricsData,
+    updateChartsData: chartsData.updateChartsData,
+    refreshRate: refreshTimer.refreshRate,
+    updateLastRefresh: refreshTimer.updateLastRefresh,
+  });
 
   useEffect(() => {
     const loadTable = async () => {
@@ -130,27 +143,30 @@ export const TableRoute: React.FC = () => {
     navigate('/');
   };
 
-  const handleManualRefresh = () => {
-    // Trigger table reload by updating a dependency
-    setTableLoading(true);
-    setTimeout(() => setTableLoading(false), 100);
-  };
 
   if (!tableView && !tableLoading) {
     return <div>Table not found</div>;
   }
 
   return (
-    <TableView
-      tableView={tableView}
-      tableLoading={tableLoading}
-      isNavigating={false}
-      refreshTimer={refreshTimer}
-      sequencerList={sequencerList}
-      selectedSequencer={selectedSequencer}
-      onSequencerChange={setSelectedSequencer}
-      onBack={handleBack}
-      onManualRefresh={handleManualRefresh}
-    />
+    <>
+      <DashboardHeader
+        timeRange={timeRange}
+        onTimeRangeChange={setTimeRange}
+        refreshRate={refreshTimer.refreshRate}
+        onRefreshRateChange={refreshTimer.setRefreshRate}
+        lastRefresh={refreshTimer.lastRefresh}
+        onManualRefresh={handleManualRefresh}
+        sequencers={sequencerList}
+        selectedSequencer={selectedSequencer}
+        onSequencerChange={setSelectedSequencer}
+      />
+      <TableView
+        tableView={tableView}
+        tableLoading={tableLoading}
+        isNavigating={false}
+        onBack={handleBack}
+      />
+    </>
   );
 };

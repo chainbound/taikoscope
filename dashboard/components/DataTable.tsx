@@ -1,11 +1,4 @@
 import React from 'react';
-import { TimeRange } from '../types';
-import {
-  TimeRangeSelector,
-  RefreshRateInput,
-  SequencerSelector,
-} from './DashboardHeader';
-import { RefreshCountdown } from './RefreshCountdown';
 import { TAIKO_PINK } from '../theme';
 
 const DEFAULT_ROWS_PER_PAGE = 50;
@@ -38,15 +31,6 @@ interface DataTableProps {
   onRowClick?: (row: Record<string, string | number>) => void;
   extraAction?: { label: string; onClick: () => void };
   extraTable?: ExtraTable;
-  timeRange?: TimeRange;
-  onTimeRangeChange?: (range: TimeRange) => void;
-  refreshRate?: number;
-  onRefreshRateChange?: (rate: number) => void;
-  lastRefresh?: number;
-  onManualRefresh?: () => void;
-  sequencers?: string[];
-  selectedSequencer?: string | null;
-  onSequencerChange?: (seq: string | null) => void;
   chart?: React.ReactNode;
   rowsPerPage?: number;
   isNavigating?: boolean;
@@ -61,15 +45,6 @@ export const DataTable: React.FC<DataTableProps> = ({
   onRowClick,
   extraAction,
   extraTable,
-  timeRange,
-  onTimeRangeChange,
-  refreshRate,
-  onRefreshRateChange,
-  lastRefresh,
-  onManualRefresh,
-  sequencers,
-  selectedSequencer,
-  onSequencerChange,
   chart,
   rowsPerPage = DEFAULT_ROWS_PER_PAGE,
   isNavigating = false,
@@ -134,34 +109,6 @@ export const DataTable: React.FC<DataTableProps> = ({
           >
             {extraAction.label}
           </button>
-        )}
-        {timeRange && onTimeRangeChange && (
-          <TimeRangeSelector
-            currentTimeRange={timeRange}
-            onTimeRangeChange={onTimeRangeChange}
-          />
-        )}
-        {refreshRate !== undefined && onRefreshRateChange && (
-          <RefreshRateInput
-            refreshRate={refreshRate}
-            onRefreshRateChange={onRefreshRateChange}
-          />
-        )}
-        {refreshRate !== undefined &&
-          lastRefresh !== undefined &&
-          onManualRefresh && (
-            <RefreshCountdown
-              refreshRate={refreshRate}
-              lastRefresh={lastRefresh}
-              onRefresh={onManualRefresh}
-            />
-          )}
-        {sequencers && onSequencerChange && (
-          <SequencerSelector
-            sequencers={sequencers}
-            value={selectedSequencer ?? null}
-            onChange={onSequencerChange}
-          />
         )}
       </div>
       <h2 className="text-xl font-semibold mb-2">{title}</h2>

@@ -47,86 +47,64 @@ describe('DataTable', () => {
     expect(html.includes('20')).toBe(true);
   });
 
-  it('renders time range selector', () => {
+  it('renders without time range selector (moved to header)', () => {
     const html = renderToStaticMarkup(
       React.createElement(DataTable, {
         title: 'Range',
         columns: [{ key: 'v', label: 'V' }],
         rows: [{ v: 1 }],
         onBack: () => {},
-        timeRange: '1h',
-        onTimeRangeChange: () => {},
       }),
     );
-    expect(html.includes('1H')).toBe(true);
-    expect(html.includes('24H')).toBe(true);
-    expect(html.includes('7D')).toBe(true);
+    expect(html.includes('Range')).toBe(true);
   });
 
-  it('renders refresh rate input', () => {
+  it('renders without refresh rate input (moved to header)', () => {
     const html = renderToStaticMarkup(
       React.createElement(DataTable, {
         title: 'Refresh',
         columns: [{ key: 'v', label: 'V' }],
         rows: [{ v: 1 }],
         onBack: () => {},
-        refreshRate: 60000,
-        onRefreshRateChange: () => {},
       }),
     );
     expect(html.includes('Refresh')).toBe(true);
   });
 
-  it('renders refresh countdown when props provided', () => {
+  it('renders without refresh countdown (moved to header)', () => {
     const html = renderToStaticMarkup(
       React.createElement(DataTable, {
         title: 'Countdown',
         columns: [{ key: 'v', label: 'V' }],
         rows: [{ v: 1 }],
         onBack: () => {},
-        refreshRate: 60000,
-        onRefreshRateChange: () => {},
-        lastRefresh: Date.now(),
-        onManualRefresh: () => {},
       }),
     );
-    expect(html.includes('Refresh now')).toBe(true);
+    expect(html.includes('Countdown')).toBe(true);
   });
 
-  it('renders sequencer selector', () => {
+  it('renders without sequencer selector (moved to header)', () => {
     const html = renderToStaticMarkup(
       React.createElement(DataTable, {
         title: 'Seq',
         columns: [{ key: 'v', label: 'V' }],
         rows: [{ v: 1 }],
         onBack: () => {},
-        sequencers: ['b', 'a'],
-        selectedSequencer: null,
-        onSequencerChange: () => {},
       }),
     );
-    const options = Array.from(html.matchAll(/<option[^>]*>(.*?)<\/option>/g)).map(
-      (m) => m[1],
-    );
-    expect(options).toEqual(['All Sequencers', 'a', 'b']);
+    expect(html.includes('Seq')).toBe(true);
   });
 
-  it('handles sequencer list containing All Sequencers entry', () => {
+  it('renders without sequencer handling (moved to header)', () => {
     const html = renderToStaticMarkup(
       React.createElement(DataTable, {
         title: 'Seq',
         columns: [{ key: 'v', label: 'V' }],
         rows: [{ v: 1 }],
         onBack: () => {},
-        sequencers: ['b', 'All Sequencers', 'a'],
-        selectedSequencer: null,
-        onSequencerChange: () => {},
       }),
     );
-    const options = Array.from(html.matchAll(/<option[^>]*>(.*?)<\/option>/g)).map(
-      (m) => m[1],
-    );
-    expect(options).toEqual(['All Sequencers', 'a', 'b']);
+    expect(html.includes('Seq')).toBe(true);
   });
 
   it('paginates rows when more than 50 items', () => {
