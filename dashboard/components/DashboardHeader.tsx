@@ -61,12 +61,13 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
             try {
               const params = new URLSearchParams(searchParams);
               if (params.get('view') === 'economics') {
-                params.delete('view');
+                // Already on economics view - reload instead of navigating to home
+                navigate(0);
               } else {
                 params.set('view', 'economics');
+                params.delete('table');
+                navigate({ pathname: '/', search: params.toString() });
               }
-              params.delete('table');
-              navigate({ pathname: '/', search: params.toString() });
             } catch (err) {
               console.error('Failed to toggle economics view:', err);
               const fallbackUrl = new URL(window.location.href);
