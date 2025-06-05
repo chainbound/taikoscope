@@ -192,5 +192,13 @@ describe('navigationUtils', () => {
         replace: false,
       });
     });
+
+    it('preserves valid page navigation', () => {
+      const nav = vi.fn();
+      safeNavigate(nav, '/dashboard?view=table&page=2');
+      expect(nav).toHaveBeenCalledWith('/dashboard?view=table&page=2', {
+        replace: false,
+      });
+    });
   });
 });
