@@ -40,6 +40,14 @@ const BlobsPerBatchChartComponent: React.FC<BlobsPerBatchChartProps> = ({
     });
   }, [data]);
 
+  const clampedRange = React.useMemo(
+    () => ({
+      startIndex: Math.max(0, Math.min(brushRange.startIndex, data.length - 1)),
+      endIndex: Math.max(0, Math.min(brushRange.endIndex, data.length - 1)),
+    }),
+    [brushRange, data.length],
+  );
+
   const handleBrushChange = (range: {
     startIndex?: number;
     endIndex?: number;
@@ -112,8 +120,8 @@ const BlobsPerBatchChartComponent: React.FC<BlobsPerBatchChartProps> = ({
           dataKey="batch"
           height={20}
           stroke={barColor}
-          startIndex={brushRange.startIndex}
-          endIndex={brushRange.endIndex}
+          startIndex={clampedRange.startIndex}
+          endIndex={clampedRange.endIndex}
           onChange={handleBrushChange}
         />
       </BarChart>

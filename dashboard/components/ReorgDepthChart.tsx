@@ -37,6 +37,14 @@ const ReorgDepthChartComponent: React.FC<ReorgDepthChartProps> = ({ data }) => {
     });
   }, [data]);
 
+  const clampedRange = React.useMemo(
+    () => ({
+      startIndex: Math.max(0, Math.min(brushRange.startIndex, data.length - 1)),
+      endIndex: Math.max(0, Math.min(brushRange.endIndex, data.length - 1)),
+    }),
+    [brushRange, data.length],
+  );
+
   const handleBrushChange = (range: {
     startIndex?: number;
     endIndex?: number;
@@ -107,8 +115,8 @@ const ReorgDepthChartComponent: React.FC<ReorgDepthChartProps> = ({ data }) => {
           dataKey="timestamp"
           height={20}
           stroke={TAIKO_PINK}
-          startIndex={brushRange.startIndex}
-          endIndex={brushRange.endIndex}
+          startIndex={clampedRange.startIndex}
+          endIndex={clampedRange.endIndex}
           onChange={handleBrushChange}
         />
       </BarChart>

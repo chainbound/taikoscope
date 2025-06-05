@@ -40,6 +40,14 @@ const GasUsedChartComponent: React.FC<GasUsedChartProps> = ({
     });
   }, [data]);
 
+  const clampedRange = React.useMemo(
+    () => ({
+      startIndex: Math.max(0, Math.min(brushRange.startIndex, data.length - 1)),
+      endIndex: Math.max(0, Math.min(brushRange.endIndex, data.length - 1)),
+    }),
+    [brushRange, data.length],
+  );
+
   const handleBrushChange = (range: {
     startIndex?: number;
     endIndex?: number;
@@ -118,8 +126,8 @@ const GasUsedChartComponent: React.FC<GasUsedChartProps> = ({
           dataKey="timestamp"
           height={20}
           stroke={lineColor}
-          startIndex={brushRange.startIndex}
-          endIndex={brushRange.endIndex}
+          startIndex={clampedRange.startIndex}
+          endIndex={clampedRange.endIndex}
           onChange={handleBrushChange}
           tickFormatter={(v: number) => formatTime(v)}
         />

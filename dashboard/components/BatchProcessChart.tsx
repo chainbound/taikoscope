@@ -49,6 +49,14 @@ const BatchProcessChartComponent: React.FC<BatchProcessChartProps> = ({
     });
   }, [data]);
 
+  const clampedRange = React.useMemo(
+    () => ({
+      startIndex: Math.max(0, Math.min(brushRange.startIndex, data.length - 1)),
+      endIndex: Math.max(0, Math.min(brushRange.endIndex, data.length - 1)),
+    }),
+    [brushRange, data.length],
+  );
+
   const handleBrushChange = (range: {
     startIndex?: number;
     endIndex?: number;
@@ -133,8 +141,8 @@ const BatchProcessChartComponent: React.FC<BatchProcessChartProps> = ({
           dataKey="name"
           height={20}
           stroke={lineColor}
-          startIndex={brushRange.startIndex}
-          endIndex={brushRange.endIndex}
+          startIndex={clampedRange.startIndex}
+          endIndex={clampedRange.endIndex}
           onChange={handleBrushChange}
         />
       </LineChart>
