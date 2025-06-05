@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useSearchParams, useOutletContext, useNavigate } from 'react-router-dom';
 import { TableView } from '../views/TableView';
 import { DashboardHeader } from '../DashboardHeader';
@@ -22,12 +22,11 @@ interface DashboardContextType {
 
 export const TableRoute: React.FC = () => {
   const { tableType } = useParams<{ tableType: string }>();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   
   const {
     timeRange,
-    setTimeRange,
     selectedSequencer,
     setSelectedSequencer,
     sequencerList,
@@ -36,11 +35,25 @@ export const TableRoute: React.FC = () => {
     refreshTimer,
   } = useOutletContext<DashboardContextType>();
 
+  // Override setTimeRange to update URL params for table route instead of navigating away
+  const handleTimeRangeChange = useCallback((newRange: TimeRange) => {
+    const newParams = new URLSearchParams(searchParams);
+    if (newRange === '1h') {
+      newParams.delete('range');
+    } else {
+      newParams.set('range', newRange);
+    }
+    setSearchParams(newParams, { replace: true });
+  }, [searchParams, setSearchParams]);
+
   const [tableView, setTableView] = useState<TableViewState | undefined>(undefined);
   const [tableLoading, setTableLoading] = useState(false);
 
+  // Get current time range from URL params, fallback to context
+  const currentTimeRange = (searchParams.get('range') as TimeRange) || timeRange;
+
   const { handleManualRefresh } = useDataFetcher({
-    timeRange,
+    timeRange: currentTimeRange,
     selectedSequencer,
     tableView: tableView || null,
     fetchMetricsData: metricsData.fetchMetricsData,
@@ -57,7 +70,7 @@ export const TableRoute: React.FC = () => {
       setTableView(undefined);
       
       try {
-        const range = (searchParams.get('range') as TimeRange) || timeRange;
+        const range = currentTimeRange;
         
         if (tableType === 'tps') {
           // Handle TPS table - create from existing chart data
@@ -137,7 +150,7 @@ export const TableRoute: React.FC = () => {
     };
 
     loadTable();
-  }, [tableType, searchParams, timeRange, selectedSequencer, chartsData, metricsData]);
+  }, [tableType, searchParams, currentTimeRange, selectedSequencer, chartsData, metricsData]);
 
   const handleBack = () => {
     navigate('/');
@@ -151,8 +164,8 @@ export const TableRoute: React.FC = () => {
   return (
     <>
       <DashboardHeader
-        timeRange={timeRange}
-        onTimeRangeChange={setTimeRange}
+        timeRange={currentTimeRange}
+        onTimeRangeChange={handleTimeRangeChange}
         refreshRate={refreshTimer.refreshRate}
         onRefreshRateChange={refreshTimer.setRefreshRate}
         lastRefresh={refreshTimer.lastRefresh}
