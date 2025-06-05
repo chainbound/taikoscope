@@ -1,4 +1,5 @@
-import { describe, it, expect, afterEach, vi } from 'vitest';
+import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
+import * as toast from '../utils/toast';
 
 import {
   fetchAvgProveTime,
@@ -9,6 +10,12 @@ import {
 } from '../services/apiService.ts';
 
 const originalFetch = globalThis.fetch;
+
+beforeEach(() => {
+  vi.stubGlobal('window', {
+    dispatchEvent: vi.fn(),
+  });
+});
 
 // helper to create mock fetch response
 function mockFetch(data: unknown, status = 200, ok = true) {
@@ -93,5 +100,25 @@ describe('apiService', () => {
 
     await expect(fetchAvgProveTime('1h')).rejects.toThrow('network');
     expect(attempts).toBe(3); // initial try + two retries
+  });
+
+  it('shows toast on server error', async () => {
+    const spy = vi.spyOn(toast, 'showToast').mockImplementation(() => {});
+    globalThis.fetch = mockFetch({}, 500, false);
+    const res = await fetchAvgProveTime('1h');
+    expect(res.badRequest).toBe(false);
+    expect(res.data).toBeNull();
+    expect(spy).toHaveBeenCalled();
+    spy.mockRestore();
+  });
+
+  it('shows toast on network error after retries', async () => {
+    const spy = vi.spyOn(toast, 'showToast').mockImplementation(() => {});
+    globalThis.fetch = vi.fn(async () => {
+      throw new Error('offline');
+    });
+    await expect(fetchAvgProveTime('1h')).rejects.toThrow('offline');
+    expect(spy).toHaveBeenCalled();
+    spy.mockRestore();
   });
 });
