@@ -10,7 +10,7 @@ export const DashboardFooter: React.FC<DashboardFooterProps> = ({
   l2HeadBlock,
   l1HeadBlock,
 }) => (
-  <footer className="mt-8 pt-6 border-t border-gray-200">
+  <footer className="mt-8 px-4 py-6 md:px-6 lg:px-8 border-t border-gray-200">
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-center md:text-left">
       <div>
         <span className="text-sm text-gray-500">L2 Head Block</span>
@@ -27,5 +27,3 @@ export const DashboardFooter: React.FC<DashboardFooterProps> = ({
     </div>
   </footer>
 );
-
-
