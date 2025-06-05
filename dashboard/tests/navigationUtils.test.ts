@@ -37,6 +37,8 @@ describe('navigationUtils', () => {
       expect(isValidUrl('   ')).toBe(false);
       expect(isValidUrl('https://example.com/evil path')).toBe(false);
       expect(isValidUrl('/../secret')).toBe(false);
+      expect(isValidUrl('ftp://example.com')).toBe(false);
+      expect(isValidUrl('https://example.com/\n')).toBe(false);
     });
   });
 
@@ -44,6 +46,16 @@ describe('navigationUtils', () => {
     it('should preserve same-origin URLs', () => {
       const url = 'https://example.com/dashboard?view=table';
       expect(sanitizeUrl(url)).toBe(url);
+    });
+
+    it('should strip hash fragments', () => {
+      const url = 'https://example.com/dashboard#section';
+      expect(sanitizeUrl(url)).toBe('https://example.com/dashboard');
+    });
+
+    it('should accept URL instances', () => {
+      const url = new URL('/dashboard?sort=asc', 'https://example.com');
+      expect(sanitizeUrl(url)).toBe('https://example.com/dashboard?sort=asc');
     });
 
     it('should reject different-origin URLs', () => {
@@ -71,6 +83,11 @@ describe('navigationUtils', () => {
     it('should fallback to current location for invalid input', () => {
       const result = createSafeUrl('invalid');
       expect(result.pathname).toBe('/dashboard');
+    });
+
+    it('should use current location when no base is provided', () => {
+      const result = createSafeUrl();
+      expect(result.toString()).toBe('https://example.com/dashboard');
     });
   });
 
@@ -121,6 +138,11 @@ describe('navigationUtils', () => {
 
       const invalid = new URLSearchParams('table=../../etc');
       expect(validateSearchParams(invalid)).toBe(false);
+    });
+
+    it('should ignore unknown parameters', () => {
+      const params = new URLSearchParams('foo=bar&view=table');
+      expect(validateSearchParams(params)).toBe(true);
     });
   });
 
@@ -175,6 +197,23 @@ describe('navigationUtils', () => {
 
       expect(cleaned.get('table')).toBe('missed-proposals');
       expect(cleaned.get('bad')).toBeNull();
+    });
+
+    it('should keep start and end parameters', () => {
+      const params = new URLSearchParams('start=10&end=20&extra=1');
+      const cleaned = cleanSearchParams(params);
+
+      expect(cleaned.get('start')).toBe('10');
+      expect(cleaned.get('end')).toBe('20');
+      expect(cleaned.get('extra')).toBeNull();
+    });
+
+    it('should drop invalid start value', () => {
+      const params = new URLSearchParams('start=-1&end=5');
+      const cleaned = cleanSearchParams(params);
+
+      expect(cleaned.get('start')).toBeNull();
+      expect(cleaned.get('end')).toBe('5');
     });
   });
 
