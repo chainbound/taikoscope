@@ -233,7 +233,7 @@ export const useTableActions = (
       'L2 Transactions Per Second',
       undefined,
       [
-        { key: 'block', label: 'Block Number' },
+        { key: 'block', label: 'L2 Block Number' },
         { key: 'tps', label: 'TPS' },
       ],
       data.map((d) => ({
@@ -364,7 +364,7 @@ export const useTableActions = (
         {
           title: 'Transactions',
           columns: [
-            { key: 'block', label: 'Block Number' },
+            { key: 'block', label: 'L2 Block Number' },
             { key: 'txs', label: 'Tx Count' },
             { key: 'sequencer', label: 'Sequencer' },
           ],

@@ -46,7 +46,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
   'sequencer-blocks': {
     title: (params) => `Blocks proposed by ${getSequencerName(params.address)}`,
     fetcher: fetchSequencerBlocks,
-    columns: [{ key: 'block', label: 'Block Number' }],
+    columns: [{ key: 'block', label: 'L2 Block Number' }],
     mapData: (data) => data.map((b) => ({ block: blockLink(b) })),
     urlKey: 'sequencer-blocks',
   },
@@ -56,7 +56,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     fetcher: fetchL2ReorgEvents,
     columns: [
       { key: 'timestamp', label: 'Time' },
-      { key: 'l2_block_number', label: 'Block Number' },
+      { key: 'l2_block_number', label: 'L2 Block Number' },
       { key: 'depth', label: 'Depth' },
     ],
     mapData: (data) =>
@@ -209,7 +209,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     title: 'Tx Count Per Block',
     fetcher: (range) => fetchBlockTransactions(range, 50),
     columns: [
-      { key: 'block', label: 'Block Number' },
+      { key: 'block', label: 'L2 Block Number' },
       { key: 'txs', label: 'Tx Count' },
       { key: 'sequencer', label: 'Sequencer' },
     ],
@@ -229,7 +229,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     title: 'L2 Block Times',
     fetcher: fetchL2BlockTimes,
     columns: [
-      { key: 'value', label: 'Block Number' },
+      { key: 'value', label: 'L2 Block Number' },
       { key: 'timestamp', label: 'Interval (ms)' },
     ],
     mapData: (data) => data as Record<string, string | number>[],

@@ -104,7 +104,7 @@ export const TableRoute: React.FC = () => {
             title: 'L2 Transactions Per Second',
             description: undefined,
             columns: [
-              { key: 'block', label: 'Block Number' },
+              { key: 'block', label: 'L2 Block Number' },
               { key: 'tps', label: 'TPS' },
             ],
             rows: data.map((d: any) => ({
