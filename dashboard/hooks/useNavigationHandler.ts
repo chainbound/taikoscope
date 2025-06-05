@@ -16,11 +16,8 @@ export const useNavigationHandler = ({
 
     const handleBack = useCallback(() => {
         try {
-            if (window.history.length > 1) {
-                navigate(-1);
-            } else {
-                setSearchParams({});
-            }
+            setSearchParams({}, { replace: true });
+            navigate('/', { replace: true });
             setTableView(null);
         } catch (err) {
             console.error('Failed to handle back navigation:', err);
