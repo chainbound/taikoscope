@@ -1,10 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { fetchL1HeadNumber, fetchL2HeadNumber } from '../services/apiService';
 import { MetricData } from '../types';
 
 export const useBlockData = () => {
     const [l2HeadBlock, setL2HeadBlock] = useState<string>('0');
     const [l1HeadBlock, setL1HeadBlock] = useState<string>('0');
+    const pollId = useRef<ReturnType<typeof setInterval> | null>(null);
 
     const updateBlockHeads = useCallback(async () => {
         try {
@@ -43,10 +44,8 @@ export const useBlockData = () => {
     );
 
     useEffect(() => {
-        let pollId: ReturnType<typeof setInterval> | undefined;
-
         const startPolling = () => {
-            pollId = setInterval(() => {
+            pollId.current = setInterval(() => {
                 if (document.visibilityState === 'visible') {
                     void updateBlockHeads();
                 }
@@ -61,17 +60,17 @@ export const useBlockData = () => {
         const onVisibilityChange = () => {
             if (document.visibilityState === 'visible') {
                 void updateBlockHeads();
-                if (!pollId) startPolling();
-            } else if (pollId) {
-                clearInterval(pollId);
-                pollId = undefined;
+                if (!pollId.current) startPolling();
+            } else if (pollId.current) {
+                clearInterval(pollId.current);
+                pollId.current = null;
             }
         };
 
         document.addEventListener('visibilitychange', onVisibilityChange);
 
         return () => {
-            if (pollId) clearInterval(pollId);
+            if (pollId.current) clearInterval(pollId.current);
             document.removeEventListener('visibilitychange', onVisibilityChange);
         };
     }, [updateBlockHeads]);
