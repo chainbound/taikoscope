@@ -81,7 +81,8 @@ export const computeBatchDurationFlags = (data: { value: number }[]) => {
 };
 
 export const shouldShowMinutes = (data: { timestamp: number }[]) => {
-  return data.some((d) => d.timestamp >= 120000);
+  const maxTimestamp = Math.max(...data.map((d) => d.timestamp));
+  return maxTimestamp >= 120000;
 };
 
 export const findMetricValue = (
