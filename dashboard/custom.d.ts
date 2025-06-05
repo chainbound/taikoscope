@@ -7,6 +7,8 @@ interface ImportMetaEnv {
   readonly API_BASE?: string;
   readonly VITE_NETWORK_NAME?: string;
   readonly NETWORK_NAME?: string;
+  readonly VITE_TAIKOSCAN_BASE?: string;
+  readonly TAIKOSCAN_BASE?: string;
 }
 
 interface ImportMeta {

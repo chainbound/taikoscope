@@ -1,3 +1,22 @@
+import React from 'react';
+
+export const TAIKOSCAN_BASE =
+  ((import.meta as any).env.VITE_TAIKOSCAN_BASE as string | undefined) ??
+  ((import.meta as any).env.TAIKOSCAN_BASE as string | undefined) ??
+  'https://taikoscan.io';
+
+export const blockLink = (block: number): React.ReactElement =>
+  React.createElement(
+    'a',
+    {
+      href: `${TAIKOSCAN_BASE}/block/${block}`,
+      target: '_blank',
+      rel: 'noopener noreferrer',
+      className: 'hover:underline',
+    },
+    String(block),
+  );
+
 export const formatDecimal = (value: number): string => {
   const decimals = Math.abs(value) >= 10 ? 1 : 2;
   return value.toFixed(decimals);
