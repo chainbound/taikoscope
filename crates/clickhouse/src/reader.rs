@@ -35,24 +35,43 @@ pub enum TimeRange {
     Last24Hours,
     /// Data from the last 7 days
     Last7Days,
+    /// Data from a custom duration in seconds (clamped to 7 days)
+    Custom(u64),
 }
 
 impl TimeRange {
-    /// Return the `ClickHouse` interval string for this range
-    const fn interval(self) -> &'static str {
-        match self {
-            Self::LastHour => "1 HOUR",
-            Self::Last24Hours => "24 HOUR",
-            Self::Last7Days => "7 DAY",
+    /// Maximum allowed range in seconds (7 days).
+    const MAX_SECONDS: u64 = 7 * 24 * 3600;
+
+    /// Create a [`TimeRange`] from a [`chrono::Duration`], clamping to the
+    /// allowed maximum of seven days.
+    pub fn from_duration(duration: chrono::Duration) -> Self {
+        let secs = duration.num_seconds().clamp(0, Self::MAX_SECONDS as i64) as u64;
+        match secs {
+            3600 => Self::LastHour,
+            86400 => Self::Last24Hours,
+            604800 => Self::Last7Days,
+            _ => Self::Custom(secs),
         }
     }
 
-    /// Return the duration in seconds for this range
-    const fn seconds(self) -> u64 {
+    /// Return the `ClickHouse` interval string for this range.
+    pub fn interval(&self) -> String {
+        match self {
+            Self::LastHour => "1 HOUR".to_owned(),
+            Self::Last24Hours => "24 HOUR".to_owned(),
+            Self::Last7Days => "7 DAY".to_owned(),
+            Self::Custom(sec) => format!("{} SECOND", sec),
+        }
+    }
+
+    /// Return the duration in seconds for this range.
+    pub const fn seconds(&self) -> u64 {
         match self {
             Self::LastHour => 3600,
             Self::Last24Hours => 86400,
             Self::Last7Days => 604800,
+            Self::Custom(sec) => *sec,
         }
     }
 }
