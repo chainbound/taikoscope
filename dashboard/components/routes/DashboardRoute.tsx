@@ -10,8 +10,6 @@ interface DashboardContextType {
   timeRange: TimeRange;
   setTimeRange: (range: TimeRange) => void;
   selectedSequencer: string | null;
-  setSelectedSequencer: (seq: string | null) => void;
-  sequencerList: string[];
   chartsData: any;
   metricsData: any;
   refreshTimer: any;
@@ -22,8 +20,6 @@ export const DashboardRoute: React.FC = () => {
     timeRange,
     setTimeRange,
     selectedSequencer,
-    setSelectedSequencer,
-    sequencerList,
     chartsData,
     metricsData,
     refreshTimer,
@@ -60,9 +56,6 @@ export const DashboardRoute: React.FC = () => {
         onRefreshRateChange={refreshTimer.setRefreshRate}
         lastRefresh={refreshTimer.lastRefresh}
         onManualRefresh={handleManualRefresh}
-        sequencers={sequencerList}
-        selectedSequencer={selectedSequencer}
-        onSequencerChange={setSelectedSequencer}
       />
       <DashboardView
         timeRange={timeRange}

@@ -3,7 +3,6 @@ import { TimeRange } from '../types';
 import { RefreshCountdown } from './RefreshCountdown';
 import { TAIKO_PINK } from '../theme';
 import { isValidRefreshRate } from '../utils';
-import { useSearchParams as useRouterSearchParams } from 'react-router-dom';
 import { useRouterNavigation } from '../hooks/useRouterNavigation';
 import { ThemeToggle } from './ThemeToggle';
 
@@ -18,9 +17,6 @@ interface DashboardHeaderProps {
   onRefreshRateChange: (rate: number) => void;
   lastRefresh: number;
   onManualRefresh: () => void;
-  sequencers: string[];
-  selectedSequencer: string | null;
-  onSequencerChange: (seq: string | null) => void;
 }
 
 export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
@@ -30,12 +26,8 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   onRefreshRateChange,
   lastRefresh,
   onManualRefresh,
-  sequencers,
-  selectedSequencer,
-  onSequencerChange,
 }) => {
-  const [searchParams] = useRouterSearchParams();
-  const { navigateToDashboard, updateSearchParams } = useRouterNavigation();
+  const { navigateToDashboard } = useRouterNavigation();
   return (
     <header className="flex flex-col md:flex-row justify-between items-center pb-4 border-b border-gray-200 dark:border-gray-700">
       <div className="flex items-baseline space-x-4">
@@ -52,20 +44,8 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
         </h1>
       </div>
       <div className="flex items-center space-x-2 mt-4 md:mt-0">
-        <button
-          onClick={() => {
-            const params = new URLSearchParams(searchParams);
-            if (params.get('view') === 'economics') {
-              navigateToDashboard(true);
-              return;
-            }
-            updateSearchParams({ view: 'economics', table: null });
-          }}
-          className="text-sm hover:underline"
-          style={{ color: TAIKO_PINK }}
-        >
-          Economics
-        </button>
+        {/* Economics view is still supported via URL parameters, but the
+            navigation button is hidden. */}
         <a
           href="https://taikoscope.instatus.com/"
           target="_blank"
@@ -88,11 +68,8 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
           lastRefresh={lastRefresh}
           onRefresh={onManualRefresh}
         />
-        <SequencerSelector
-          sequencers={sequencers}
-          value={selectedSequencer}
-          onChange={onSequencerChange}
-        />
+        {/* Sequencer filter can still be set via URL parameters, but the
+            dropdown selector is hidden from the UI. */}
         <ThemeToggle />
         {/* Export button removed as per request */}
       </div>

@@ -16,14 +16,11 @@ describe('DashboardHeader', () => {
           null,
           React.createElement(DashboardHeader, {
             timeRange: '1h',
-            onTimeRangeChange: () => {},
+            onTimeRangeChange: () => { },
             refreshRate: 60000,
-            onRefreshRateChange: () => {},
+            onRefreshRateChange: () => { },
             lastRefresh: Date.now(),
-            onManualRefresh: () => {},
-            sequencers: ['seq1', 'seq2'],
-            selectedSequencer: null,
-            onSequencerChange: () => {},
+            onManualRefresh: () => { },
           }),
         ),
       ),
@@ -34,6 +31,6 @@ describe('DashboardHeader', () => {
     expect(html.includes('7D')).toBe(true);
     expect(html.includes('Refresh')).toBe(true);
     expect(html.includes('Status')).toBe(true);
-    expect(html.includes('Economics')).toBe(true);
+    expect(html.includes('Economics')).toBe(false);
   });
 });
