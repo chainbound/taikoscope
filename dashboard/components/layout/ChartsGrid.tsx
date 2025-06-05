@@ -60,86 +60,97 @@ export const ChartsGrid: React.FC<ChartsGridProps> = ({
     onOpenTable,
     onOpenSequencerDistributionTable,
 }) => {
+    const performanceHeader = selectedSequencer
+        ? 'Sequencer Performance'
+        : 'Network Performance';
+
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mt-6">
+        <>
             {!selectedSequencer && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mt-6">
+                    <ChartCard
+                        title="Sequencer Distribution"
+                        onMore={() => onOpenSequencerDistributionTable(timeRange, 0)}
+                        loading={isLoading}
+                    >
+                        <SequencerPieChart
+                            key={timeRange}
+                            data={chartsData.sequencerDistribution}
+                        />
+                    </ChartCard>
+                </div>
+            )}
+            <h2 className="mt-6 mb-2 text-lg font-semibold">{performanceHeader}</h2>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
                 <ChartCard
-                    title="Sequencer Distribution"
-                    onMore={() => onOpenSequencerDistributionTable(timeRange, 0)}
+                    title="Prove Time"
+                    onMore={() => onOpenTable('prove-time', timeRange)}
                     loading={isLoading}
                 >
-                    <SequencerPieChart
+                    <BatchProcessChart
                         key={timeRange}
-                        data={chartsData.sequencerDistribution}
+                        data={chartsData.secondsToProveData}
+                        lineColor={TAIKO_PINK}
                     />
                 </ChartCard>
-            )}
-            <ChartCard
-                title="Prove Time"
-                onMore={() => onOpenTable('prove-time', timeRange)}
-                loading={isLoading}
-            >
-                <BatchProcessChart
-                    key={timeRange}
-                    data={chartsData.secondsToProveData}
-                    lineColor={TAIKO_PINK}
-                />
-            </ChartCard>
-            <ChartCard
-                title="Verify Time"
-                onMore={() => onOpenTable('verify-time', timeRange)}
-                loading={isLoading}
-            >
-                <BatchProcessChart
-                    key={timeRange}
-                    data={chartsData.secondsToVerifyData}
-                    lineColor="#5DA5DA"
-                />
-            </ChartCard>
-            <ChartCard
-                title="Gas Used Per Block"
-                onMore={() => onOpenTable('l2-gas-used', timeRange)}
-                loading={isLoading}
-            >
-                <GasUsedChart
-                    key={timeRange}
-                    data={chartsData.l2GasUsedData}
-                    lineColor="#E573B5"
-                />
-            </ChartCard>
-            <ChartCard
-                title="Tx Count Per Block"
-                onMore={() => onOpenTable('block-tx', timeRange)}
-                loading={isLoading}
-            >
-                <BlockTxChart
-                    key={timeRange}
-                    data={chartsData.blockTxData}
-                    barColor="#4E79A7"
-                />
-            </ChartCard>
-            <ChartCard
-                title="Blobs per Batch"
-                onMore={() => onOpenTable('blobs-per-batch', timeRange)}
-                loading={isLoading}
-            >
-                <BlobsPerBatchChart
-                    key={timeRange}
-                    data={chartsData.batchBlobCounts}
-                    barColor="#A0CBE8"
-                />
-            </ChartCard>
-            <ChartCard
-                title="L2 Block Times"
-                onMore={() => onOpenTable('l2-block-times', timeRange)}
-                loading={isLoading}
-            >
-                <BlockTimeChart
-                    key={timeRange}
-                    data={chartsData.l2BlockTimeData}
-                    lineColor="#FAA43A"
-                />
-            </ChartCard>
-        </div>
+                <ChartCard
+                    title="Verify Time"
+                    onMore={() => onOpenTable('verify-time', timeRange)}
+                    loading={isLoading}
+                >
+                    <BatchProcessChart
+                        key={timeRange}
+                        data={chartsData.secondsToVerifyData}
+                        lineColor="#5DA5DA"
+                    />
+                </ChartCard>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mt-6">
+                <ChartCard
+                    title="Gas Used Per Block"
+                    onMore={() => onOpenTable('l2-gas-used', timeRange)}
+                    loading={isLoading}
+                >
+                    <GasUsedChart
+                        key={timeRange}
+                        data={chartsData.l2GasUsedData}
+                        lineColor="#E573B5"
+                    />
+                </ChartCard>
+                <ChartCard
+                    title="Tx Count Per Block"
+                    onMore={() => onOpenTable('block-tx', timeRange)}
+                    loading={isLoading}
+                >
+                    <BlockTxChart
+                        key={timeRange}
+                        data={chartsData.blockTxData}
+                        barColor="#4E79A7"
+                    />
+                </ChartCard>
+                <ChartCard
+                    title="Blobs per Batch"
+                    onMore={() => onOpenTable('blobs-per-batch', timeRange)}
+                    loading={isLoading}
+                >
+                    <BlobsPerBatchChart
+                        key={timeRange}
+                        data={chartsData.batchBlobCounts}
+                        barColor="#A0CBE8"
+                    />
+                </ChartCard>
+                <ChartCard
+                    title="L2 Block Times"
+                    onMore={() => onOpenTable('l2-block-times', timeRange)}
+                    loading={isLoading}
+                >
+                    <BlockTimeChart
+                        key={timeRange}
+                        data={chartsData.l2BlockTimeData}
+                        lineColor="#FAA43A"
+                    />
+                </ChartCard>
+            </div>
+        </>
     );
 };
