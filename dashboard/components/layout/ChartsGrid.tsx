@@ -60,20 +60,8 @@ export const ChartsGrid: React.FC<ChartsGridProps> = ({
     onOpenTable,
     onOpenSequencerDistributionTable,
 }) => {
-    return (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mt-6">
-            {!selectedSequencer && (
-                <ChartCard
-                    title="Sequencer Distribution"
-                    onMore={() => onOpenSequencerDistributionTable(timeRange, 0)}
-                    loading={isLoading}
-                >
-                    <SequencerPieChart
-                        key={timeRange}
-                        data={chartsData.sequencerDistribution}
-                    />
-                </ChartCard>
-            )}
+    const networkPerformanceCharts = (
+        <>
             <ChartCard
                 title="Prove Time"
                 onMore={() => onOpenTable('prove-time', timeRange)}
@@ -96,6 +84,22 @@ export const ChartsGrid: React.FC<ChartsGridProps> = ({
                     lineColor="#5DA5DA"
                 />
             </ChartCard>
+            <ChartCard
+                title="L2 Block Times"
+                onMore={() => onOpenTable('l2-block-times', timeRange)}
+                loading={isLoading}
+            >
+                <BlockTimeChart
+                    key={timeRange}
+                    data={chartsData.l2BlockTimeData}
+                    lineColor="#FAA43A"
+                />
+            </ChartCard>
+        </>
+    );
+
+    const networkHealthCharts = (
+        <>
             <ChartCard
                 title="Gas Used Per Block"
                 onMore={() => onOpenTable('l2-gas-used', timeRange)}
@@ -129,17 +133,46 @@ export const ChartsGrid: React.FC<ChartsGridProps> = ({
                     barColor="#A0CBE8"
                 />
             </ChartCard>
-            <ChartCard
-                title="L2 Block Times"
-                onMore={() => onOpenTable('l2-block-times', timeRange)}
-                loading={isLoading}
-            >
-                <BlockTimeChart
-                    key={timeRange}
-                    data={chartsData.l2BlockTimeData}
-                    lineColor="#FAA43A"
-                />
-            </ChartCard>
+        </>
+    );
+
+    const sequencerCharts = !selectedSequencer ? (
+        <ChartCard
+            title="Sequencer Distribution"
+            onMore={() => onOpenSequencerDistributionTable(timeRange, 0)}
+            loading={isLoading}
+        >
+            <SequencerPieChart
+                key={timeRange}
+                data={chartsData.sequencerDistribution}
+            />
+        </ChartCard>
+    ) : null;
+
+    return (
+        <div className="mt-6">
+            <h2 className="mt-6 mb-2 text-lg font-semibold">
+                {selectedSequencer ? 'Sequencer Performance' : 'Network Performance'}
+            </h2>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+                {networkPerformanceCharts}
+            </div>
+
+            <h2 className="mt-6 mb-2 text-lg font-semibold">
+                {selectedSequencer ? 'Sequencer Health' : 'Network Health'}
+            </h2>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+                {networkHealthCharts}
+            </div>
+
+            {!selectedSequencer && (
+                <>
+                    <h2 className="mt-6 mb-2 text-lg font-semibold">Sequencers</h2>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+                        {sequencerCharts}
+                    </div>
+                </>
+            )}
         </div>
     );
 };
