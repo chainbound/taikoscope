@@ -1393,6 +1393,15 @@ async fn block_transactions(
     Ok(Json(BlockTransactionsResponse { blocks }))
 }
 
+/// Extracts the client IP address from proxy headers or connection info.
+///
+/// Attempts to determine the real client IP by checking headers in order of preference:
+/// 1. `Forwarded` header (RFC 7239)
+/// 2. `X-Forwarded-For` header (legacy)
+/// 3. `X-Real-IP` header (legacy)
+/// 4. Direct connection IP address
+///
+/// Returns the first valid IP address found, or UNSPECIFIED if none can be determined.
 fn client_ip(req: &axum::http::Request<axum::body::Body>) -> std::net::IpAddr {
     use axum::extract::connect_info::ConnectInfo;
     use std::net::{IpAddr, Ipv4Addr, SocketAddr};
@@ -1402,7 +1411,7 @@ fn client_ip(req: &axum::http::Request<axum::body::Body>) -> std::net::IpAddr {
             for part in forwarded.split(',') {
                 for sub in part.split(';') {
                     if let Some(v) = sub.trim().strip_prefix("for=") {
-                        let ip_str = v.trim_matches('"');
+                        let ip_str = v.trim_matches('"').trim_matches(['[', ']']);
                         if let Ok(ip) = ip_str.parse() {
                             return ip;
                         }
@@ -2384,6 +2393,58 @@ mod tests {
         let req = Request::builder()
             .uri("/l2-head")
             .header("X-Forwarded-For", "203.0.113.10")
+            .body(Body::empty())
+            .unwrap();
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::TOO_MANY_REQUESTS);
+    }
+
+    #[tokio::test]
+    async fn rate_limit_honors_forwarded_header() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(vec![MaxRow { block_ts: 42u64 }]));
+        let url = Url::parse(mock.url()).unwrap();
+        let client =
+            ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
+        let state = ApiState::new(client, 1, StdDuration::from_secs(60));
+        let app = router(state);
+
+        let req = Request::builder()
+            .uri("/l2-head")
+            .header("Forwarded", "for=\"203.0.113.20\";proto=https")
+            .body(Body::empty())
+            .unwrap();
+        let _ = app.clone().oneshot(req).await.unwrap();
+
+        let req = Request::builder()
+            .uri("/l2-head")
+            .header("Forwarded", "for=\"203.0.113.20\";proto=https")
+            .body(Body::empty())
+            .unwrap();
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::TOO_MANY_REQUESTS);
+    }
+
+    #[tokio::test]
+    async fn rate_limit_honors_x_real_ip() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(vec![MaxRow { block_ts: 42u64 }]));
+        let url = Url::parse(mock.url()).unwrap();
+        let client =
+            ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
+        let state = ApiState::new(client, 1, StdDuration::from_secs(60));
+        let app = router(state);
+
+        let req = Request::builder()
+            .uri("/l2-head")
+            .header("X-Real-IP", "203.0.113.30")
+            .body(Body::empty())
+            .unwrap();
+        let _ = app.clone().oneshot(req).await.unwrap();
+
+        let req = Request::builder()
+            .uri("/l2-head")
+            .header("X-Real-IP", "203.0.113.30")
             .body(Body::empty())
             .unwrap();
         let resp = app.oneshot(req).await.unwrap();
