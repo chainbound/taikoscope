@@ -2449,4 +2449,58 @@ mod tests {
             })
         );
     }
+
+    #[tokio::test]
+    async fn sequencer_blocks_sql_injection() {
+        let mock = Mock::new();
+        #[derive(Serialize, Row)]
+        struct SeqBlockRowTest {
+            sequencer: AddressBytes,
+            l2_block_number: u64,
+        }
+        mock.add(handlers::provide(vec![SeqBlockRowTest {
+            sequencer: AddressBytes([1u8; 20]),
+            l2_block_number: 42,
+        }]));
+        let app = build_app(mock.url());
+        let addr = "0x0101010101010101010101010101010101010101%27;%20DROP%20TABLE%20--";
+        let uri = format!("/sequencer-blocks?range=1h&address={addr}");
+        let body = send_request(app, &uri).await;
+        assert_eq!(
+            body,
+            json!({
+                "sequencers": [
+                    { "address": "0x0101010101010101010101010101010101010101", "blocks": [42] }
+                ]
+            })
+        );
+    }
+
+    #[tokio::test]
+    async fn block_transactions_sql_injection() {
+        let mock = Mock::new();
+        #[derive(Serialize, Row)]
+        struct TxRowTest {
+            sequencer: AddressBytes,
+            l2_block_number: u64,
+            sum_tx: u32,
+        }
+        mock.add(handlers::provide(vec![TxRowTest {
+            sequencer: AddressBytes([1u8; 20]),
+            l2_block_number: 42,
+            sum_tx: 7,
+        }]));
+        let app = build_app(mock.url());
+        let addr = "0x123%27;%20--";
+        let uri = format!("/block-transactions?range=1h&address={addr}");
+        let body = send_request(app, &uri).await;
+        assert_eq!(
+            body,
+            json!({
+                "blocks": [
+                    { "block": 42, "txs": 7, "sequencer": "0x0101010101010101010101010101010101010101" }
+                ]
+            })
+        );
+    }
 }
