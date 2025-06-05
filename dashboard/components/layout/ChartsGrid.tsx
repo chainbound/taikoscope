@@ -96,7 +96,11 @@ export const ChartsGrid: React.FC<ChartsGridProps> = ({
                     lineColor="#5DA5DA"
                 />
             </ChartCard>
-            <ChartCard title="Gas Used Per Block" loading={isLoading}>
+            <ChartCard
+                title="Gas Used Per Block"
+                onMore={() => onOpenTable('l2-gas-used', timeRange)}
+                loading={isLoading}
+            >
                 <GasUsedChart
                     key={timeRange}
                     data={chartsData.l2GasUsedData}
