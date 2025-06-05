@@ -151,7 +151,9 @@ export const ChartsGrid: React.FC<ChartsGridProps> = ({
 
     return (
         <div className="mt-6">
+            <h2 className="mb-2 text-lg font-semibold">Network Performance</h2>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+                {!selectedSequencer && sequencerCharts}
                 {networkPerformanceCharts}
             </div>
 
@@ -161,15 +163,6 @@ export const ChartsGrid: React.FC<ChartsGridProps> = ({
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
                 {networkHealthCharts}
             </div>
-
-            {!selectedSequencer && (
-                <>
-                    <h2 className="mt-6 mb-2 text-lg font-semibold">Sequencers</h2>
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
-                        {sequencerCharts}
-                    </div>
-                </>
-            )}
         </div>
     );
 };
