@@ -66,7 +66,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
                 params.set('view', 'economics');
               }
               params.delete('table');
-              navigate({ search: params.toString() });
+              navigate({ pathname: '', search: params.toString() });
             } catch (err) {
               console.error('Failed to toggle economics view:', err);
               const fallbackUrl = new URL(window.location.href);
