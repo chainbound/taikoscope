@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { MemoryRouter } from 'react-router-dom';
 import { useNavigationHandler } from '../hooks/useNavigationHandler';
 import { useSearchParams } from '../hooks/useSearchParams';
 
@@ -27,10 +28,15 @@ describe('useNavigationHandler', () => {
     const setTableView = vi.fn();
     let handleBack: (() => void) | undefined;
     const Test = () => {
-      ({ handleBack } = useNavigationHandler({ setTableView, onError: () => {} }));
+      ({ handleBack } = useNavigationHandler({
+        setTableView,
+        onError: () => {},
+      }));
       return null;
     };
-    renderToStaticMarkup(React.createElement(Test));
+    renderToStaticMarkup(
+      React.createElement(MemoryRouter, null, React.createElement(Test)),
+    );
 
     handleBack!();
 
@@ -50,13 +56,18 @@ describe('useNavigationHandler', () => {
     const setTableView = vi.fn();
     let handleBack: (() => void) | undefined;
     const Test = () => {
-      ({ handleBack } = useNavigationHandler({ setTableView, onError: () => {} }));
+      ({ handleBack } = useNavigationHandler({
+        setTableView,
+        onError: () => {},
+      }));
       return null;
     };
     vi.stubGlobal('window', {
       location: new URL('https://example.com/dashboard?view=table&page=1'),
     });
-    renderToStaticMarkup(React.createElement(Test));
+    renderToStaticMarkup(
+      React.createElement(MemoryRouter, null, React.createElement(Test)),
+    );
 
     handleBack!();
 
