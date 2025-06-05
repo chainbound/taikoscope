@@ -72,7 +72,7 @@ describe('apiService', () => {
     });
     const txs = await fetchBlockTransactions('1h');
     expect(txs.error).toBeNull();
-    expect(txs.data).toStrictEqual([{ block: 1, txs: 3, sequencer: '0xabc' }]);
+    expect(txs.data).toStrictEqual([{ block: 1, txs: 3, sequencer: 'Unknown' }]);
   });
 
   it('fetchAvgL2Tps succeeds', async () => {
