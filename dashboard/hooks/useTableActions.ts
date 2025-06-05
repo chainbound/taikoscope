@@ -229,7 +229,7 @@ export const useTableActions = (
     );
 
     openTable(
-      'Transactions Per Second',
+      'L2 Transactions Per Second',
       undefined,
       [
         { key: 'block', label: 'Block Number' },

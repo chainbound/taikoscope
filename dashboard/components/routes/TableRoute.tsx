@@ -87,7 +87,7 @@ export const TableRoute: React.FC = () => {
             .filter((d: any): d is { block: number; tps: number } => d !== null);
 
           setTableView({
-            title: 'Transactions Per Second',
+            title: 'L2 Transactions Per Second',
             description: undefined,
             columns: [
               { key: 'block', label: 'Block Number' },
