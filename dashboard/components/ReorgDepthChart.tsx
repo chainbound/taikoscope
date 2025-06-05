@@ -115,6 +115,7 @@ const ReorgDepthChartComponent: React.FC<ReorgDepthChartProps> = ({ data }) => {
           dataKey="timestamp"
           height={20}
           stroke={TAIKO_PINK}
+          tickFormatter={(v: number) => new Date(v).toLocaleString()}
           startIndex={clampedRange.startIndex}
           endIndex={clampedRange.endIndex}
           onChange={handleBrushChange}
