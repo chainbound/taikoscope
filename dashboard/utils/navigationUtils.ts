@@ -61,7 +61,8 @@ export const sanitizeUrl = (url: string | URL): string => {
     urlObj.search = cleanSearchParams(urlObj.searchParams).toString();
     urlObj.hash = '';
 
-    return urlObj.toString();
+    // Return relative path for SPA navigation
+    return urlObj.pathname + urlObj.search;
   } catch (err) {
     console.error('Failed to sanitize URL:', err);
     return window.location.pathname;
