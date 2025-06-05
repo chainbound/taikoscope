@@ -28,15 +28,10 @@ const BlobsPerBatchChartComponent: React.FC<BlobsPerBatchChartProps> = ({
   }
 
 
-  const sortedData = React.useMemo(
-    () => [...data].sort((a, b) => a.block - b.block),
-    [data],
-  );
-
   return (
     <ResponsiveContainer width="100%" height="100%">
       <BarChart
-        data={sortedData}
+        data={data}
         margin={{ top: 5, right: 70, left: 80, bottom: 40 }}
       >
         <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
