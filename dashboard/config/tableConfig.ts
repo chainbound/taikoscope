@@ -16,6 +16,7 @@ import {
   fetchVerifyTimes,
   fetchBlockTransactions,
   fetchL2BlockTimes,
+  fetchL2GasUsed,
   fetchSequencerDistribution,
 } from '../services/apiService';
 import { getSequencerName } from '../sequencerConfig';
@@ -245,6 +246,28 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
       });
     },
     urlKey: 'l2-block-times',
+  },
+
+  'l2-gas-used': {
+    title: 'Gas Used Per Block',
+    fetcher: fetchL2GasUsed,
+    columns: [
+      { key: 'value', label: 'Block Number' },
+      { key: 'timestamp', label: 'Gas Used' },
+    ],
+    mapData: (data) => data as Record<string, string | number>[],
+    chart: (data) => {
+      const GasUsedChart = React.lazy(() =>
+        import('../components/GasUsedChart').then((m) => ({
+          default: m.GasUsedChart,
+        })),
+      );
+      return React.createElement(GasUsedChart, {
+        data,
+        lineColor: '#E573B5',
+      });
+    },
+    urlKey: 'l2-gas-used',
   },
 
   'sequencer-dist': {
