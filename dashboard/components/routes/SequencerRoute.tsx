@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
-import { useParams, useOutletContext, useNavigate } from 'react-router-dom';
+import { useParams, useOutletContext } from 'react-router-dom';
+import { useRouterNavigation } from '../../hooks/useRouterNavigation';
 import { TimeRange } from '../../types';
 
 interface DashboardContextType {
@@ -16,7 +17,7 @@ interface DashboardContextType {
 
 export const SequencerRoute: React.FC = () => {
   const { address } = useParams<{ address: string }>();
-  const navigate = useNavigate();
+  const { navigateToTable, navigateToDashboard } = useRouterNavigation();
   
   const {
     setSelectedSequencer,
@@ -27,13 +28,11 @@ export const SequencerRoute: React.FC = () => {
   useEffect(() => {
     if (address && sequencerList.includes(address)) {
       setSelectedSequencer(address);
-      // Redirect to sequencer blocks table
-      navigate(`/table/sequencer-blocks?address=${address}&range=${timeRange}`, { replace: true });
+      navigateToTable('sequencer-blocks', { address }, timeRange);
     } else {
-      // Invalid sequencer address, redirect to dashboard
-      navigate('/', { replace: true });
+      navigateToDashboard();
     }
-  }, [address, sequencerList, setSelectedSequencer, navigate, timeRange]);
+  }, [address, sequencerList, setSelectedSequencer, navigateToTable, navigateToDashboard, timeRange]);
 
   return <div>Redirecting...</div>;
 };

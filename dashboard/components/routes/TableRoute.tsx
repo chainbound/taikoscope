@@ -3,8 +3,8 @@ import {
   useParams,
   useSearchParams,
   useOutletContext,
-  useNavigate,
 } from 'react-router-dom';
+import { useRouterNavigation } from '../../hooks/useRouterNavigation';
 import { TableView } from '../views/TableView';
 import { DashboardHeader } from '../DashboardHeader';
 import { TableViewState } from '../../hooks/useTableActions';
@@ -28,7 +28,7 @@ interface DashboardContextType {
 export const TableRoute: React.FC = () => {
   const { tableType } = useParams<{ tableType: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
-  const navigate = useNavigate();
+  const { navigateToDashboard } = useRouterNavigation();
 
   const {
     timeRange,
@@ -182,7 +182,7 @@ export const TableRoute: React.FC = () => {
   ]);
 
   const handleBack = () => {
-    navigate('/');
+    navigateToDashboard();
   };
 
   if (!tableView && !tableLoading) {
