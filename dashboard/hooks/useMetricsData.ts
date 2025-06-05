@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo } from 'react';
+import { useErrorHandler } from './useErrorHandler';
 import { MetricData, TimeRange } from '../types';
 import { createMetrics, type MetricInputData } from '../utils/metricsCreator';
 import { hasBadRequest, getErrorMessage } from '../utils/errorHandler';
@@ -8,7 +9,7 @@ import { useSearchParams } from 'react-router-dom';
 export const useMetricsData = () => {
     const [metrics, setMetrics] = useState<MetricData[]>([]);
     const [loadingMetrics, setLoadingMetrics] = useState(true);
-    const [errorMessage, setErrorMessage] = useState<string>('');
+    const { errorMessage, setErrorMessage } = useErrorHandler();
 
     const [searchParams] = useSearchParams();
 
