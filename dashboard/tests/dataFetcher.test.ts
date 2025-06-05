@@ -41,7 +41,6 @@ describe('dataFetcher', () => {
       fetchL1HeadBlock: ok(11),
       fetchProveTimes: ok([{ name: '1', value: 1, timestamp: 0 }]),
       fetchVerifyTimes: ok([{ name: '2', value: 2, timestamp: 0 }]),
-      fetchL1BlockTimes: ok([{ value: 1, timestamp: 0 }]),
       fetchL2BlockTimes: ok([{ value: 2, timestamp: 0 }]),
       fetchL2GasUsed: ok([{ value: 3, timestamp: 0 }]),
       fetchSequencerDistribution: ok([{ name: 'foo', value: 1 }]),
@@ -56,7 +55,7 @@ describe('dataFetcher', () => {
     expect(res.avgVerify).toBe(4);
     expect(res.sequencerDist[0].name).toBe('foo');
     expect(res.txPerBlock).toHaveLength(1);
-    expect(res.badRequestResults).toHaveLength(20);
+    expect(res.badRequestResults).toHaveLength(19);
   });
 
   it('defaults to empty arrays when service data missing', async () => {
@@ -75,7 +74,6 @@ describe('dataFetcher', () => {
       fetchL1HeadBlock: ok(null),
       fetchProveTimes: ok(null),
       fetchVerifyTimes: ok(null),
-      fetchL1BlockTimes: ok(null),
       fetchL2BlockTimes: ok(null),
       fetchL2GasUsed: ok(null),
       fetchSequencerDistribution: ok(null),

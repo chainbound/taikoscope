@@ -86,7 +86,6 @@ export const useMetricsData = () => {
                             verifyTimes: data.verifyTimes,
                             l2Times: data.l2Times,
                             l2Gas: data.l2Gas,
-                            l1Times: data.l1Times,
                             txPerBlock: data.txPerBlock,
                             blobsPerBatch: data.blobsPerBatch,
                             sequencerDist: data.sequencerDist,

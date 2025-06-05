@@ -18,7 +18,6 @@ import {
   fetchVerifyTimes,
   fetchBlockTransactions,
   fetchL2BlockTimes,
-  fetchL1BlockTimes,
   fetchSequencerDistribution,
 } from '../services/apiService';
 import { getSequencerName } from '../sequencerConfig';
@@ -261,27 +260,6 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     urlKey: 'l2-block-times',
   },
 
-  'l1-block-times': {
-    title: 'L1 Block Times',
-    fetcher: fetchL1BlockTimes,
-    columns: [
-      { key: 'value', label: 'Block Number' },
-      { key: 'timestamp', label: 'Interval (ms)' },
-    ],
-    mapData: (data) => data as Record<string, string | number>[],
-    chart: (data) => {
-      const BlockTimeChart = React.lazy(() =>
-        import('../components/BlockTimeChart').then((m) => ({
-          default: m.BlockTimeChart,
-        })),
-      );
-      return React.createElement(BlockTimeChart, {
-        data,
-        lineColor: '#60BD68',
-      });
-    },
-    urlKey: 'l1-block-times',
-  },
 
   'sequencer-dist': {
     title: 'Sequencer Distribution',

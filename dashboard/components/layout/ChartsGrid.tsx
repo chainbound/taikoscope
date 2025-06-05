@@ -47,7 +47,6 @@ interface ChartsGridProps {
         blockTxData: BlockTransaction[];
         batchBlobCounts: BatchBlobCount[];
         l2BlockTimeData: TimeSeriesData[];
-        l1BlockTimeData: TimeSeriesData[];
     };
     onOpenTable: (table: string, timeRange?: TimeRange) => void;
     onOpenSequencerDistributionTable: (timeRange: TimeRange, page: number) => void;
@@ -135,17 +134,6 @@ export const ChartsGrid: React.FC<ChartsGridProps> = ({
                     key={timeRange}
                     data={chartsData.l2BlockTimeData}
                     lineColor="#FAA43A"
-                />
-            </ChartCard>
-            <ChartCard
-                title="L1 Block Times"
-                onMore={() => onOpenTable('l1-block-times', timeRange)}
-                loading={isLoading}
-            >
-                <BlockTimeChart
-                    key={timeRange}
-                    data={chartsData.l1BlockTimeData}
-                    lineColor="#60BD68"
                 />
             </ChartCard>
         </div>
