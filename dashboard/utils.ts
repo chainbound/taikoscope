@@ -1,4 +1,5 @@
 import React from 'react';
+import { TAIKO_PINK } from './theme';
 
 export const TAIKOSCAN_BASE =
   ((import.meta as any).env.VITE_TAIKOSCAN_BASE as string | undefined) ??
@@ -12,7 +13,8 @@ export const blockLink = (block: number): React.ReactElement =>
       href: `${TAIKOSCAN_BASE}/block/${block}`,
       target: '_blank',
       rel: 'noopener noreferrer',
-      className: 'hover:underline',
+      className: 'font-semibold hover:underline',
+      style: { color: TAIKO_PINK },
     },
     String(block),
   );
