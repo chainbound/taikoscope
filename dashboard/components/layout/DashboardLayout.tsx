@@ -22,7 +22,7 @@ export const DashboardLayout: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <main className="container mx-auto px-4 py-6">
+      <main className="px-4 py-6 md:px-6 lg:px-8">
         <Outlet context={{
           timeRange,
           setTimeRange,
