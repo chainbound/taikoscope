@@ -6,7 +6,9 @@ interface ProfitCalculatorProps {
   metrics: MetricData[];
 }
 
-export const ProfitCalculator: React.FC<ProfitCalculatorProps> = ({ metrics }) => {
+export const ProfitCalculator: React.FC<ProfitCalculatorProps> = ({
+  metrics,
+}) => {
   const feeStr = findMetricValue(metrics, 'transaction fee');
   const fee = parseFloat(feeStr.replace(/[^0-9.]/g, '')) || 0;
 
@@ -15,7 +17,7 @@ export const ProfitCalculator: React.FC<ProfitCalculatorProps> = ({ metrics }) =
   const profit = fee - cloudCost - proverCost;
 
   return (
-    <div className="mt-6 p-4 border rounded-md bg-gray-50">
+    <div className="mt-6 p-4 border border-gray-200 dark:border-gray-700 rounded-md bg-gray-50 dark:bg-gray-800">
       <h2 className="text-lg font-semibold mb-2">Profit Calculator</h2>
       <div className="flex flex-col sm:flex-row sm:space-x-4 space-y-2 sm:space-y-0">
         <label className="flex flex-col text-sm">
