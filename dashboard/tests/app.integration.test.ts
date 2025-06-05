@@ -17,7 +17,6 @@ import {
   fetchL1HeadNumber,
   fetchProveTimes,
   fetchVerifyTimes,
-  fetchL1BlockTimes,
   fetchL2BlockTimes,
   fetchL2GasUsed,
   fetchSequencerDistribution,
@@ -35,7 +34,6 @@ type State = {
   secondsToVerifyData: unknown[];
   l2BlockTimeData: unknown[];
   l2GasUsedData: unknown[];
-  l1BlockTimeData: unknown[];
   sequencerDistribution: unknown[];
   l2ReorgEvents: unknown[];
   slashingEvents: unknown[];
@@ -205,7 +203,6 @@ async function fetchData(range: TimeRange, state: State, economics = false) {
     l1BlockRes,
     proveTimesRes,
     verifyTimesRes,
-    l1TimesRes,
     l2TimesRes,
     l2GasUsedRes,
     sequencerDistRes,
@@ -227,7 +224,6 @@ async function fetchData(range: TimeRange, state: State, economics = false) {
     fetchL1HeadBlock(range),
     fetchProveTimes(range),
     fetchVerifyTimes(range),
-    fetchL1BlockTimes(range),
     fetchL2BlockTimes(range, undefined),
     fetchL2GasUsed(range, undefined),
     fetchSequencerDistribution(range),
@@ -253,7 +249,6 @@ async function fetchData(range: TimeRange, state: State, economics = false) {
   const l1Block = l1BlockRes.data;
   const proveTimes = proveTimesRes.data || [];
   const verifyTimes = verifyTimesRes.data || [];
-  const l1Times = l1TimesRes.data || [];
   const l2Times = l2TimesRes.data || [];
   const l2Gas = l2GasUsedRes.data || [];
   const sequencerDist = sequencerDistRes.data || [];
@@ -274,7 +269,6 @@ async function fetchData(range: TimeRange, state: State, economics = false) {
     l1BlockRes,
     proveTimesRes,
     verifyTimesRes,
-    l1TimesRes,
     l2TimesRes,
     l2GasUsedRes,
     sequencerDistRes,
@@ -304,7 +298,6 @@ async function fetchData(range: TimeRange, state: State, economics = false) {
   state.secondsToVerifyData = verifyTimes;
   state.l2BlockTimeData = l2Times;
   state.l2GasUsedData = l2Gas;
-  state.l1BlockTimeData = l1Times;
   state.sequencerDistribution = sequencerDist;
   state.slashingEvents = slashingEventsData;
   state.forcedInclusionEvents = forcedInclusionEventsData;
@@ -354,7 +347,6 @@ it('app integration', async () => {
     secondsToVerifyData: [],
     l2BlockTimeData: [],
     l2GasUsedData: [],
-    l1BlockTimeData: [],
     sequencerDistribution: [],
     l2ReorgEvents: [],
     slashingEvents: [],

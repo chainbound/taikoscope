@@ -14,7 +14,6 @@ import {
     fetchL1HeadBlock,
     fetchProveTimes,
     fetchVerifyTimes,
-    fetchL1BlockTimes,
     fetchL2BlockTimes,
     fetchL2GasUsed,
     fetchSequencerDistribution,
@@ -40,7 +39,6 @@ export interface MainDashboardData {
     l1Block: number | null;
     proveTimes: any[];
     verifyTimes: any[];
-    l1Times: any[];
     l2Times: any[];
     l2Gas: any[];
     sequencerDist: any[];
@@ -77,7 +75,6 @@ export const fetchMainDashboardData = async (
         l1BlockRes,
         proveTimesRes,
         verifyTimesRes,
-        l1TimesRes,
         l2TimesRes,
         l2GasUsedRes,
         sequencerDistRes,
@@ -106,7 +103,6 @@ export const fetchMainDashboardData = async (
         fetchL1HeadBlock(timeRange),
         fetchProveTimes(timeRange),
         fetchVerifyTimes(timeRange),
-        fetchL1BlockTimes(timeRange),
         fetchL2BlockTimes(
             timeRange,
             selectedSequencer ? getSequencerAddress(selectedSequencer) : undefined,
@@ -146,7 +142,6 @@ export const fetchMainDashboardData = async (
         l1BlockRes,
         proveTimesRes,
         verifyTimesRes,
-        l1TimesRes,
         l2TimesRes,
         l2GasUsedRes,
         sequencerDistRes,
@@ -169,7 +164,6 @@ export const fetchMainDashboardData = async (
         l1Block: l1BlockRes.data,
         proveTimes: proveTimesRes.data || [],
         verifyTimes: verifyTimesRes.data || [],
-        l1Times: l1TimesRes.data || [],
         l2Times: l2TimesRes.data || [],
         l2Gas: l2GasUsedRes.data || [],
         sequencerDist: sequencerDistRes.data || [],
