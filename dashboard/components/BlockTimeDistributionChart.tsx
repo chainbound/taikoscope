@@ -14,7 +14,6 @@ import { formatInterval, shouldShowMinutes } from '../utils';
 // Constants for histogram configuration
 const MIN_BIN_COUNT = 5;
 const MAX_BIN_COUNT = 20;
-const DEFAULT_BIN_COUNT = 20;
 const MIN_REASONABLE_BLOCK_TIME_MS = 0;
 const MAX_REASONABLE_BLOCK_TIME_MS = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
 const CHART_MARGINS = { top: 5, right: 70, left: 80, bottom: 40 };
@@ -94,7 +93,7 @@ const BlockTimeDistributionChartComponent: React.FC<BlockTimeDistributionChartPr
         <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
         <XAxis
           dataKey="interval"
-          tickFormatter={(v: number) => formatInterval(v, showMinutes)}
+          tickFormatter={(v: number) => formatInterval(v, false, showMinutes)}
           stroke="#666666"
           fontSize={12}
           label={{
@@ -119,7 +118,7 @@ const BlockTimeDistributionChartComponent: React.FC<BlockTimeDistributionChartPr
           }}
         />
         <Tooltip
-          labelFormatter={(label: number) => formatInterval(label, showMinutes)}
+          labelFormatter={(label: number) => formatInterval(label, false, showMinutes)}
           formatter={(value: number) => [value.toLocaleString(), 'blocks']}
           contentStyle={{
             backgroundColor: 'rgba(255, 255, 255, 0.8)',
