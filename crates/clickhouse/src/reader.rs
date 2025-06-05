@@ -1944,9 +1944,9 @@ impl ClickhouseReader {
     /// Get the blob count for each batch in the last hour
     pub async fn get_blobs_per_batch_last_hour(&self) -> Result<Vec<BatchBlobCountRow>> {
         let query = format!(
-            "SELECT batch_id, blob_count FROM {db}.batches \
+            "SELECT l1_block_number, batch_id, blob_count FROM {db}.batches \
              WHERE inserted_at >= now64() - INTERVAL 1 HOUR \
-             ORDER BY batch_id",
+             ORDER BY l1_block_number",
             db = self.db_name
         );
 
@@ -1957,9 +1957,9 @@ impl ClickhouseReader {
     /// Get the blob count for each batch in the last 24 hours
     pub async fn get_blobs_per_batch_last_24_hours(&self) -> Result<Vec<BatchBlobCountRow>> {
         let query = format!(
-            "SELECT batch_id, blob_count FROM {db}.batches \
+            "SELECT l1_block_number, batch_id, blob_count FROM {db}.batches \
              WHERE inserted_at >= now64() - INTERVAL 24 HOUR \
-             ORDER BY batch_id",
+             ORDER BY l1_block_number",
             db = self.db_name
         );
 
@@ -1970,9 +1970,9 @@ impl ClickhouseReader {
     /// Get the blob count for each batch in the last 7 days
     pub async fn get_blobs_per_batch_last_7_days(&self) -> Result<Vec<BatchBlobCountRow>> {
         let query = format!(
-            "SELECT batch_id, blob_count FROM {db}.batches \
+            "SELECT l1_block_number, batch_id, blob_count FROM {db}.batches \
              WHERE inserted_at >= now64() - INTERVAL 7 DAY \
-             ORDER BY batch_id",
+             ORDER BY l1_block_number",
             db = self.db_name
         );
 
@@ -1983,9 +1983,9 @@ impl ClickhouseReader {
     /// Get the blob count for each batch within the given range
     pub async fn get_blobs_per_batch(&self, range: TimeRange) -> Result<Vec<BatchBlobCountRow>> {
         let query = format!(
-            "SELECT batch_id, blob_count FROM {db}.batches \
+            "SELECT l1_block_number, batch_id, blob_count FROM {db}.batches \
              WHERE inserted_at >= now64() - INTERVAL {interval} \
-             ORDER BY batch_id",
+             ORDER BY l1_block_number",
             interval = range.interval(),
             db = self.db_name,
         );

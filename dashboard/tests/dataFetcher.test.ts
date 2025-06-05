@@ -44,7 +44,7 @@ describe('dataFetcher', () => {
       fetchL2GasUsed: ok([{ value: 3, timestamp: 0 }]),
       fetchSequencerDistribution: ok([{ name: 'foo', value: 1 }]),
       fetchBlockTransactions: ok([{ block: 1, txs: 2, sequencer: 'bar' }]),
-      fetchBatchBlobCounts: ok([{ batch: 1, blobs: 2 }]),
+      fetchBatchBlobCounts: ok([{ block: 10, batch: 1, blobs: 2 }]),
       fetchL2TxFee: ok(12),
       fetchCloudCost: ok(13),
     });

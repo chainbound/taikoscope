@@ -132,12 +132,14 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     description: 'Number of blobs posted with each batch.',
     fetcher: fetchBatchBlobCounts,
     columns: [
+      { key: 'block', label: 'L1 Block' },
       { key: 'batch', label: 'Batch' },
       { key: 'blobs', label: 'Blobs' },
     ],
     mapData: (data) =>
       (data as Record<string, any>[]).map((d) => ({
-        batch: blockLink(d.batch as number),
+        block: blockLink(d.block as number),
+        batch: d.batch,
         blobs: d.blobs,
       })),
     urlKey: 'blobs-per-batch',

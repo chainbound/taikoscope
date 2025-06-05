@@ -213,6 +213,8 @@ pub struct L2TpsRow {
 /// Row representing the blob count for each batch
 #[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
 pub struct BatchBlobCountRow {
+    /// L1 block number
+    pub l1_block_number: u64,
     /// Batch ID
     pub batch_id: u64,
     /// Number of blobs in the batch

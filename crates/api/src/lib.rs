@@ -2323,13 +2323,23 @@ mod tests {
         let mock = Mock::new();
         #[derive(Serialize, Row)]
         struct BlobRowTest {
+            l1_block_number: u64,
             batch_id: u64,
             blob_count: u8,
         }
-        mock.add(handlers::provide(vec![BlobRowTest { batch_id: 1, blob_count: 3 }]));
+        mock.add(handlers::provide(vec![BlobRowTest {
+            l1_block_number: 10,
+            batch_id: 1,
+            blob_count: 3,
+        }]));
         let app = build_app(mock.url());
         let body = send_request(app, "/blobs-per-batch?range=1h").await;
-        assert_eq!(body, json!({ "batches": [ { "batch_id": 1, "blob_count": 3 } ] }));
+        assert_eq!(
+            body,
+            json!({
+                "batches": [ { "l1_block_number": 10, "batch_id": 1, "blob_count": 3 } ]
+            })
+        );
     }
 
     #[test]
