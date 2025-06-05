@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo } from 'react';
 import {
   BarChart,
   Bar,
@@ -7,7 +7,6 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Brush,
 } from 'recharts';
 import type { BlockTransaction } from '../services/apiService';
 
@@ -31,54 +30,6 @@ const BlockTxChartComponent: React.FC<BlockTxChartProps> = ({
     () => [...data].sort((a, b) => a.block - b.block),
     [data],
   );
-
-  const [brushRange, setBrushRange] = useState({
-    startIndex: 0,
-    endIndex: sortedData.length - 1,
-  });
-
-  useEffect(() => {
-    setBrushRange({
-      startIndex: 0,
-      endIndex: sortedData.length - 1,
-    });
-  }, [sortedData]);
-
-  const clampedRange = React.useMemo(
-    () => ({
-      startIndex: Math.max(
-        0,
-        Math.min(brushRange.startIndex, sortedData.length - 1),
-      ),
-      endIndex: Math.max(
-        0,
-        Math.min(brushRange.endIndex, sortedData.length - 1),
-      ),
-    }),
-    [brushRange, sortedData.length],
-  );
-
-  const handleBrushChange = (range: {
-    startIndex?: number;
-    endIndex?: number;
-  }) => {
-    if (
-      range.startIndex == null ||
-      range.endIndex == null ||
-      !Number.isFinite(range.startIndex) ||
-      !Number.isFinite(range.endIndex)
-    )
-      return;
-    const maxRange = 500;
-    if (range.endIndex - range.startIndex > maxRange) {
-      setBrushRange({
-        startIndex: range.endIndex - maxRange,
-        endIndex: range.endIndex,
-      });
-    } else {
-      setBrushRange({ startIndex: range.startIndex, endIndex: range.endIndex });
-    }
-  };
   return (
     <ResponsiveContainer width="100%" height="100%">
       <BarChart
@@ -125,15 +76,6 @@ const BlockTxChartComponent: React.FC<BlockTxChartProps> = ({
           labelStyle={{ color: '#333' }}
         />
         <Bar dataKey="txs" fill={barColor} name="Txs" />
-        <Brush
-          dataKey="block"
-          height={20}
-          stroke={barColor}
-          padding={{ left: 40, right: 40 }}
-          startIndex={clampedRange.startIndex}
-          endIndex={clampedRange.endIndex}
-          onChange={handleBrushChange}
-        />
       </BarChart>
     </ResponsiveContainer>
   );

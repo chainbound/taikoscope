@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import {
   BarChart,
   Bar,
@@ -7,7 +7,6 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Brush,
 } from 'recharts';
 import type { MissedBlockProposal } from '../types';
 import { TAIKO_PINK } from '../theme';
@@ -31,51 +30,6 @@ const MissedBlockChartComponent: React.FC<MissedBlockChartProps> = ({
     () => [...data].sort((a, b) => a.slot - b.slot),
     [data],
   );
-
-  const [brushRange, setBrushRange] = useState({
-    startIndex: 0,
-    endIndex: sortedData.length - 1,
-  });
-
-  useEffect(() => {
-    setBrushRange({ startIndex: 0, endIndex: sortedData.length - 1 });
-  }, [sortedData]);
-
-  const clampedRange = React.useMemo(
-    () => ({
-      startIndex: Math.max(
-        0,
-        Math.min(brushRange.startIndex, sortedData.length - 1),
-      ),
-      endIndex: Math.max(
-        0,
-        Math.min(brushRange.endIndex, sortedData.length - 1),
-      ),
-    }),
-    [brushRange, sortedData.length],
-  );
-
-  const handleBrushChange = (range: {
-    startIndex?: number;
-    endIndex?: number;
-  }) => {
-    if (
-      range.startIndex == null ||
-      range.endIndex == null ||
-      !Number.isFinite(range.startIndex) ||
-      !Number.isFinite(range.endIndex)
-    )
-      return;
-    const maxRange = 500;
-    if (range.endIndex - range.startIndex > maxRange) {
-      setBrushRange({
-        startIndex: range.endIndex - maxRange,
-        endIndex: range.endIndex,
-      });
-    } else {
-      setBrushRange({ startIndex: range.startIndex, endIndex: range.endIndex });
-    }
-  };
 
   return (
     <ResponsiveContainer width="100%" height="100%">
@@ -122,15 +76,6 @@ const MissedBlockChartComponent: React.FC<MissedBlockChartProps> = ({
           labelStyle={{ color: '#333' }}
         />
         <Bar dataKey={() => 1} fill={TAIKO_PINK} name="Missed" />
-        <Brush
-          dataKey="slot"
-          height={20}
-          stroke={TAIKO_PINK}
-          padding={{ left: 40, right: 40 }}
-          startIndex={clampedRange.startIndex}
-          endIndex={clampedRange.endIndex}
-          onChange={handleBrushChange}
-        />
       </BarChart>
     </ResponsiveContainer>
   );

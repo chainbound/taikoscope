@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import {
   LineChart,
   Line,
@@ -7,7 +7,6 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Brush,
 } from 'recharts';
 import { TimeSeriesData } from '../types';
 import { formatLargeNumber } from '../utils';
@@ -28,47 +27,6 @@ const GasUsedChartComponent: React.FC<GasUsedChartProps> = ({
       </div>
     );
   }
-  const [brushRange, setBrushRange] = useState({
-    startIndex: 0,
-    endIndex: data.length - 1,
-  });
-
-  useEffect(() => {
-    setBrushRange({
-      startIndex: 0,
-      endIndex: data.length - 1,
-    });
-  }, [data]);
-
-  const clampedRange = React.useMemo(
-    () => ({
-      startIndex: Math.max(0, Math.min(brushRange.startIndex, data.length - 1)),
-      endIndex: Math.max(0, Math.min(brushRange.endIndex, data.length - 1)),
-    }),
-    [brushRange, data.length],
-  );
-
-  const handleBrushChange = (range: {
-    startIndex?: number;
-    endIndex?: number;
-  }) => {
-    if (
-      range.startIndex == null ||
-      range.endIndex == null ||
-      !Number.isFinite(range.startIndex) ||
-      !Number.isFinite(range.endIndex)
-    )
-      return;
-    const maxRange = 500;
-    if (range.endIndex - range.startIndex > maxRange) {
-      setBrushRange({
-        startIndex: range.endIndex - maxRange,
-        endIndex: range.endIndex,
-      });
-    } else {
-      setBrushRange({ startIndex: range.startIndex, endIndex: range.endIndex });
-    }
-  };
   return (
     <ResponsiveContainer width="100%" height="100%">
       <LineChart
@@ -121,16 +79,6 @@ const GasUsedChartComponent: React.FC<GasUsedChartProps> = ({
           dot={false}
           activeDot={data.length <= 100 ? { r: 6 } : false}
           name="Gas Used"
-        />
-        <Brush
-          dataKey="timestamp"
-          height={20}
-          stroke={lineColor}
-          padding={{ left: 40, right: 40 }}
-          startIndex={clampedRange.startIndex}
-          endIndex={clampedRange.endIndex}
-          onChange={handleBrushChange}
-          tickFormatter={(v: number) => new Date(v).toLocaleString()}
         />
       </LineChart>
     </ResponsiveContainer>
