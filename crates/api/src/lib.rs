@@ -14,7 +14,7 @@ use axum::{
     },
     routing::get,
 };
-use chrono::{Duration as ChronoDuration, Utc};
+use chrono::{Duration as ChronoDuration, TimeZone, Utc};
 #[cfg(test)]
 use clickhouse_lib::HashBytes;
 use clickhouse_lib::{AddressBytes, ClickhouseReader, TimeRange};
@@ -200,6 +200,14 @@ impl ApiState {
 struct RangeAddressQuery {
     range: Option<String>,
     address: Option<String>,
+    #[serde(rename = "created[gt]")]
+    created_gt: Option<i64>,
+    #[serde(rename = "created[gte]")]
+    created_gte: Option<i64>,
+    #[serde(rename = "created[lt]")]
+    created_lt: Option<i64>,
+    #[serde(rename = "created[lte]")]
+    created_lte: Option<i64>,
 }
 
 type RangeQuery = RangeAddressQuery;
@@ -212,6 +220,14 @@ struct BlockTransactionsQuery {
     starting_after: Option<u64>,
     ending_before: Option<u64>,
     address: Option<String>,
+    #[serde(rename = "created[gt]")]
+    created_gt: Option<i64>,
+    #[serde(rename = "created[gte]")]
+    created_gte: Option<i64>,
+    #[serde(rename = "created[lt]")]
+    created_lt: Option<i64>,
+    #[serde(rename = "created[lte]")]
+    created_lte: Option<i64>,
 }
 
 fn range_duration(range: &Option<String>) -> ChronoDuration {
@@ -236,6 +252,32 @@ fn range_duration(range: &Option<String>) -> ChronoDuration {
     }
 
     ChronoDuration::hours(1)
+}
+
+fn range_start(
+    range: &Option<String>,
+    gt: &Option<i64>,
+    gte: &Option<i64>,
+    lt: &Option<i64>,
+    lte: &Option<i64>,
+) -> chrono::DateTime<Utc> {
+    let now = Utc::now();
+    let _ = (lt, lte);
+    let ts = match (gt.as_ref(), gte.as_ref()) {
+        (Some(gt), Some(gte)) => Some((*gt + 1).max(*gte)),
+        (Some(gt), None) => Some(*gt + 1),
+        (None, Some(gte)) => Some(*gte),
+        (None, None) => None,
+    };
+    let mut start = ts.and_then(|t| Utc.timestamp_millis_opt(t).single());
+
+    if start.is_none() {
+        start = Some(now - range_duration(range));
+    }
+
+    let limit = now - ChronoDuration::days(7);
+    let start = start.unwrap_or(now);
+    if start < limit { limit } else { start }
 }
 
 #[utoipa::path(
@@ -500,7 +542,13 @@ async fn slashings(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
 ) -> Result<Json<SlashingEventsResponse>, ErrorResponse> {
-    let since = Utc::now() - range_duration(&params.range);
+    let since = range_start(
+        &params.range,
+        &params.created_gt,
+        &params.created_gte,
+        &params.created_lt,
+        &params.created_lte,
+    );
     let events = state.client.get_slashing_events_since(since).await.map_err(|e| {
         tracing::error!(error = %e, "Failed to get slashing events");
         ErrorResponse::new(
@@ -530,7 +578,13 @@ async fn forced_inclusions(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
 ) -> Result<Json<ForcedInclusionEventsResponse>, ErrorResponse> {
-    let since = Utc::now() - range_duration(&params.range);
+    let since = range_start(
+        &params.range,
+        &params.created_gt,
+        &params.created_gte,
+        &params.created_lt,
+        &params.created_lte,
+    );
     let events = state.client.get_forced_inclusions_since(since).await.map_err(|e| {
         tracing::error!(error = %e, "Failed to get forced inclusion events");
         ErrorResponse::new(
@@ -560,7 +614,13 @@ async fn reorgs(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
 ) -> Result<Json<ReorgEventsResponse>, ErrorResponse> {
-    let since = Utc::now() - range_duration(&params.range);
+    let since = range_start(
+        &params.range,
+        &params.created_gt,
+        &params.created_gte,
+        &params.created_lt,
+        &params.created_lte,
+    );
     let events = state.client.get_l2_reorgs_since(since).await.map_err(|e| {
         tracing::error!(error = %e, "Failed to get reorg events");
         ErrorResponse::new(
@@ -590,7 +650,13 @@ async fn active_gateways(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
 ) -> Result<Json<ActiveGatewaysResponse>, ErrorResponse> {
-    let since = Utc::now() - range_duration(&params.range);
+    let since = range_start(
+        &params.range,
+        &params.created_gt,
+        &params.created_gte,
+        &params.created_lt,
+        &params.created_lte,
+    );
     let gateways = state.client.get_active_gateways_since(since).await.map_err(|e| {
         tracing::error!(error = %e, "Failed to get active gateways");
         ErrorResponse::new(
@@ -1298,7 +1364,13 @@ async fn sequencer_distribution(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
 ) -> Result<Json<SequencerDistributionResponse>, ErrorResponse> {
-    let since = Utc::now() - range_duration(&params.range);
+    let since = range_start(
+        &params.range,
+        &params.created_gt,
+        &params.created_gte,
+        &params.created_lt,
+        &params.created_lte,
+    );
     let rows = state.client.get_sequencer_distribution_since(since).await.map_err(|e| {
         tracing::error!(error = %e, "Failed to get sequencer distribution");
         ErrorResponse::new(
@@ -1335,7 +1407,13 @@ async fn sequencer_blocks(
     Query(params): Query<SequencerBlocksQuery>,
     State(state): State<ApiState>,
 ) -> Result<Json<SequencerBlocksResponse>, ErrorResponse> {
-    let since = Utc::now() - range_duration(&params.range);
+    let since = range_start(
+        &params.range,
+        &params.created_gt,
+        &params.created_gte,
+        &params.created_lt,
+        &params.created_lte,
+    );
     let rows = state.client.get_sequencer_blocks_since(since).await.map_err(|e| {
         tracing::error!(error = %e, "Failed to get sequencer blocks");
         ErrorResponse::new(
@@ -1389,7 +1467,27 @@ async fn block_transactions(
     Query(params): Query<BlockTransactionsQuery>,
     State(state): State<ApiState>,
 ) -> Result<Json<BlockTransactionsResponse>, ErrorResponse> {
-    let since = Utc::now() - range_duration(&params.range);
+    if (params.created_gt.is_some() ||
+        params.created_gte.is_some() ||
+        params.created_lt.is_some() ||
+        params.created_lte.is_some()) &&
+        (params.starting_after.is_some() || params.ending_before.is_some())
+    {
+        return Err(ErrorResponse::new(
+            "invalid-params",
+            "Time range params cannot be combined with slot range params",
+            StatusCode::BAD_REQUEST,
+            "",
+        ));
+    }
+
+    let since = range_start(
+        &params.range,
+        &params.created_gt,
+        &params.created_gte,
+        &params.created_lt,
+        &params.created_lte,
+    );
     let limit = params.limit.unwrap_or(50).clamp(1, MAX_BLOCK_TRANSACTIONS_LIMIT);
     if params.starting_after.is_some() && params.ending_before.is_some() {
         tracing::warn!("starting_after and ending_before are mutually exclusive");
