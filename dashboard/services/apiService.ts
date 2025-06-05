@@ -42,6 +42,8 @@ const fetchJson = async <T>(
       if (!res.ok) {
         if (res.status === 429) {
           showToast('Too many requests, please slow down.');
+        } else if (res.status >= 500) {
+          showToast('Server error, please try again later.');
         }
         let error: ErrorResponse | null = null;
         try {
@@ -60,6 +62,7 @@ const fetchJson = async <T>(
         continue;
       }
       console.error(`Failed to fetch ${url}`, error);
+      showToast('Network error, please check your connection.');
       throw error;
     }
   }
