@@ -28,6 +28,10 @@ export interface L2ReorgEvent {
   timestamp: number;
 }
 
+export interface MissedBlockProposal {
+  slot: number;
+}
+
 export interface SlashingEvent {
   l1_block_number: number;
   validator_addr: number[];

@@ -11,7 +11,7 @@ import {
 } from 'recharts';
 import { L2ReorgEvent } from '../types';
 import { TAIKO_PINK } from '../theme';
-import { formatTime } from '../utils';
+
 
 interface ReorgDepthChartProps {
   data: L2ReorgEvent[];

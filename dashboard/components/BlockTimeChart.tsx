@@ -16,7 +16,6 @@ import {
   formatDecimal,
   formatInterval,
   shouldShowMinutes,
-  formatTime,
 } from '../utils';
 
 interface BlockTimeChartProps {
