@@ -71,8 +71,11 @@ export const useDataFetcher = ({
     }
   }, [data, updateChartsData, updateLastRefresh]);
 
-  return {
-    fetchData,
-    handleManualRefresh,
-  };
+  return useMemo(
+    () => ({
+      fetchData,
+      handleManualRefresh,
+    }),
+    [fetchData, handleManualRefresh],
+  );
 };

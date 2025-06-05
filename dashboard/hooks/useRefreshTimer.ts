@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { loadRefreshRate, saveRefreshRate, isValidRefreshRate } from '../utils';
 
 export const useRefreshTimer = () => {
@@ -21,10 +21,13 @@ export const useRefreshTimer = () => {
     setLastRefresh(Date.now());
   }, []);
 
-  return {
-    refreshRate,
-    setRefreshRate,
-    lastRefresh,
-    updateLastRefresh,
-  };
+  return useMemo(
+    () => ({
+      refreshRate,
+      setRefreshRate,
+      lastRefresh,
+      updateLastRefresh,
+    }),
+    [refreshRate, setRefreshRate, lastRefresh, updateLastRefresh],
+  );
 };

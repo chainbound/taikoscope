@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { TimeRange } from '../types';
 import { TABLE_CONFIGS } from '../config/tableConfig';
 import { getSequencerAddress } from '../sequencerConfig';
@@ -152,10 +152,10 @@ export const useTableActions = (
             setTableView((prev) =>
               prev
                 ? {
-                  ...prev,
-                  rows: refreshMappedData,
-                  chart: refreshChart,
-                }
+                    ...prev,
+                    rows: refreshMappedData,
+                    chart: refreshChart,
+                  }
                 : null,
             );
           } catch (error) {
@@ -164,9 +164,9 @@ export const useTableActions = (
             setTableView((prev) =>
               prev
                 ? {
-                  ...prev,
-                  rows: [], // Clear data on error to prevent stale data
-                }
+                    ...prev,
+                    rows: [], // Clear data on error to prevent stale data
+                  }
                 : null,
             );
           }
@@ -181,9 +181,9 @@ export const useTableActions = (
           mappedData,
           tableKey === 'sequencer-dist'
             ? (row) =>
-              openGenericTable('sequencer-blocks', range, {
-                address: row.name,
-              })
+                openGenericTable('sequencer-blocks', range, {
+                  address: row.name,
+                })
             : undefined,
           undefined,
           undefined,
@@ -304,21 +304,21 @@ export const useTableActions = (
           setTableView((prev) =>
             prev
               ? {
-                ...prev,
-                rows: (refreshDistRes.data || []) as unknown as Record<
-                  string,
-                  string | number
-                >[],
-                extraTable: prev.extraTable
-                  ? {
-                    ...prev.extraTable,
-                    rows: (refreshTxRes.data || []) as unknown as Record<
-                      string,
-                      string | number
-                    >[],
-                  }
-                  : undefined,
-              }
+                  ...prev,
+                  rows: (refreshDistRes.data || []) as unknown as Record<
+                    string,
+                    string | number
+                  >[],
+                  extraTable: prev.extraTable
+                    ? {
+                        ...prev.extraTable,
+                        rows: (refreshTxRes.data || []) as unknown as Record<
+                          string,
+                          string | number
+                        >[],
+                      }
+                    : undefined,
+                }
               : null,
           );
         } catch (error) {
@@ -330,15 +330,15 @@ export const useTableActions = (
           setTableView((prev) =>
             prev
               ? {
-                ...prev,
-                rows: [],
-                extraTable: prev.extraTable
-                  ? {
-                    ...prev.extraTable,
-                    rows: [],
-                  }
-                  : undefined,
-              }
+                  ...prev,
+                  rows: [],
+                  extraTable: prev.extraTable
+                    ? {
+                        ...prev.extraTable,
+                        rows: [],
+                      }
+                    : undefined,
+                }
               : null,
           );
         }
@@ -353,7 +353,9 @@ export const useTableActions = (
         ],
         (distRes.data || []) as unknown as Record<string, string | number>[],
         (row) => {
-          const cleanParams: Record<string, string | number> = { address: String(row.name) };
+          const cleanParams: Record<string, string | number> = {
+            address: String(row.name),
+          };
           navigateToTable('sequencer-blocks', cleanParams, range);
         },
         undefined,
@@ -405,13 +407,24 @@ export const useTableActions = (
     ],
   );
 
-  return {
-    tableView,
-    tableLoading,
-    setTableView,
-    setTableLoading,
-    openGenericTable,
-    openTpsTable,
-    openSequencerDistributionTable,
-  };
+  return useMemo(
+    () => ({
+      tableView,
+      tableLoading,
+      setTableView,
+      setTableLoading,
+      openGenericTable,
+      openTpsTable,
+      openSequencerDistributionTable,
+    }),
+    [
+      tableView,
+      tableLoading,
+      setTableView,
+      setTableLoading,
+      openGenericTable,
+      openTpsTable,
+      openSequencerDistributionTable,
+    ],
+  );
 };

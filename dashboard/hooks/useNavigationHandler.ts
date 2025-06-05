@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useRouterNavigation } from './useRouterNavigation';
 
@@ -38,8 +38,11 @@ export const useNavigationHandler = ({
     [updateSearchParams, onError],
   );
 
-  return {
-    handleBack,
-    handleSequencerChange,
-  };
+  return useMemo(
+    () => ({
+      handleBack,
+      handleSequencerChange,
+    }),
+    [handleBack, handleSequencerChange],
+  );
 };
