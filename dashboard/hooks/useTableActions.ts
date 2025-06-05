@@ -177,7 +177,7 @@ export const useTableActions = (
 
         openTable(
           title,
-          undefined,
+          config.description,
           config.columns,
           mappedData,
           tableKey === 'sequencer-dist'
@@ -231,7 +231,7 @@ export const useTableActions = (
 
     openTable(
       'L2 Transactions Per Second',
-      undefined,
+      'Transactions per second for each L2 block.',
       [
         { key: 'block', label: 'L2 Block Number' },
         { key: 'tps', label: 'TPS' },
@@ -348,7 +348,7 @@ export const useTableActions = (
 
       openTable(
         'Sequencer Distribution',
-        undefined,
+        'Breakdown of blocks proposed by each sequencer.',
         [
           { key: 'name', label: 'Sequencer' },
           { key: 'value', label: 'Blocks' },
