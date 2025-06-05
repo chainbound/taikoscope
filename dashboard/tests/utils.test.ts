@@ -5,6 +5,7 @@ import {
   formatInterval,
   formatBatchDuration,
   computeBatchDurationFlags,
+  computeIntervalFlags,
   shouldShowMinutes,
   findMetricValue,
   formatSequencerTooltip,
@@ -25,8 +26,9 @@ describe('utils', () => {
     expect(formatSeconds(150)).toBe('2.5m');
     expect(formatSeconds(7200)).toBe('2h');
 
-    expect(formatInterval(30000, false)).toBe('30 seconds');
-    expect(formatInterval(180000, true)).toBe('3.00 minutes');
+    expect(formatInterval(30000, false, false)).toBe('30 seconds');
+    expect(formatInterval(180000, false, true)).toBe('3.00 minutes');
+    expect(formatInterval(7200000, true, false)).toBe('2.00 hours');
 
     expect(formatBatchDuration(45, false, false)).toBe('45 seconds');
     expect(formatBatchDuration(150, false, true)).toBe('2.50 minutes');
@@ -46,6 +48,29 @@ describe('utils', () => {
     expect(flagsMinutes.showMinutes).toBe(true);
 
     const flagsNone = computeBatchDurationFlags([{ value: 60 }, { value: 80 }]);
+    expect(flagsNone.showHours).toBe(false);
+    expect(flagsNone.showMinutes).toBe(false);
+  });
+
+  it('computes interval flags', () => {
+    const flags = computeIntervalFlags([
+      { timestamp: 1000 },
+      { timestamp: 8_000_000 },
+    ]);
+    expect(flags.showHours).toBe(true);
+    expect(flags.showMinutes).toBe(false);
+
+    const flagsMinutes = computeIntervalFlags([
+      { timestamp: 150_000 },
+      { timestamp: 100_000 },
+    ]);
+    expect(flagsMinutes.showHours).toBe(false);
+    expect(flagsMinutes.showMinutes).toBe(true);
+
+    const flagsNone = computeIntervalFlags([
+      { timestamp: 50_000 },
+      { timestamp: 80_000 },
+    ]);
     expect(flagsNone.showHours).toBe(false);
     expect(flagsNone.showMinutes).toBe(false);
   });

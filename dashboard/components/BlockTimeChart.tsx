@@ -11,11 +11,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { TimeSeriesData } from '../types';
-import {
-  formatDecimal,
-  formatInterval,
-  shouldShowMinutes,
-} from '../utils';
+import { formatDecimal, formatInterval, computeIntervalFlags } from '../utils';
 
 interface BlockTimeChartProps {
   data: TimeSeriesData[];
@@ -35,7 +31,7 @@ const BlockTimeChartComponent: React.FC<BlockTimeChartProps> = ({
       </div>
     );
   }
-  const showMinutes = shouldShowMinutes(data);
+  const { showHours, showMinutes } = computeIntervalFlags(data);
   const ChartComponent = histogram ? BarChart : LineChart;
   return (
     <ResponsiveContainer width="100%" height="100%">
@@ -63,12 +59,14 @@ const BlockTimeChartComponent: React.FC<BlockTimeChartProps> = ({
           fontSize={12}
           domain={['auto', 'auto']}
           tickFormatter={(v) =>
-            showMinutes
-              ? String(Number(formatDecimal(v / 60000)))
-              : String(Number(formatDecimal(v / 1000)))
+            showHours
+              ? String(Number(formatDecimal(v / 3600000)))
+              : showMinutes
+                ? String(Number(formatDecimal(v / 60000)))
+                : String(Number(formatDecimal(v / 1000)))
           }
           label={{
-            value: showMinutes ? 'Minutes' : 'Seconds',
+            value: showHours ? 'Hours' : showMinutes ? 'Minutes' : 'Seconds',
             angle: -90,
             position: 'insideLeft',
             offset: -16,
@@ -78,7 +76,9 @@ const BlockTimeChartComponent: React.FC<BlockTimeChartProps> = ({
         />
         <Tooltip
           labelFormatter={(label: number) => `Block ${label.toLocaleString()}`}
-          formatter={(value: number) => [formatInterval(value, showMinutes)]}
+          formatter={(value: number) => [
+            formatInterval(value, showHours, showMinutes),
+          ]}
           contentStyle={{
             backgroundColor: 'rgba(255, 255, 255, 0.8)',
             borderColor: lineColor,
