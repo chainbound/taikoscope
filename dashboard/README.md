@@ -14,7 +14,9 @@ This contains everything you need to run your app locally.
    `./setup-fonts.sh`
 3. Run the app:
    `npm run dev`
-4. Build for production:
+4. Run with mocked data (no API required):
+   `npm run dev:mock`
+5. Build for production:
    `npm run build`
-5. Check for trailing whitespace:
+6. Check for trailing whitespace:
    `npm run lint:whitespace`

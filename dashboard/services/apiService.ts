@@ -4,6 +4,7 @@ export const API_BASE: string =
 
 import { getSequencerName } from '../sequencerConfig';
 import { showToast } from '../utils/toast';
+import { getMockData } from './mockData';
 
 import type {
   TimeSeriesData,
@@ -22,6 +23,8 @@ export interface RequestResult<T> {
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+const USE_MOCK = metaEnv.VITE_USE_MOCK_DATA === 'true';
+
 interface FetchOptions {
   retries?: number;
   retryDelay?: number;
@@ -32,6 +35,10 @@ const fetchJson = async <T>(
   url: string,
   { retries = 2, retryDelay = 500, timeout = 10_000 }: FetchOptions = {},
 ): Promise<RequestResult<T>> => {
+  if (USE_MOCK) {
+    const path = new URL(url).pathname.replace('/v1', '');
+    return { data: getMockData(path) as T, badRequest: false, error: null };
+  }
   for (let attempt = 0; attempt <= retries; attempt++) {
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), timeout);
