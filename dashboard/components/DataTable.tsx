@@ -111,13 +111,13 @@ export const DataTable: React.FC<DataTableProps> = ({
           </button>
         )}
       </div>
-      <h2 className="text-xl font-semibold mb-2">{title}</h2>
-      {description && <p className="text-gray-600 mb-2">{description}</p>}
+      <h2 className="text-xl font-semibold mb-2 text-gray-900 dark:text-gray-100">{title}</h2>
+      {description && <p className="text-gray-600 dark:text-gray-400 mb-2">{description}</p>}
       {chart && (
         <div className="h-64 md:h-80 w-full mb-4">
           <React.Suspense
             fallback={
-              <div className="flex items-center justify-center h-full text-gray-500">
+              <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
                 Loading...
               </div>
             }
@@ -127,11 +127,11 @@ export const DataTable: React.FC<DataTableProps> = ({
         </div>
       )}
       <div className="overflow-x-auto">
-        <table className="min-w-full border divide-y divide-gray-200">
+        <table className="min-w-full border border-gray-200 dark:border-gray-700 divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
           <thead>
             <tr>
               {columns.map((col) => (
-                <th key={col.key} className="px-2 py-1 text-left">
+                <th key={col.key} className="px-2 py-1 text-left text-gray-900 dark:text-gray-100">
                   {col.label}
                 </th>
               ))}
@@ -142,7 +142,7 @@ export const DataTable: React.FC<DataTableProps> = ({
               <tr>
                 <td
                   colSpan={columns.length}
-                  className="px-2 py-4 text-center text-gray-500"
+                  className="px-2 py-4 text-center text-gray-500 dark:text-gray-400"
                 >
                   No data available
                 </td>
@@ -151,7 +151,7 @@ export const DataTable: React.FC<DataTableProps> = ({
               pageRows.map((row, idx) => (
                 <tr
                   key={idx}
-                  className={`border-t hover:bg-gray-50 ${onRowClick && !isNavigating ? 'cursor-pointer' : ''} ${isNavigating ? 'pointer-events-none opacity-50' : ''}`}
+                  className={`border-t border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 ${onRowClick && !isNavigating ? 'cursor-pointer' : ''} ${isNavigating ? 'pointer-events-none opacity-50' : ''}`}
                   onClick={
                     onRowClick && !isNavigating
                       ? () => {
@@ -165,7 +165,7 @@ export const DataTable: React.FC<DataTableProps> = ({
                   }
                 >
                   {columns.map((col) => (
-                    <td key={col.key} className="px-2 py-1">
+                    <td key={col.key} className="px-2 py-1 text-gray-900 dark:text-gray-100">
                       {row[col.key] as React.ReactNode}
                     </td>
                   ))}
@@ -180,18 +180,18 @@ export const DataTable: React.FC<DataTableProps> = ({
           <button
             onClick={() => setPage((p) => p - 1)}
             disabled={disablePrev || isNavigating}
-            className={`disabled:text-gray-400 ${isNavigating ? 'opacity-50' : ''}`}
+            className={`disabled:text-gray-400 dark:disabled:text-gray-500 ${isNavigating ? 'opacity-50' : ''}`}
             style={
               disablePrev || isNavigating ? undefined : { color: TAIKO_PINK }
             }
           >
             Prev
           </button>
-          <span>Page {page + 1}</span>
+          <span className="text-gray-900 dark:text-gray-100">Page {page + 1}</span>
           <button
             onClick={() => setPage((p) => p + 1)}
             disabled={disableNext || isNavigating}
-            className={`disabled:text-gray-400 ${isNavigating ? 'opacity-50' : ''}`}
+            className={`disabled:text-gray-400 dark:disabled:text-gray-500 ${isNavigating ? 'opacity-50' : ''}`}
             style={
               disableNext || isNavigating ? undefined : { color: TAIKO_PINK }
             }
@@ -203,13 +203,13 @@ export const DataTable: React.FC<DataTableProps> = ({
 
       {extraTable ? (
         <div className="mt-8">
-          <h3 className="text-lg font-semibold mb-2">{extraTable.title}</h3>
+          <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-gray-100">{extraTable.title}</h3>
           <div className="overflow-x-auto">
-            <table className="min-w-full border divide-y divide-gray-200">
+            <table className="min-w-full border border-gray-200 dark:border-gray-700 divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
               <thead>
                 <tr>
                   {extraTable.columns.map((col) => (
-                    <th key={col.key} className="px-2 py-1 text-left">
+                    <th key={col.key} className="px-2 py-1 text-left text-gray-900 dark:text-gray-100">
                       {col.label}
                     </th>
                   ))}
@@ -220,7 +220,7 @@ export const DataTable: React.FC<DataTableProps> = ({
                   <tr>
                     <td
                       colSpan={extraTable.columns.length}
-                      className="px-2 py-4 text-center text-gray-500"
+                      className="px-2 py-4 text-center text-gray-500 dark:text-gray-400"
                     >
                       No data available
                     </td>
@@ -229,7 +229,7 @@ export const DataTable: React.FC<DataTableProps> = ({
                   extraTable.rows.map((row, idx) => (
                     <tr
                       key={idx}
-                      className={`border-t hover:bg-gray-50 ${extraTable.onRowClick && !isNavigating ? 'cursor-pointer' : ''} ${isNavigating ? 'pointer-events-none opacity-50' : ''}`}
+                      className={`border-t border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 ${extraTable.onRowClick && !isNavigating ? 'cursor-pointer' : ''} ${isNavigating ? 'pointer-events-none opacity-50' : ''}`}
                       onClick={
                         extraTable.onRowClick && !isNavigating
                           ? () => {
@@ -246,7 +246,7 @@ export const DataTable: React.FC<DataTableProps> = ({
                       }
                     >
                       {extraTable.columns.map((col) => (
-                        <td key={col.key} className="px-2 py-1">
+                        <td key={col.key} className="px-2 py-1 text-gray-900 dark:text-gray-100">
                           {row[col.key] as React.ReactNode}
                         </td>
                       ))}
@@ -261,7 +261,7 @@ export const DataTable: React.FC<DataTableProps> = ({
               <button
                 onClick={extraTable.pagination.onPrev}
                 disabled={extraTable.pagination.disablePrev || isNavigating}
-                className={`disabled:text-gray-400 ${isNavigating ? 'opacity-50' : ''}`}
+                className={`disabled:text-gray-400 dark:disabled:text-gray-500 ${isNavigating ? 'opacity-50' : ''}`}
                 style={
                   extraTable.pagination.disablePrev || isNavigating
                     ? undefined
@@ -270,11 +270,11 @@ export const DataTable: React.FC<DataTableProps> = ({
               >
                 Prev
               </button>
-              <span>Page {extraTable.pagination.page + 1}</span>
+              <span className="text-gray-900 dark:text-gray-100">Page {extraTable.pagination.page + 1}</span>
               <button
                 onClick={extraTable.pagination.onNext}
                 disabled={extraTable.pagination.disableNext || isNavigating}
-                className={`disabled:text-gray-400 ${isNavigating ? 'opacity-50' : ''}`}
+                className={`disabled:text-gray-400 dark:disabled:text-gray-500 ${isNavigating ? 'opacity-50' : ''}`}
                 style={
                   extraTable.pagination.disableNext || isNavigating
                     ? undefined

@@ -5,6 +5,7 @@ import { TAIKO_PINK } from '../theme';
 import { isValidRefreshRate } from '../utils';
 import { useSearchParams as useRouterSearchParams } from 'react-router-dom';
 import { useRouterNavigation } from '../hooks/useRouterNavigation';
+import { ThemeToggle } from './ThemeToggle';
 
 const metaEnv = (import.meta as any).env as ImportMetaEnv | undefined;
 const NETWORK_NAME =
@@ -36,7 +37,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   const [searchParams] = useRouterSearchParams();
   const { navigateToDashboard, updateSearchParams } = useRouterNavigation();
   return (
-    <header className="flex flex-col md:flex-row justify-between items-center pb-4 border-b border-gray-200">
+    <header className="flex flex-col md:flex-row justify-between items-center pb-4 border-b border-gray-200 dark:border-gray-700">
       <div className="flex items-baseline space-x-4">
         <h1
           className="text-3xl font-bold cursor-pointer hover:underline"
@@ -92,6 +93,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
           value={selectedSequencer}
           onChange={onSequencerChange}
         />
+        <ThemeToggle />
         {/* Export button removed as per request */}
       </div>
     </header>
@@ -110,13 +112,13 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
   const ranges: TimeRange[] = ['1h', '24h', '7d'];
 
   return (
-    <div className="flex space-x-1 bg-gray-200 p-0.5 rounded-md">
+    <div className="flex space-x-1 bg-gray-200 dark:bg-gray-700 p-0.5 rounded-md">
       {ranges.map((range) => (
         <button
           key={range}
           onClick={() => onTimeRangeChange(range)}
           className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors
-            ${currentTimeRange === range ? 'bg-white shadow-sm' : 'text-gray-600 hover:bg-gray-100'}`} /* Updated Taiko Pink for active button */
+            ${currentTimeRange === range ? 'bg-white dark:bg-gray-800 shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'}`} /* Updated Taiko Pink for active button */
           style={currentTimeRange === range ? { color: TAIKO_PINK } : undefined}
         >
           {range.toUpperCase()}
@@ -150,14 +152,14 @@ export const RefreshRateInput: React.FC<RefreshRateInputProps> = ({
 
   return (
     <div className="flex items-center space-x-1">
-      <label htmlFor="refreshRate" className="text-sm text-gray-600">
+      <label htmlFor="refreshRate" className="text-sm text-gray-600 dark:text-gray-300">
         Refresh
       </label>
       <select
         id="refreshRate"
         value={refreshRate}
         onChange={handleChange}
-        className="p-1 border rounded-md text-sm"
+        className="p-1 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
       >
         {options.map(({ label, value }) => (
           <option key={value} value={value}>
