@@ -17,7 +17,7 @@ use axum::{
 use chrono::{Duration as ChronoDuration, Utc};
 #[cfg(test)]
 use clickhouse_lib::HashBytes;
-use clickhouse_lib::{AddressBytes, ClickhouseReader};
+use clickhouse_lib::{AddressBytes, ClickhouseReader, TimeRange};
 use dashmap::DashMap;
 use futures::stream::Stream;
 use hex::encode;
@@ -714,13 +714,7 @@ async fn avg_prove_time(
     State(state): State<ApiState>,
 ) -> Result<Json<AvgProveTimeResponse>, ErrorResponse> {
     let duration = range_duration(&params.range);
-    let avg = match if duration.num_hours() <= 1 {
-        state.client.get_avg_prove_time_last_hour().await
-    } else if duration.num_hours() <= 24 {
-        state.client.get_avg_prove_time_last_24_hours().await
-    } else {
-        state.client.get_avg_prove_time_last_7_days().await
-    } {
+    let avg = match state.client.get_avg_prove_time(TimeRange::from_duration(duration)).await {
         Ok(val) => val,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get avg prove time");
@@ -753,13 +747,7 @@ async fn avg_verify_time(
     State(state): State<ApiState>,
 ) -> Result<Json<AvgVerifyTimeResponse>, ErrorResponse> {
     let duration = range_duration(&params.range);
-    let avg = match if duration.num_hours() <= 1 {
-        state.client.get_avg_verify_time_last_hour().await
-    } else if duration.num_hours() <= 24 {
-        state.client.get_avg_verify_time_last_24_hours().await
-    } else {
-        state.client.get_avg_verify_time_last_7_days().await
-    } {
+    let avg = match state.client.get_avg_verify_time(TimeRange::from_duration(duration)).await {
         Ok(val) => val,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get avg verify time");

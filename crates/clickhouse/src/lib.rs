@@ -24,7 +24,7 @@ pub mod types;
 pub mod writer;
 
 // Re-export main types for convenience
-pub use reader::ClickhouseReader;
+pub use reader::{ClickhouseReader, TimeRange};
 pub use writer::ClickhouseWriter;
 
 // Re-export all models for backward compatibility and ease of use
