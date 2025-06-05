@@ -4,6 +4,7 @@ export const API_BASE: string =
 
 import { getSequencerName } from '../sequencerConfig';
 import { showToast } from '../utils/toast';
+import { bytesToHex } from '../utils';
 
 import type {
   TimeSeriesData,
@@ -230,12 +231,22 @@ export const fetchMissedProposals = async (
   range: '1h' | '24h' | '7d',
 ): Promise<RequestResult<MissedBlockProposal[]>> => {
   const url = `${API_BASE}/missed-block-proposals?range=${range}`;
-  const res = await fetchJson<{ events: MissedBlockProposal[] }>(url);
-  return {
-    data: res.data ? res.data.events : null,
-    badRequest: res.badRequest,
-    error: res.error,
-  };
+  const res = await fetchJson<{
+    events: { slot: number; l2_block_number: number; sequencer: string | number[] }[];
+  }>(url);
+
+  const data = res.data
+    ? res.data.events.map((e) => ({
+        slot: e.slot,
+        l2_block_number: e.l2_block_number,
+        sequencer:
+          typeof e.sequencer === 'string'
+            ? e.sequencer
+            : bytesToHex(e.sequencer as number[]),
+      }))
+    : null;
+
+  return { data, badRequest: res.badRequest, error: res.error };
 };
 
 export const fetchL2HeadBlock = async (
