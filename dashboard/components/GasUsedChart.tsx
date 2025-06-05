@@ -130,7 +130,7 @@ const GasUsedChartComponent: React.FC<GasUsedChartProps> = ({
           startIndex={clampedRange.startIndex}
           endIndex={clampedRange.endIndex}
           onChange={handleBrushChange}
-          tickFormatter={(v: number) => formatTime(v)}
+          tickFormatter={(v: number) => new Date(v).toLocaleString()}
         />
       </LineChart>
     </ResponsiveContainer>
