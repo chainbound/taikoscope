@@ -67,6 +67,7 @@ pub const MAX_BLOCK_TRANSACTIONS_LIMIT: u64 = 1000;
         l1_block_times,
         l2_block_times,
         l2_gas_used,
+        l2_tps,
         sequencer_distribution,
         sequencer_blocks,
         block_transactions
@@ -102,6 +103,7 @@ pub const MAX_BLOCK_TRANSACTIONS_LIMIT: u64 = 1000;
             L1BlockTimesResponse,
             L2BlockTimesResponse,
             L2GasUsedResponse,
+            L2TpsResponse,
             SequencerDistributionResponse,
             SequencerDistributionItem,
             SequencerBlocksResponse,
@@ -116,6 +118,7 @@ pub const MAX_BLOCK_TRANSACTIONS_LIMIT: u64 = 1000;
             clickhouse_lib::L1BlockTimeRow,
             clickhouse_lib::L2BlockTimeRow,
             clickhouse_lib::L2GasUsedRow,
+            clickhouse_lib::L2TpsRow,
             clickhouse_lib::BatchBlobCountRow,
             clickhouse_lib::BatchPostingTimeRow,
             HealthResponse,
@@ -1243,6 +1246,48 @@ async fn l2_gas_used(
 
 #[utoipa::path(
     get,
+    path = "/l2-tps",
+    params(
+        RangeQuery
+    ),
+    responses(
+        (status = 200, description = "L2 TPS", body = L2TpsResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
+    ),
+    tag = "taikoscope"
+)]
+async fn l2_tps(
+    Query(params): Query<RangeQuery>,
+    State(state): State<ApiState>,
+) -> Result<Json<L2TpsResponse>, ErrorResponse> {
+    let address = params.address.as_ref().and_then(|addr| match addr.parse::<Address>() {
+        Ok(a) => Some(AddressBytes::from(a)),
+        Err(e) => {
+            tracing::warn!(error = %e, "Failed to parse address");
+            None
+        }
+    });
+    let blocks = match state
+        .client
+        .get_l2_tps(address, TimeRange::from_duration(range_duration(&params.range)))
+        .await
+    {
+        Ok(rows) => rows,
+        Err(e) => {
+            tracing::error!("Failed to get L2 TPS: {}", e);
+            return Err(ErrorResponse::new(
+                "database-error",
+                "Database error",
+                StatusCode::INTERNAL_SERVER_ERROR,
+                e.to_string(),
+            ));
+        }
+    };
+    Ok(Json(L2TpsResponse { blocks }))
+}
+
+#[utoipa::path(
+    get,
     path = "/sequencer-distribution",
     params(
         RangeQuery
@@ -1454,6 +1499,8 @@ pub fn router(state: ApiState) -> Router {
         .route("/l1-block-times", get(l1_block_times))
         .route("/l2-block-times", get(l2_block_times))
         .route("/l2-gas-used", get(l2_gas_used))
+        .route("/l2-tps", get(l2_tps))
+        .route("/tps", get(l2_tps))
         .route("/sequencer-distribution", get(sequencer_distribution))
         .route("/sequencer-blocks", get(sequencer_blocks))
         .route("/block-transactions", get(block_transactions))
@@ -2016,6 +2063,26 @@ mod tests {
         let app = build_app(mock.url());
         let body = send_request(app, "/l2-gas-used?range=7d").await;
         assert_eq!(body, json!({ "blocks": [ { "l2_block_number": 1, "gas_used": 42 } ] }));
+    }
+
+    #[derive(Serialize, Row)]
+    struct L2TpsRowTest {
+        l2_block_number: u64,
+        sum_tx: u32,
+        ms_since_prev_block: Option<u64>,
+    }
+
+    #[tokio::test]
+    async fn l2_tps_endpoint() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(vec![L2TpsRowTest {
+            l2_block_number: 1,
+            sum_tx: 6,
+            ms_since_prev_block: Some(2000),
+        }]));
+        let app = build_app(mock.url());
+        let body = send_request(app, "/l2-tps").await;
+        assert_eq!(body, json!({ "blocks": [ { "l2_block_number": 1, "tps": 3.0 } ] }));
     }
 
     #[derive(Serialize, Row)]

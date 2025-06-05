@@ -15,7 +15,7 @@ use crate::{
     models::{
         BatchBlobCountRow, BatchPostingTimeRow, BatchProveTimeRow, BatchVerifyTimeRow,
         BlockTransactionRow, ForcedInclusionProcessedRow, L1BlockTimeRow, L2BlockTimeRow,
-        L2GasUsedRow, L2ReorgRow, MissedBlockProposalRow, PreconfData, SequencerBlockRow,
+        L2GasUsedRow, L2ReorgRow, L2TpsRow, MissedBlockProposalRow, PreconfData, SequencerBlockRow,
         SequencerDistributionRow, SlashingEventRow,
     },
     types::AddressBytes,
@@ -1837,6 +1837,73 @@ impl ClickhouseReader {
             .skip(1)
             .map(|r| L2GasUsedRow { l2_block_number: r.l2_block_number, gas_used: r.gas_used })
             .collect())
+    }
+
+    /// Get the transactions per second for each L2 block within the given range
+    pub async fn get_l2_tps(
+        &self,
+        sequencer: Option<AddressBytes>,
+        range: TimeRange,
+    ) -> Result<Vec<L2TpsRow>> {
+        #[derive(Row, Deserialize)]
+        struct RawRow {
+            l2_block_number: u64,
+            sum_tx: u32,
+            ms_since_prev_block: Option<u64>,
+        }
+
+        let mut query = format!(
+            "SELECT l2_block_number, sum_tx, \
+                    toUInt64OrNull(toString((block_ts - lagInFrame(block_ts) OVER (ORDER BY l2_block_number)) * 1000)) \
+                        AS ms_since_prev_block \
+             FROM {db}.l2_head_events \
+             WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})",
+            interval = range.interval(),
+            db = self.db_name,
+        );
+        if let Some(addr) = sequencer {
+            query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
+        }
+        query.push_str(" ORDER BY l2_block_number");
+
+        let rows = self.execute::<RawRow>(&query).await?;
+        Ok(rows
+            .into_iter()
+            .filter_map(|r| {
+                let ms = r.ms_since_prev_block?;
+                if ms == 0 {
+                    return None;
+                }
+                Some(L2TpsRow {
+                    l2_block_number: r.l2_block_number,
+                    tps: r.sum_tx as f64 / (ms as f64 / 1000.0),
+                })
+            })
+            .collect())
+    }
+
+    /// Get the transactions per second for each L2 block in the last hour
+    pub async fn get_l2_tps_last_hour(
+        &self,
+        sequencer: Option<AddressBytes>,
+    ) -> Result<Vec<L2TpsRow>> {
+        self.get_l2_tps(sequencer, TimeRange::LastHour).await
+    }
+
+    /// Get the transactions per second for each L2 block in the last 24 hours
+    pub async fn get_l2_tps_last_24_hours(
+        &self,
+        sequencer: Option<AddressBytes>,
+    ) -> Result<Vec<L2TpsRow>> {
+        self.get_l2_tps(sequencer, TimeRange::Last24Hours).await
+    }
+
+    /// Get the transactions per second for each L2 block in the last 7 days
+    pub async fn get_l2_tps_last_7_days(
+        &self,
+        sequencer: Option<AddressBytes>,
+    ) -> Result<Vec<L2TpsRow>> {
+        self.get_l2_tps(sequencer, TimeRange::Last7Days).await
     }
 
     /// Get the total L2 transaction fee for the given range

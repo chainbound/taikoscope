@@ -7,7 +7,7 @@
 use clickhouse_lib::{
     BatchBlobCountRow, BatchPostingTimeRow, BatchProveTimeRow, BatchVerifyTimeRow,
     ForcedInclusionProcessedRow, L1BlockTimeRow, L2BlockTimeRow, L2GasUsedRow, L2ReorgRow,
-    MissedBlockProposalRow, SlashingEventRow,
+    L2TpsRow, MissedBlockProposalRow, SlashingEventRow,
 };
 
 use axum::{Json, http::StatusCode, response::IntoResponse};
@@ -219,6 +219,13 @@ pub struct L2BlockTimesResponse {
 pub struct L2GasUsedResponse {
     /// Gas usage for each L2 block.
     pub blocks: Vec<L2GasUsedRow>,
+}
+
+/// TPS values for each L2 block.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct L2TpsResponse {
+    /// TPS values for each L2 block.
+    pub blocks: Vec<L2TpsRow>,
 }
 
 /// Number of blocks produced by a sequencer.

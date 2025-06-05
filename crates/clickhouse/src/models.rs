@@ -201,6 +201,15 @@ pub struct L2GasUsedRow {
     pub gas_used: u64,
 }
 
+/// Row representing the transactions per second for an L2 block
+#[derive(Debug, Serialize, Deserialize, PartialEq, ToSchema)]
+pub struct L2TpsRow {
+    /// L2 block number
+    pub l2_block_number: u64,
+    /// Transactions per second between this and the previous block
+    pub tps: f64,
+}
+
 /// Row representing the blob count for each batch
 #[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
 pub struct BatchBlobCountRow {
