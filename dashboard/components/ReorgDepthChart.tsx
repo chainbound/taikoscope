@@ -115,7 +115,7 @@ const ReorgDepthChartComponent: React.FC<ReorgDepthChartProps> = ({ data }) => {
           dataKey="timestamp"
           height={20}
           stroke={TAIKO_PINK}
-          padding={{ left: 20, right: 20 }}
+          padding={{ left: 40, right: 40 }}
           tickFormatter={(v: number) => new Date(v).toLocaleString()}
           startIndex={clampedRange.startIndex}
           endIndex={clampedRange.endIndex}
