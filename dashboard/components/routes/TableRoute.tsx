@@ -102,9 +102,9 @@ export const TableRoute: React.FC = () => {
 
           setTableView({
             title: 'L2 Transactions Per Second',
-            description: undefined,
+            description: 'Transactions per second for each L2 block.',
             columns: [
-              { key: 'block', label: 'L2 Block Number' },
+              { key: 'block', label: 'Block Number' },
               { key: 'tps', label: 'TPS' },
             ],
             rows: data.map((d: any) => ({
@@ -151,9 +151,7 @@ export const TableRoute: React.FC = () => {
 
           setTableView({
             title,
-            description: tableType === 'reorgs'
-              ? 'An L2 reorg occurs when the chain replaces previously published blocks. Depth shows how many blocks were replaced.'
-              : undefined,
+            description: config.description,
             columns: config.columns,
             rows: mappedData,
             chart,

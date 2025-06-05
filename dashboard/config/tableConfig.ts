@@ -31,6 +31,7 @@ export interface TableColumn {
 
 export interface TableConfig {
   title: string | ((params: Record<string, any>) => string);
+  description?: string | React.ReactNode;
   fetcher: (range: TimeRange, ...args: any[]) => Promise<any>;
   columns: TableColumn[];
   mapData?: (
@@ -45,6 +46,7 @@ export interface TableConfig {
 export const TABLE_CONFIGS: Record<string, TableConfig> = {
   'sequencer-blocks': {
     title: (params) => `Blocks proposed by ${getSequencerName(params.address)}`,
+    description: 'Blocks proposed by the given sequencer.',
     fetcher: fetchSequencerBlocks,
     columns: [{ key: 'block', label: 'L2 Block Number' }],
     mapData: (data) => data.map((b) => ({ block: blockLink(b) })),
@@ -53,6 +55,8 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
 
   reorgs: {
     title: 'L2 Reorgs',
+    description:
+      'An L2 reorg occurs when the chain replaces previously published blocks. Depth shows how many blocks were replaced.',
     fetcher: fetchL2ReorgEvents,
     columns: [
       { key: 'timestamp', label: 'Time' },
@@ -80,6 +84,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
 
   slashings: {
     title: 'Slashing Events',
+    description: 'Validators that have been slashed on L1.',
     fetcher: fetchSlashingEvents,
     columns: [
       { key: 'l1_block_number', label: 'L1 Block' },
@@ -95,6 +100,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
 
   'forced-inclusions': {
     title: 'Forced Inclusions',
+    description: 'Batches that were forcibly included after timeout.',
     fetcher: fetchForcedInclusionEvents,
     columns: [{ key: 'blob_hash', label: 'Blob Hash' }],
     mapData: (data) =>
@@ -107,6 +113,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
 
   gateways: {
     title: 'Active Sequencers',
+    description: 'Sequencer addresses currently registered.',
     fetcher: fetchActiveSequencerAddresses,
     columns: [
       { key: 'sequencer', label: 'Sequencer' },
@@ -122,6 +129,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
 
   'blobs-per-batch': {
     title: 'Blobs per Batch',
+    description: 'Number of blobs posted with each batch.',
     fetcher: fetchBatchBlobCounts,
     columns: [
       { key: 'batch', label: 'Batch' },
@@ -137,6 +145,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
 
   'batch-posting-cadence': {
     title: 'Batch Posting Cadence',
+    description: 'Time between batches posted on L1.',
     fetcher: fetchBatchPostingTimes,
     columns: [
       { key: 'value', label: 'Batch' },
@@ -163,6 +172,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
 
   'prove-time': {
     title: 'Prove Time',
+    description: 'How long it took to prove each batch.',
     fetcher: fetchProveTimes,
     columns: [
       { key: 'name', label: 'Batch' },
@@ -185,6 +195,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
 
   'verify-time': {
     title: 'Verify Time',
+    description: 'How long it took to verify each batch.',
     fetcher: fetchVerifyTimes,
     columns: [
       { key: 'name', label: 'Batch' },
@@ -207,6 +218,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
 
   'block-tx': {
     title: 'Tx Count Per Block',
+    description: 'Transactions included in each block.',
     fetcher: (range) => fetchBlockTransactions(range, 50),
     columns: [
       { key: 'block', label: 'L2 Block Number' },
@@ -227,6 +239,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
 
   'l2-block-times': {
     title: 'L2 Block Times',
+    description: 'Interval between consecutive L2 blocks.',
     fetcher: fetchL2BlockTimes,
     columns: [
       { key: 'value', label: 'L2 Block Number' },
@@ -272,6 +285,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
 
   'sequencer-dist': {
     title: 'Sequencer Distribution',
+    description: 'Breakdown of blocks proposed by each sequencer.',
     fetcher: fetchSequencerDistribution,
     columns: [
       { key: 'name', label: 'Sequencer' },
