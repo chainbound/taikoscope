@@ -56,10 +56,16 @@ export const formatTime = (ms: number): string =>
     timeZone: 'UTC',
   });
 
-export const formatInterval = (ms: number, showMinutes: boolean): string => {
-  return showMinutes
-    ? `${formatDecimal(ms / 60000)} minutes`
-    : `${Number(formatDecimal(ms / 1000))} seconds`;
+export const formatInterval = (
+  ms: number,
+  showHours: boolean,
+  showMinutes: boolean,
+): string => {
+  return showHours
+    ? `${formatDecimal(ms / 3600000)} hours`
+    : showMinutes
+      ? `${formatDecimal(ms / 60000)} minutes`
+      : `${Number(formatDecimal(ms / 1000))} seconds`;
 };
 
 export const formatBatchDuration = (
@@ -80,10 +86,14 @@ export const computeBatchDurationFlags = (data: { value: number }[]) => {
   return { showHours, showMinutes };
 };
 
-export const shouldShowMinutes = (data: { timestamp: number }[]) => {
-  const maxTimestamp = Math.max(...data.map((d) => d.timestamp));
-  return maxTimestamp >= 120000;
+export const computeIntervalFlags = (data: { timestamp: number }[]) => {
+  const showHours = data.some((d) => d.timestamp >= 120 * 60 * 1000);
+  const showMinutes = !showHours && data.some((d) => d.timestamp >= 120000);
+  return { showHours, showMinutes };
 };
+
+export const shouldShowMinutes = (data: { timestamp: number }[]) =>
+  computeIntervalFlags(data).showMinutes;
 
 export const findMetricValue = (
   metrics: { title: string | unknown; value: string }[],
