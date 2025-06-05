@@ -11,7 +11,6 @@ import {
 import { L2ReorgEvent } from '../types';
 import { TAIKO_PINK } from '../theme';
 
-
 interface ReorgDepthChartProps {
   data: L2ReorgEvent[];
 }
