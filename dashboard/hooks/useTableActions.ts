@@ -48,6 +48,11 @@ export const useTableActions = (
     searchParams.get('view') === 'table',
   );
   const [seqDistTxPage, setSeqDistTxPage] = useState<number>(0);
+  const requestTokenRef = React.useRef(0);
+
+  const cancelPendingRequests = useCallback(() => {
+    requestTokenRef.current += 1;
+  }, []);
 
   const setTableUrl = useCallback(
     (
@@ -113,6 +118,7 @@ export const useTableActions = (
       range: TimeRange = timeRange,
       extraParams: Record<string, any> = {},
     ) => {
+      const token = ++requestTokenRef.current;
       const config = TABLE_CONFIGS[tableKey];
       if (!config) return;
 
@@ -132,6 +138,7 @@ export const useTableActions = (
         }
 
         const res = await config.fetcher(range, ...fetcherArgs);
+        if (token !== requestTokenRef.current) return;
         const data = res.data || [];
 
         const title =
@@ -151,6 +158,7 @@ export const useTableActions = (
           try {
             console.log(`Refreshing ${tableKey} table data`);
             const refreshRes = await config.fetcher(range, ...fetcherArgs);
+            if (token !== requestTokenRef.current) return;
             const refreshDataResult = refreshRes.data || [];
             const refreshMappedData = config.mapData
               ? config.mapData(refreshDataResult, extraParams)
@@ -171,6 +179,8 @@ export const useTableActions = (
             } : null);
           }
         };
+
+        if (token !== requestTokenRef.current) return;
 
         openTable(
           title,
@@ -249,6 +259,7 @@ export const useTableActions = (
       startingAfter?: number,
       endingBefore?: number,
     ) => {
+      const token = ++requestTokenRef.current;
       setTableLoading(true);
       setTimeRange(range);
       setSeqDistTxPage(page);
@@ -271,6 +282,7 @@ export const useTableActions = (
             : undefined,
         ),
       ]);
+      if (token !== requestTokenRef.current) return;
 
       const txData = txRes.data || [];
       const disablePrev = page === 0;
@@ -293,8 +305,9 @@ export const useTableActions = (
                 : undefined,
             ),
           ]);
+          if (token !== requestTokenRef.current) return;
 
-          setTableView(prev => prev ? {
+          setTableView(prev => token === requestTokenRef.current && prev ? {
             ...prev,
             rows: (refreshDistRes.data || []) as unknown as Record<string, string | number>[],
             extraTable: prev.extraTable ? {
@@ -315,6 +328,8 @@ export const useTableActions = (
           } : null);
         }
       };
+
+      if (token !== requestTokenRef.current) return;
 
       openTable(
         'Sequencer Distribution',
@@ -380,6 +395,7 @@ export const useTableActions = (
     tableLoading,
     setTableView,
     setTableLoading,
+    cancelPendingRequests,
     openGenericTable,
     openTpsTable,
     openSequencerDistributionTable,

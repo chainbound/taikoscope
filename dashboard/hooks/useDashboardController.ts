@@ -34,6 +34,7 @@ export const useDashboardController = () => {
         tableLoading,
         setTableView,
         setTableLoading,
+        cancelPendingRequests,
         openGenericTable,
         openTpsTable,
         openSequencerDistributionTable,
@@ -60,6 +61,7 @@ export const useDashboardController = () => {
     const { handleBack, handleSequencerChange } = useNavigationHandler({
         setTableView,
         onError: metricsData.setErrorMessage,
+        cancelTableRequests: cancelPendingRequests,
     });
 
     // Table routing

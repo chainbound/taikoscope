@@ -32,6 +32,7 @@ describe('useNavigationHandler', () => {
       handleBack = useNavigationHandler({
         setTableView: vi.fn(),
         onError: vi.fn(),
+        cancelTableRequests: vi.fn(),
       }).handleBack;
       return null;
     };

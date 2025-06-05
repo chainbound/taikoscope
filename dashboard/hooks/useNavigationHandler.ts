@@ -5,17 +5,20 @@ import { TableViewState } from './useTableActions';
 interface UseNavigationHandlerProps {
     setTableView: (view: TableViewState | null) => void;
     onError: (message: string) => void;
+    cancelTableRequests: () => void;
 }
 
 export const useNavigationHandler = ({
     setTableView,
     onError,
+    cancelTableRequests,
 }: UseNavigationHandlerProps) => {
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
 
     const handleBack = useCallback(() => {
         try {
+            cancelTableRequests();
             setSearchParams({}, { replace: true });
             navigate('/', { replace: true });
             setTableView(null);
@@ -25,7 +28,7 @@ export const useNavigationHandler = ({
             setTableView(null);
             onError('Navigation error occurred.');
         }
-    }, [navigate, setSearchParams, setTableView, onError]);
+    }, [navigate, setSearchParams, setTableView, onError, cancelTableRequests]);
 
     const handleSequencerChange = useCallback((seq: string | null) => {
         try {
