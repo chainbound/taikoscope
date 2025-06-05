@@ -10,7 +10,7 @@ import {
   Brush,
 } from 'recharts';
 import { TimeSeriesData } from '../types';
-import { formatLargeNumber, formatTime } from '../utils';
+import { formatLargeNumber } from '../utils';
 
 interface GasUsedChartProps {
   data: TimeSeriesData[];

@@ -28,6 +28,10 @@ export interface L2ReorgEvent {
   timestamp: number;
 }
 
+export interface MissedBlockProposal {
+  slot: number;
+}
+
 export interface SlashingEvent {
   l1_block_number: number;
   validator_addr: number[];
@@ -37,11 +41,6 @@ export interface ForcedInclusionEvent {
   blob_hash: number[];
 }
 
-export interface MissedBlockProposal {
-  slot: number;
-  sequencer: string;
-  l2_block_number: number;
-}
 
 export interface ErrorResponse {
   type: string;

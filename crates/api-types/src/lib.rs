@@ -7,7 +7,7 @@
 use clickhouse_lib::{
     BatchBlobCountRow, BatchPostingTimeRow, BatchProveTimeRow, BatchVerifyTimeRow,
     ForcedInclusionProcessedRow, L1BlockTimeRow, L2BlockTimeRow, L2GasUsedRow, L2ReorgRow,
-    L2TpsRow, MissedBlockProposalRow, SlashingEventRow,
+    L2TpsRow, SlashingEventRow,
 };
 
 use axum::{Json, http::StatusCode, response::IntoResponse};
@@ -96,13 +96,6 @@ pub struct ForcedInclusionEventsResponse {
 pub struct ReorgEventsResponse {
     /// Detected L2 reorg events.
     pub events: Vec<L2ReorgRow>,
-}
-
-/// Missed block proposal events.
-#[derive(Debug, Serialize, ToSchema)]
-pub struct MissedBlockProposalsResponse {
-    /// Missed block proposal rows.
-    pub events: Vec<MissedBlockProposalRow>,
 }
 
 /// Gateways that submitted batches in the requested range.

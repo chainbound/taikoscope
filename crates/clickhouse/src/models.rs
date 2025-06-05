@@ -229,14 +229,3 @@ pub struct BatchPostingTimeRow {
     /// Milliseconds since the previous batch
     pub ms_since_prev_batch: Option<u64>,
 }
-
-/// Row representing a missed block proposal for a slot
-#[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
-pub struct MissedBlockProposalRow {
-    /// Slot number when the proposal was missed
-    pub slot: u64,
-    /// Sequencer that produced the unproposed block
-    pub sequencer: AddressBytes,
-    /// L2 block number that should have been proposed
-    pub l2_block_number: u64,
-}

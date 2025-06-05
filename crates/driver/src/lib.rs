@@ -430,24 +430,6 @@ impl Driver {
                 "Skipping preconf data insertion due to errors fetching operator data"
             );
         }
-
-        if let Some((l2_number, sequencer)) = self.last_l2_header {
-            if l2_number > self.last_proposed_l2_block {
-                if let Err(e) = self
-                    .clickhouse
-                    .insert_missed_block_proposal(header.slot, sequencer, l2_number)
-                    .await
-                {
-                    tracing::error!(slot = header.slot, err = %e, "Failed to insert missed block proposal");
-                } else {
-                    info!(
-                        slot = header.slot,
-                        l2_block = l2_number,
-                        "Inserted missed block proposal"
-                    );
-                }
-            }
-        }
     }
 
     /// Process an L2 header event, inserting statistics and detecting reorgs.
