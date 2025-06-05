@@ -1,5 +1,6 @@
 import React from 'react';
 import { Outlet } from 'react-router-dom';
+import { DashboardFooter } from '../DashboardFooter';
 import { useTimeRangeSync } from '../../hooks/useTimeRangeSync';
 import { useSequencerHandler } from '../../hooks/useSequencerHandler';
 import { useChartsData } from '../../hooks/useChartsData';
@@ -13,7 +14,7 @@ export const DashboardLayout: React.FC = () => {
   const blockData = useBlockData();
   const metricsData = useMetricsData();
   const refreshTimer = useRefreshTimer();
-  
+
   const { selectedSequencer, setSelectedSequencer, sequencerList } = useSequencerHandler({
     chartsData,
     blockData,
@@ -21,8 +22,8 @@ export const DashboardLayout: React.FC = () => {
   });
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <main className="px-4 py-6 md:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
+      <main className="flex-grow px-4 py-6 md:px-6 lg:px-8">
         <Outlet context={{
           timeRange,
           setTimeRange,
@@ -35,6 +36,10 @@ export const DashboardLayout: React.FC = () => {
           refreshTimer,
         }} />
       </main>
+      <DashboardFooter
+        l2HeadBlock={blockData.l2HeadBlock}
+        l1HeadBlock={blockData.l1HeadBlock}
+      />
     </div>
   );
 };

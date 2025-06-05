@@ -15,7 +15,6 @@ interface DashboardContextType {
   setSelectedSequencer: (seq: string | null) => void;
   sequencerList: string[];
   chartsData: any;
-  blockData: any;
   metricsData: any;
   refreshTimer: any;
 }
@@ -24,7 +23,7 @@ export const TableRoute: React.FC = () => {
   const { tableType } = useParams<{ tableType: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
-  
+
   const {
     timeRange,
     selectedSequencer,
@@ -63,16 +62,16 @@ export const TableRoute: React.FC = () => {
   });
 
   useEffect(() => {
-    const loadTable = async () => {
-      if (!tableType) return;
-      
-      setTableLoading(true);
-      setTableView(undefined);
-      
-      try {
-        const range = currentTimeRange;
-        
-        if (tableType === 'tps') {
+      const loadTable = async () => {
+        if (!tableType) return;
+
+        setTableLoading(true);
+        setTableView(undefined);
+
+        try {
+          const range = currentTimeRange;
+
+          if (tableType === 'tps') {
           // Handle TPS table - create from existing chart data
           const intervalMap = new Map<number, number>();
           chartsData.l2BlockTimeData.forEach((d: any) => {
