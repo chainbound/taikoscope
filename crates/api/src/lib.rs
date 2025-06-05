@@ -24,7 +24,10 @@ use hex::encode;
 use primitives::hardware::TOTAL_HARDWARE_COST_USD;
 use runtime::rate_limiter::RateLimiter;
 use serde::Deserialize;
-use std::{convert::Infallible, time::Duration as StdDuration};
+use std::{
+    convert::Infallible,
+    time::{Duration as StdDuration, Instant},
+};
 use utoipa::{IntoParams, OpenApi, ToSchema};
 use utoipa_swagger_ui::SwaggerUi;
 
@@ -137,11 +140,18 @@ pub const MAX_BLOCK_TRANSACTIONS_LIMIT: u64 = 1000;
 )]
 pub struct ApiDoc;
 
+/// Rate limiter entry with last access time.
+#[derive(Clone, Debug)]
+struct RateLimitEntry {
+    limiter: RateLimiter,
+    last_seen: Instant,
+}
+
 /// Shared state for API handlers.
 #[derive(Clone)]
 pub struct ApiState {
     client: ClickhouseReader,
-    limiters: std::sync::Arc<DashMap<std::net::IpAddr, RateLimiter>>,
+    limiters: std::sync::Arc<DashMap<std::net::IpAddr, RateLimitEntry>>,
     max_requests: u64,
     rate_period: StdDuration,
 }
@@ -158,15 +168,33 @@ impl std::fmt::Debug for ApiState {
 impl ApiState {
     /// Create a new [`ApiState`].
     pub fn new(client: ClickhouseReader, max_requests: u64, rate_period: StdDuration) -> Self {
-        Self { client, limiters: std::sync::Arc::new(DashMap::new()), max_requests, rate_period }
+        let limiters = std::sync::Arc::new(DashMap::new());
+
+        let cleanup_limiters = std::sync::Arc::clone(&limiters);
+        let ttl = rate_period * 10;
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(rate_period);
+            loop {
+                interval.tick().await;
+                let now = Instant::now();
+                cleanup_limiters.retain(|_, entry: &mut RateLimitEntry| {
+                    now.duration_since(entry.last_seen) <= ttl
+                });
+            }
+        });
+
+        Self { client, limiters, max_requests, rate_period }
     }
 
     fn try_acquire(&self, ip: std::net::IpAddr) -> bool {
-        self.limiters
-            .entry(ip)
-            .or_insert_with(|| RateLimiter::new(self.max_requests, self.rate_period))
-            .value_mut()
-            .try_acquire()
+        let now = Instant::now();
+        let mut entry = self.limiters.entry(ip).or_insert_with(|| RateLimitEntry {
+            limiter: RateLimiter::new(self.max_requests, self.rate_period),
+            last_seen: now,
+        });
+        let guard = entry.value_mut();
+        guard.last_seen = now;
+        guard.limiter.try_acquire()
     }
 }
 
