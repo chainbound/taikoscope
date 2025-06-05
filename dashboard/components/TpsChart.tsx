@@ -40,7 +40,7 @@ const TpsChartComponent: React.FC<TpsChartProps> = ({ data, lineColor }) => {
           stroke="#666666"
           fontSize={12}
           label={{
-            value: 'Block Number',
+            value: 'L2 Block Number',
             position: 'insideBottom',
             offset: -10,
             fontSize: 10,
