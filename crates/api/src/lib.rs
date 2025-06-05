@@ -32,6 +32,8 @@ use utoipa_swagger_ui::SwaggerUi;
 pub const DEFAULT_MAX_REQUESTS: u64 = 1000;
 /// Default duration for the rate limiting window.
 pub const DEFAULT_RATE_PERIOD: StdDuration = StdDuration::from_secs(60);
+/// Maximum number of records returned by the `/block-transactions` endpoint.
+pub const MAX_BLOCK_TRANSACTIONS_LIMIT: u64 = 1000;
 
 /// `OpenAPI` documentation structure
 #[derive(Debug, OpenApi)]
@@ -1347,7 +1349,7 @@ async fn block_transactions(
     State(state): State<ApiState>,
 ) -> Result<Json<BlockTransactionsResponse>, ErrorResponse> {
     let since = Utc::now() - range_duration(&params.range);
-    let limit = params.limit.unwrap_or(50);
+    let limit = params.limit.unwrap_or(50).clamp(1, MAX_BLOCK_TRANSACTIONS_LIMIT);
     if params.starting_after.is_some() && params.ending_before.is_some() {
         tracing::warn!("starting_after and ending_before are mutually exclusive");
     }
