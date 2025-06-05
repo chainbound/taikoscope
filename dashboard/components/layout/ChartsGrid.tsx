@@ -112,7 +112,7 @@ export const ChartsGrid: React.FC<ChartsGridProps> = ({
                 />
             </ChartCard>
             <ChartCard
-                title="Tx Count Per Block"
+                title="Tx Count Per L2 Block"
                 onMore={() => onOpenTable('block-tx', timeRange)}
                 loading={isLoading}
             >
