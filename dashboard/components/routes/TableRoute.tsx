@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useSearchParams, useOutletContext, useNavigate } from 'react-router-dom';
 import { TableView } from '../views/TableView';
 import { useTableActions, TableViewState } from '../../hooks/useTableActions';
-import { useRefreshTimer } from '../../hooks/useRefreshTimer';
 import { TimeRange } from '../../types';
 
 interface DashboardContextType {
@@ -14,6 +13,7 @@ interface DashboardContextType {
   chartsData: any;
   blockData: any;
   metricsData: any;
+  refreshTimer: any;
 }
 
 export const TableRoute: React.FC = () => {
@@ -29,11 +29,11 @@ export const TableRoute: React.FC = () => {
     sequencerList,
     chartsData,
     metricsData,
+    refreshTimer,
   } = useOutletContext<DashboardContextType>();
 
   const [tableView] = useState<TableViewState | undefined>(undefined);
   const [tableLoading, setTableLoading] = useState(false);
-  const refreshTimer = useRefreshTimer();
 
   const {
     openGenericTable,

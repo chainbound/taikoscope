@@ -11,6 +11,7 @@ interface DashboardContextType {
   chartsData: any;
   blockData: any;
   metricsData: any;
+  refreshTimer: any;
 }
 
 export const SequencerRoute: React.FC = () => {

@@ -1,5 +1,4 @@
 import React, { useCallback } from 'react';
-import { DashboardHeader } from '../DashboardHeader';
 import { ErrorDisplay } from '../layout/ErrorDisplay';
 import { MetricsGrid } from '../layout/MetricsGrid';
 import { ChartsGrid } from '../layout/ChartsGrid';
@@ -9,10 +8,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 
 interface DashboardViewProps {
     timeRange: TimeRange;
-    onTimeRangeChange: (range: TimeRange) => void;
     selectedSequencer: string | null;
-    onSequencerChange: (seq: string | null) => void;
-    sequencerList: string[];
 
     // Data hooks
     metricsData: {
@@ -26,14 +22,7 @@ interface DashboardViewProps {
         l2HeadBlock: string;
         l1HeadBlock: string;
     };
-    refreshTimer: {
-        refreshRate: number;
-        setRefreshRate: (rate: number) => void;
-        lastRefresh: number;
-    };
-
     // Actions
-    onManualRefresh: () => void;
     onOpenTable: (table: string, timeRange?: TimeRange) => void;
     onOpenTpsTable: () => void;
     onOpenSequencerDistributionTable: (timeRange: TimeRange, page: number) => void;
@@ -41,15 +30,10 @@ interface DashboardViewProps {
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
     timeRange,
-    onTimeRangeChange,
     selectedSequencer,
-    onSequencerChange,
-    sequencerList,
     metricsData,
     chartsData,
     blockData,
-    refreshTimer,
-    onManualRefresh,
     onOpenTable,
     onOpenTpsTable,
     onOpenSequencerDistributionTable,
@@ -128,21 +112,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
     return (
         <div
-            className="min-h-screen bg-white text-gray-800 p-4 md:p-6 lg:p-8"
+            className="bg-white text-gray-800 p-4 md:p-6 lg:p-8"
             style={{ fontFamily: "'Inter', sans-serif" }}
         >
-            <DashboardHeader
-                timeRange={timeRange}
-                onTimeRangeChange={onTimeRangeChange}
-                refreshRate={refreshTimer.refreshRate}
-                onRefreshRateChange={refreshTimer.setRefreshRate}
-                lastRefresh={refreshTimer.lastRefresh}
-                onManualRefresh={onManualRefresh}
-                sequencers={sequencerList}
-                selectedSequencer={selectedSequencer}
-                onSequencerChange={onSequencerChange}
-            />
-
             <ErrorDisplay
                 errorMessage={metricsData.errorMessage}
                 onResetNavigation={handleResetNavigation}
