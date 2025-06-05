@@ -156,9 +156,8 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     ],
     mapData: (data) =>
       (data as Record<string, any>[]).map((d) => ({
-        block: blockLink(d.block as number),
-        txs: d.txs,
-        sequencer: d.sequencer,
+        batch: blockLink(d.batch as number),
+        blobs: d.blobs,
       })),
     urlKey: 'blobs-per-batch',
   },
