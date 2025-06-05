@@ -151,7 +151,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     fetcher: fetchBatchPostingTimes,
     columns: [
       { key: 'value', label: 'Batch' },
-      { key: 'timestamp', label: 'Interval (ms)' },
+      { key: 'timestamp', label: 'Interval (s)' },
     ],
     mapData: (data) =>
       (data as Record<string, any>[]).map((d) => ({
@@ -167,6 +167,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
       return React.createElement(BlockTimeChart, {
         data,
         lineColor: '#FF9DA7',
+        seconds: true,
       });
     },
     urlKey: 'batch-posting-cadence',
@@ -245,7 +246,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     fetcher: fetchL2BlockTimes,
     columns: [
       { key: 'value', label: 'L2 Block Number' },
-      { key: 'timestamp', label: 'Interval (ms)' },
+      { key: 'timestamp', label: 'Interval (s)' },
     ],
     mapData: (data) => data as Record<string, string | number>[],
     chart: (data) => {
@@ -258,6 +259,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
         data,
         lineColor: '#FAA43A',
         histogram: true,
+        seconds: true,
       });
     },
     urlKey: 'l2-block-times',
