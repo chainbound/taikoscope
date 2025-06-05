@@ -98,6 +98,12 @@ export const validateSearchParams = (params: URLSearchParams): boolean => {
       return false;
     }
 
+    const table = params.get('table');
+    if (table && !/^[a-zA-Z0-9_-]+$/.test(table)) {
+      console.warn('Invalid table parameter:', table);
+      return false;
+    }
+
     const sort = params.get('sort');
     if (sort && !['asc', 'desc'].includes(sort)) {
       console.warn('Invalid sort parameter:', sort);
@@ -128,6 +134,7 @@ export const cleanSearchParams = (params: URLSearchParams): URLSearchParams => {
       range: (v) => ['1h', '24h', '7d'].includes(v),
       sequencer: (v) => /^[0-9a-zA-Z]+$/.test(v),
       address: (v) => /^[0-9a-zA-Z]+$/.test(v),
+      table: (v) => /^[a-zA-Z0-9_-]+$/.test(v),
       sort: (v) => ['asc', 'desc'].includes(v),
       filter: (v) => /^[a-zA-Z0-9_-]+$/.test(v),
     };
