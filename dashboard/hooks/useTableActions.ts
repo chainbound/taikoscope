@@ -67,7 +67,10 @@ export const useTableActions = (
           if (v !== undefined) newParams.set(k, String(v));
         });
 
-        navigate({ search: newParams.toString() }, { replace: false });
+        navigate(
+          { pathname: '', search: newParams.toString() },
+          { replace: false },
+        );
       } catch (err) {
         console.error('Failed to set table URL:', err);
       }
@@ -155,20 +158,30 @@ export const useTableActions = (
             const refreshMappedData = config.mapData
               ? config.mapData(refreshDataResult, extraParams)
               : refreshDataResult;
-            const refreshChart = config.chart ? config.chart(refreshDataResult) : undefined;
+            const refreshChart = config.chart
+              ? config.chart(refreshDataResult)
+              : undefined;
 
-            setTableView(prev => prev ? {
-              ...prev,
-              rows: refreshMappedData,
-              chart: refreshChart,
-            } : null);
+            setTableView((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    rows: refreshMappedData,
+                    chart: refreshChart,
+                  }
+                : null,
+            );
           } catch (error) {
             console.error(`Failed to refresh ${tableKey} table:`, error);
             // Optionally show user-facing error
-            setTableView(prev => prev ? {
-              ...prev,
-              rows: [], // Clear data on error to prevent stale data
-            } : null);
+            setTableView((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    rows: [], // Clear data on error to prevent stale data
+                  }
+                : null,
+            );
           }
         };
 
@@ -181,9 +194,9 @@ export const useTableActions = (
           mappedData,
           tableKey === 'sequencer-dist'
             ? (row) =>
-              openGenericTable('sequencer-blocks', range, {
-                address: row.name,
-              })
+                openGenericTable('sequencer-blocks', range, {
+                  address: row.name,
+                })
             : undefined,
           undefined,
           undefined,
@@ -197,7 +210,14 @@ export const useTableActions = (
         setTableLoading(false);
       }
     },
-    [timeRange, setTimeRange, selectedSequencer, openTable, setTableUrl, setTableView],
+    [
+      timeRange,
+      setTimeRange,
+      selectedSequencer,
+      openTable,
+      setTableUrl,
+      setTableView,
+    ],
   );
 
   const openTpsTable = useCallback(() => {
@@ -294,25 +314,46 @@ export const useTableActions = (
             ),
           ]);
 
-          setTableView(prev => prev ? {
-            ...prev,
-            rows: (refreshDistRes.data || []) as unknown as Record<string, string | number>[],
-            extraTable: prev.extraTable ? {
-              ...prev.extraTable,
-              rows: (refreshTxRes.data || []) as unknown as Record<string, string | number>[],
-            } : undefined,
-          } : null);
+          setTableView((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  rows: (refreshDistRes.data || []) as unknown as Record<
+                    string,
+                    string | number
+                  >[],
+                  extraTable: prev.extraTable
+                    ? {
+                        ...prev.extraTable,
+                        rows: (refreshTxRes.data || []) as unknown as Record<
+                          string,
+                          string | number
+                        >[],
+                      }
+                    : undefined,
+                }
+              : null,
+          );
         } catch (error) {
-          console.error('Failed to refresh sequencer distribution table:', error);
+          console.error(
+            'Failed to refresh sequencer distribution table:',
+            error,
+          );
           // Clear data on error to prevent showing stale information
-          setTableView(prev => prev ? {
-            ...prev,
-            rows: [],
-            extraTable: prev.extraTable ? {
-              ...prev.extraTable,
-              rows: [],
-            } : undefined,
-          } : null);
+          setTableView((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  rows: [],
+                  extraTable: prev.extraTable
+                    ? {
+                        ...prev.extraTable,
+                        rows: [],
+                      }
+                    : undefined,
+                }
+              : null,
+          );
         }
       };
 
