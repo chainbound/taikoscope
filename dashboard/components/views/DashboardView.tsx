@@ -2,7 +2,6 @@ import React, { useCallback } from 'react';
 import { ErrorDisplay } from '../layout/ErrorDisplay';
 import { MetricsGrid } from '../layout/MetricsGrid';
 import { ChartsGrid } from '../layout/ChartsGrid';
-import { TAIKO_PINK } from '../../theme';
 import { TimeRange, MetricData } from '../../types';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
@@ -18,10 +17,6 @@ interface DashboardViewProps {
         setErrorMessage: (msg: string) => void;
     };
     chartsData: any;
-    blockData: {
-        l2HeadBlock: string;
-        l1HeadBlock: string;
-    };
     // Actions
     onOpenTable: (table: string, timeRange?: TimeRange) => void;
     onOpenTpsTable: () => void;
@@ -33,7 +28,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     selectedSequencer,
     metricsData,
     chartsData,
-    blockData,
     onOpenTable,
     onOpenTpsTable,
     onOpenSequencerDistributionTable,
@@ -143,23 +137,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 )}
             </main>
 
-            {/* Footer for Block Numbers */}
-            <footer className="mt-8 pt-6 border-t border-gray-200">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-center md:text-left">
-                    <div>
-                        <span className="text-sm text-gray-500">L2 Head Block</span>
-                        <p className="text-2xl font-semibold" style={{ color: TAIKO_PINK }}>
-                            {blockData.l2HeadBlock}
-                        </p>
-                    </div>
-                    <div>
-                        <span className="text-sm text-gray-500">L1 Head Block</span>
-                        <p className="text-2xl font-semibold" style={{ color: TAIKO_PINK }}>
-                            {blockData.l1HeadBlock}
-                        </p>
-                    </div>
-                </div>
-            </footer>
         </div>
     );
 };
+

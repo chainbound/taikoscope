@@ -13,7 +13,6 @@ interface DashboardContextType {
   setSelectedSequencer: (seq: string | null) => void;
   sequencerList: string[];
   chartsData: any;
-  blockData: any;
   metricsData: any;
   refreshTimer: any;
 }
@@ -26,7 +25,6 @@ export const DashboardRoute: React.FC = () => {
     setSelectedSequencer,
     sequencerList,
     chartsData,
-    blockData,
     metricsData,
     refreshTimer,
   } = useOutletContext<DashboardContextType>();
@@ -71,7 +69,6 @@ export const DashboardRoute: React.FC = () => {
         selectedSequencer={selectedSequencer}
         metricsData={metricsData}
         chartsData={chartsData}
-        blockData={blockData}
         onOpenTable={openGenericTable}
         onOpenTpsTable={openTpsTable}
         onOpenSequencerDistributionTable={openSequencerDistributionTable}
