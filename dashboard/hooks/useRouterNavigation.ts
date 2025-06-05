@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { safeNavigate } from '../utils/navigationUtils';
 import { TimeRange } from '../types';
 
 export const useRouterNavigation = () => {
@@ -25,11 +26,11 @@ export const useRouterNavigation = () => {
     
     const queryString = queryParams.toString();
     const path = `/table/${tableType}${queryString ? `?${queryString}` : ''}`;
-    navigate(path);
+    safeNavigate(navigate, path);
   }, [navigate]);
 
   const navigateToSequencer = useCallback((address: string) => {
-    navigate(`/sequencer/${address}`);
+    safeNavigate(navigate, `/sequencer/${address}`);
   }, [navigate]);
 
   const navigateToDashboard = useCallback((preserveParams = false) => {
@@ -42,9 +43,9 @@ export const useRouterNavigation = () => {
       if (range) params.set('range', range);
       
       const queryString = params.toString();
-      navigate(`/${queryString ? `?${queryString}` : ''}`);
+      safeNavigate(navigate, `/${queryString ? `?${queryString}` : ''}`);
     } else {
-      navigate('/');
+      safeNavigate(navigate, '/');
     }
   }, [navigate, searchParams]);
 
@@ -60,7 +61,7 @@ export const useRouterNavigation = () => {
     });
     
     const queryString = newParams.toString();
-    navigate(`?${queryString}`, { replace: true });
+    safeNavigate(navigate, `?${queryString}`, true);
   }, [navigate, searchParams]);
 
   return {

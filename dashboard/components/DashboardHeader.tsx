@@ -3,7 +3,8 @@ import { TimeRange } from '../types';
 import { RefreshCountdown } from './RefreshCountdown';
 import { TAIKO_PINK } from '../theme';
 import { isValidRefreshRate } from '../utils';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams as useRouterSearchParams } from 'react-router-dom';
+import { useRouterNavigation } from '../hooks/useRouterNavigation';
 
 const metaEnv = (import.meta as any).env as ImportMetaEnv | undefined;
 const NETWORK_NAME =
@@ -32,8 +33,8 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   selectedSequencer,
   onSequencerChange,
 }) => {
-  const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useRouterSearchParams();
+  const { navigateToDashboard, updateSearchParams } = useRouterNavigation();
   return (
     <header className="flex flex-col md:flex-row justify-between items-center pb-4 border-b border-gray-200">
       <div className="flex items-baseline space-x-4">
@@ -41,13 +42,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
           className="text-3xl font-bold cursor-pointer hover:underline"
           style={{ color: TAIKO_PINK }}
           onClick={() => {
-            try {
-              setSearchParams({});
-              navigate('/');
-            } catch (err) {
-              console.error('Failed to navigate to home:', err);
-              window.location.href = window.location.pathname;
-            }
+            navigateToDashboard();
           }}
         >
           {' '}
@@ -58,26 +53,12 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
       <div className="flex items-center space-x-2 mt-4 md:mt-0">
         <button
           onClick={() => {
-            try {
-              const params = new URLSearchParams(searchParams);
-              if (params.get('view') === 'economics') {
-                // Already on economics view - reload instead of navigating to home
-                navigate(0);
-              } else {
-                params.set('view', 'economics');
-                params.delete('table');
-                navigate({ pathname: '/', search: params.toString() });
-              }
-            } catch (err) {
-              console.error('Failed to toggle economics view:', err);
-              const fallbackUrl = new URL(window.location.href);
-              try {
-                fallbackUrl.searchParams.set('view', 'economics');
-                window.location.href = fallbackUrl.toString();
-              } catch (fallbackErr) {
-                console.error('Fallback navigation also failed:', fallbackErr);
-              }
+            const params = new URLSearchParams(searchParams);
+            if (params.get('view') === 'economics') {
+              navigateToDashboard(true);
+              return;
             }
+            updateSearchParams({ view: 'economics', table: null });
           }}
           className="text-sm hover:underline"
           style={{ color: TAIKO_PINK }}
