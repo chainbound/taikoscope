@@ -58,7 +58,7 @@ describe('helpers', () => {
     expect(metrics[4].group).toBe('Network Performance');
     expect(metrics[5].value).toBe('2');
     expect(metrics[5].group).toBe('Sequencers');
-    expect(metrics[6].value).toBe('0xabc');
+    expect(metrics[6].value).toBe('Unknown');
     expect(metrics[6].group).toBe('Sequencers');
     expect(metrics[7].value).toBe('N/A');
     expect(metrics[7].group).toBe('Sequencers');
