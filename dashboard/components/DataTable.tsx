@@ -160,11 +160,23 @@ export const DataTable: React.FC<DataTableProps> = ({
                     }
                   } : undefined}
                 >
-                  {columns.map((col) => (
-                    <td key={col.key} className="px-2 py-1">
-                      {row[col.key] as React.ReactNode}
-                    </td>
-                  ))}
+                  {columns.map((col) => {
+                    const isBlockCol = col.label
+                      .toLowerCase()
+                      .includes('block');
+                    const content = row[col.key] as React.ReactNode;
+                    return (
+                      <td key={col.key} className="px-2 py-1">
+                        {onRowClick && isBlockCol ? (
+                          <span className="underline" style={{ color: TAIKO_PINK }}>
+                            {content}
+                          </span>
+                        ) : (
+                          content
+                        )}
+                      </td>
+                    );
+                  })}
                 </tr>
               ))
             )}
