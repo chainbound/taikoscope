@@ -3,6 +3,7 @@ import { TimeRange } from '../types';
 import { TABLE_CONFIGS } from '../config/tableConfig';
 import { getSequencerAddress } from '../sequencerConfig';
 import { useRouterNavigation } from './useRouterNavigation';
+import { blockLink } from '../utils';
 import {
   fetchBlockTransactions,
   type BlockTransaction,
@@ -12,14 +13,14 @@ export interface TableViewState {
   title: string;
   description?: React.ReactNode;
   columns: { key: string; label: string }[];
-  rows: Record<string, string | number>[];
-  onRowClick?: (row: Record<string, string | number>) => void;
+  rows: Record<string, React.ReactNode | string | number>[];
+  onRowClick?: (row: Record<string, React.ReactNode | string | number>) => void;
   extraAction?: { label: string; onClick: () => void };
   extraTable?: {
     title: string;
     columns: { key: string; label: string }[];
-    rows: Record<string, string | number>[];
-    onRowClick?: (row: Record<string, string | number>) => void;
+    rows: Record<string, React.ReactNode | string | number>[];
+    onRowClick?: (row: Record<string, React.ReactNode | string | number>) => void;
     pagination?: {
       page: number;
       onNext: () => void;
@@ -70,8 +71,8 @@ export const useTableActions = (
       title: string,
       description: React.ReactNode | undefined,
       columns: { key: string; label: string }[],
-      rows: Record<string, string | number>[],
-      onRowClick?: (row: Record<string, string | number>) => void,
+      rows: Record<string, React.ReactNode | string | number>[],
+      onRowClick?: (row: Record<string, React.ReactNode | string | number>) => void,
       extraAction?: { label: string; onClick: () => void },
       extraTable?: TableViewState['extraTable'],
       range?: TimeRange,
@@ -152,10 +153,10 @@ export const useTableActions = (
             setTableView((prev) =>
               prev
                 ? {
-                  ...prev,
-                  rows: refreshMappedData,
-                  chart: refreshChart,
-                }
+                    ...prev,
+                    rows: refreshMappedData,
+                    chart: refreshChart,
+                  }
                 : null,
             );
           } catch (error) {
@@ -164,9 +165,9 @@ export const useTableActions = (
             setTableView((prev) =>
               prev
                 ? {
-                  ...prev,
-                  rows: [], // Clear data on error to prevent stale data
-                }
+                    ...prev,
+                    rows: [], // Clear data on error to prevent stale data
+                  }
                 : null,
             );
           }
@@ -181,9 +182,9 @@ export const useTableActions = (
           mappedData,
           tableKey === 'sequencer-dist'
             ? (row) =>
-              openGenericTable('sequencer-blocks', range, {
-                address: row.name,
-              })
+                openGenericTable('sequencer-blocks', range, {
+                  address: row.name,
+                })
             : undefined,
           undefined,
           undefined,
@@ -235,10 +236,10 @@ export const useTableActions = (
         { key: 'block', label: 'Block Number' },
         { key: 'tps', label: 'TPS' },
       ],
-      data.map((d) => ({ block: d.block, tps: d.tps.toFixed(2) })) as Record<
-        string,
-        string | number
-      >[],
+      data.map((d) => ({
+        block: blockLink(d.block),
+        tps: d.tps.toFixed(2),
+      })) as Record<string, React.ReactNode | string | number>[],
       undefined,
       undefined,
       undefined,
@@ -304,21 +305,22 @@ export const useTableActions = (
           setTableView((prev) =>
             prev
               ? {
-                ...prev,
-                rows: (refreshDistRes.data || []) as unknown as Record<
-                  string,
-                  string | number
-                >[],
-                extraTable: prev.extraTable
-                  ? {
-                    ...prev.extraTable,
-                    rows: (refreshTxRes.data || []) as unknown as Record<
-                      string,
-                      string | number
-                    >[],
-                  }
-                  : undefined,
-              }
+                  ...prev,
+                  rows: (refreshDistRes.data || []) as unknown as Record<
+                    string,
+                    string | number
+                  >[],
+                  extraTable: prev.extraTable
+                    ? {
+                        ...prev.extraTable,
+                        rows: (refreshTxRes.data || []).map((t) => ({
+                          block: blockLink(t.block),
+                          txs: t.txs,
+                          sequencer: t.sequencer,
+                        })) as unknown as Record<string, React.ReactNode | string | number>[],
+                      }
+                    : undefined,
+                }
               : null,
           );
         } catch (error) {
@@ -330,15 +332,15 @@ export const useTableActions = (
           setTableView((prev) =>
             prev
               ? {
-                ...prev,
-                rows: [],
-                extraTable: prev.extraTable
-                  ? {
-                    ...prev.extraTable,
-                    rows: [],
-                  }
-                  : undefined,
-              }
+                  ...prev,
+                  rows: [],
+                  extraTable: prev.extraTable
+                    ? {
+                        ...prev.extraTable,
+                        rows: [],
+                      }
+                    : undefined,
+                }
               : null,
           );
         }
@@ -351,9 +353,11 @@ export const useTableActions = (
           { key: 'name', label: 'Sequencer' },
           { key: 'value', label: 'Blocks' },
         ],
-        (distRes.data || []) as unknown as Record<string, string | number>[],
+        (distRes.data || []) as unknown as Record<string, React.ReactNode | string | number>[],
         (row) => {
-          const cleanParams: Record<string, string | number> = { address: String(row.name) };
+          const cleanParams: Record<string, string | number> = {
+            address: String(row.name),
+          };
           navigateToTable('sequencer-blocks', cleanParams, range);
         },
         undefined,
@@ -364,10 +368,11 @@ export const useTableActions = (
             { key: 'txs', label: 'Tx Count' },
             { key: 'sequencer', label: 'Sequencer' },
           ],
-          rows: (txRes.data || []) as unknown as Record<
-            string,
-            string | number
-          >[],
+          rows: (txRes.data || []).map((t) => ({
+            block: blockLink(t.block),
+            txs: t.txs,
+            sequencer: t.sequencer,
+          })) as unknown as Record<string, React.ReactNode | string | number>[],
           pagination: {
             page,
             onPrev: () =>

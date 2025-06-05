@@ -11,8 +11,8 @@ interface Column {
 interface ExtraTable {
   title: string;
   columns: Column[];
-  rows: Array<Record<string, string | number>>;
-  onRowClick?: (row: Record<string, string | number>) => void;
+  rows: Array<Record<string, React.ReactNode | string | number>>;
+  onRowClick?: (row: Record<string, React.ReactNode | string | number>) => void;
   pagination?: {
     page: number;
     onNext: () => void;
@@ -26,9 +26,9 @@ interface DataTableProps {
   title: string;
   description?: React.ReactNode;
   columns: Column[];
-  rows: Array<Record<string, string | number>>;
+  rows: Array<Record<string, React.ReactNode | string | number>>;
   onBack: () => void;
-  onRowClick?: (row: Record<string, string | number>) => void;
+  onRowClick?: (row: Record<string, React.ReactNode | string | number>) => void;
   extraAction?: { label: string; onClick: () => void };
   extraTable?: ExtraTable;
   chart?: React.ReactNode;
@@ -152,13 +152,17 @@ export const DataTable: React.FC<DataTableProps> = ({
                 <tr
                   key={idx}
                   className={`border-t hover:bg-gray-50 ${onRowClick && !isNavigating ? 'cursor-pointer' : ''} ${isNavigating ? 'pointer-events-none opacity-50' : ''}`}
-                  onClick={onRowClick && !isNavigating ? () => {
-                    try {
-                      onRowClick(row);
-                    } catch (err) {
-                      console.error('Failed to handle row click:', err);
-                    }
-                  } : undefined}
+                  onClick={
+                    onRowClick && !isNavigating
+                      ? () => {
+                          try {
+                            onRowClick(row);
+                          } catch (err) {
+                            console.error('Failed to handle row click:', err);
+                          }
+                        }
+                      : undefined
+                  }
                 >
                   {columns.map((col) => (
                     <td key={col.key} className="px-2 py-1">
@@ -177,7 +181,9 @@ export const DataTable: React.FC<DataTableProps> = ({
             onClick={() => setPage((p) => p - 1)}
             disabled={disablePrev || isNavigating}
             className={`disabled:text-gray-400 ${isNavigating ? 'opacity-50' : ''}`}
-            style={disablePrev || isNavigating ? undefined : { color: TAIKO_PINK }}
+            style={
+              disablePrev || isNavigating ? undefined : { color: TAIKO_PINK }
+            }
           >
             Prev
           </button>
@@ -186,7 +192,9 @@ export const DataTable: React.FC<DataTableProps> = ({
             onClick={() => setPage((p) => p + 1)}
             disabled={disableNext || isNavigating}
             className={`disabled:text-gray-400 ${isNavigating ? 'opacity-50' : ''}`}
-            style={disableNext || isNavigating ? undefined : { color: TAIKO_PINK }}
+            style={
+              disableNext || isNavigating ? undefined : { color: TAIKO_PINK }
+            }
           >
             Next
           </button>
@@ -225,12 +233,15 @@ export const DataTable: React.FC<DataTableProps> = ({
                       onClick={
                         extraTable.onRowClick && !isNavigating
                           ? () => {
-                            try {
-                              extraTable.onRowClick!(row);
-                            } catch (err) {
-                              console.error('Failed to handle extra table row click:', err);
+                              try {
+                                extraTable.onRowClick!(row);
+                              } catch (err) {
+                                console.error(
+                                  'Failed to handle extra table row click:',
+                                  err,
+                                );
+                              }
                             }
-                          }
                           : undefined
                       }
                     >

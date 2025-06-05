@@ -1,5 +1,10 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { useParams, useSearchParams, useOutletContext, useNavigate } from 'react-router-dom';
+import {
+  useParams,
+  useSearchParams,
+  useOutletContext,
+  useNavigate,
+} from 'react-router-dom';
 import { TableView } from '../views/TableView';
 import { DashboardHeader } from '../DashboardHeader';
 import { TableViewState } from '../../hooks/useTableActions';
@@ -7,6 +12,7 @@ import { TimeRange } from '../../types';
 import { TABLE_CONFIGS } from '../../config/tableConfig';
 import { getSequencerAddress } from '../../sequencerConfig';
 import { useDataFetcher } from '../../hooks/useDataFetcher';
+import { blockLink } from '../../utils';
 
 interface DashboardContextType {
   timeRange: TimeRange;
@@ -35,21 +41,27 @@ export const TableRoute: React.FC = () => {
   } = useOutletContext<DashboardContextType>();
 
   // Override setTimeRange to update URL params for table route instead of navigating away
-  const handleTimeRangeChange = useCallback((newRange: TimeRange) => {
-    const newParams = new URLSearchParams(searchParams);
-    if (newRange === '1h') {
-      newParams.delete('range');
-    } else {
-      newParams.set('range', newRange);
-    }
-    setSearchParams(newParams, { replace: true });
-  }, [searchParams, setSearchParams]);
+  const handleTimeRangeChange = useCallback(
+    (newRange: TimeRange) => {
+      const newParams = new URLSearchParams(searchParams);
+      if (newRange === '1h') {
+        newParams.delete('range');
+      } else {
+        newParams.set('range', newRange);
+      }
+      setSearchParams(newParams, { replace: true });
+    },
+    [searchParams, setSearchParams],
+  );
 
-  const [tableView, setTableView] = useState<TableViewState | undefined>(undefined);
+  const [tableView, setTableView] = useState<TableViewState | undefined>(
+    undefined,
+  );
   const [tableLoading, setTableLoading] = useState(false);
 
   // Get current time range from URL params, fallback to context
-  const currentTimeRange = (searchParams.get('range') as TimeRange) || timeRange;
+  const currentTimeRange =
+    (searchParams.get('range') as TimeRange) || timeRange;
 
   const { handleManualRefresh } = useDataFetcher({
     timeRange: currentTimeRange,
@@ -84,7 +96,9 @@ export const TableRoute: React.FC = () => {
               if (!ms) return null;
               return { block: b.block, tps: b.txs / (ms / 1000) };
             })
-            .filter((d: any): d is { block: number; tps: number } => d !== null);
+            .filter(
+              (d: any): d is { block: number; tps: number } => d !== null,
+            );
 
           setTableView({
             title: 'L2 Transactions Per Second',
@@ -93,7 +107,10 @@ export const TableRoute: React.FC = () => {
               { key: 'block', label: 'Block Number' },
               { key: 'tps', label: 'TPS' },
             ],
-            rows: data.map((d: any) => ({ block: d.block, tps: d.tps.toFixed(2) })),
+            rows: data.map((d: any) => ({
+              block: blockLink(d.block),
+              tps: d.tps.toFixed(2),
+            })),
           });
         } else {
           // Handle other tables using config
@@ -146,19 +163,27 @@ export const TableRoute: React.FC = () => {
         }
       } catch (error) {
         console.error('Failed to load table:', error);
-        metricsData.setErrorMessage(`Failed to load ${tableType} table. Please try again.`);
+        metricsData.setErrorMessage(
+          `Failed to load ${tableType} table. Please try again.`,
+        );
       } finally {
         setTableLoading(false);
       }
     };
 
     loadTable();
-  }, [tableType, searchParams, currentTimeRange, selectedSequencer, chartsData, metricsData]);
+  }, [
+    tableType,
+    searchParams,
+    currentTimeRange,
+    selectedSequencer,
+    chartsData,
+    metricsData,
+  ]);
 
   const handleBack = () => {
     navigate('/');
   };
-
 
   if (!tableView && !tableLoading) {
     return <div>Table not found</div>;

@@ -21,7 +21,7 @@ import {
   fetchSequencerDistribution,
 } from '../services/apiService';
 import { getSequencerName } from '../sequencerConfig';
-import { bytesToHex } from '../utils';
+import { bytesToHex, blockLink } from '../utils';
 import { TAIKO_PINK } from '../theme';
 import React from 'react';
 
@@ -37,7 +37,7 @@ export interface TableConfig {
   mapData?: (
     data: any[],
     params?: Record<string, any>,
-  ) => Record<string, string | number>[];
+  ) => Record<string, React.ReactNode | string | number>[];
   chart?: (data: any[]) => React.ReactNode;
   supportsPagination?: boolean;
   urlKey: string;
@@ -48,7 +48,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     title: (params) => `Blocks proposed by ${getSequencerName(params.address)}`,
     fetcher: fetchSequencerBlocks,
     columns: [{ key: 'block', label: 'Block Number' }],
-    mapData: (data) => data.map((b) => ({ block: b })),
+    mapData: (data) => data.map((b) => ({ block: blockLink(b) })),
     urlKey: 'sequencer-blocks',
   },
 
@@ -63,7 +63,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     mapData: (data) =>
       (data as L2ReorgEvent[]).map((e) => ({
         timestamp: new Date(e.timestamp).toLocaleString(),
-        l2_block_number: e.l2_block_number,
+        l2_block_number: blockLink(e.l2_block_number),
         depth: e.depth,
       })),
     chart: (data) => {
@@ -116,7 +116,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     mapData: (data) =>
       (data as MissedBlockProposal[]).map((e) => ({
         slot: e.slot,
-        l2_block_number: e.l2_block_number,
+        l2_block_number: blockLink(e.l2_block_number),
         sequencer: getSequencerName(e.sequencer),
       })),
     chart: (data) => {
@@ -147,7 +147,12 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
       { key: 'batch', label: 'Batch' },
       { key: 'blobs', label: 'Blobs' },
     ],
-    mapData: (data) => data as Record<string, string | number>[],
+    mapData: (data) =>
+      (data as Record<string, any>[]).map((d) => ({
+        block: blockLink(d.block as number),
+        txs: d.txs,
+        sequencer: d.sequencer,
+      })),
     urlKey: 'blobs-per-batch',
   },
 
@@ -158,7 +163,11 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
       { key: 'value', label: 'Batch' },
       { key: 'timestamp', label: 'Interval (ms)' },
     ],
-    mapData: (data) => data as Record<string, string | number>[],
+    mapData: (data) =>
+      (data as Record<string, any>[]).map((d) => ({
+        value: blockLink(d.value as number),
+        timestamp: d.timestamp,
+      })),
     chart: (data) => {
       const BlockTimeChart = React.lazy(() =>
         import('../components/BlockTimeChart').then((m) => ({
@@ -259,7 +268,6 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     },
     urlKey: 'l2-block-times',
   },
-
 
   'sequencer-dist': {
     title: 'Sequencer Distribution',
