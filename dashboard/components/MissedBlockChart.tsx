@@ -41,6 +41,20 @@ const MissedBlockChartComponent: React.FC<MissedBlockChartProps> = ({
     setBrushRange({ startIndex: 0, endIndex: sortedData.length - 1 });
   }, [sortedData]);
 
+  const clampedRange = React.useMemo(
+    () => ({
+      startIndex: Math.max(
+        0,
+        Math.min(brushRange.startIndex, sortedData.length - 1),
+      ),
+      endIndex: Math.max(
+        0,
+        Math.min(brushRange.endIndex, sortedData.length - 1),
+      ),
+    }),
+    [brushRange, sortedData.length],
+  );
+
   const handleBrushChange = (range: {
     startIndex?: number;
     endIndex?: number;
@@ -112,8 +126,8 @@ const MissedBlockChartComponent: React.FC<MissedBlockChartProps> = ({
           dataKey="slot"
           height={20}
           stroke={TAIKO_PINK}
-          startIndex={brushRange.startIndex}
-          endIndex={brushRange.endIndex}
+          startIndex={clampedRange.startIndex}
+          endIndex={clampedRange.endIndex}
           onChange={handleBrushChange}
         />
       </BarChart>

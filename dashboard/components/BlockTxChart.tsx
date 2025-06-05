@@ -44,6 +44,20 @@ const BlockTxChartComponent: React.FC<BlockTxChartProps> = ({
     });
   }, [sortedData]);
 
+  const clampedRange = React.useMemo(
+    () => ({
+      startIndex: Math.max(
+        0,
+        Math.min(brushRange.startIndex, sortedData.length - 1),
+      ),
+      endIndex: Math.max(
+        0,
+        Math.min(brushRange.endIndex, sortedData.length - 1),
+      ),
+    }),
+    [brushRange, sortedData.length],
+  );
+
   const handleBrushChange = (range: {
     startIndex?: number;
     endIndex?: number;
@@ -115,8 +129,8 @@ const BlockTxChartComponent: React.FC<BlockTxChartProps> = ({
           dataKey="block"
           height={20}
           stroke={barColor}
-          startIndex={brushRange.startIndex}
-          endIndex={brushRange.endIndex}
+          startIndex={clampedRange.startIndex}
+          endIndex={clampedRange.endIndex}
           onChange={handleBrushChange}
         />
       </BarChart>
