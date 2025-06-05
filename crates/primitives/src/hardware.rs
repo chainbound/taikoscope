@@ -12,3 +12,6 @@ pub const NETWORKING_COST_USD: f64 = 30.0;
 /// Estimated total hardware cost for a redundant sequencer setup in USD.
 pub const TOTAL_HARDWARE_COST_USD: f64 =
     SEQUENCER_SERVER_COST_USD * SEQUENCER_SERVER_COUNT as f64 + NETWORKING_COST_USD;
+
+/// Estimated monthly cost for running a prover in USD.
+pub const PROVER_COST_USD: f64 = 1000.0;

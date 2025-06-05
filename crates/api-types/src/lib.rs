@@ -186,6 +186,13 @@ pub struct CloudCostResponse {
     pub cost_usd: f64,
 }
 
+/// Estimated prover infrastructure cost in USD.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct ProverCostResponse {
+    /// Estimated prover cost in USD for the requested range.
+    pub cost_usd: f64,
+}
+
 /// Time to prove individual batches.
 #[derive(Debug, Serialize, ToSchema)]
 pub struct ProveTimesResponse {
