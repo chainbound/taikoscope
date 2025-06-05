@@ -16,7 +16,6 @@ const App: React.FC = () => {
     chartsData,
     blockData,
     refreshTimer,
-    searchParams,
 
     // Table state
     tableView,
@@ -38,7 +37,7 @@ const App: React.FC = () => {
       <TableView
         tableView={tableView}
         tableLoading={tableLoading}
-        isNavigating={searchParams.navigationState.isNavigating}
+        isNavigating={false}
         refreshTimer={refreshTimer}
         sequencerList={sequencerList}
         selectedSequencer={selectedSequencer}

@@ -3,7 +3,6 @@ import {
   useSearchParams as useRouterSearchParams,
   useNavigate,
 } from 'react-router-dom';
-import { safeNavigate } from '../utils/navigationUtils';
 
 interface NavigationState {
   canGoBack: boolean;
@@ -32,7 +31,8 @@ export const useSearchParams = (): URLSearchParams & {
     (url: string | URL, replace = false) => {
       setNavigationState((prev) => ({ ...prev, isNavigating: true }));
       try {
-        safeNavigate(routerNavigate, url, replace);
+        const to = url instanceof URL ? url.pathname + url.search : url;
+        routerNavigate(to, { replace });
       } catch (err) {
         console.error('Navigation error:', err);
         setNavigationState((prev) => ({
@@ -57,7 +57,7 @@ export const useSearchParams = (): URLSearchParams & {
   }, [routerNavigate]);
 
   const resetNavigation = useCallback(() => {
-    safeNavigate(routerNavigate, '/', true);
+    routerNavigate('/', { replace: true });
   }, [routerNavigate]);
 
   useEffect(() => {

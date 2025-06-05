@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { useSearchParams } from './useSearchParams';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { TimeRange } from '../types';
 import { TABLE_CONFIGS } from '../config/tableConfig';
 import { getSequencerAddress } from '../sequencerConfig';
@@ -42,7 +42,8 @@ export const useTableActions = (
   l2BlockTimeData: any[],
 ) => {
   const [tableView, setTableView] = useState<TableViewState | null>(null);
-  const searchParams = useSearchParams();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [tableLoading, setTableLoading] = useState<boolean>(
     searchParams.get('view') === 'table',
   );
@@ -54,30 +55,24 @@ export const useTableActions = (
       params: Record<string, string | number | undefined> = {},
     ) => {
       try {
-        const url = new URL(window.location.href);
-        url.searchParams.set('view', 'table');
-        url.searchParams.set('table', name);
+        const newParams = new URLSearchParams(searchParams);
+        newParams.set('view', 'table');
+        newParams.set('table', name);
 
-        // remove stale parameters when switching tables
         ['address', 'page', 'start', 'end'].forEach((key) => {
-          url.searchParams.delete(key);
+          newParams.delete(key);
         });
 
         Object.entries(params).forEach(([k, v]) => {
-          if (v !== undefined) url.searchParams.set(k, String(v));
+          if (v !== undefined) newParams.set(k, String(v));
         });
 
-        const newUrl = url.toString();
-        if (newUrl !== window.location.href) {
-          const relative = url.pathname + url.search;
-          searchParams.navigate(relative, false);
-        }
+        navigate({ search: newParams.toString() }, { replace: false });
       } catch (err) {
         console.error('Failed to set table URL:', err);
-        // Don't throw to prevent breaking the table functionality
       }
     },
-    [searchParams],
+    [navigate, searchParams],
   );
 
   const openTable = useCallback(

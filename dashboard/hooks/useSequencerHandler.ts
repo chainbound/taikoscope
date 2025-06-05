@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { useSearchParams } from './useSearchParams';
+import { useSearchParams } from 'react-router-dom';
 
 interface UseSequencerHandlerProps {
     chartsData: {
@@ -21,7 +21,7 @@ export const useSequencerHandler = ({
     blockData,
     metricsData,
 }: UseSequencerHandlerProps) => {
-    const searchParams = useSearchParams();
+    const [searchParams] = useSearchParams();
     const [selectedSequencer, setSelectedSequencer] = useState<string | null>(
         searchParams.get('sequencer'),
     );

@@ -3,14 +3,14 @@ import { MetricData, TimeRange } from '../types';
 import { createMetrics, type MetricInputData } from '../utils/metricsCreator';
 import { hasBadRequest, getErrorMessage } from '../utils/errorHandler';
 import { fetchMainDashboardData, fetchEconomicsData } from '../utils/dataFetcher';
-import { useSearchParams } from './useSearchParams';
+import { useSearchParams } from 'react-router-dom';
 
 export const useMetricsData = () => {
     const [metrics, setMetrics] = useState<MetricData[]>([]);
     const [loadingMetrics, setLoadingMetrics] = useState(true);
     const [errorMessage, setErrorMessage] = useState<string>('');
 
-    const searchParams = useSearchParams();
+    const [searchParams] = useSearchParams();
 
     // Memoize the specific value we need to prevent infinite re-renders
     const viewParam = searchParams.get('view');
