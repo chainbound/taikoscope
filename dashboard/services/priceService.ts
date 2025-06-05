@@ -22,7 +22,15 @@ export const getEthPrice = async (): Promise<number> => {
   const res = await fetch(
     'https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd',
   );
-  const data = (await res.json()) as { ethereum: { usd: number } };
+  if (!res.ok) {
+    throw new Error(`Failed to fetch ETH price: ${res.status}`);
+  }
+  
+  const data = await res.json();
+  if (!data?.ethereum?.usd || typeof data.ethereum.usd !== 'number') {
+    throw new Error('Invalid ETH price response format');
+  }
+  
   const price = data.ethereum.usd;
 
   if (typeof localStorage !== 'undefined') {

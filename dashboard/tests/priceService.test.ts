@@ -3,10 +3,18 @@ import { getEthPrice } from '../services/priceService.ts';
 
 const originalFetch = globalThis.fetch;
 
-function mockFetch(price: number) {
+function mockFetch(price: number, ok = true) {
+  return vi.fn(async () => ({
+    ok,
+    status: ok ? 200 : 500,
+    json: async () => ({ ethereum: { usd: price } }),
+  })) as unknown as typeof fetch;
+}
+
+function mockFetchWithInvalidResponse() {
   return vi.fn(async () => ({
     ok: true,
-    json: async () => ({ ethereum: { usd: price } }),
+    json: async () => ({ invalid: 'response' }),
   })) as unknown as typeof fetch;
 }
 
@@ -51,5 +59,31 @@ describe('getEthPrice', () => {
     globalThis.fetch = mockFetch(1800);
     const price = await getEthPrice();
     expect(price).toBe(1800);
+  });
+
+  it('handles fetch failure', async () => {
+    globalThis.fetch = mockFetch(0, false);
+    await expect(getEthPrice()).rejects.toThrow('Failed to fetch ETH price: 500');
+  });
+
+  it('handles invalid response format', async () => {
+    globalThis.fetch = mockFetchWithInvalidResponse();
+    await expect(getEthPrice()).rejects.toThrow('Invalid ETH price response format');
+  });
+
+  it('handles malformed cache data', async () => {
+    store.ethPrice = 'invalid json';
+    globalThis.fetch = mockFetch(2500);
+    const price = await getEthPrice();
+    expect(price).toBe(2500);
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('handles non-numeric price in cache', async () => {
+    store.ethPrice = JSON.stringify({ price: 'invalid', timestamp: Date.now() });
+    globalThis.fetch = mockFetch(3000);
+    const price = await getEthPrice();
+    expect(price).toBe(3000);
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1);
   });
 });

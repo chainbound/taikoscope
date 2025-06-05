@@ -16,11 +16,18 @@ export const ProfitCalculator: React.FC<ProfitCalculatorProps> = ({
   const [cloudCost, setCloudCost] = useState(0);
   const [proverCost, setProverCost] = useState(0);
   const [ethPrice, setEthPrice] = useState(0);
+  const [ethPriceError, setEthPriceError] = useState(false);
 
   useEffect(() => {
     getEthPrice()
-      .then((p) => setEthPrice(p))
-      .catch((err) => console.error('Failed to fetch ETH price', err));
+      .then((p) => {
+        setEthPrice(p);
+        setEthPriceError(false);
+      })
+      .catch((err) => {
+        console.error('Failed to fetch ETH price', err);
+        setEthPriceError(true);
+      });
   }, []);
 
   const profit = fee * ethPrice - cloudCost - proverCost;
@@ -50,6 +57,9 @@ export const ProfitCalculator: React.FC<ProfitCalculatorProps> = ({
       </div>
       <p className="mt-3 text-sm">
         Profit: <span className="font-semibold">${profit.toFixed(2)}</span>
+        {ethPriceError && (
+          <span className="text-red-500 ml-2 text-xs">(ETH price unavailable)</span>
+        )}
       </p>
     </div>
   );
