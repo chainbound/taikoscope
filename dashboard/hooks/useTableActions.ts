@@ -172,11 +172,11 @@ export const useTableActions = (
           }
         };
 
+
+
         openTable(
           title,
-          tableKey === 'reorgs'
-            ? 'An L2 reorg occurs when the chain replaces previously published blocks. Depth shows how many blocks were replaced.'
-            : undefined,
+          undefined,
           config.columns,
           mappedData,
           tableKey === 'sequencer-dist'

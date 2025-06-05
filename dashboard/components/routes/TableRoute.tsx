@@ -62,16 +62,16 @@ export const TableRoute: React.FC = () => {
   });
 
   useEffect(() => {
-      const loadTable = async () => {
-        if (!tableType) return;
+    const loadTable = async () => {
+      if (!tableType) return;
 
-        setTableLoading(true);
-        setTableView(undefined);
+      setTableLoading(true);
+      setTableView(undefined);
 
-        try {
-          const range = currentTimeRange;
+      try {
+        const range = currentTimeRange;
 
-          if (tableType === 'tps') {
+        if (tableType === 'tps') {
           // Handle TPS table - create from existing chart data
           const intervalMap = new Map<number, number>();
           chartsData.l2BlockTimeData.forEach((d: any) => {
@@ -136,7 +136,9 @@ export const TableRoute: React.FC = () => {
             title,
             description: tableType === 'reorgs'
               ? 'An L2 reorg occurs when the chain replaces previously published blocks. Depth shows how many blocks were replaced.'
-              : undefined,
+              : tableType === 'missed-proposals'
+                ? 'A missed proposal is when a sequencer does not propose a new L1 block, even though there have been L2 blocks published since the last L1 block.'
+                : undefined,
             columns: config.columns,
             rows: mappedData,
             chart,
