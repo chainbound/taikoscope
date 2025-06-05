@@ -62,6 +62,11 @@ const BlockTimeDistributionChartComponent: React.FC<BlockTimeDistributionChartPr
     );
     
     const binSize = (max - min) / binCount;
+    const EPSILON = 1e-10; // Small constant to prevent floating point issues
+    
+    if (binSize < EPSILON) {
+      return [{ interval: (min + max) / 2, count: times.length }];
+    }
     const bins = Array.from({ length: binCount }, (_, i) => ({
       interval: min + (i + 0.5) * binSize,
       count: 0,
