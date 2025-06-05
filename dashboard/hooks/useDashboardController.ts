@@ -9,11 +9,11 @@ import { useNavigationHandler } from './useNavigationHandler';
 import { useDataFetcher } from './useDataFetcher';
 import { useSequencerHandler } from './useSequencerHandler';
 import { useTableActions } from './useTableActions';
-import { useSearchParams } from './useSearchParams';
+import { useSearchParams } from 'react-router-dom';
 
 export const useDashboardController = () => {
     const [timeRange, setTimeRange] = useState<TimeRange>('1h');
-    const searchParams = useSearchParams();
+    const [searchParams] = useSearchParams();
 
     // Data management hooks
     const metricsData = useMetricsData();

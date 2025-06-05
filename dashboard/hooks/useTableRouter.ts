@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo } from 'react';
 import { TimeRange } from '../types';
-import { useSearchParams } from './useSearchParams';
+import { useSearchParams } from 'react-router-dom';
 import { TableViewState } from './useTableActions';
 
 interface UseTableRouterProps {
@@ -24,7 +24,7 @@ export const useTableRouter = ({
     openSequencerDistributionTable,
     onError,
 }: UseTableRouterProps) => {
-    const searchParams = useSearchParams();
+    const [searchParams] = useSearchParams();
 
     // Extract specific search param values to avoid unstable object dependencies
     const urlParams = useMemo(() => ({

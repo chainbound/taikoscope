@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo } from 'react';
 import useSWR from 'swr';
 import { TimeRange } from '../types';
-import { useSearchParams } from './useSearchParams';
+import { useSearchParams } from 'react-router-dom';
 import { TableViewState } from './useTableActions';
 
 interface UseDataFetcherProps {
@@ -26,7 +26,7 @@ export const useDataFetcher = ({
   refreshRate,
   updateLastRefresh,
 }: UseDataFetcherProps) => {
-  const searchParams = useSearchParams();
+  const [searchParams] = useSearchParams();
 
   // Memoize the specific value we need to prevent infinite re-renders
   const viewParam = searchParams.get('view');

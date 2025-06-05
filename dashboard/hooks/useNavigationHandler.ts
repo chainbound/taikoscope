@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { useSearchParams } from './useSearchParams';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { TableViewState } from './useTableActions';
 
 interface UseNavigationHandlerProps {
@@ -11,23 +11,15 @@ export const useNavigationHandler = ({
     setTableView,
     onError,
 }: UseNavigationHandlerProps) => {
-    const searchParams = useSearchParams();
+    const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
 
     const handleBack = useCallback(() => {
         try {
-            if (searchParams.navigationState.canGoBack) {
-                searchParams.goBack();
+            if (window.history.length > 1) {
+                navigate(-1);
             } else {
-                // Fallback: navigate to dashboard home
-                const url = new URL(window.location.href);
-                url.searchParams.delete('view');
-                url.searchParams.delete('table');
-                url.searchParams.delete('address');
-                url.searchParams.delete('page');
-                url.searchParams.delete('start');
-                url.searchParams.delete('end');
-                const relative = url.pathname + url.search;
-                searchParams.navigate(relative, true);
+                setSearchParams({});
             }
             setTableView(null);
         } catch (err) {
@@ -36,23 +28,22 @@ export const useNavigationHandler = ({
             setTableView(null);
             onError('Navigation error occurred.');
         }
-    }, [searchParams, setTableView, onError]);
+    }, [navigate, setSearchParams, setTableView, onError]);
 
     const handleSequencerChange = useCallback((seq: string | null) => {
         try {
-            const url = new URL(window.location.href);
+            const params = new URLSearchParams(searchParams);
             if (seq) {
-                url.searchParams.set('sequencer', seq);
+                params.set('sequencer', seq);
             } else {
-                url.searchParams.delete('sequencer');
+                params.delete('sequencer');
             }
-            const relative = url.pathname + url.search;
-            searchParams.navigate(relative);
+            navigate({ search: params.toString() });
         } catch (err) {
             console.error('Failed to handle sequencer change:', err);
             onError('Failed to update sequencer selection.');
         }
-    }, [searchParams, onError]);
+    }, [navigate, searchParams, onError]);
 
     return {
         handleBack,

@@ -5,7 +5,7 @@ import { MetricsGrid } from '../layout/MetricsGrid';
 import { ChartsGrid } from '../layout/ChartsGrid';
 import { TAIKO_PINK } from '../../theme';
 import { TimeRange, MetricData } from '../../types';
-import { useSearchParams } from '../../hooks/useSearchParams';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 interface DashboardViewProps {
     timeRange: TimeRange;
@@ -54,7 +54,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     onOpenTpsTable,
     onOpenSequencerDistributionTable,
 }) => {
-    const searchParams = useSearchParams();
+    const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const isEconomicsView = searchParams.get('view') === 'economics';
 
     const visibleMetrics = React.useMemo(
@@ -104,13 +105,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         : groupOrder;
 
     const handleResetNavigation = useCallback(() => {
-        try {
-            searchParams.resetNavigation();
-            metricsData.setErrorMessage('');
-        } catch (err) {
-            console.error('Failed to reset navigation:', err);
-        }
-    }, [searchParams, metricsData]);
+        navigate('/', { replace: true });
+        metricsData.setErrorMessage('');
+    }, [navigate, metricsData]);
 
     const handleClearError = useCallback(() => {
         metricsData.setErrorMessage('');
@@ -148,8 +145,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
             <ErrorDisplay
                 errorMessage={metricsData.errorMessage}
-                navigationError={searchParams.navigationState.lastError}
-                errorCount={searchParams.navigationState.errorCount}
                 onResetNavigation={handleResetNavigation}
                 onClearError={handleClearError}
             />
