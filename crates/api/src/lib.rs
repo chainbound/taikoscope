@@ -787,13 +787,11 @@ async fn l2_block_cadence(
             None
         }
     });
-    let avg = match if duration.num_hours() <= 1 {
-        state.client.get_l2_block_cadence_last_hour(address).await
-    } else if duration.num_hours() <= 24 {
-        state.client.get_l2_block_cadence_last_24_hours(address).await
-    } else {
-        state.client.get_l2_block_cadence_last_7_days(address).await
-    } {
+    let avg = match state
+        .client
+        .get_l2_block_cadence(address, TimeRange::from_duration(duration))
+        .await
+    {
         Ok(val) => val,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get L2 block cadence");
@@ -826,13 +824,8 @@ async fn batch_posting_cadence(
     State(state): State<ApiState>,
 ) -> Result<Json<BatchPostingCadenceResponse>, ErrorResponse> {
     let duration = range_duration(&params.range);
-    let avg = match if duration.num_hours() <= 1 {
-        state.client.get_batch_posting_cadence_last_hour().await
-    } else if duration.num_hours() <= 24 {
-        state.client.get_batch_posting_cadence_last_24_hours().await
-    } else {
-        state.client.get_batch_posting_cadence_last_7_days().await
-    } {
+    let avg = match state.client.get_batch_posting_cadence(TimeRange::from_duration(duration)).await
+    {
         Ok(val) => val,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get batch posting cadence");
@@ -864,11 +857,11 @@ async fn batch_posting_times(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
 ) -> Result<Json<BatchPostingTimesResponse>, ErrorResponse> {
-    let rows = match match params.range.as_deref() {
-        Some("24h") => state.client.get_batch_posting_times_last_24_hours().await,
-        Some("7d") => state.client.get_batch_posting_times_last_7_days().await,
-        _ => state.client.get_batch_posting_times_last_hour().await,
-    } {
+    let rows = match state
+        .client
+        .get_batch_posting_times(TimeRange::from_duration(range_duration(&params.range)))
+        .await
+    {
         Ok(r) => r,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get batch posting times");
@@ -908,13 +901,7 @@ async fn avg_l2_tps(
             None
         }
     });
-    let avg = match if duration.num_hours() <= 1 {
-        state.client.get_avg_l2_tps_last_hour(address).await
-    } else if duration.num_hours() <= 24 {
-        state.client.get_avg_l2_tps_last_24_hours(address).await
-    } else {
-        state.client.get_avg_l2_tps_last_7_days(address).await
-    } {
+    let avg = match state.client.get_avg_l2_tps(address, TimeRange::from_duration(duration)).await {
         Ok(val) => val,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get avg L2 TPS");
@@ -954,13 +941,7 @@ async fn l2_transaction_fee(
             None
         }
     });
-    let fee = match if duration.num_hours() <= 1 {
-        state.client.get_l2_tx_fee_last_hour(address).await
-    } else if duration.num_hours() <= 24 {
-        state.client.get_l2_tx_fee_last_24_hours(address).await
-    } else {
-        state.client.get_l2_tx_fee_last_7_days(address).await
-    } {
+    let fee = match state.client.get_l2_tx_fee(address, TimeRange::from_duration(duration)).await {
         Ok(val) => val,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get L2 tx fee");
@@ -1013,13 +994,7 @@ async fn avg_blobs_per_batch(
     State(state): State<ApiState>,
 ) -> Result<Json<AvgBlobsPerBatchResponse>, ErrorResponse> {
     let duration = range_duration(&params.range);
-    let avg = match if duration.num_hours() <= 1 {
-        state.client.get_avg_blobs_per_batch_last_hour().await
-    } else if duration.num_hours() <= 24 {
-        state.client.get_avg_blobs_per_batch_last_24_hours().await
-    } else {
-        state.client.get_avg_blobs_per_batch_last_7_days().await
-    } {
+    let avg = match state.client.get_avg_blobs_per_batch(TimeRange::from_duration(duration)).await {
         Ok(val) => val,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get avg blobs per batch");
@@ -1051,11 +1026,11 @@ async fn blobs_per_batch(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
 ) -> Result<Json<BatchBlobsResponse>, ErrorResponse> {
-    let batches = match match params.range.as_deref() {
-        Some("24h") => state.client.get_blobs_per_batch_last_24_hours().await,
-        Some("7d") => state.client.get_blobs_per_batch_last_7_days().await,
-        _ => state.client.get_blobs_per_batch_last_hour().await,
-    } {
+    let batches = match state
+        .client
+        .get_blobs_per_batch(TimeRange::from_duration(range_duration(&params.range)))
+        .await
+    {
         Ok(rows) => rows,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get blobs per batch");
@@ -1087,11 +1062,11 @@ async fn prove_times(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
 ) -> Result<Json<ProveTimesResponse>, ErrorResponse> {
-    let batches = match match params.range.as_deref() {
-        Some("24h") => state.client.get_prove_times_last_24_hours().await,
-        Some("7d") => state.client.get_prove_times_last_7_days().await,
-        _ => state.client.get_prove_times_last_hour().await,
-    } {
+    let batches = match state
+        .client
+        .get_prove_times(TimeRange::from_duration(range_duration(&params.range)))
+        .await
+    {
         Ok(rows) => rows,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get prove times");
@@ -1123,11 +1098,11 @@ async fn verify_times(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
 ) -> Result<Json<VerifyTimesResponse>, ErrorResponse> {
-    let batches = match match params.range.as_deref() {
-        Some("24h") => state.client.get_verify_times_last_24_hours().await,
-        Some("7d") => state.client.get_verify_times_last_7_days().await,
-        _ => state.client.get_verify_times_last_hour().await,
-    } {
+    let batches = match state
+        .client
+        .get_verify_times(TimeRange::from_duration(range_duration(&params.range)))
+        .await
+    {
         Ok(rows) => rows,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get verify times");
@@ -1159,11 +1134,11 @@ async fn l1_block_times(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
 ) -> Result<Json<L1BlockTimesResponse>, ErrorResponse> {
-    let blocks = match match params.range.as_deref() {
-        Some("24h") => state.client.get_l1_block_times_last_24_hours().await,
-        Some("7d") => state.client.get_l1_block_times_last_7_days().await,
-        _ => state.client.get_l1_block_times_last_hour().await,
-    } {
+    let blocks = match state
+        .client
+        .get_l1_block_times(TimeRange::from_duration(range_duration(&params.range)))
+        .await
+    {
         Ok(rows) => rows,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get L1 block times");
@@ -1202,11 +1177,11 @@ async fn l2_block_times(
             None
         }
     });
-    let blocks = match match params.range.as_deref() {
-        Some("24h") => state.client.get_l2_block_times_last_24_hours(address).await,
-        Some("7d") => state.client.get_l2_block_times_last_7_days(address).await,
-        _ => state.client.get_l2_block_times_last_hour(address).await,
-    } {
+    let blocks = match state
+        .client
+        .get_l2_block_times(address, TimeRange::from_duration(range_duration(&params.range)))
+        .await
+    {
         Ok(rows) => rows,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get L2 block times");
@@ -1245,11 +1220,11 @@ async fn l2_gas_used(
             None
         }
     });
-    let blocks = match match params.range.as_deref() {
-        Some("24h") => state.client.get_l2_gas_used_last_24_hours(address).await,
-        Some("7d") => state.client.get_l2_gas_used_last_7_days(address).await,
-        _ => state.client.get_l2_gas_used_last_hour(address).await,
-    } {
+    let blocks = match state
+        .client
+        .get_l2_gas_used(address, TimeRange::from_duration(range_duration(&params.range)))
+        .await
+    {
         Ok(rows) => rows,
         Err(e) => {
             tracing::error!("Failed to get L2 gas used: {}", e);
@@ -2075,6 +2050,15 @@ mod tests {
         assert_eq!(body, json!({ "avg_tps": 2.0 }));
     }
 
+    #[tokio::test]
+    async fn avg_l2_tps_custom_range_endpoint() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(vec![TpsRowTest { min_ts: 10, max_ts: 70, tx_sum: 180 }]));
+        let app = build_app(mock.url());
+        let body = send_request(app, "/avg-l2-tps?range=5h").await;
+        assert_eq!(body, json!({ "avg_tps": 3.0 }));
+    }
+
     #[derive(Serialize, Row)]
     struct FeeRowTest {
         total: u128,
@@ -2365,6 +2349,18 @@ mod tests {
     #[test]
     fn range_duration_invalid_string_defaults() {
         let d = range_duration(&Some("invalid".to_owned()));
+        assert_eq!(d.num_hours(), 1);
+    }
+
+    #[test]
+    fn range_duration_custom_hours() {
+        let d = range_duration(&Some("5h".to_owned()));
+        assert_eq!(d.num_hours(), 5);
+    }
+
+    #[test]
+    fn range_duration_sql_injection() {
+        let d = range_duration(&Some("1h; DROP TABLE".to_owned()));
         assert_eq!(d.num_hours(), 1);
     }
 

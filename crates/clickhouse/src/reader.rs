@@ -829,6 +829,46 @@ impl ClickhouseReader {
         }
     }
 
+    /// Get the average interval in milliseconds between consecutive L2 blocks
+    /// observed within the given range.
+    pub async fn get_l2_block_cadence(
+        &self,
+        sequencer: Option<AddressBytes>,
+        range: TimeRange,
+    ) -> Result<Option<u64>> {
+        #[derive(Row, Deserialize)]
+        struct CadenceRow {
+            min_ts: u64,
+            max_ts: u64,
+            cnt: u64,
+        }
+
+        let mut query = format!(
+            "SELECT toUInt64(min(toUnixTimestamp64Milli(inserted_at))) AS min_ts, \
+                    toUInt64(max(toUnixTimestamp64Milli(inserted_at))) AS max_ts, \
+                    count() as cnt \
+             FROM {db}.l2_head_events \
+             WHERE inserted_at >= now64() - INTERVAL {interval}",
+            interval = range.interval(),
+            db = self.db_name,
+        );
+        if let Some(addr) = sequencer {
+            query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
+        }
+
+        let rows = self.execute::<CadenceRow>(&query).await?;
+        let row = match rows.into_iter().next() {
+            Some(r) => r,
+            None => return Ok(None),
+        };
+
+        if row.cnt > 1 && row.max_ts > row.min_ts {
+            Ok(Some((row.max_ts - row.min_ts) / (row.cnt - 1)))
+        } else {
+            Ok(None)
+        }
+    }
+
     /// Get the average interval in milliseconds between consecutive batch
     /// proposals observed within the last hour
     pub async fn get_batch_posting_cadence_last_hour(&self) -> Result<Option<u64>> {
@@ -910,6 +950,39 @@ impl ClickhouseReader {
              FROM {db}.batches \
              WHERE inserted_at >= now64() - INTERVAL 7 DAY",
             db = self.db_name
+        );
+
+        let rows = self.execute::<CadenceRow>(&query).await?;
+        let row = match rows.into_iter().next() {
+            Some(r) => r,
+            None => return Ok(None),
+        };
+
+        if row.cnt > 1 && row.max_ts > row.min_ts {
+            Ok(Some((row.max_ts - row.min_ts) / (row.cnt - 1)))
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Get the average interval in milliseconds between consecutive batch
+    /// proposals observed within the given range.
+    pub async fn get_batch_posting_cadence(&self, range: TimeRange) -> Result<Option<u64>> {
+        #[derive(Row, Deserialize)]
+        struct CadenceRow {
+            min_ts: u64,
+            max_ts: u64,
+            cnt: u64,
+        }
+
+        let query = format!(
+            "SELECT toUInt64(min(toUnixTimestamp64Milli(inserted_at))) AS min_ts, \
+                    toUInt64(max(toUnixTimestamp64Milli(inserted_at))) AS max_ts, \
+                    count() as cnt \
+             FROM {db}.batches \
+             WHERE inserted_at >= now64() - INTERVAL {interval}",
+            interval = range.interval(),
+            db = self.db_name,
         );
 
         let rows = self.execute::<CadenceRow>(&query).await?;
@@ -1033,6 +1106,46 @@ impl ClickhouseReader {
             .collect())
     }
 
+    /// Get the interval in milliseconds between consecutive batch proposals
+    /// observed within the given range.
+    pub async fn get_batch_posting_times(
+        &self,
+        range: TimeRange,
+    ) -> Result<Vec<BatchPostingTimeRow>> {
+        #[derive(Row, Deserialize)]
+        struct RawRow {
+            batch_id: u64,
+            ts: u64,
+            ms_since_prev_batch: Option<u64>,
+        }
+
+        let query = format!(
+            "SELECT batch_id, \
+                    toUInt64(toUnixTimestamp64Milli(inserted_at)) AS ts, \
+                    toUInt64OrNull(toString(toUnixTimestamp64Milli(inserted_at) - \
+                        lagInFrame(toUnixTimestamp64Milli(inserted_at)) OVER (ORDER BY inserted_at))) \
+                        AS ms_since_prev_batch \
+             FROM {db}.batches \
+             WHERE inserted_at >= now64() - INTERVAL {interval} \
+             ORDER BY inserted_at",
+            interval = range.interval(),
+            db = self.db_name,
+        );
+
+        let rows = self.execute::<RawRow>(&query).await?;
+        Ok(rows
+            .into_iter()
+            .filter_map(|r| {
+                let dt = Utc.timestamp_millis_opt(r.ts as i64).single()?;
+                r.ms_since_prev_batch.map(|ms| BatchPostingTimeRow {
+                    batch_id: r.batch_id,
+                    inserted_at: dt,
+                    ms_since_prev_batch: Some(ms),
+                })
+            })
+            .collect())
+    }
+
     /// Get prove times in seconds for batches proved within the last hour
     pub async fn get_prove_times_last_hour(&self) -> Result<Vec<BatchProveTimeRow>> {
         let mv_query = format!(
@@ -1126,6 +1239,41 @@ impl ClickhouseReader {
              WHERE l1_proved.block_ts >= (toUInt64(now()) - 604800) \
              ORDER BY b.batch_id ASC",
             db = self.db_name
+        );
+
+        let rows = self.execute::<BatchProveTimeRow>(&fallback_query).await?;
+        Ok(rows)
+    }
+
+    /// Get prove times in seconds for batches proved within the given range
+    pub async fn get_prove_times(&self, range: TimeRange) -> Result<Vec<BatchProveTimeRow>> {
+        let mv_query = format!(
+            "SELECT batch_id, toUInt64(prove_time_ms / 1000) AS seconds_to_prove \
+             FROM {db}.batch_prove_times_mv \
+             WHERE proved_at >= now64() - INTERVAL {interval} \
+             ORDER BY batch_id ASC",
+            interval = range.interval(),
+            db = self.db_name,
+        );
+
+        let rows = self.execute::<BatchProveTimeRow>(&mv_query).await?;
+        if !rows.is_empty() {
+            return Ok(rows);
+        }
+
+        let fallback_query = format!(
+            "SELECT b.batch_id AS batch_id, \
+                    (l1_proved.block_ts - l1_proposed.block_ts) AS seconds_to_prove \
+             FROM {db}.batches b \
+             JOIN {db}.proved_batches pb ON b.batch_id = pb.batch_id \
+             JOIN {db}.l1_head_events l1_proposed \
+               ON b.l1_block_number = l1_proposed.l1_block_number \
+             JOIN {db}.l1_head_events l1_proved \
+               ON pb.l1_block_number = l1_proved.l1_block_number \
+             WHERE l1_proved.block_ts >= (toUInt64(now()) - {secs}) \
+             ORDER BY b.batch_id ASC",
+            secs = range.seconds(),
+            db = self.db_name,
         );
 
         let rows = self.execute::<BatchProveTimeRow>(&fallback_query).await?;
@@ -1243,6 +1391,45 @@ impl ClickhouseReader {
         Ok(rows)
     }
 
+    /// Get verify times in seconds for batches verified within the given range
+    pub async fn get_verify_times(&self, range: TimeRange) -> Result<Vec<BatchVerifyTimeRow>> {
+        let mv_query = format!(
+            "SELECT batch_id, toUInt64(verify_time_ms / 1000) AS seconds_to_verify \
+             FROM {db}.batch_verify_times_mv \
+             WHERE verified_at >= now64() - INTERVAL {interval} \
+               AND verify_time_ms > 60000 \
+             ORDER BY batch_id ASC",
+            interval = range.interval(),
+            db = self.db_name,
+        );
+
+        let rows = self.execute::<BatchVerifyTimeRow>(&mv_query).await?;
+        if !rows.is_empty() {
+            return Ok(rows);
+        }
+
+        let fallback_query = format!(
+            "SELECT pb.batch_id AS batch_id, \
+                    (l1_verified.block_ts - l1_proved.block_ts) AS seconds_to_verify \
+             FROM {db}.proved_batches pb \
+             INNER JOIN {db}.verified_batches vb \
+                ON pb.batch_id = vb.batch_id AND pb.block_hash = vb.block_hash \
+             INNER JOIN {db}.l1_head_events l1_proved \
+                ON pb.l1_block_number = l1_proved.l1_block_number \
+             INNER JOIN {db}.l1_head_events l1_verified \
+                ON vb.l1_block_number = l1_verified.l1_block_number \
+             WHERE l1_verified.block_ts >= (toUInt64(now()) - {secs}) \
+               AND l1_verified.block_ts > l1_proved.block_ts \
+               AND (l1_verified.block_ts - l1_proved.block_ts) > 60 \
+             ORDER BY pb.batch_id ASC",
+            secs = range.seconds(),
+            db = self.db_name,
+        );
+
+        let rows = self.execute::<BatchVerifyTimeRow>(&fallback_query).await?;
+        Ok(rows)
+    }
+
     /// Get L1 block numbers grouped by minute for the last hour
     pub async fn get_l1_block_times_last_hour(&self) -> Result<Vec<L1BlockTimeRow>> {
         let query = format!(
@@ -1285,6 +1472,23 @@ impl ClickhouseReader {
              GROUP BY minute \
              ORDER BY minute",
             db = self.db_name
+        );
+
+        let rows = self.execute::<L1BlockTimeRow>(&query).await?;
+        Ok(rows)
+    }
+
+    /// Get L1 block numbers grouped by minute for the given range
+    pub async fn get_l1_block_times(&self, range: TimeRange) -> Result<Vec<L1BlockTimeRow>> {
+        let query = format!(
+            "SELECT toUInt64(toStartOfMinute(fromUnixTimestamp64Milli(block_ts * 1000))) AS minute, \
+                    max(l1_block_number) AS block_number \
+             FROM {db}.l1_head_events \
+             WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
+             GROUP BY minute \
+             ORDER BY minute",
+            interval = range.interval(),
+            db = self.db_name,
         );
 
         let rows = self.execute::<L1BlockTimeRow>(&query).await?;
@@ -1389,6 +1593,47 @@ impl ClickhouseReader {
              FROM {db}.l2_head_events \
              WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL 7 DAY)",
             db = self.db_name
+        );
+        if let Some(addr) = sequencer {
+            query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
+        }
+        query.push_str(" ORDER BY l2_block_number");
+        let rows = self.execute::<RawRow>(&query).await?;
+        Ok(rows
+            .into_iter()
+            .filter_map(|r| {
+                let dt = Utc.timestamp_opt(r.block_time as i64, 0).single()?;
+                r.ms_since_prev_block.map(|ms| L2BlockTimeRow {
+                    l2_block_number: r.l2_block_number,
+                    block_time: dt,
+                    ms_since_prev_block: Some(ms),
+                })
+            })
+            .collect())
+    }
+
+    /// Get the time between consecutive L2 blocks for the given range
+    pub async fn get_l2_block_times(
+        &self,
+        sequencer: Option<AddressBytes>,
+        range: TimeRange,
+    ) -> Result<Vec<L2BlockTimeRow>> {
+        #[derive(Row, Deserialize)]
+        struct RawRow {
+            l2_block_number: u64,
+            block_time: u64,
+            ms_since_prev_block: Option<u64>,
+        }
+
+        let mut query = format!(
+            "SELECT l2_block_number, \
+                    block_ts AS block_time, \
+                    toUInt64OrNull(toString((block_ts - lagInFrame(block_ts) OVER (ORDER BY l2_block_number)) * 1000)) \
+                        AS ms_since_prev_block \
+             FROM {db}.l2_head_events \
+             WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})",
+            interval = range.interval(),
+            db = self.db_name,
         );
         if let Some(addr) = sequencer {
             query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
@@ -1562,6 +1807,38 @@ impl ClickhouseReader {
             .collect())
     }
 
+    /// Get the gas used for each L2 block within the given range
+    pub async fn get_l2_gas_used(
+        &self,
+        sequencer: Option<AddressBytes>,
+        range: TimeRange,
+    ) -> Result<Vec<L2GasUsedRow>> {
+        #[derive(Row, Deserialize)]
+        struct RawRow {
+            l2_block_number: u64,
+            gas_used: u64,
+        }
+
+        let mut query = format!(
+            "SELECT l2_block_number, toUInt64(sum_gas_used) AS gas_used \
+             FROM {db}.l2_head_events \
+             WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})",
+            interval = range.interval(),
+            db = self.db_name,
+        );
+        if let Some(addr) = sequencer {
+            query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
+        }
+        query.push_str(" ORDER BY l2_block_number");
+
+        let rows = self.execute::<RawRow>(&query).await?;
+        Ok(rows
+            .into_iter()
+            .skip(1)
+            .map(|r| L2GasUsedRow { l2_block_number: r.l2_block_number, gas_used: r.gas_used })
+            .collect())
+    }
+
     /// Get the total L2 transaction fee for the given range
     pub async fn get_l2_tx_fee(
         &self,
@@ -1649,6 +1926,20 @@ impl ClickhouseReader {
              WHERE inserted_at >= now64() - INTERVAL 7 DAY \
              ORDER BY batch_id",
             db = self.db_name
+        );
+
+        let rows = self.execute::<BatchBlobCountRow>(&query).await?;
+        Ok(rows)
+    }
+
+    /// Get the blob count for each batch within the given range
+    pub async fn get_blobs_per_batch(&self, range: TimeRange) -> Result<Vec<BatchBlobCountRow>> {
+        let query = format!(
+            "SELECT batch_id, blob_count FROM {db}.batches \
+             WHERE inserted_at >= now64() - INTERVAL {interval} \
+             ORDER BY batch_id",
+            interval = range.interval(),
+            db = self.db_name,
         );
 
         let rows = self.execute::<BatchBlobCountRow>(&query).await?;
