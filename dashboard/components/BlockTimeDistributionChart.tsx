@@ -23,10 +23,9 @@ interface BlockTimeDistributionChartProps {
   barColor: string;
 }
 
-const BlockTimeDistributionChartComponent: React.FC<BlockTimeDistributionChartProps> = ({
-  data,
-  barColor,
-}) => {
+const BlockTimeDistributionChartComponent: React.FC<
+  BlockTimeDistributionChartProps
+> = ({ data, barColor }) => {
   if (!data || data.length === 0) {
     return (
       <div className="flex items-center justify-center h-full text-gray-500">
@@ -38,31 +37,35 @@ const BlockTimeDistributionChartComponent: React.FC<BlockTimeDistributionChartPr
   const showMinutes = shouldShowMinutes(data);
 
   const distributionData = useMemo(() => {
-    // Extract block times (values) and filter for reasonable bounds
+    // Extract block times (timestamps) and filter for reasonable bounds
     const times = data
-      .map((d) => d.value)
-      .filter((time) => time >= MIN_REASONABLE_BLOCK_TIME_MS && time <= MAX_REASONABLE_BLOCK_TIME_MS);
-    
+      .map((d) => d.timestamp)
+      .filter(
+        (time) =>
+          time >= MIN_REASONABLE_BLOCK_TIME_MS &&
+          time <= MAX_REASONABLE_BLOCK_TIME_MS,
+      );
+
     if (times.length === 0) {
       return [];
     }
-    
+
     const min = Math.min(...times);
     const max = Math.max(...times);
-    
+
     if (min === max) {
       return [{ interval: min, count: times.length }];
     }
-    
+
     // Adaptive bin count based on data size
     const binCount = Math.min(
       MAX_BIN_COUNT,
-      Math.max(MIN_BIN_COUNT, Math.floor(Math.sqrt(times.length)))
+      Math.max(MIN_BIN_COUNT, Math.floor(Math.sqrt(times.length))),
     );
-    
+
     const binSize = (max - min) / binCount;
     const EPSILON = 1e-10; // Small constant to prevent floating point issues
-    
+
     if (binSize < EPSILON) {
       return [{ interval: (min + max) / 2, count: times.length }];
     }
@@ -70,12 +73,12 @@ const BlockTimeDistributionChartComponent: React.FC<BlockTimeDistributionChartPr
       interval: min + (i + 0.5) * binSize,
       count: 0,
     }));
-    
+
     times.forEach((t) => {
       const idx = Math.min(Math.floor((t - min) / binSize), binCount - 1);
       bins[idx].count += 1;
     });
-    
+
     return bins;
   }, [data]);
 
@@ -118,7 +121,9 @@ const BlockTimeDistributionChartComponent: React.FC<BlockTimeDistributionChartPr
           }}
         />
         <Tooltip
-          labelFormatter={(label: number) => formatInterval(label, false, showMinutes)}
+          labelFormatter={(label: number) =>
+            formatInterval(label, false, showMinutes)
+          }
           formatter={(value: number) => [value.toLocaleString(), 'blocks']}
           contentStyle={{
             backgroundColor: 'rgba(255, 255, 255, 0.8)',
@@ -134,4 +139,6 @@ const BlockTimeDistributionChartComponent: React.FC<BlockTimeDistributionChartPr
   );
 };
 
-export const BlockTimeDistributionChart = React.memo(BlockTimeDistributionChartComponent);
+export const BlockTimeDistributionChart = React.memo(
+  BlockTimeDistributionChartComponent,
+);
