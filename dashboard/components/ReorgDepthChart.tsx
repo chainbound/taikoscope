@@ -11,6 +11,7 @@ import {
 } from 'recharts';
 import { L2ReorgEvent } from '../types';
 import { TAIKO_PINK } from '../theme';
+import { formatTime } from '../utils';
 
 interface ReorgDepthChartProps {
   data: L2ReorgEvent[];
@@ -71,7 +72,7 @@ const ReorgDepthChartComponent: React.FC<ReorgDepthChartProps> = ({ data }) => {
     <ResponsiveContainer width="100%" height="100%">
       <BarChart
         data={data}
-        margin={{ top: 5, right: 70, left: 20, bottom: 40 }}
+        margin={{ top: 5, right: 70, left: 80, bottom: 40 }}
       >
         <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
         <XAxis
@@ -116,7 +117,7 @@ const ReorgDepthChartComponent: React.FC<ReorgDepthChartProps> = ({ data }) => {
           height={20}
           stroke={TAIKO_PINK}
           padding={{ left: 40, right: 40 }}
-          tickFormatter={(v: number) => new Date(v).toLocaleString()}
+          tickFormatter={(v: number) => formatTime(v)}
           startIndex={clampedRange.startIndex}
           endIndex={clampedRange.endIndex}
           onChange={handleBrushChange}
