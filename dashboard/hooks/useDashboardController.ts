@@ -1,5 +1,3 @@
-import { useState } from 'react';
-import { TimeRange } from '../types';
 import { useMetricsData } from './useMetricsData';
 import { useChartsData } from './useChartsData';
 import { useBlockData } from './useBlockData';
@@ -9,10 +7,11 @@ import { useNavigationHandler } from './useNavigationHandler';
 import { useDataFetcher } from './useDataFetcher';
 import { useSequencerHandler } from './useSequencerHandler';
 import { useTableActions } from './useTableActions';
+import { useTimeRangeSync } from './useTimeRangeSync';
 import { useSearchParams } from 'react-router-dom';
 
 export const useDashboardController = () => {
-    const [timeRange, setTimeRange] = useState<TimeRange>('1h');
+    const { timeRange, setTimeRange } = useTimeRangeSync();
     const [searchParams] = useSearchParams();
 
     // Data management hooks

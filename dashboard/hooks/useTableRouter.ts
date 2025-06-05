@@ -57,7 +57,9 @@ export const useTableRouter = ({
             const table = params.table;
             const range = params.range || timeRange;
 
-            if (tableView && tableView.timeRange === range) {
+            if (tableView && 
+                tableView.timeRange === range && 
+                tableView.table === table) {
                 return;
             }
 
