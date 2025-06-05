@@ -2,6 +2,7 @@ import React, { useCallback } from 'react';
 import { ErrorDisplay } from '../layout/ErrorDisplay';
 import { MetricsGrid } from '../layout/MetricsGrid';
 import { ChartsGrid } from '../layout/ChartsGrid';
+import { ProfitCalculator } from '../ProfitCalculator';
 import { TimeRange, MetricData } from '../../types';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
@@ -123,6 +124,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     displayGroupName={displayGroupName}
                     onMetricAction={getMetricAction}
                 />
+
+                {isEconomicsView && (
+                    <ProfitCalculator metrics={metricsData.metrics} />
+                )}
 
                 {!isEconomicsView && (
                     <ChartsGrid
