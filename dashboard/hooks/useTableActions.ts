@@ -172,16 +172,11 @@ export const useTableActions = (
           }
         };
 
-        const description =
-          tableKey === 'reorgs'
-            ? 'An L2 reorg occurs when the chain replaces previously published blocks. Depth shows how many blocks were replaced.'
-            : tableKey === 'missed-proposals'
-              ? 'A missed proposal is when a sequencer does not propose a new L1 block, even though there have been L2 blocks published since the last L1 block.'
-              : undefined;
+
 
         openTable(
           title,
-          description,
+          undefined,
           config.columns,
           mappedData,
           tableKey === 'sequencer-dist'
