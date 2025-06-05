@@ -84,7 +84,7 @@ const BlockTimeChartComponent: React.FC<BlockTimeChartProps> = ({
     <ResponsiveContainer width="100%" height="100%">
       <ChartComponent
         data={data}
-        margin={{ top: 5, right: 90, left: 20, bottom: 40 }}
+        margin={{ top: 5, right: 90, left: 80, bottom: 40 }}
       >
         <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
         <XAxis
@@ -145,6 +145,7 @@ const BlockTimeChartComponent: React.FC<BlockTimeChartProps> = ({
           dataKey="timestamp"
           height={20}
           stroke={lineColor}
+          padding={{ left: 40, right: 40 }}
           startIndex={clampedRange.startIndex}
           endIndex={clampedRange.endIndex}
           onChange={handleBrushChange}
