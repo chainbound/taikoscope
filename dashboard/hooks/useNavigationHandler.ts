@@ -39,7 +39,7 @@ export const useNavigationHandler = ({
         } else {
           params.delete('sequencer');
         }
-        navigate({ pathname: '', search: params.toString() });
+        navigate({ pathname: '/', search: params.toString() });
       } catch (err) {
         console.error('Failed to handle sequencer change:', err);
         onError('Failed to update sequencer selection.');

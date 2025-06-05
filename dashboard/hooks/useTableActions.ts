@@ -68,7 +68,7 @@ export const useTableActions = (
         });
 
         navigate(
-          { pathname: '', search: newParams.toString() },
+          { pathname: '/', search: newParams.toString() },
           { replace: false },
         );
       } catch (err) {
