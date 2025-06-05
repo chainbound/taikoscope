@@ -114,6 +114,14 @@ describe('navigationUtils', () => {
       const invalid = new URLSearchParams('sort=up&filter=<bad>');
       expect(validateSearchParams(invalid)).toBe(false);
     });
+
+    it('should validate table parameters', () => {
+      const params = new URLSearchParams('table=missed-proposals');
+      expect(validateSearchParams(params)).toBe(true);
+
+      const invalid = new URLSearchParams('table=../../etc');
+      expect(validateSearchParams(invalid)).toBe(false);
+    });
   });
 
   describe('cleanSearchParams', () => {
@@ -159,6 +167,14 @@ describe('navigationUtils', () => {
 
       expect(cleaned.get('sort')).toBeNull();
       expect(cleaned.get('filter')).toBeNull();
+    });
+
+    it('should keep valid table parameter', () => {
+      const params = new URLSearchParams('table=missed-proposals&bad=1');
+      const cleaned = cleanSearchParams(params);
+
+      expect(cleaned.get('table')).toBe('missed-proposals');
+      expect(cleaned.get('bad')).toBeNull();
     });
   });
 
