@@ -100,7 +100,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
 
   'forced-inclusions': {
     title: 'Forced Inclusions',
-    description: 'Batches that were forcibly included after timeout.',
+    description: 'Batches that were forcibly included.',
     fetcher: fetchForcedInclusionEvents,
     columns: [{ key: 'blob_hash', label: 'Blob Hash' }],
     mapData: (data) =>
