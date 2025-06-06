@@ -69,59 +69,6 @@ const fetchJson = async <T>(
   throw new Error('unreachable');
 };
 
-export interface AvgTimeResponse {
-  avg_prove_time_ms?: number;
-  avg_verify_time_ms?: number;
-}
-
-export const fetchAvgProveTime = async (
-  range: TimeRange,
-): Promise<RequestResult<number>> => {
-  const url = `${API_BASE}/avg-prove-time?range=${range}`;
-  const res = await fetchJson<{ avg_prove_time_ms?: number }>(url);
-  return {
-    data: res.data?.avg_prove_time_ms ?? null,
-    badRequest: res.badRequest,
-    error: res.error,
-  };
-};
-
-export const fetchAvgVerifyTime = async (
-  range: TimeRange,
-): Promise<RequestResult<number>> => {
-  const url = `${API_BASE}/avg-verify-time?range=${range}`;
-  const res = await fetchJson<{ avg_verify_time_ms?: number }>(url);
-  return {
-    data: res.data?.avg_verify_time_ms ?? null,
-    badRequest: res.badRequest,
-    error: res.error,
-  };
-};
-
-export const fetchL2BlockCadence = async (
-  range: TimeRange,
-  address?: string,
-): Promise<RequestResult<number>> => {
-  const url = `${API_BASE}/l2-block-cadence?range=${range}${address ? `&address=${address}` : ''}`;
-  const res = await fetchJson<{ l2_block_cadence_ms?: number }>(url);
-  return {
-    data: res.data?.l2_block_cadence_ms ?? null,
-    badRequest: res.badRequest,
-    error: res.error,
-  };
-};
-
-export const fetchBatchPostingCadence = async (
-  range: TimeRange,
-): Promise<RequestResult<number>> => {
-  const url = `${API_BASE}/batch-posting-cadence?range=${range}`;
-  const res = await fetchJson<{ batch_posting_cadence_ms?: number }>(url);
-  return {
-    data: res.data?.batch_posting_cadence_ms ?? null,
-    badRequest: res.badRequest,
-    error: res.error,
-  };
-};
 
 export const fetchActiveSequencerAddresses = async (): Promise<
   RequestResult<string[]>
@@ -532,32 +479,6 @@ export const fetchBatchBlobCounts = async (
   };
 };
 
-export const fetchAvgBlobsPerBatch = async (
-  range: TimeRange,
-): Promise<RequestResult<number>> => {
-  const url = `${API_BASE}/avg-blobs-per-batch?range=${range}`;
-  const res = await fetchJson<{ avg_blobs?: number }>(url);
-  return {
-    data: res.data?.avg_blobs ?? null,
-    badRequest: res.badRequest,
-    error: res.error,
-  };
-};
-
-export const fetchAvgL2Tps = async (
-  range: TimeRange,
-  address?: string,
-): Promise<RequestResult<number>> => {
-  const url =
-    `${API_BASE}/avg-l2-tps?range=${range}` +
-    (address ? `&address=${address}` : '');
-  const res = await fetchJson<{ avg_tps?: number }>(url);
-  return {
-    data: res.data?.avg_tps ?? null,
-    badRequest: res.badRequest,
-    error: res.error,
-  };
-};
 
 export const fetchL2TxFee = async (
   range: TimeRange,
@@ -595,18 +516,6 @@ export const fetchL2Tps = async (
   }));
 
   return { data, badRequest: res.badRequest, error: res.error };
-};
-
-export const fetchCloudCost = async (
-  range: TimeRange,
-): Promise<RequestResult<number>> => {
-  const url = `${API_BASE}/cloud-cost?range=${range}`;
-  const res = await fetchJson<{ cost_usd: number }>(url);
-  return {
-    data: res.data?.cost_usd ?? null,
-    badRequest: res.badRequest,
-    error: res.error,
-  };
 };
 
 export interface DashboardDataResponse {

@@ -40,30 +40,19 @@ pub const MAX_BLOCK_TRANSACTIONS_LIMIT: u64 = u64::MAX;
 #[openapi(
     paths(
         health,
-        l2_head,
-        l1_head,
+        
         l2_head_block,
         l1_head_block,
         slashings,
         forced_inclusions,
         reorgs,
-        active_gateways,
         preconf_data,
-        current_operator,
-        next_operator,
-        avg_prove_time,
-        avg_verify_time,
-        l2_block_cadence,
-        batch_posting_cadence,
         batch_posting_times,
-        avg_l2_tps,
         l2_transaction_fee,
-        cloud_cost,
-        avg_blobs_per_batch,
+        
         blobs_per_batch,
         prove_times,
         verify_times,
-        l1_block_times,
         l2_block_times,
         l2_gas_used,
         l2_tps,
@@ -547,103 +536,7 @@ async fn reorgs(
     Ok(Json(ReorgEventsResponse { events }))
 }
 
-#[utoipa::path(
-    get,
-    path = "/active-gateways",
-    params(
-        RangeQuery
-    ),
-    responses(
-        (status = 200, description = "Active gateways", body = ActiveGatewaysResponse),
-        (status = 500, description = "Database error", body = ErrorResponse)
-    ),
-    tag = "taikoscope"
-)]
-async fn active_gateways(
-    Query(params): Query<RangeQuery>,
-    State(state): State<ApiState>,
-) -> Result<Json<ActiveGatewaysResponse>, ErrorResponse> {
-    // Validate time range parameters
-    validate_time_range(&params.time_range)?;
 
-    // Check for range exclusivity
-    let has_time_range = has_time_range_params(&params.time_range);
-    validate_range_exclusivity(has_time_range, false)?;
-
-    let since = resolve_time_range_since(&params.range, &params.time_range);
-    let gateways = state.client.get_active_gateways_since(since).await.map_err(|e| {
-        tracing::error!(error = %e, "Failed to get active gateways");
-        ErrorResponse::new(
-            "database-error",
-            "Database error",
-            StatusCode::INTERNAL_SERVER_ERROR,
-            e.to_string(),
-        )
-    })?;
-    let gateways: Vec<String> = gateways.into_iter().map(|a| format!("0x{}", encode(a))).collect();
-    tracing::info!(count = gateways.len(), "Returning active gateways");
-    Ok(Json(ActiveGatewaysResponse { gateways }))
-}
-
-#[utoipa::path(
-    get,
-    path = "/current-operator",
-    responses(
-        (status = 200, description = "Current operator", body = CurrentOperatorResponse),
-        (status = 500, description = "Database error", body = ErrorResponse)
-    ),
-    tag = "taikoscope"
-)]
-async fn current_operator(
-    State(state): State<ApiState>,
-) -> Result<Json<CurrentOperatorResponse>, ErrorResponse> {
-    let op = state
-        .client
-        .get_last_current_operator()
-        .await
-        .map_err(|e| {
-            tracing::error!(error = %e, "Failed to get current operator");
-            ErrorResponse::new(
-                "database-error",
-                "Database error",
-                StatusCode::INTERNAL_SERVER_ERROR,
-                e.to_string(),
-            )
-        })?
-        .map(|a| format!("0x{}", encode(a)));
-    tracing::info!(has_value = op.is_some(), "Returning current operator");
-    Ok(Json(CurrentOperatorResponse { operator: op }))
-}
-
-#[utoipa::path(
-    get,
-    path = "/next-operator",
-    responses(
-        (status = 200, description = "Next operator", body = NextOperatorResponse),
-        (status = 500, description = "Database error", body = ErrorResponse)
-    ),
-    tag = "taikoscope"
-)]
-async fn next_operator(
-    State(state): State<ApiState>,
-) -> Result<Json<NextOperatorResponse>, ErrorResponse> {
-    let op = state
-        .client
-        .get_last_next_operator()
-        .await
-        .map_err(|e| {
-            tracing::error!(error = %e, "Failed to get next operator");
-            ErrorResponse::new(
-                "database-error",
-                "Database error",
-                StatusCode::INTERNAL_SERVER_ERROR,
-                e.to_string(),
-            )
-        })?
-        .map(|a| format!("0x{}", encode(a)));
-    tracing::info!(has_value = op.is_some(), "Returning next operator");
-    Ok(Json(NextOperatorResponse { operator: op }))
-}
 
 #[utoipa::path(
     get,
@@ -676,173 +569,6 @@ async fn preconf_data(
     };
     tracing::info!(count = candidates.len(), "Returning preconf data");
     Ok(Json(PreconfDataResponse { candidates, current_operator: current, next_operator: next }))
-}
-
-#[utoipa::path(
-    get,
-    path = "/avg-prove-time",
-    params(
-        RangeQuery
-    ),
-    responses(
-        (status = 200, description = "Average prove time", body = AvgProveTimeResponse),
-        (status = 500, description = "Database error", body = ErrorResponse)
-    ),
-    tag = "taikoscope"
-)]
-async fn avg_prove_time(
-    Query(params): Query<RangeQuery>,
-    State(state): State<ApiState>,
-) -> Result<Json<AvgProveTimeResponse>, ErrorResponse> {
-    // Validate time range parameters
-    validate_time_range(&params.time_range)?;
-
-    // Check for range exclusivity
-    let has_time_range = has_time_range_params(&params.time_range);
-    validate_range_exclusivity(has_time_range, false)?;
-
-    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
-    let avg = match state.client.get_avg_prove_time(time_range).await {
-        Ok(val) => val,
-        Err(e) => {
-            tracing::error!(error = %e, "Failed to get avg prove time");
-            return Err(ErrorResponse::new(
-                "database-error",
-                "Database error",
-                StatusCode::INTERNAL_SERVER_ERROR,
-                e.to_string(),
-            ));
-        }
-    };
-    tracing::info!(avg_prove_time_ms = ?avg, "Returning avg prove time");
-    Ok(Json(AvgProveTimeResponse { avg_prove_time_ms: avg }))
-}
-
-#[utoipa::path(
-    get,
-    path = "/avg-verify-time",
-    params(
-        RangeQuery
-    ),
-    responses(
-        (status = 200, description = "Average verify time", body = AvgVerifyTimeResponse),
-        (status = 500, description = "Database error", body = ErrorResponse)
-    ),
-    tag = "taikoscope"
-)]
-async fn avg_verify_time(
-    Query(params): Query<RangeQuery>,
-    State(state): State<ApiState>,
-) -> Result<Json<AvgVerifyTimeResponse>, ErrorResponse> {
-    // Validate time range parameters
-    validate_time_range(&params.time_range)?;
-
-    // Check for range exclusivity
-    let has_time_range = has_time_range_params(&params.time_range);
-    validate_range_exclusivity(has_time_range, false)?;
-
-    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
-    let avg = match state.client.get_avg_verify_time(time_range).await {
-        Ok(val) => val,
-        Err(e) => {
-            tracing::error!(error = %e, "Failed to get avg verify time");
-            return Err(ErrorResponse::new(
-                "database-error",
-                "Database error",
-                StatusCode::INTERNAL_SERVER_ERROR,
-                e.to_string(),
-            ));
-        }
-    };
-    tracing::info!(avg_verify_time_ms = ?avg, "Returning avg verify time");
-    Ok(Json(AvgVerifyTimeResponse { avg_verify_time_ms: avg }))
-}
-
-#[utoipa::path(
-    get,
-    path = "/l2-block-cadence",
-    params(
-        RangeQuery
-    ),
-    responses(
-        (status = 200, description = "L2 block cadence", body = L2BlockCadenceResponse),
-        (status = 500, description = "Database error", body = ErrorResponse)
-    ),
-    tag = "taikoscope"
-)]
-async fn l2_block_cadence(
-    Query(params): Query<RangeQuery>,
-    State(state): State<ApiState>,
-) -> Result<Json<L2BlockCadenceResponse>, ErrorResponse> {
-    // Validate time range parameters
-    validate_time_range(&params.time_range)?;
-
-    // Check for range exclusivity
-    let has_time_range = has_time_range_params(&params.time_range);
-    validate_range_exclusivity(has_time_range, false)?;
-
-    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
-    let address = params.address.as_ref().and_then(|addr| match addr.parse::<Address>() {
-        Ok(a) => Some(AddressBytes::from(a)),
-        Err(e) => {
-            tracing::warn!(error = %e, "Failed to parse address");
-            None
-        }
-    });
-    let avg = match state.client.get_l2_block_cadence(address, time_range).await {
-        Ok(val) => val,
-        Err(e) => {
-            tracing::error!(error = %e, "Failed to get L2 block cadence");
-            return Err(ErrorResponse::new(
-                "database-error",
-                "Database error",
-                StatusCode::INTERNAL_SERVER_ERROR,
-                e.to_string(),
-            ));
-        }
-    };
-    tracing::info!(l2_block_cadence_ms = ?avg, "Returning L2 block cadence");
-    Ok(Json(L2BlockCadenceResponse { l2_block_cadence_ms: avg }))
-}
-
-#[utoipa::path(
-    get,
-    path = "/batch-posting-cadence",
-    params(
-        RangeQuery
-    ),
-    responses(
-        (status = 200, description = "Batch posting cadence", body = BatchPostingCadenceResponse),
-        (status = 500, description = "Database error", body = ErrorResponse)
-    ),
-    tag = "taikoscope"
-)]
-async fn batch_posting_cadence(
-    Query(params): Query<RangeQuery>,
-    State(state): State<ApiState>,
-) -> Result<Json<BatchPostingCadenceResponse>, ErrorResponse> {
-    // Validate time range parameters
-    validate_time_range(&params.time_range)?;
-
-    // Check for range exclusivity
-    let has_time_range = has_time_range_params(&params.time_range);
-    validate_range_exclusivity(has_time_range, false)?;
-
-    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
-    let avg = match state.client.get_batch_posting_cadence(time_range).await {
-        Ok(val) => val,
-        Err(e) => {
-            tracing::error!(error = %e, "Failed to get batch posting cadence");
-            return Err(ErrorResponse::new(
-                "database-error",
-                "Database error",
-                StatusCode::INTERNAL_SERVER_ERROR,
-                e.to_string(),
-            ));
-        }
-    };
-    tracing::info!(batch_posting_cadence_ms = ?avg, "Returning batch posting cadence");
-    Ok(Json(BatchPostingCadenceResponse { batch_posting_cadence_ms: avg }))
 }
 
 #[utoipa::path(
@@ -885,52 +611,6 @@ async fn batch_posting_times(
     Ok(Json(BatchPostingTimesResponse { batches: rows }))
 }
 
-#[utoipa::path(
-    get,
-    path = "/avg-l2-tps",
-    params(
-        RangeQuery
-    ),
-    responses(
-        (status = 200, description = "Average L2 TPS", body = AvgL2TpsResponse),
-        (status = 500, description = "Database error", body = ErrorResponse)
-    ),
-    tag = "taikoscope"
-)]
-async fn avg_l2_tps(
-    Query(params): Query<RangeQuery>,
-    State(state): State<ApiState>,
-) -> Result<Json<AvgL2TpsResponse>, ErrorResponse> {
-    // Validate time range parameters
-    validate_time_range(&params.time_range)?;
-
-    // Check for range exclusivity
-    let has_time_range = has_time_range_params(&params.time_range);
-    validate_range_exclusivity(has_time_range, false)?;
-
-    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
-    let address = params.address.as_ref().and_then(|addr| match addr.parse::<Address>() {
-        Ok(a) => Some(AddressBytes::from(a)),
-        Err(e) => {
-            tracing::warn!(error = %e, "Failed to parse address");
-            None
-        }
-    });
-    let avg = match state.client.get_avg_l2_tps(address, time_range).await {
-        Ok(val) => val,
-        Err(e) => {
-            tracing::error!(error = %e, "Failed to get avg L2 TPS");
-            return Err(ErrorResponse::new(
-                "database-error",
-                "Database error",
-                StatusCode::INTERNAL_SERVER_ERROR,
-                e.to_string(),
-            ));
-        }
-    };
-    tracing::info!(avg_tps = ?avg, "Returning avg L2 TPS");
-    Ok(Json(AvgL2TpsResponse { avg_tps: avg }))
-}
 
 #[utoipa::path(
     get,
@@ -979,74 +659,6 @@ async fn l2_transaction_fee(
     Ok(Json(L2TxFeeResponse { tx_fee: fee }))
 }
 
-#[utoipa::path(
-    get,
-    path = "/cloud-cost",
-    params(
-        RangeQuery
-    ),
-    responses(
-        (status = 200, description = "Estimated cloud cost", body = CloudCostResponse)
-    ),
-    tag = "taikoscope"
-)]
-async fn cloud_cost(
-    Query(params): Query<RangeQuery>,
-) -> Result<Json<CloudCostResponse>, ErrorResponse> {
-    // Validate time range parameters
-    validate_time_range(&params.time_range)?;
-
-    // Check for range exclusivity
-    let has_time_range = has_time_range_params(&params.time_range);
-    validate_range_exclusivity(has_time_range, false)?;
-
-    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
-    let hours = time_range.seconds() as f64 / 3600.0; // Convert seconds to hours
-    let hourly_rate = TOTAL_HARDWARE_COST_USD / (30.0 * 24.0);
-    let cost = hourly_rate * hours;
-    tracing::info!(cost_usd = cost, "Returning cloud cost");
-    Ok(Json(CloudCostResponse { cost_usd: cost }))
-}
-
-#[utoipa::path(
-    get,
-    path = "/avg-blobs-per-batch",
-    params(
-        RangeQuery
-    ),
-    responses(
-        (status = 200, description = "Average blobs per batch", body = AvgBlobsPerBatchResponse),
-        (status = 500, description = "Database error", body = ErrorResponse)
-    ),
-    tag = "taikoscope"
-)]
-async fn avg_blobs_per_batch(
-    Query(params): Query<RangeQuery>,
-    State(state): State<ApiState>,
-) -> Result<Json<AvgBlobsPerBatchResponse>, ErrorResponse> {
-    // Validate time range parameters
-    validate_time_range(&params.time_range)?;
-
-    // Check for range exclusivity
-    let has_time_range = has_time_range_params(&params.time_range);
-    validate_range_exclusivity(has_time_range, false)?;
-
-    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
-    let avg = match state.client.get_avg_blobs_per_batch(time_range).await {
-        Ok(val) => val,
-        Err(e) => {
-            tracing::error!(error = %e, "Failed to get avg blobs per batch");
-            return Err(ErrorResponse::new(
-                "database-error",
-                "Database error",
-                StatusCode::INTERNAL_SERVER_ERROR,
-                e.to_string(),
-            ));
-        }
-    };
-    tracing::info!(avg_blobs_per_batch = ?avg, "Returning avg blobs per batch");
-    Ok(Json(AvgBlobsPerBatchResponse { avg_blobs: avg }))
-}
 
 #[utoipa::path(
     get,
@@ -1168,45 +780,6 @@ async fn verify_times(
     Ok(Json(VerifyTimesResponse { batches }))
 }
 
-#[utoipa::path(
-    get,
-    path = "/l1-block-times",
-    params(
-        RangeQuery
-    ),
-    responses(
-        (status = 200, description = "L1 block times", body = L1BlockTimesResponse),
-        (status = 500, description = "Database error", body = ErrorResponse)
-    ),
-    tag = "taikoscope"
-)]
-async fn l1_block_times(
-    Query(params): Query<RangeQuery>,
-    State(state): State<ApiState>,
-) -> Result<Json<L1BlockTimesResponse>, ErrorResponse> {
-    // Validate time range parameters
-    validate_time_range(&params.time_range)?;
-
-    // Check for range exclusivity
-    let has_time_range = has_time_range_params(&params.time_range);
-    validate_range_exclusivity(has_time_range, false)?;
-
-    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
-    let blocks = match state.client.get_l1_block_times(time_range).await {
-        Ok(rows) => rows,
-        Err(e) => {
-            tracing::error!(error = %e, "Failed to get L1 block times");
-            return Err(ErrorResponse::new(
-                "database-error",
-                "Database error",
-                StatusCode::INTERNAL_SERVER_ERROR,
-                e.to_string(),
-            ));
-        }
-    };
-    tracing::info!(count = blocks.len(), "Returning L1 block times");
-    Ok(Json(L1BlockTimesResponse { blocks }))
-}
 
 #[utoipa::path(
     get,
@@ -1636,23 +1209,12 @@ pub fn router(state: ApiState) -> Router {
         .route("/slashings", get(slashings))
         .route("/forced-inclusions", get(forced_inclusions))
         .route("/reorgs", get(reorgs))
-        .route("/active-gateways", get(active_gateways))
         .route("/preconf-data", get(preconf_data))
-        .route("/current-operator", get(current_operator))
-        .route("/next-operator", get(next_operator))
-        .route("/avg-prove-time", get(avg_prove_time))
-        .route("/avg-verify-time", get(avg_verify_time))
-        .route("/l2-block-cadence", get(l2_block_cadence))
-        .route("/batch-posting-cadence", get(batch_posting_cadence))
         .route("/batch-posting-times", get(batch_posting_times))
-        .route("/avg-l2-tps", get(avg_l2_tps))
         .route("/l2-tx-fee", get(l2_transaction_fee))
-        .route("/cloud-cost", get(cloud_cost))
-        .route("/avg-blobs-per-batch", get(avg_blobs_per_batch))
         .route("/blobs-per-batch", get(blobs_per_batch))
         .route("/prove-times", get(prove_times))
         .route("/verify-times", get(verify_times))
-        .route("/l1-block-times", get(l1_block_times))
         .route("/l2-block-times", get(l2_block_times))
         .route("/l2-gas-used", get(l2_gas_used))
         .route("/l2-tps", get(l2_tps))
@@ -1869,120 +1431,6 @@ mod tests {
         assert_eq!(body, json!({ "events": [expected] }));
     }
 
-    #[tokio::test]
-    async fn avg_prove_time_endpoint() {
-        let mock = Mock::new();
-        mock.add(handlers::provide(vec![AvgRowTest { avg_ms: 1500.0 }]));
-        let app = build_app(mock.url());
-        let body = send_request(app, "/avg-prove-time").await;
-        assert_eq!(body, json!({ "avg_prove_time_ms": 1500 }));
-    }
-
-    #[tokio::test]
-    async fn avg_prove_time_24h_endpoint() {
-        let mock = Mock::new();
-        mock.add(handlers::provide(vec![AvgRowTest { avg_ms: 1500.0 }]));
-        let app = build_app(mock.url());
-        let body = send_request(app, "/avg-prove-time?range=24h").await;
-        assert_eq!(body, json!({ "avg_prove_time_ms": 1500 }));
-    }
-
-    #[tokio::test]
-    async fn avg_prove_time_7d_endpoint() {
-        let mock = Mock::new();
-        mock.add(handlers::provide(vec![AvgRowTest { avg_ms: 1500.0 }]));
-        let app = build_app(mock.url());
-        let body = send_request(app, "/avg-prove-time?range=7d").await;
-        assert_eq!(body, json!({ "avg_prove_time_ms": 1500 }));
-    }
-
-    #[tokio::test]
-    async fn avg_verify_time_endpoint() {
-        let mock = Mock::new();
-        mock.add(handlers::provide(vec![AvgRowTest { avg_ms: 2500.0 }]));
-        let app = build_app(mock.url());
-        let body = send_request(app, "/avg-verify-time").await;
-        assert_eq!(body, json!({ "avg_verify_time_ms": 2500 }));
-    }
-
-    #[tokio::test]
-    async fn avg_verify_time_24h_endpoint() {
-        let mock = Mock::new();
-        mock.add(handlers::provide(vec![AvgRowTest { avg_ms: 2500.0 }]));
-        let app = build_app(mock.url());
-        let body = send_request(app, "/avg-verify-time?range=24h").await;
-        assert_eq!(body, json!({ "avg_verify_time_ms": 2500 }));
-    }
-
-    #[tokio::test]
-    async fn avg_verify_time_7d_endpoint() {
-        let mock = Mock::new();
-        mock.add(handlers::provide(vec![AvgRowTest { avg_ms: 2500.0 }]));
-        let app = build_app(mock.url());
-        let body = send_request(app, "/avg-verify-time?range=7d").await;
-        assert_eq!(body, json!({ "avg_verify_time_ms": 2500 }));
-    }
-
-    #[derive(Serialize, Row)]
-    struct CadenceRowTest {
-        min_ts: u64,
-        max_ts: u64,
-        cnt: u64,
-    }
-
-    #[tokio::test]
-    async fn l2_block_cadence_endpoint() {
-        let mock = Mock::new();
-        mock.add(handlers::provide(vec![CadenceRowTest { min_ts: 1000, max_ts: 4000, cnt: 4 }]));
-        let app = build_app(mock.url());
-        let body = send_request(app, "/l2-block-cadence").await;
-        assert_eq!(body, json!({ "l2_block_cadence_ms": 1000 }));
-    }
-
-    #[tokio::test]
-    async fn l2_block_cadence_24h_endpoint() {
-        let mock = Mock::new();
-        mock.add(handlers::provide(vec![CadenceRowTest { min_ts: 1000, max_ts: 4000, cnt: 4 }]));
-        let app = build_app(mock.url());
-        let body = send_request(app, "/l2-block-cadence?range=24h").await;
-        assert_eq!(body, json!({ "l2_block_cadence_ms": 1000 }));
-    }
-
-    #[tokio::test]
-    async fn l2_block_cadence_7d_endpoint() {
-        let mock = Mock::new();
-        mock.add(handlers::provide(vec![CadenceRowTest { min_ts: 1000, max_ts: 4000, cnt: 4 }]));
-        let app = build_app(mock.url());
-        let body = send_request(app, "/l2-block-cadence?range=7d").await;
-        assert_eq!(body, json!({ "l2_block_cadence_ms": 1000 }));
-    }
-
-    #[tokio::test]
-    async fn batch_posting_cadence_endpoint() {
-        let mock = Mock::new();
-        mock.add(handlers::provide(vec![CadenceRowTest { min_ts: 2000, max_ts: 6000, cnt: 3 }]));
-        let app = build_app(mock.url());
-        let body = send_request(app, "/batch-posting-cadence").await;
-        assert_eq!(body, json!({ "batch_posting_cadence_ms": 2000 }));
-    }
-
-    #[tokio::test]
-    async fn batch_posting_cadence_24h_endpoint() {
-        let mock = Mock::new();
-        mock.add(handlers::provide(vec![CadenceRowTest { min_ts: 2000, max_ts: 6000, cnt: 3 }]));
-        let app = build_app(mock.url());
-        let body = send_request(app, "/batch-posting-cadence?range=24h").await;
-        assert_eq!(body, json!({ "batch_posting_cadence_ms": 2000 }));
-    }
-
-    #[tokio::test]
-    async fn batch_posting_cadence_7d_endpoint() {
-        let mock = Mock::new();
-        mock.add(handlers::provide(vec![CadenceRowTest { min_ts: 2000, max_ts: 6000, cnt: 3 }]));
-        let app = build_app(mock.url());
-        let body = send_request(app, "/batch-posting-cadence?range=7d").await;
-        assert_eq!(body, json!({ "batch_posting_cadence_ms": 2000 }));
-    }
 
     #[derive(Serialize, Row)]
     struct PostingTimeRowTest {
@@ -2083,24 +1531,6 @@ mod tests {
         l2_block_number: u64,
         block_time: u64,
         ms_since_prev_block: Option<u64>,
-    }
-
-    #[tokio::test]
-    async fn l1_block_times_last_hour_endpoint() {
-        let mock = Mock::new();
-        mock.add(handlers::provide(vec![BlockTimeRowTest { minute: 1, block_number: 2 }]));
-        let app = build_app(mock.url());
-        let body = send_request(app, "/l1-block-times?range=1h").await;
-        assert_eq!(body, json!({ "blocks": [ { "minute": 1, "block_number": 2 } ] }));
-    }
-
-    #[tokio::test]
-    async fn l1_block_times_last_week_endpoint() {
-        let mock = Mock::new();
-        mock.add(handlers::provide(vec![BlockTimeRowTest { minute: 1, block_number: 2 }]));
-        let app = build_app(mock.url());
-        let body = send_request(app, "/l1-block-times?range=7d").await;
-        assert_eq!(body, json!({ "blocks": [ { "minute": 1, "block_number": 2 } ] }));
     }
 
     #[tokio::test]
@@ -2238,41 +1668,6 @@ mod tests {
         tx_sum: u64,
     }
 
-    #[tokio::test]
-    async fn avg_l2_tps_endpoint() {
-        let mock = Mock::new();
-        mock.add(handlers::provide(vec![TpsRowTest { min_ts: 10, max_ts: 70, tx_sum: 180 }]));
-        let app = build_app(mock.url());
-        let body = send_request(app, "/avg-l2-tps").await;
-        assert_eq!(body, json!({ "avg_tps": 3.0 }));
-    }
-
-    #[tokio::test]
-    async fn avg_l2_tps_24h_endpoint() {
-        let mock = Mock::new();
-        mock.add(handlers::provide(vec![TpsRowTest { min_ts: 100, max_ts: 460, tx_sum: 720 }]));
-        let app = build_app(mock.url());
-        let body = send_request(app, "/avg-l2-tps?range=24h").await;
-        assert_eq!(body, json!({ "avg_tps": 2.0 }));
-    }
-
-    #[tokio::test]
-    async fn avg_l2_tps_7d_endpoint() {
-        let mock = Mock::new();
-        mock.add(handlers::provide(vec![TpsRowTest { min_ts: 100, max_ts: 460, tx_sum: 720 }]));
-        let app = build_app(mock.url());
-        let body = send_request(app, "/avg-l2-tps?range=7d").await;
-        assert_eq!(body, json!({ "avg_tps": 2.0 }));
-    }
-
-    #[tokio::test]
-    async fn avg_l2_tps_custom_range_endpoint() {
-        let mock = Mock::new();
-        mock.add(handlers::provide(vec![TpsRowTest { min_ts: 10, max_ts: 70, tx_sum: 180 }]));
-        let app = build_app(mock.url());
-        let body = send_request(app, "/avg-l2-tps?range=5h").await;
-        assert_eq!(body, json!({ "avg_tps": 3.0 }));
-    }
 
     #[derive(Serialize, Row)]
     struct FeeRowTest {
@@ -2304,14 +1699,6 @@ mod tests {
         let app = build_app(mock.url());
         let body = send_request(app, "/l2-tx-fee?range=7d").await;
         assert_eq!(body, json!({ "tx_fee": 84 }));
-    }
-
-    #[tokio::test]
-    async fn cloud_cost_endpoint() {
-        let app = build_app(Mock::new().url());
-        let body = send_request(app, "/cloud-cost?range=24h").await;
-        let expected = TOTAL_HARDWARE_COST_USD / 30.0;
-        assert_eq!(body, json!({ "cost_usd": expected }));
     }
 
     #[derive(Serialize, Row)]
@@ -2408,40 +1795,6 @@ mod tests {
         assert_eq!(d.num_hours(), 48);
     }
 
-    #[tokio::test]
-    async fn current_operator_endpoint() {
-        let mock = Mock::new();
-        let addr = AddressBytes([1u8; 20]);
-        mock.add(handlers::provide(vec![CurrentRowTest { current_operator: Some(addr) }]));
-
-        let app = build_app(mock.url());
-        let body = send_request(app, "/current-operator").await;
-        assert_eq!(body, json!({ "operator": format!("0x{}", hex::encode(addr)) }));
-    }
-
-    #[tokio::test]
-    async fn next_operator_endpoint() {
-        let mock = Mock::new();
-        let addr = AddressBytes([2u8; 20]);
-        mock.add(handlers::provide(vec![NextRowTest { next_operator: Some(addr) }]));
-
-        let app = build_app(mock.url());
-        let body = send_request(app, "/next-operator").await;
-        assert_eq!(body, json!({ "operator": format!("0x{}", hex::encode(addr)) }));
-    }
-
-    #[tokio::test]
-    async fn avg_blobs_per_batch_endpoint() {
-        let mock = Mock::new();
-        #[derive(Serialize, Row)]
-        struct AvgRowTest {
-            avg: f64,
-        }
-        mock.add(handlers::provide(vec![AvgRowTest { avg: 2.5 }]));
-        let app = build_app(mock.url());
-        let body = send_request(app, "/avg-blobs-per-batch").await;
-        assert_eq!(body, json!({ "avg_blobs": 2.5 }));
-    }
 
     #[tokio::test]
     async fn blobs_per_batch_endpoint() {
@@ -2479,28 +1832,15 @@ mod tests {
         // Verify all expected endpoints are documented
         let expected_paths = [
             "/health",
-            "/l2-head",
-            "/l1-head",
             "/l2-head-block",
             "/l1-head-block",
             "/slashings",
             "/forced-inclusions",
             "/reorgs",
-            "/active-gateways",
-            "/current-operator",
-            "/next-operator",
-            "/avg-prove-time",
-            "/avg-verify-time",
-            "/l2-block-cadence",
-            "/batch-posting-cadence",
-            "/avg-l2-tps",
             "/l2-tx-fee",
-            "/cloud-cost",
-            "/avg-blobs-per-batch",
             "/blobs-per-batch",
             "/prove-times",
             "/verify-times",
-            "/l1-block-times",
             "/l2-block-times",
             "/l2-gas-used",
             "/sequencer-distribution",
