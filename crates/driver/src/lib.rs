@@ -463,7 +463,11 @@ impl Driver {
                     if let Err(e) = self.clickhouse.insert_l2_header(&event).await {
                         tracing::error!(block_number = header.number, err = %e, "Failed to insert L2 header");
                     } else {
-                        info!(l2_header = header.number, "Inserted L2 header");
+                        info!(
+                            l2_header = header.number,
+                            block_ts = header.timestamp,
+                            "Inserted L2 header"
+                        );
                     }
                 }
                 Err(e) => {
