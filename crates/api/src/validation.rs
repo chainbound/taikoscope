@@ -180,14 +180,28 @@ pub fn range_duration(range: &Option<String>) -> ChronoDuration {
 
 /// Resolve time range to `TimeRange` enum, prioritizing explicit time range params
 pub fn resolve_time_range_enum(range: &Option<String>, time_params: &TimeRangeParams) -> TimeRange {
-    // If explicit time range parameters are provided, use current approach for now
-    // In future phases, we can add more sophisticated logic
+    // If explicit time range parameters are provided, derive the duration from them
     if has_time_range_params(time_params) {
-        // For now, fall back to range duration approach when time params are set
-        // TODO: In Phase 3, implement proper time range resolution from timestamps
-    } else {
-        // Use range parameter or default
+        let now = Utc::now();
+
+        let start = time_params
+            .created_gt
+            .map(|v| v + 1)
+            .or(time_params.created_gte)
+            .and_then(|ms| Utc.timestamp_millis_opt(ms as i64).single())
+            .unwrap_or_else(|| now - ChronoDuration::hours(1));
+
+        let end = time_params
+            .created_lt
+            .or(time_params.created_lte)
+            .and_then(|ms| Utc.timestamp_millis_opt(ms as i64).single())
+            .unwrap_or(now);
+
+        let duration = end.signed_duration_since(start).max(ChronoDuration::zero());
+        return TimeRange::from_duration(duration);
     }
+
+    // Otherwise use the range parameter or default
     TimeRange::from_duration(range_duration(range))
 }
 
