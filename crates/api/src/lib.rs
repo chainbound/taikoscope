@@ -2609,6 +2609,12 @@ mod tests {
         assert_eq!(d.num_hours(), 72);
     }
 
+    #[test]
+    fn range_duration_parses_minutes() {
+        let d = range_duration(&Some("15m".to_owned()));
+        assert_eq!(d.num_minutes(), 15);
+    }
+
     #[tokio::test]
     async fn sequencer_blocks_invalid_address() {
         let mock = Mock::new();
