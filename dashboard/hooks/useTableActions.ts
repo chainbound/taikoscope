@@ -4,10 +4,7 @@ import { TABLE_CONFIGS } from '../config/tableConfig';
 import { getSequencerAddress } from '../sequencerConfig';
 import { useRouterNavigation } from './useRouterNavigation';
 import { blockLink } from '../utils';
-import {
-  fetchBlockTransactions,
-  type BlockTransaction,
-} from '../services/apiService';
+import { fetchBlockTransactions } from '../services/apiService';
 
 export interface TableViewState {
   title: string;
@@ -44,8 +41,6 @@ export const useTableActions = (
   timeRange: TimeRange,
   setTimeRange: (range: TimeRange) => void,
   selectedSequencer: string | null,
-  blockTxData: BlockTransaction[],
-  l2BlockTimeData: any[],
 ) => {
   const [tableView, setTableView] = useState<TableViewState | null>(null);
   const [tableLoading, setTableLoading] = useState<boolean>(false);
@@ -127,7 +122,9 @@ export const useTableActions = (
         const fetcherArgs: any[] = [];
         if (tableKey === 'sequencer-blocks' && extraParams.address) {
           fetcherArgs.push(extraParams.address);
-        } else if (['l2-block-times', 'l2-gas-used'].includes(tableKey)) {
+        } else if (
+          ['l2-block-times', 'l2-gas-used', 'l2-tps'].includes(tableKey)
+        ) {
           fetcherArgs.push(
             selectedSequencer
               ? getSequencerAddress(selectedSequencer)
@@ -166,18 +163,18 @@ export const useTableActions = (
             setTableView((prev) =>
               prev
                 ? {
-                  ...prev,
-                  rows: prev.useClientSidePagination
-                    ? prev.rows
-                    : refreshMappedData,
-                  allRows: prev.useClientSidePagination
-                    ? refreshMappedData
-                    : undefined,
-                  chart: refreshChart,
-                  totalRecords: prev.useClientSidePagination
-                    ? refreshMappedData.length
-                    : undefined,
-                }
+                    ...prev,
+                    rows: prev.useClientSidePagination
+                      ? prev.rows
+                      : refreshMappedData,
+                    allRows: prev.useClientSidePagination
+                      ? refreshMappedData
+                      : undefined,
+                    chart: refreshChart,
+                    totalRecords: prev.useClientSidePagination
+                      ? refreshMappedData.length
+                      : undefined,
+                  }
                 : null,
             );
           } catch (error) {
@@ -186,11 +183,11 @@ export const useTableActions = (
             setTableView((prev) =>
               prev
                 ? {
-                  ...prev,
-                  rows: [], // Clear data on error to prevent stale data
-                  allRows: prev.useClientSidePagination ? [] : undefined,
-                  totalRecords: 0,
-                }
+                    ...prev,
+                    rows: [], // Clear data on error to prevent stale data
+                    allRows: prev.useClientSidePagination ? [] : undefined,
+                    totalRecords: 0,
+                  }
                 : null,
             );
           }
@@ -206,9 +203,9 @@ export const useTableActions = (
           useUnlimitedData ? mappedData.slice(0, 50) : mappedData, // Show first 50 for display
           tableKey === 'sequencer-dist'
             ? (row) =>
-              openGenericTable('sequencer-blocks', range, {
-                address: row.name,
-              })
+                openGenericTable('sequencer-blocks', range, {
+                  address: row.name,
+                })
             : undefined,
           undefined,
           undefined,
@@ -234,53 +231,6 @@ export const useTableActions = (
       setTableView,
     ],
   );
-
-  const openTpsTable = useCallback(() => {
-    setTableLoading(true);
-    setTableUrl('tps');
-
-    const intervalMap = new Map<number, number>();
-    l2BlockTimeData.forEach((d) => {
-      intervalMap.set(d.value, d.timestamp);
-    });
-
-    const data = blockTxData
-      .map((b) => {
-        const ms = intervalMap.get(b.block);
-        if (!ms) return null;
-        return { block: b.block, tps: b.txs / (ms / 1000) };
-      })
-      .filter((d): d is { block: number; tps: number } => d !== null);
-
-    const TpsChart = React.lazy(() =>
-      import('../components/TpsChart').then((m) => ({ default: m.TpsChart })),
-    );
-
-    const mappedData = data.map((d) => ({
-      block: blockLink(d.block),
-      tps: d.tps.toFixed(2),
-    })) as Record<string, React.ReactNode | string | number>[];
-
-    openTable(
-      'L2 Transactions Per Second',
-      'Transactions per second for each L2 block.',
-      [
-        { key: 'block', label: 'L2 Block Number' },
-        { key: 'tps', label: 'TPS' },
-      ],
-      mappedData.slice(0, 50), // Show first 50 for display
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined, // No refresh function for TPS table since it depends on other data
-      React.createElement(TpsChart, { data, lineColor: '#4E79A7' }),
-      mappedData, // Pass full dataset for client-side pagination
-      true, // Enable client-side pagination
-      mappedData.length, // Total record count
-    );
-  }, [blockTxData, l2BlockTimeData, openTable, setTableUrl]);
 
   const openSequencerDistributionTable = useCallback(
     async (
@@ -337,25 +287,25 @@ export const useTableActions = (
           setTableView((prev) =>
             prev
               ? {
-                ...prev,
-                rows: (refreshDistRes.data || []) as unknown as Record<
-                  string,
-                  string | number
-                >[],
-                extraTable: prev.extraTable
-                  ? {
-                    ...prev.extraTable,
-                    rows: (refreshTxRes.data || []).map((t) => ({
-                      block: blockLink(t.block),
-                      txs: t.txs,
-                      sequencer: t.sequencer,
-                    })) as unknown as Record<
-                      string,
-                      React.ReactNode | string | number
-                    >[],
-                  }
-                  : undefined,
-              }
+                  ...prev,
+                  rows: (refreshDistRes.data || []) as unknown as Record<
+                    string,
+                    string | number
+                  >[],
+                  extraTable: prev.extraTable
+                    ? {
+                        ...prev.extraTable,
+                        rows: (refreshTxRes.data || []).map((t) => ({
+                          block: blockLink(t.block),
+                          txs: t.txs,
+                          sequencer: t.sequencer,
+                        })) as unknown as Record<
+                          string,
+                          React.ReactNode | string | number
+                        >[],
+                      }
+                    : undefined,
+                }
               : null,
           );
         } catch (error) {
@@ -367,15 +317,15 @@ export const useTableActions = (
           setTableView((prev) =>
             prev
               ? {
-                ...prev,
-                rows: [],
-                extraTable: prev.extraTable
-                  ? {
-                    ...prev.extraTable,
-                    rows: [],
-                  }
-                  : undefined,
-              }
+                  ...prev,
+                  rows: [],
+                  extraTable: prev.extraTable
+                    ? {
+                        ...prev.extraTable,
+                        rows: [],
+                      }
+                    : undefined,
+                }
               : null,
           );
         }
@@ -454,7 +404,6 @@ export const useTableActions = (
     setTableView,
     setTableLoading,
     openGenericTable,
-    openTpsTable,
     openSequencerDistributionTable,
   };
 };

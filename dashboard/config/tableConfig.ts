@@ -18,6 +18,7 @@ import {
   fetchL2BlockTimes,
   fetchL2GasUsed,
   fetchSequencerDistribution,
+  fetchL2Tps,
 } from '../services/apiService';
 import { getSequencerName } from '../sequencerConfig';
 import { bytesToHex, blockLink } from '../utils';
@@ -292,5 +293,33 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     mapData: (data) => data as Record<string, string | number>[],
     supportsPagination: true,
     urlKey: 'sequencer-dist',
+  },
+
+  'l2-tps': {
+    title: 'Transactions Per Second',
+    description: 'Transactions per second for each L2 block.',
+    fetcher: fetchL2Tps,
+    columns: [
+      { key: 'block', label: 'Block Number' },
+      { key: 'tps', label: 'TPS' },
+    ],
+    mapData: (data) =>
+      (data as { block: number; tps: number }[]).map((d) => ({
+        block: blockLink(d.block),
+        tps: d.tps.toFixed(2),
+      })),
+    chart: (data) => {
+      const TpsChart = React.lazy(() =>
+        import('../components/TpsChart').then((m) => ({
+          default: m.TpsChart,
+        })),
+      );
+      return React.createElement(TpsChart, {
+        data: data as { block: number; tps: number }[],
+        lineColor: '#4E79A7',
+      });
+    },
+    useUnlimitedData: true,
+    urlKey: 'l2-tps',
   },
 };

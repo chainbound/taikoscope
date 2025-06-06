@@ -37,26 +37,20 @@ export const useDashboardController = () => {
     setTableView,
     setTableLoading,
     openGenericTable,
-    openTpsTable,
     openSequencerDistributionTable,
-  } = useTableActions(
-    timeRange,
-    setTimeRange,
-    selectedSequencer,
-    chartsData.blockTxData,
-    chartsData.l2BlockTimeData,
-  );
+  } = useTableActions(timeRange, setTimeRange, selectedSequencer);
 
   // Data fetching coordination
-  const { handleManualRefresh, isLoadingData, isTimeRangeChanging, hasData } = useDataFetcher({
-    timeRange,
-    selectedSequencer,
-    tableView,
-    fetchMetricsData: metricsData.fetchMetricsData,
-    updateChartsData: chartsData.updateChartsData,
-    refreshRate: refreshTimer.refreshRate,
-    updateLastRefresh: refreshTimer.updateLastRefresh,
-  });
+  const { handleManualRefresh, isLoadingData, isTimeRangeChanging, hasData } =
+    useDataFetcher({
+      timeRange,
+      selectedSequencer,
+      tableView,
+      fetchMetricsData: metricsData.fetchMetricsData,
+      updateChartsData: chartsData.updateChartsData,
+      refreshRate: refreshTimer.refreshRate,
+      updateLastRefresh: refreshTimer.updateLastRefresh,
+    });
 
   // Navigation handling
   const { handleBack, handleSequencerChange } = useNavigationHandler({
@@ -70,7 +64,6 @@ export const useDashboardController = () => {
     setTableLoading,
     tableView,
     openGenericTable,
-    openTpsTable,
     openSequencerDistributionTable,
     onError: setErrorMessage,
   });
@@ -79,6 +72,11 @@ export const useDashboardController = () => {
   const handleSequencerChangeWithState = (seq: string | null) => {
     setSelectedSequencer(seq);
     handleSequencerChange(seq);
+  };
+
+  // Create a TPS table opener that uses the generic table function
+  const openTpsTable = () => {
+    openGenericTable('l2-tps', timeRange);
   };
 
   return {

@@ -28,7 +28,8 @@ export const useDataFetcher = ({
 }: UseDataFetcherProps) => {
   const [searchParams] = useSearchParams();
   const [isTimeRangeChanging, setIsTimeRangeChanging] = useState(false);
-  const [lastFetchedTimeRange, setLastFetchedTimeRange] = useState<TimeRange | null>(null);
+  const [lastFetchedTimeRange, setLastFetchedTimeRange] =
+    useState<TimeRange | null>(null);
 
   // Memoize the specific value we need to prevent infinite re-renders
   const viewParam = searchParams.get('view');
@@ -57,7 +58,11 @@ export const useDataFetcher = ({
 
   // Detect time range changes
   useEffect(() => {
-    if (lastFetchedTimeRange && lastFetchedTimeRange !== timeRange && !isTableView) {
+    if (
+      lastFetchedTimeRange &&
+      lastFetchedTimeRange !== timeRange &&
+      !isTableView
+    ) {
       setIsTimeRangeChanging(true);
     }
   }, [timeRange, lastFetchedTimeRange, isTableView]);

@@ -8,7 +8,6 @@ import { TimeRange } from '../../types';
 import { TABLE_CONFIGS } from '../../config/tableConfig';
 import { getSequencerAddress } from '../../sequencerConfig';
 import { useDataFetcher } from '../../hooks/useDataFetcher';
-import { blockLink } from '../../utils';
 
 interface DashboardContextType {
   timeRange: TimeRange;
@@ -75,80 +74,51 @@ export const TableRoute: React.FC = () => {
       try {
         const range = currentTimeRange;
 
-        if (tableType === 'tps') {
-          // Handle TPS table - create from existing chart data
-          const intervalMap = new Map<number, number>();
-          chartsData.l2BlockTimeData.forEach((d: any) => {
-            intervalMap.set(d.value, d.timestamp);
-          });
-
-          const data = chartsData.blockTxData
-            .map((b: any) => {
-              const ms = intervalMap.get(b.block);
-              if (!ms) return null;
-              return { block: b.block, tps: b.txs / (ms / 1000) };
-            })
-            .filter(
-              (d: any): d is { block: number; tps: number } => d !== null,
-            );
-
-          setTableView({
-            title: 'L2 Transactions Per Second',
-            description: 'Transactions per second for each L2 block.',
-            columns: [
-              { key: 'block', label: 'Block Number' },
-              { key: 'tps', label: 'TPS' },
-            ],
-            rows: data.map((d: any) => ({
-              block: blockLink(d.block),
-              tps: d.tps.toFixed(2),
-            })),
-          });
-        } else {
-          // Handle other tables using config
-          const config = TABLE_CONFIGS[tableType];
-          if (!config) {
-            throw new Error(`Unknown table type: ${tableType}`);
-          }
-
-          const fetcherArgs: any[] = [];
-          const extraParams: Record<string, any> = {};
-
-          if (tableType === 'sequencer-blocks') {
-            const address = searchParams.get('address');
-            if (address) {
-              fetcherArgs.push(address);
-              extraParams.address = address;
-            }
-          } else if (['l2-block-times', 'l2-gas-used'].includes(tableType)) {
-            fetcherArgs.push(
-              selectedSequencer
-                ? getSequencerAddress(selectedSequencer)
-                : undefined,
-            );
-          }
-
-          const res = await config.fetcher(range, ...fetcherArgs);
-          const data = res.data || [];
-
-          const title =
-            typeof config.title === 'function'
-              ? config.title(extraParams)
-              : config.title;
-
-          const mappedData = config.mapData
-            ? config.mapData(data, extraParams)
-            : data;
-          const chart = config.chart ? config.chart(data) : undefined;
-
-          setTableView({
-            title,
-            description: config.description,
-            columns: config.columns,
-            rows: mappedData,
-            chart,
-          });
+        // Handle all tables using config
+        const config = TABLE_CONFIGS[tableType];
+        if (!config) {
+          throw new Error(`Unknown table type: ${tableType}`);
         }
+
+        const fetcherArgs: any[] = [];
+        const extraParams: Record<string, any> = {};
+
+        if (tableType === 'sequencer-blocks') {
+          const address = searchParams.get('address');
+          if (address) {
+            fetcherArgs.push(address);
+            extraParams.address = address;
+          }
+        } else if (
+          ['l2-block-times', 'l2-gas-used', 'l2-tps'].includes(tableType)
+        ) {
+          fetcherArgs.push(
+            selectedSequencer
+              ? getSequencerAddress(selectedSequencer)
+              : undefined,
+          );
+        }
+
+        const res = await config.fetcher(range, ...fetcherArgs);
+        const data = res.data || [];
+
+        const title =
+          typeof config.title === 'function'
+            ? config.title(extraParams)
+            : config.title;
+
+        const mappedData = config.mapData
+          ? config.mapData(data, extraParams)
+          : data;
+        const chart = config.chart ? config.chart(data) : undefined;
+
+        setTableView({
+          title,
+          description: config.description,
+          columns: config.columns,
+          rows: mappedData,
+          chart,
+        });
       } catch (error) {
         console.error('Failed to load table:', error);
         metricsData.setErrorMessage(

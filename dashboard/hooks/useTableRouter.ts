@@ -13,7 +13,6 @@ interface UseTableRouterProps {
     range?: TimeRange,
     params?: Record<string, any>,
   ) => Promise<void>;
-  openTpsTable: () => void;
   openSequencerDistributionTable: (
     range: TimeRange,
     page: number,
@@ -29,7 +28,6 @@ export const useTableRouter = ({
   setTableLoading,
   tableView,
   openGenericTable,
-  openTpsTable,
   openSequencerDistributionTable,
   onError,
 }: UseTableRouterProps) => {
@@ -94,13 +92,7 @@ export const useTableRouter = ({
           }
           break;
         }
-        case 'tps':
-          try {
-            openTpsTable();
-          } catch (err) {
-            handleTableError('TPS', err);
-          }
-          break;
+
         case 'sequencer-dist': {
           const pageStr = params.page ?? '0';
           const page = parseInt(pageStr, 10);
@@ -138,7 +130,6 @@ export const useTableRouter = ({
   }, [
     urlParams,
     openGenericTable,
-    openTpsTable,
     openSequencerDistributionTable,
     setTableView,
     setTableLoading,
