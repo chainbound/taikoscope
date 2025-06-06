@@ -40,6 +40,14 @@ describe('apiService', () => {
     expect(prove.data).toBe(42);
   });
 
+  it('fetchAvgProveTime 15m succeeds', async () => {
+    globalThis.fetch = mockFetch({ avg_prove_time_ms: 42 });
+    const prove = await fetchAvgProveTime('15m');
+    expect(prove.badRequest).toBe(false);
+    expect(prove.error).toBeNull();
+    expect(prove.data).toBe(42);
+  });
+
   it('handles bad request for fetchAvgProveTime', async () => {
     globalThis.fetch = mockFetch({}, 400, false);
     const badProve = await fetchAvgProveTime('1h');
@@ -66,6 +74,18 @@ describe('apiService', () => {
     expect(blockTimes.data).toStrictEqual([{ value: 2, timestamp: 0.02 }]);
   });
 
+  it('transforms block times for 15m', async () => {
+    globalThis.fetch = mockFetch({
+      blocks: [
+        { l2_block_number: 1, ms_since_prev_block: 10 },
+        { l2_block_number: 2, ms_since_prev_block: 20 },
+      ],
+    });
+    const blockTimes = await fetchL2BlockTimes('15m');
+    expect(blockTimes.error).toBeNull();
+    expect(blockTimes.data).toStrictEqual([{ value: 2, timestamp: 0.02 }]);
+  });
+
   it('transforms block transactions', async () => {
     globalThis.fetch = mockFetch({
       blocks: [{ block: 1, txs: 3, sequencer: '0xabc' }],
@@ -77,9 +97,28 @@ describe('apiService', () => {
     ]);
   });
 
+  it('transforms block transactions for 15m', async () => {
+    globalThis.fetch = mockFetch({
+      blocks: [{ block: 1, txs: 3, sequencer: '0xabc' }],
+    });
+    const txs = await fetchBlockTransactions('15m');
+    expect(txs.error).toBeNull();
+    expect(txs.data).toStrictEqual([
+      { block: 1, txs: 3, sequencer: 'Unknown' },
+    ]);
+  });
+
   it('fetchAvgL2Tps succeeds', async () => {
     globalThis.fetch = mockFetch({ avg_tps: 1.5 });
     const res = await fetchAvgL2Tps('1h');
+    expect(res.badRequest).toBe(false);
+    expect(res.error).toBeNull();
+    expect(res.data).toBe(1.5);
+  });
+
+  it('fetchAvgL2Tps 15m succeeds', async () => {
+    globalThis.fetch = mockFetch({ avg_tps: 1.5 });
+    const res = await fetchAvgL2Tps('15m');
     expect(res.badRequest).toBe(false);
     expect(res.error).toBeNull();
     expect(res.data).toBe(1.5);

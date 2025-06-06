@@ -26,6 +26,7 @@ describe('DashboardHeader', () => {
       ),
     );
     expect(html.includes('Taiko Masaya Testnet')).toBe(true);
+    expect(html.includes('15M')).toBe(true);
     expect(html.includes('1H')).toBe(true);
     expect(html.includes('24H')).toBe(true);
     expect(html.includes('7D')).toBe(true);
