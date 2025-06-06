@@ -94,8 +94,11 @@ pub struct L2ReorgRow {
     pub l2_block_number: u64,
     /// Depth
     pub depth: u16,
-    /// Time the reorg was recorded
-    pub inserted_at: DateTime<Utc>,
+    /// Time the reorg was recorded.
+    /// This is not sent on insert, but is read from the database.
+    #[cfg_attr(not(test), serde(skip_serializing_if = "Option::is_none"))]
+    #[serde(default)]
+    pub inserted_at: Option<DateTime<Utc>>,
 }
 
 /// Forced inclusion processed row

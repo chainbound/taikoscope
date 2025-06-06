@@ -422,7 +422,7 @@ impl ClickhouseReader {
                 Some(L2ReorgRow {
                     l2_block_number: r.l2_block_number,
                     depth: r.depth,
-                    inserted_at: ts,
+                    inserted_at: Some(ts),
                 })
             })
             .collect())

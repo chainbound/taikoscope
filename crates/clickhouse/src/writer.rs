@@ -2,7 +2,6 @@
 //! Handles database initialization, migrations, and data insertion
 
 use alloy::primitives::{Address, BlockNumber};
-use chrono::Utc;
 use clickhouse::Client;
 use derive_more::Debug;
 use eyre::{Context, Result};
@@ -370,7 +369,7 @@ impl ClickhouseWriter {
     /// Insert L2 reorg row
     pub async fn insert_l2_reorg(&self, block_number: BlockNumber, depth: u16) -> Result<()> {
         let client = self.base.clone();
-        let row = L2ReorgRow { l2_block_number: block_number, depth, inserted_at: Utc::now() };
+        let row = L2ReorgRow { l2_block_number: block_number, depth, inserted_at: None };
         let mut insert = client.insert("l2_reorgs")?;
         insert.write(&row).await?;
         insert.end().await?;
@@ -479,6 +478,7 @@ mod tests {
         assert_eq!(rows.len(), 1);
         assert_eq!(rows[0].l2_block_number, 10);
         assert_eq!(rows[0].depth, 3);
+        assert!(rows[0].inserted_at.is_none());
     }
 
     #[tokio::test]
