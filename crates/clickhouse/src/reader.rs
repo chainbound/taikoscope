@@ -110,9 +110,7 @@ impl ClickhouseReader {
         let client = self.base.clone();
         let start = Instant::now();
 
-        // enable correlated-subquery support for this statement
-        let q = format!("{query} SETTINGS allow_experimental_analyzer = 1");
-        let result = client.query(&q).fetch_all::<R>().await;
+        let result = client.query(query).fetch_all::<R>().await;
 
         let duration_ms = start.elapsed().as_millis();
         match &result {
@@ -125,17 +123,14 @@ impl ClickhouseReader {
     }
 
     /// Anti-subquery that hides blocks later rolled back by a reorg.
-    /// Use with `NOT EXISTS (SELECT 1 FROM {db}.l2_reorgs AS r WHERE …)`
-    fn reorg_filter(&self, alias: &str) -> String {
+    /// Use with `NOT IN (SELECT l2_block_number FROM ...)`
+    fn reorg_filter(&self) -> String {
         format!(
-            "NOT EXISTS ( \
-               SELECT 1 \
-               FROM   {db}.l2_reorgs AS r \
-               WHERE  {alias}.l2_block_number BETWEEN r.l2_block_number \
-                                              AND     r.l2_block_number + r.depth \
-             )",
+            "l2_block_number NOT IN ( \
+                SELECT l2_block_number \
+                FROM {db}.l2_reorgs\
+            )",
             db = self.db_name,
-            alias = alias,
         )
     }
 
@@ -479,7 +474,7 @@ impl ClickhouseReader {
                AND {filter} \
              GROUP BY sequencer ORDER BY blocks DESC",
             since.timestamp(),
-            filter = self.reorg_filter("h"),
+            filter = self.reorg_filter(),
             db = self.db_name,
         );
 
@@ -499,7 +494,7 @@ impl ClickhouseReader {
                AND {filter} \
              ORDER BY sequencer, h.l2_block_number DESC",
             since.timestamp(),
-            filter = self.reorg_filter("h"),
+            filter = self.reorg_filter(),
             db = self.db_name,
         );
 
@@ -523,7 +518,7 @@ impl ClickhouseReader {
              WHERE h.block_ts >= {} \
                AND {filter}",
             since.timestamp(),
-            filter = self.reorg_filter("h"),
+            filter = self.reorg_filter(),
             db = self.db_name,
         );
         if let Some(addr) = sequencer {
@@ -539,7 +534,9 @@ impl ClickhouseReader {
         }
 
         query.push_str(" ORDER BY l2_block_number DESC");
-        query.push_str(&format!(" LIMIT {}", limit));
+        // Cap the limit to a reasonable default if not specified
+        let actual_limit = if limit == u64::MAX { 1000 } else { limit };
+        query.push_str(&format!(" LIMIT {}", actual_limit));
 
         let rows = self.execute::<BlockTransactionRow>(&query).await?;
         Ok(rows)
@@ -639,7 +636,7 @@ impl ClickhouseReader {
              WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
                AND {filter}",
             interval = range.interval(),
-            filter = self.reorg_filter("h"),
+            filter = self.reorg_filter(),
             db = self.db_name,
         );
         if let Some(addr) = sequencer {
@@ -849,7 +846,7 @@ impl ClickhouseReader {
              WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
                AND {filter}",
             interval = range.interval(),
-            filter = self.reorg_filter("h"),
+            filter = self.reorg_filter(),
             db = self.db_name,
         );
         if let Some(addr) = sequencer {
@@ -891,7 +888,7 @@ impl ClickhouseReader {
              WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
                AND {filter}",
             interval = range.interval(),
-            filter = self.reorg_filter("h"),
+            filter = self.reorg_filter(),
             db = self.db_name
         );
         if let Some(addr) = sequencer {
@@ -930,7 +927,7 @@ impl ClickhouseReader {
              WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
                AND {filter}",
             interval = range.interval(),
-            filter = self.reorg_filter("h"),
+            filter = self.reorg_filter(),
             db = self.db_name,
         );
         if let Some(addr) = sequencer {
@@ -966,7 +963,7 @@ impl ClickhouseReader {
              WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
                AND {filter}",
             interval = range.interval(),
-            filter = self.reorg_filter("h"),
+            filter = self.reorg_filter(),
             db = self.db_name,
         );
         if let Some(addr) = sequencer {
@@ -1007,7 +1004,7 @@ impl ClickhouseReader {
              WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
                AND {filter}",
             interval = range.interval(),
-            filter = self.reorg_filter("h"),
+            filter = self.reorg_filter(),
             db = self.db_name
         );
         if let Some(addr) = sequencer {
