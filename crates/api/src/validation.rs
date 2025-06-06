@@ -112,8 +112,8 @@ pub fn validate_time_range(params: &TimeRangeParams) -> Result<(), ErrorResponse
 pub fn validate_pagination(
     starting_after: Option<&u64>,
     ending_before: Option<&u64>,
-    limit: Option<&u64>,
-    max_limit: u64,
+    _limit: Option<&u64>,
+    _max_limit: u64,
 ) -> Result<(), ErrorResponse> {
     if starting_after.is_some() && ending_before.is_some() {
         return Err(ErrorResponse::new(
@@ -124,16 +124,7 @@ pub fn validate_pagination(
         ));
     }
 
-    if let Some(&limit) = limit {
-        if limit == 0 || limit > max_limit {
-            return Err(ErrorResponse::new(
-                "invalid-params",
-                "Bad Request",
-                StatusCode::BAD_REQUEST,
-                format!("limit must be between 1 and {}", max_limit),
-            ));
-        }
-    }
+    // Remove limit validation - allow any limit value or no limit
 
     Ok(())
 }
@@ -348,21 +339,14 @@ mod tests {
     }
 
     #[test]
-    fn test_pagination_validation_invalid_limit_zero() {
+    fn test_pagination_validation_any_limit_allowed() {
+        // Zero limit should now be allowed
         let result = validate_pagination(None, None, Some(&0), 1000);
-        assert!(result.is_err());
-        let err = result.unwrap_err();
-        assert_eq!(err.r#type, "invalid-params");
-        assert!(err.detail.contains("limit must be between 1 and"));
-    }
+        assert!(result.is_ok());
 
-    #[test]
-    fn test_pagination_validation_invalid_limit_too_large() {
-        let result = validate_pagination(None, None, Some(&1001), 1000);
-        assert!(result.is_err());
-        let err = result.unwrap_err();
-        assert_eq!(err.r#type, "invalid-params");
-        assert!(err.detail.contains("limit must be between 1 and 1000"));
+        // Large limit should now be allowed
+        let result = validate_pagination(None, None, Some(&10000), 1000);
+        assert!(result.is_ok());
     }
 
     #[test]

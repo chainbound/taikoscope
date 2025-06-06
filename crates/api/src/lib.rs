@@ -1527,7 +1527,7 @@ async fn block_transactions(
     validate_range_exclusivity(has_time_range, has_slot_range)?;
 
     let since = resolve_time_range_since(&params.common.range, &params.common.time_range);
-    let limit = params.limit.unwrap_or(50).clamp(1, MAX_BLOCK_TRANSACTIONS_LIMIT);
+    let limit = params.limit.unwrap_or(50);
 
     let rows = match state
         .client

@@ -453,10 +453,12 @@ export const fetchBlockTransactions = async (
   address?: string,
   unlimited = false,
 ): Promise<RequestResult<BlockTransaction[]>> => {
-  // If unlimited is true, use a large limit to get all data within the time range
-  const actualLimit = unlimited ? 10000 : limit;
+  let url = `${API_BASE}/block-transactions?range=${range}`;
 
-  let url = `${API_BASE}/block-transactions?range=${range}&limit=${actualLimit}`;
+  // Only add limit parameter if not unlimited
+  if (!unlimited) {
+    url += `&limit=${limit}`;
+  }
 
   // For unlimited fetching, we ignore pagination parameters to get all data
   if (!unlimited) {
