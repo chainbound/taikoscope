@@ -160,5 +160,11 @@ export const safeNavigate = (
   replace = false,
 ) => {
   const sanitized = sanitizeUrl(url);
+  if (
+    typeof window !== 'undefined' &&
+    sanitized === window.location.pathname + window.location.search
+  ) {
+    return;
+  }
   routerNavigate(sanitized, { replace });
 };
