@@ -163,7 +163,7 @@ pub const fn has_time_range_params(params: &TimeRangeParams) -> bool {
 }
 
 /// Convert a range string to `ChronoDuration` (e.g., "1h", "24h", "7d")
-fn range_duration(range: &Option<String>) -> ChronoDuration {
+pub fn range_duration(range: &Option<String>) -> ChronoDuration {
     const MAX_RANGE_HOURS: i64 = 24 * 7; // maximum range of 7 days
 
     if let Some(r) = range.as_deref() {

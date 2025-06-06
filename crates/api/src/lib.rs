@@ -19,7 +19,7 @@ use axum::{
 use chrono::{Duration as ChronoDuration, TimeZone, Utc};
 #[cfg(test)]
 use clickhouse_lib::HashBytes;
-use clickhouse_lib::{AddressBytes, ClickhouseReader, TimeRange};
+use clickhouse_lib::{AddressBytes, ClickhouseReader};
 use dashmap::DashMap;
 use futures::stream::Stream;
 use hex::encode;
@@ -32,8 +32,9 @@ use std::{
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 use validation::{
-    CommonQuery, PaginatedQuery, TimeRangeParams, has_time_range_params, resolve_time_range_enum,
-    resolve_time_range_since, validate_pagination, validate_range_exclusivity, validate_time_range,
+    CommonQuery, PaginatedQuery, TimeRangeParams, has_time_range_params, range_duration,
+    resolve_time_range_enum, resolve_time_range_since, validate_pagination,
+    validate_range_exclusivity, validate_time_range,
 };
 
 /// Default maximum number of requests allowed during the rate limiting period.
@@ -205,30 +206,6 @@ impl ApiState {
 type RangeQuery = CommonQuery;
 type SequencerBlocksQuery = CommonQuery;
 type BlockTransactionsQuery = PaginatedQuery;
-
-fn range_duration(range: &Option<String>) -> ChronoDuration {
-    const MAX_RANGE_HOURS: i64 = 24 * 7; // maximum range of 7 days
-
-    if let Some(r) = range.as_deref() {
-        let r = r.trim().to_ascii_lowercase();
-
-        if let Some(h) = r.strip_suffix('h') {
-            if let Ok(hours) = h.parse::<i64>() {
-                let hours = hours.clamp(0, MAX_RANGE_HOURS);
-                return ChronoDuration::hours(hours);
-            }
-        }
-
-        if let Some(d) = r.strip_suffix('d') {
-            if let Ok(days) = d.parse::<i64>() {
-                let hours = (days * 24).clamp(0, MAX_RANGE_HOURS);
-                return ChronoDuration::hours(hours);
-            }
-        }
-    }
-
-    ChronoDuration::hours(1)
-}
 
 /// Resolve the effective time range for queries, prioritizing explicit time range params (legacy
 /// function)
@@ -839,7 +816,14 @@ async fn l2_block_cadence(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
 ) -> Result<Json<L2BlockCadenceResponse>, ErrorResponse> {
-    let duration = range_duration(&params.range);
+    // Validate time range parameters
+    validate_time_range(&params.time_range)?;
+
+    // Check for range exclusivity
+    let has_time_range = has_time_range_params(&params.time_range);
+    validate_range_exclusivity(has_time_range, false)?;
+
+    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
     let address = params.address.as_ref().and_then(|addr| match addr.parse::<Address>() {
         Ok(a) => Some(AddressBytes::from(a)),
         Err(e) => {
@@ -847,11 +831,7 @@ async fn l2_block_cadence(
             None
         }
     });
-    let avg = match state
-        .client
-        .get_l2_block_cadence(address, TimeRange::from_duration(duration))
-        .await
-    {
+    let avg = match state.client.get_l2_block_cadence(address, time_range).await {
         Ok(val) => val,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get L2 block cadence");
@@ -883,9 +863,15 @@ async fn batch_posting_cadence(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
 ) -> Result<Json<BatchPostingCadenceResponse>, ErrorResponse> {
-    let duration = range_duration(&params.range);
-    let avg = match state.client.get_batch_posting_cadence(TimeRange::from_duration(duration)).await
-    {
+    // Validate time range parameters
+    validate_time_range(&params.time_range)?;
+
+    // Check for range exclusivity
+    let has_time_range = has_time_range_params(&params.time_range);
+    validate_range_exclusivity(has_time_range, false)?;
+
+    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
+    let avg = match state.client.get_batch_posting_cadence(time_range).await {
         Ok(val) => val,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get batch posting cadence");
@@ -917,11 +903,15 @@ async fn batch_posting_times(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
 ) -> Result<Json<BatchPostingTimesResponse>, ErrorResponse> {
-    let rows = match state
-        .client
-        .get_batch_posting_times(TimeRange::from_duration(range_duration(&params.range)))
-        .await
-    {
+    // Validate time range parameters
+    validate_time_range(&params.time_range)?;
+
+    // Check for range exclusivity
+    let has_time_range = has_time_range_params(&params.time_range);
+    validate_range_exclusivity(has_time_range, false)?;
+
+    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
+    let rows = match state.client.get_batch_posting_times(time_range).await {
         Ok(r) => r,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get batch posting times");
@@ -953,7 +943,14 @@ async fn avg_l2_tps(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
 ) -> Result<Json<AvgL2TpsResponse>, ErrorResponse> {
-    let duration = range_duration(&params.range);
+    // Validate time range parameters
+    validate_time_range(&params.time_range)?;
+
+    // Check for range exclusivity
+    let has_time_range = has_time_range_params(&params.time_range);
+    validate_range_exclusivity(has_time_range, false)?;
+
+    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
     let address = params.address.as_ref().and_then(|addr| match addr.parse::<Address>() {
         Ok(a) => Some(AddressBytes::from(a)),
         Err(e) => {
@@ -961,7 +958,7 @@ async fn avg_l2_tps(
             None
         }
     });
-    let avg = match state.client.get_avg_l2_tps(address, TimeRange::from_duration(duration)).await {
+    let avg = match state.client.get_avg_l2_tps(address, time_range).await {
         Ok(val) => val,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get avg L2 TPS");
@@ -993,7 +990,14 @@ async fn l2_transaction_fee(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
 ) -> Result<Json<L2TxFeeResponse>, ErrorResponse> {
-    let duration = range_duration(&params.range);
+    // Validate time range parameters
+    validate_time_range(&params.time_range)?;
+
+    // Check for range exclusivity
+    let has_time_range = has_time_range_params(&params.time_range);
+    validate_range_exclusivity(has_time_range, false)?;
+
+    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
     let address = params.address.as_ref().and_then(|addr| match addr.parse::<Address>() {
         Ok(a) => Some(AddressBytes::from(a)),
         Err(e) => {
@@ -1001,7 +1005,7 @@ async fn l2_transaction_fee(
             None
         }
     });
-    let fee = match state.client.get_l2_tx_fee(address, TimeRange::from_duration(duration)).await {
+    let fee = match state.client.get_l2_tx_fee(address, time_range).await {
         Ok(val) => val,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get L2 tx fee");
@@ -1028,13 +1032,22 @@ async fn l2_transaction_fee(
     ),
     tag = "taikoscope"
 )]
-async fn cloud_cost(Query(params): Query<RangeQuery>) -> Json<CloudCostResponse> {
-    let duration = range_duration(&params.range);
-    let hours = duration.num_hours() as f64;
+async fn cloud_cost(
+    Query(params): Query<RangeQuery>,
+) -> Result<Json<CloudCostResponse>, ErrorResponse> {
+    // Validate time range parameters
+    validate_time_range(&params.time_range)?;
+
+    // Check for range exclusivity
+    let has_time_range = has_time_range_params(&params.time_range);
+    validate_range_exclusivity(has_time_range, false)?;
+
+    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
+    let hours = time_range.seconds() as f64 / 3600.0; // Convert seconds to hours
     let hourly_rate = TOTAL_HARDWARE_COST_USD / (30.0 * 24.0);
     let cost = hourly_rate * hours;
     tracing::info!(cost_usd = cost, "Returning cloud cost");
-    Json(CloudCostResponse { cost_usd: cost })
+    Ok(Json(CloudCostResponse { cost_usd: cost }))
 }
 
 #[utoipa::path(
@@ -1053,8 +1066,15 @@ async fn avg_blobs_per_batch(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
 ) -> Result<Json<AvgBlobsPerBatchResponse>, ErrorResponse> {
-    let duration = range_duration(&params.range);
-    let avg = match state.client.get_avg_blobs_per_batch(TimeRange::from_duration(duration)).await {
+    // Validate time range parameters
+    validate_time_range(&params.time_range)?;
+
+    // Check for range exclusivity
+    let has_time_range = has_time_range_params(&params.time_range);
+    validate_range_exclusivity(has_time_range, false)?;
+
+    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
+    let avg = match state.client.get_avg_blobs_per_batch(time_range).await {
         Ok(val) => val,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get avg blobs per batch");
@@ -1086,11 +1106,15 @@ async fn blobs_per_batch(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
 ) -> Result<Json<BatchBlobsResponse>, ErrorResponse> {
-    let batches = match state
-        .client
-        .get_blobs_per_batch(TimeRange::from_duration(range_duration(&params.range)))
-        .await
-    {
+    // Validate time range parameters
+    validate_time_range(&params.time_range)?;
+
+    // Check for range exclusivity
+    let has_time_range = has_time_range_params(&params.time_range);
+    validate_range_exclusivity(has_time_range, false)?;
+
+    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
+    let batches = match state.client.get_blobs_per_batch(time_range).await {
         Ok(rows) => rows,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get blobs per batch");
@@ -1122,11 +1146,15 @@ async fn prove_times(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
 ) -> Result<Json<ProveTimesResponse>, ErrorResponse> {
-    let batches = match state
-        .client
-        .get_prove_times(TimeRange::from_duration(range_duration(&params.range)))
-        .await
-    {
+    // Validate time range parameters
+    validate_time_range(&params.time_range)?;
+
+    // Check for range exclusivity
+    let has_time_range = has_time_range_params(&params.time_range);
+    validate_range_exclusivity(has_time_range, false)?;
+
+    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
+    let batches = match state.client.get_prove_times(time_range).await {
         Ok(rows) => rows,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get prove times");
@@ -1158,11 +1186,15 @@ async fn verify_times(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
 ) -> Result<Json<VerifyTimesResponse>, ErrorResponse> {
-    let batches = match state
-        .client
-        .get_verify_times(TimeRange::from_duration(range_duration(&params.range)))
-        .await
-    {
+    // Validate time range parameters
+    validate_time_range(&params.time_range)?;
+
+    // Check for range exclusivity
+    let has_time_range = has_time_range_params(&params.time_range);
+    validate_range_exclusivity(has_time_range, false)?;
+
+    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
+    let batches = match state.client.get_verify_times(time_range).await {
         Ok(rows) => rows,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get verify times");
@@ -1194,11 +1226,15 @@ async fn l1_block_times(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
 ) -> Result<Json<L1BlockTimesResponse>, ErrorResponse> {
-    let blocks = match state
-        .client
-        .get_l1_block_times(TimeRange::from_duration(range_duration(&params.range)))
-        .await
-    {
+    // Validate time range parameters
+    validate_time_range(&params.time_range)?;
+
+    // Check for range exclusivity
+    let has_time_range = has_time_range_params(&params.time_range);
+    validate_range_exclusivity(has_time_range, false)?;
+
+    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
+    let blocks = match state.client.get_l1_block_times(time_range).await {
         Ok(rows) => rows,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get L1 block times");
@@ -1230,6 +1266,14 @@ async fn l2_block_times(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
 ) -> Result<Json<L2BlockTimesResponse>, ErrorResponse> {
+    // Validate time range parameters
+    validate_time_range(&params.time_range)?;
+
+    // Check for range exclusivity
+    let has_time_range = has_time_range_params(&params.time_range);
+    validate_range_exclusivity(has_time_range, false)?;
+
+    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
     let address = params.address.as_ref().and_then(|addr| match addr.parse::<Address>() {
         Ok(a) => Some(AddressBytes::from(a)),
         Err(e) => {
@@ -1237,11 +1281,7 @@ async fn l2_block_times(
             None
         }
     });
-    let blocks = match state
-        .client
-        .get_l2_block_times(address, TimeRange::from_duration(range_duration(&params.range)))
-        .await
-    {
+    let blocks = match state.client.get_l2_block_times(address, time_range).await {
         Ok(rows) => rows,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get L2 block times");
@@ -1273,6 +1313,14 @@ async fn l2_gas_used(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
 ) -> Result<Json<L2GasUsedResponse>, ErrorResponse> {
+    // Validate time range parameters
+    validate_time_range(&params.time_range)?;
+
+    // Check for range exclusivity
+    let has_time_range = has_time_range_params(&params.time_range);
+    validate_range_exclusivity(has_time_range, false)?;
+
+    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
     let address = params.address.as_ref().and_then(|addr| match addr.parse::<Address>() {
         Ok(a) => Some(AddressBytes::from(a)),
         Err(e) => {
@@ -1280,11 +1328,7 @@ async fn l2_gas_used(
             None
         }
     });
-    let blocks = match state
-        .client
-        .get_l2_gas_used(address, TimeRange::from_duration(range_duration(&params.range)))
-        .await
-    {
+    let blocks = match state.client.get_l2_gas_used(address, time_range).await {
         Ok(rows) => rows,
         Err(e) => {
             tracing::error!("Failed to get L2 gas used: {}", e);
@@ -1315,6 +1359,14 @@ async fn l2_tps(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
 ) -> Result<Json<L2TpsResponse>, ErrorResponse> {
+    // Validate time range parameters
+    validate_time_range(&params.time_range)?;
+
+    // Check for range exclusivity
+    let has_time_range = has_time_range_params(&params.time_range);
+    validate_range_exclusivity(has_time_range, false)?;
+
+    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
     let address = params.address.as_ref().and_then(|addr| match addr.parse::<Address>() {
         Ok(a) => Some(AddressBytes::from(a)),
         Err(e) => {
@@ -1322,11 +1374,7 @@ async fn l2_tps(
             None
         }
     });
-    let blocks = match state
-        .client
-        .get_l2_tps(address, TimeRange::from_duration(range_duration(&params.range)))
-        .await
-    {
+    let blocks = match state.client.get_l2_tps(address, time_range).await {
         Ok(rows) => rows,
         Err(e) => {
             tracing::error!("Failed to get L2 TPS: {}", e);
