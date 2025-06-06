@@ -124,9 +124,9 @@ impl ClickhouseReader {
 
     /// Anti-subquery that hides blocks later rolled back by a reorg.
     /// Use with `NOT IN (SELECT l2_block_number FROM ...)`
-    fn reorg_filter(&self) -> String {
+    fn reorg_filter(&self, table_alias: &str) -> String {
         format!(
-            "l2_block_number NOT IN ( \
+            "{table_alias}.l2_block_number NOT IN ( \
                 SELECT l2_block_number \
                 FROM {db}.l2_reorgs\
             )",
@@ -468,13 +468,9 @@ impl ClickhouseReader {
         since: DateTime<Utc>,
     ) -> Result<Vec<SequencerDistributionRow>> {
         let query = format!(
-            "SELECT sequencer, count(DISTINCT h.l2_block_number) AS blocks \
-             FROM {db}.l2_head_events h \
-             WHERE h.block_ts > {} \
-               AND {filter} \
-             GROUP BY sequencer ORDER BY blocks DESC",
-            since.timestamp(),
-            filter = self.reorg_filter(),
+            "SELECT sequencer,\n                    count(DISTINCT h.l2_block_number) AS blocks,\n                    toUInt64(min(h.block_ts)) AS min_ts,\n                    toUInt64(max(h.block_ts)) AS max_ts,\n                    sum(sum_tx) AS tx_sum\n             FROM {db}.l2_head_events h\n             WHERE h.block_ts > {since} AND {filter}\n             GROUP BY sequencer ORDER BY blocks DESC",
+            since = since.timestamp(),
+            filter = self.reorg_filter("h"),
             db = self.db_name,
         );
 
@@ -494,7 +490,7 @@ impl ClickhouseReader {
                AND {filter} \
              ORDER BY sequencer, h.l2_block_number DESC",
             since.timestamp(),
-            filter = self.reorg_filter(),
+            filter = self.reorg_filter("h"),
             db = self.db_name,
         );
 
@@ -518,7 +514,7 @@ impl ClickhouseReader {
              WHERE h.block_ts >= {} \
                AND {filter}",
             since.timestamp(),
-            filter = self.reorg_filter(),
+            filter = self.reorg_filter("h"),
             db = self.db_name,
         );
         if let Some(addr) = sequencer {
@@ -636,7 +632,7 @@ impl ClickhouseReader {
              WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
                AND {filter}",
             interval = range.interval(),
-            filter = self.reorg_filter(),
+            filter = self.reorg_filter("h"),
             db = self.db_name,
         );
         if let Some(addr) = sequencer {
@@ -846,7 +842,7 @@ impl ClickhouseReader {
              WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
                AND {filter}",
             interval = range.interval(),
-            filter = self.reorg_filter(),
+            filter = self.reorg_filter("h"),
             db = self.db_name,
         );
         if let Some(addr) = sequencer {
@@ -888,7 +884,7 @@ impl ClickhouseReader {
              WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
                AND {filter}",
             interval = range.interval(),
-            filter = self.reorg_filter(),
+            filter = self.reorg_filter("h"),
             db = self.db_name
         );
         if let Some(addr) = sequencer {
@@ -927,7 +923,7 @@ impl ClickhouseReader {
              WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
                AND {filter}",
             interval = range.interval(),
-            filter = self.reorg_filter(),
+            filter = self.reorg_filter("h"),
             db = self.db_name,
         );
         if let Some(addr) = sequencer {
@@ -963,7 +959,7 @@ impl ClickhouseReader {
              WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
                AND {filter}",
             interval = range.interval(),
-            filter = self.reorg_filter(),
+            filter = self.reorg_filter("h"),
             db = self.db_name,
         );
         if let Some(addr) = sequencer {
@@ -1004,7 +1000,7 @@ impl ClickhouseReader {
              WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
                AND {filter}",
             interval = range.interval(),
-            filter = self.reorg_filter(),
+            filter = self.reorg_filter("h"),
             db = self.db_name
         );
         if let Some(addr) = sequencer {

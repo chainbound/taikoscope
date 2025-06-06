@@ -901,9 +901,14 @@ async fn sequencer_distribution(
     })?;
     let sequencers: Vec<SequencerDistributionItem> = rows
         .into_iter()
-        .map(|r| SequencerDistributionItem {
-            address: format!("0x{}", encode(r.sequencer)),
-            blocks: r.blocks,
+        .map(|r| {
+            let tps = (r.max_ts > r.min_ts && r.tx_sum > 0)
+                .then(|| r.tx_sum as f64 / (r.max_ts - r.min_ts) as f64);
+            SequencerDistributionItem {
+                address: format!("0x{}", encode(r.sequencer)),
+                blocks: r.blocks,
+                tps,
+            }
         })
         .collect();
     tracing::info!(count = sequencers.len(), "Returning sequencer distribution");

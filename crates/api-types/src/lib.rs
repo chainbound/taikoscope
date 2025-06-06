@@ -228,6 +228,8 @@ pub struct SequencerDistributionItem {
     pub address: String,
     /// Number of blocks produced by the sequencer.
     pub blocks: u64,
+    /// Average transactions per second for the sequencer in the selected range.
+    pub tps: Option<f64>,
 }
 
 /// Distribution of blocks across sequencers.

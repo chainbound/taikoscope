@@ -132,6 +132,12 @@ pub struct SequencerDistributionRow {
     pub sequencer: AddressBytes,
     /// Number of blocks produced by the sequencer
     pub blocks: u64,
+    /// Earliest block timestamp for the sequencer in the selected range
+    pub min_ts: u64,
+    /// Latest block timestamp for the sequencer in the selected range
+    pub max_ts: u64,
+    /// Sum of transactions across all blocks proposed by the sequencer
+    pub tx_sum: u64,
 }
 
 /// Row representing a single block proposed by a sequencer
