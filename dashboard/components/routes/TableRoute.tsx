@@ -140,7 +140,7 @@ export const TableRoute: React.FC = () => {
   ]);
 
   const handleBack = () => {
-    navigateToDashboard();
+    navigateToDashboard(true);
   };
 
   if (!tableView && !tableLoading) {
