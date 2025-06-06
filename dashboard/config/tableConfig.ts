@@ -308,17 +308,6 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
         block: blockLink(d.block),
         tps: d.tps.toFixed(2),
       })),
-    chart: (data) => {
-      const TpsChart = React.lazy(() =>
-        import('../components/TpsChart').then((m) => ({
-          default: m.TpsChart,
-        })),
-      );
-      return React.createElement(TpsChart, {
-        data: data as { block: number; tps: number }[],
-        lineColor: '#4E79A7',
-      });
-    },
     useUnlimitedData: true,
     urlKey: 'l2-tps',
   },
