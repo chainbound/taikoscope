@@ -49,6 +49,10 @@ interface MockFetchResponse {
 }
 
 const responses: Record<string, Record<string, unknown>> = {
+  '/v1/l2-block-cadence?range=15m': { l2_block_cadence_ms: 60000 },
+  '/v1/batch-posting-cadence?range=15m': { batch_posting_cadence_ms: 120000 },
+  '/v1/avg-prove-time?range=15m': { avg_prove_time_ms: 1500 },
+  '/v1/avg-verify-time?range=15m': { avg_verify_time_ms: 2500 },
   '/v1/l2-block-cadence?range=1h': { l2_block_cadence_ms: 60000 },
   '/v1/batch-posting-cadence?range=1h': { batch_posting_cadence_ms: 120000 },
   '/v1/avg-prove-time?range=1h': { avg_prove_time_ms: 1500 },
@@ -67,7 +71,22 @@ const responses: Record<string, Record<string, unknown>> = {
     events: [{ l1_block_number: 5, validator_addr: [1, 2] }],
   },
   '/v1/forced-inclusions?range=1h': { events: [{ blob_hash: [3, 4] }] },
+  '/v1/reorgs?range=15m': {
+    events: [
+      { l2_block_number: 10, depth: 1, inserted_at: '1970-01-01T00:00:00Z' },
+    ],
+  },
+  '/v1/slashings?range=15m': {
+    events: [{ l1_block_number: 5, validator_addr: [1, 2] }],
+  },
+  '/v1/forced-inclusions?range=15m': { events: [{ blob_hash: [3, 4] }] },
   '/v1/l2-block-times?range=1h': {
+    blocks: [
+      { l2_block_number: 1, ms_since_prev_block: 1000 },
+      { l2_block_number: 2, ms_since_prev_block: 2000 },
+    ],
+  },
+  '/v1/l2-block-times?range=15m': {
     blocks: [
       { l2_block_number: 1, ms_since_prev_block: 1000 },
       { l2_block_number: 2, ms_since_prev_block: 2000 },
@@ -79,10 +98,22 @@ const responses: Record<string, Record<string, unknown>> = {
       { block_number: 52, minute: 2 },
     ],
   },
+  '/v1/l1-block-times?range=15m': {
+    blocks: [
+      { block_number: 50, minute: 1 },
+      { block_number: 52, minute: 2 },
+    ],
+  },
   '/v1/prove-times?range=1h': {
     batches: [{ batch_id: 1, seconds_to_prove: 3 }],
   },
+  '/v1/prove-times?range=15m': {
+    batches: [{ batch_id: 1, seconds_to_prove: 3 }],
+  },
   '/v1/verify-times?range=1h': {
+    batches: [{ batch_id: 1, seconds_to_verify: 4 }],
+  },
+  '/v1/verify-times?range=15m': {
     batches: [{ batch_id: 1, seconds_to_verify: 4 }],
   },
   '/v1/l2-gas-used?range=1h': {
@@ -91,9 +122,20 @@ const responses: Record<string, Record<string, unknown>> = {
       { l2_block_number: 2, gas_used: 150 },
     ],
   },
+  '/v1/l2-gas-used?range=15m': {
+    blocks: [
+      { l2_block_number: 1, gas_used: 100 },
+      { l2_block_number: 2, gas_used: 150 },
+    ],
+  },
   '/v1/l2-tx-fee?range=1h': { tx_fee: 1000 },
+  '/v1/l2-tx-fee?range=15m': { tx_fee: 1000 },
   '/v1/cloud-cost?range=1h': { cost_usd: 3 },
+  '/v1/cloud-cost?range=15m': { cost_usd: 3 },
   '/v1/sequencer-distribution?range=1h': {
+    sequencers: [{ address: 'addr1', blocks: 10 }],
+  },
+  '/v1/sequencer-distribution?range=15m': {
     sequencers: [{ address: 'addr1', blocks: 10 }],
   },
   '/v1/l2-head-block': { l2_head_block: 123 },
@@ -350,11 +392,15 @@ it('app integration', async () => {
     errorMessage: '',
   };
 
+  await fetchData('15m', state);
+  expect(state.metrics.length > 0).toBe(true);
+
   await fetchData('1h', state);
   expect(state.metrics.length > 0).toBe(true);
   expect(state.secondsToProveData.length).toBe(1);
   expect(state.l2GasUsedData.length).toBe(2);
 
+  await fetchData('15m', state, true);
   await fetchData('1h', state, true);
   const econMetric = state.metrics.find((m) => m.group === 'Network Economics');
   expect(econMetric).toBeDefined();
