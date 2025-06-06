@@ -391,7 +391,14 @@ impl Driver {
         let candidates = opt_candidates.unwrap_or_else(Vec::new);
 
         let opt_current_operator = match self.extractor.get_operator_for_current_epoch().await {
-            Ok(op) => Some(op),
+            Ok(op) => {
+                info!(
+                    block = header.number,
+                    operator = ?op,
+                    "Current operator for epoch"
+                );
+                Some(op)
+            }
             Err(e) => {
                 tracing::error!(block = header.number, err = %e, "get_operator_for_current_epoch failed");
                 None
@@ -399,7 +406,14 @@ impl Driver {
         };
 
         let opt_next_operator = match self.extractor.get_operator_for_next_epoch().await {
-            Ok(op) => Some(op),
+            Ok(op) => {
+                info!(
+                    block = header.number,
+                    operator = ?op,
+                    "Next operator for epoch"
+                );
+                Some(op)
+            }
             Err(e) => {
                 // The first slot in the epoch doesn't have any next operator
                 if header.slot % EPOCH_SLOTS != 0 {
