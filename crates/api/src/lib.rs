@@ -2194,7 +2194,10 @@ mod tests {
         ]));
         let app = build_app(mock.url());
         let body = send_request(app, "/l2-gas-used?range=1h").await;
-        assert_eq!(body, json!({ "blocks": [ { "l2_block_number": 1, "gas_used": 42 } ] }));
+        assert_eq!(
+            body,
+            json!({ "blocks": [ { "l2_block_number": 0, "gas_used": 0 }, { "l2_block_number": 1, "gas_used": 42 } ] })
+        );
     }
 
     #[tokio::test]
@@ -2206,7 +2209,10 @@ mod tests {
         ]));
         let app = build_app(mock.url());
         let body = send_request(app, "/l2-gas-used?range=24h").await;
-        assert_eq!(body, json!({ "blocks": [ { "l2_block_number": 1, "gas_used": 42 } ] }));
+        assert_eq!(
+            body,
+            json!({ "blocks": [ { "l2_block_number": 0, "gas_used": 0 }, { "l2_block_number": 1, "gas_used": 42 } ] })
+        );
     }
 
     #[tokio::test]
@@ -2218,7 +2224,10 @@ mod tests {
         ]));
         let app = build_app(mock.url());
         let body = send_request(app, "/l2-gas-used?range=7d").await;
-        assert_eq!(body, json!({ "blocks": [ { "l2_block_number": 1, "gas_used": 42 } ] }));
+        assert_eq!(
+            body,
+            json!({ "blocks": [ { "l2_block_number": 0, "gas_used": 0 }, { "l2_block_number": 1, "gas_used": 42 } ] })
+        );
     }
 
     #[derive(Serialize, Row)]

@@ -130,10 +130,10 @@ let intervals: IntervalId[] = [];
   fn: () => Promise<void> | void,
   ms: number,
 ): NodeJS.Timeout => {
-  const id: IntervalId = { fn, ms };
-  intervals.push(id);
-  return id as unknown as NodeJS.Timeout;
-};
+    const id: IntervalId = { fn, ms };
+    intervals.push(id);
+    return id as unknown as NodeJS.Timeout;
+  };
 (
   globalThis as unknown as { clearInterval: (id: NodeJS.Timeout) => void }
 ).clearInterval = (id: NodeJS.Timeout) => {
@@ -353,7 +353,7 @@ it('app integration', async () => {
   await fetchData('1h', state);
   expect(state.metrics.length > 0).toBe(true);
   expect(state.secondsToProveData.length).toBe(1);
-  expect(state.l2GasUsedData.length).toBe(1);
+  expect(state.l2GasUsedData.length).toBe(2);
 
   await fetchData('1h', state, true);
   const econMetric = state.metrics.find((m) => m.group === 'Network Economics');

@@ -436,10 +436,8 @@ impl Driver {
     async fn handle_l2_header(&mut self, header: L2Header) {
         self.last_l2_header = Some((header.number, header.beneficiary));
         // Detect reorgs
-        // The simplified on_new_block now only takes the new block's number.
         // It returns Some(depth) if new_block_number < current_head_number.
         if let Some(depth) = self.reorg.on_new_block(header.number) {
-            // The insert_l2_reorg function expects (block_number, depth)
             // The block_number should be the new head number after the reorg.
             if let Err(e) = self.clickhouse.insert_l2_reorg(header.number, depth).await {
                 tracing::error!(block_number = header.number, depth = depth, err = %e, "Failed to insert L2 reorg");

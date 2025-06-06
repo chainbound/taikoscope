@@ -541,7 +541,7 @@ impl ClickhouseReader {
     ) -> Result<Vec<BlockTransactionRow>> {
         let mut query = format!(
             "SELECT sequencer, l2_block_number, sum_tx FROM {db}.l2_head_events \
-             WHERE block_ts > {}",
+             WHERE block_ts >= {}",
             since.timestamp(),
             db = self.db_name,
         );
@@ -566,7 +566,7 @@ impl ClickhouseReader {
     ) -> Result<Vec<BlockTransactionRow>> {
         let mut query = format!(
             "SELECT sequencer, l2_block_number, sum_tx FROM {db}.l2_head_events \
-             WHERE block_ts > {}",
+             WHERE block_ts >= {}",
             since.timestamp(),
             db = self.db_name,
         );
@@ -1739,7 +1739,6 @@ impl ClickhouseReader {
         let rows = self.execute::<RawRow>(&query).await?;
         Ok(rows
             .into_iter()
-            .skip(1)
             .map(|r| L2GasUsedRow { l2_block_number: r.l2_block_number, gas_used: r.gas_used })
             .collect())
     }
@@ -1769,7 +1768,6 @@ impl ClickhouseReader {
         let rows = self.execute::<RawRow>(&query).await?;
         Ok(rows
             .into_iter()
-            .skip(1)
             .map(|r| L2GasUsedRow { l2_block_number: r.l2_block_number, gas_used: r.gas_used })
             .collect())
     }
@@ -1799,7 +1797,6 @@ impl ClickhouseReader {
         let rows = self.execute::<RawRow>(&query).await?;
         Ok(rows
             .into_iter()
-            .skip(1)
             .map(|r| L2GasUsedRow { l2_block_number: r.l2_block_number, gas_used: r.gas_used })
             .collect())
     }
@@ -1831,7 +1828,6 @@ impl ClickhouseReader {
         let rows = self.execute::<RawRow>(&query).await?;
         Ok(rows
             .into_iter()
-            .skip(1)
             .map(|r| L2GasUsedRow { l2_block_number: r.l2_block_number, gas_used: r.gas_used })
             .collect())
     }
