@@ -39,6 +39,8 @@ const BlockTxChartComponent: React.FC<BlockTxChartProps> = ({
         <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
         <XAxis
           dataKey="block"
+          type="number"
+          domain={['dataMin', 'dataMax']}
           tickFormatter={(v: number) => v.toLocaleString()}
           stroke="#666666"
           fontSize={12}
