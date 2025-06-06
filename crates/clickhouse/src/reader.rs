@@ -134,6 +134,17 @@ impl ClickhouseReader {
         )
     }
 
+    /// SQL join to exclude blocks that were later reorged.
+    fn reorg_join(&self, alias: &str) -> String {
+        format!(
+            "LEFT JOIN {db}.l2_reorgs r ON {alias}.l2_block_number >= r.l2_block_number \
+                 AND {alias}.l2_block_number <= r.l2_block_number + r.depth \
+                 AND {alias}.inserted_at < r.inserted_at",
+            db = self.db_name,
+            alias = alias
+        )
+    }
+
     /// Get last L2 head time
     pub async fn get_last_l2_head_time(&self) -> Result<Option<DateTime<Utc>>> {
         let query =
@@ -1760,8 +1771,10 @@ impl ClickhouseReader {
         let mut query = format!(
             "SELECT h.l2_block_number, toUInt64(sum_gas_used) AS gas_used \
              FROM {db}.l2_head_events h \
-             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL 1 HOUR) AND {}",
-            self.reorg_filter("h"),
+             {join} \
+             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL 1 HOUR) \
+               AND r.l2_block_number IS NULL",
+            join = self.reorg_join("h"),
             db = self.db_name
         );
         if let Some(addr) = sequencer {
@@ -1790,8 +1803,10 @@ impl ClickhouseReader {
         let mut query = format!(
             "SELECT h.l2_block_number, toUInt64(sum_gas_used) AS gas_used \
              FROM {db}.l2_head_events h \
-             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL 24 HOUR) AND {}",
-            self.reorg_filter("h"),
+             {join} \
+             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL 24 HOUR) \
+               AND r.l2_block_number IS NULL",
+            join = self.reorg_join("h"),
             db = self.db_name
         );
         if let Some(addr) = sequencer {
@@ -1820,8 +1835,10 @@ impl ClickhouseReader {
         let mut query = format!(
             "SELECT h.l2_block_number, toUInt64(sum_gas_used) AS gas_used \
              FROM {db}.l2_head_events h \
-             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL 7 DAY) AND {}",
-            self.reorg_filter("h"),
+             {join} \
+             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL 7 DAY) \
+               AND r.l2_block_number IS NULL",
+            join = self.reorg_join("h"),
             db = self.db_name
         );
         if let Some(addr) = sequencer {
@@ -1851,9 +1868,11 @@ impl ClickhouseReader {
         let mut query = format!(
             "SELECT h.l2_block_number, toUInt64(sum_gas_used) AS gas_used \
              FROM {db}.l2_head_events h \
-             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) AND {filter}",
+             {join} \
+             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
+               AND r.l2_block_number IS NULL",
             interval = range.interval(),
-            filter = self.reorg_filter("h"),
+            join = self.reorg_join("h"),
             db = self.db_name,
         );
         if let Some(addr) = sequencer {
