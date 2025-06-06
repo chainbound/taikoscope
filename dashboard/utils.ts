@@ -4,7 +4,7 @@ import { TAIKO_PINK } from './theme';
 export const TAIKOSCAN_BASE =
   ((import.meta as any).env.VITE_TAIKOSCAN_BASE as string | undefined) ??
   ((import.meta as any).env.TAIKOSCAN_BASE as string | undefined) ??
-  'https://taikoscan.io';
+  'https://cb-blockscout-masaya.vercel.app/blocks';
 
 export const blockLink = (block: number): React.ReactElement =>
   React.createElement(
