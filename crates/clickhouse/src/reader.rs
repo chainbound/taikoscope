@@ -510,7 +510,7 @@ impl ClickhouseReader {
         since: DateTime<Utc>,
     ) -> Result<Vec<SequencerDistributionRow>> {
         let query = format!(
-            "SELECT sequencer, count() AS blocks FROM {db}.l2_head_events \
+            "SELECT sequencer, count(DISTINCT l2_block_number) AS blocks FROM {db}.l2_head_events \
              WHERE block_ts > {} \
              GROUP BY sequencer ORDER BY blocks DESC",
             since.timestamp(),
