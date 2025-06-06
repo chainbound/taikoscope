@@ -109,7 +109,11 @@ impl ClickhouseReader {
     {
         let client = self.base.clone();
         let start = Instant::now();
-        let result = client.query(query).fetch_all::<R>().await;
+
+        // enable correlated-subquery support for this statement
+        let q = format!("{query} SETTINGS allow_experimental_analyzer = 1");
+        let result = client.query(&q).fetch_all::<R>().await;
+
         let duration_ms = start.elapsed().as_millis();
         match &result {
             Ok(rows) => {
@@ -120,14 +124,17 @@ impl ClickhouseReader {
         result.map_err(Into::into)
     }
 
-    /// SQL filter to exclude blocks that were later reorged, using a correlated subquery.
-    /// This is used instead of a JOIN with range conditions, which is not supported well
-    /// in all `ClickHouse` versions.
+    /// Anti-join that hides blocks later rolled back by a reorg.
+    /// *No `inserted_at` comparison – that column isn't present in `l2_head_events`.*
     fn reorg_filter(&self, alias: &str) -> String {
         format!(
-            "AND NOT EXISTS (SELECT 1 FROM {db}.l2_reorgs r WHERE {alias}.l2_block_number >= r.l2_block_number AND {alias}.l2_block_number <= r.l2_block_number + r.depth AND {alias}.inserted_at < r.inserted_at)",
+            "AND NOT EXISTS ( \
+                     SELECT 1 FROM {db}.l2_reorgs r \
+                    WHERE {alias}.l2_block_number BETWEEN r.l2_block_number \
+                                                    AND r.l2_block_number + r.depth \
+                )",
             db = self.db_name,
-            alias = alias
+            alias = alias,
         )
     }
 
@@ -2710,7 +2717,7 @@ mod tests {
         )
         .unwrap();
         let filter = ch.reorg_filter("h");
-        let expected = "AND NOT EXISTS (SELECT 1 FROM test_db.l2_reorgs r WHERE h.l2_block_number >= r.l2_block_number AND h.l2_block_number <= r.l2_block_number + r.depth AND h.inserted_at < r.inserted_at)";
+        let expected = "AND NOT EXISTS ( SELECT 1 FROM test_db.l2_reorgs r WHERE h.l2_block_number BETWEEN r.l2_block_number AND r.l2_block_number + r.depth )";
         assert_eq!(filter, expected);
     }
 
@@ -2724,7 +2731,7 @@ mod tests {
         )
         .unwrap();
         let filter = ch.reorg_filter("events_table");
-        let expected = "AND NOT EXISTS (SELECT 1 FROM prod.l2_reorgs r WHERE events_table.l2_block_number >= r.l2_block_number AND events_table.l2_block_number <= r.l2_block_number + r.depth AND events_table.inserted_at < r.inserted_at)";
+        let expected = "AND NOT EXISTS ( SELECT 1 FROM prod.l2_reorgs r WHERE events_table.l2_block_number BETWEEN r.l2_block_number AND r.l2_block_number + r.depth )";
         assert_eq!(filter, expected);
     }
 
@@ -2739,12 +2746,12 @@ mod tests {
         )
         .unwrap();
         let filter_t1 = ch.reorg_filter("t1");
-        let expected_t1 = "AND NOT EXISTS (SELECT 1 FROM db.l2_reorgs r WHERE t1.l2_block_number >= r.l2_block_number AND t1.l2_block_number <= r.l2_block_number + r.depth AND t1.inserted_at < r.inserted_at)";
+        let expected_t1 = "AND NOT EXISTS ( SELECT 1 FROM db.l2_reorgs r WHERE t1.l2_block_number BETWEEN r.l2_block_number AND r.l2_block_number + r.depth )";
         assert_eq!(filter_t1, expected_t1);
 
         // Test with an alias containing special characters that are valid in SQL
         let filter_special = ch.reorg_filter("\"my table\"");
-        let expected_special = "AND NOT EXISTS (SELECT 1 FROM db.l2_reorgs r WHERE \"my table\".l2_block_number >= r.l2_block_number AND \"my table\".l2_block_number <= r.l2_block_number + r.depth AND \"my table\".inserted_at < r.inserted_at)";
+        let expected_special = "AND NOT EXISTS ( SELECT 1 FROM db.l2_reorgs r WHERE \"my table\".l2_block_number BETWEEN r.l2_block_number AND r.l2_block_number + r.depth )";
         assert_eq!(filter_special, expected_special);
     }
 
@@ -2774,7 +2781,7 @@ mod tests {
         }
         query.push_str(" ORDER BY l2_block_number DESC");
 
-        let expected_filter = "AND NOT EXISTS (SELECT 1 FROM my_db.l2_reorgs r WHERE h.l2_block_number >= r.l2_block_number AND h.l2_block_number <= r.l2_block_number + r.depth AND h.inserted_at < r.inserted_at)";
+        let expected_filter = "AND NOT EXISTS ( SELECT 1 FROM my_db.l2_reorgs r WHERE h.l2_block_number BETWEEN r.l2_block_number AND r.l2_block_number + r.depth )";
         let expected_query = format!(
             "SELECT h.l2_block_number, toUInt64(sum_gas_used) AS gas_used \
              FROM my_db.l2_head_events h \
