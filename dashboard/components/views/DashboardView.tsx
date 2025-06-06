@@ -22,7 +22,6 @@ interface DashboardViewProps {
     // Loading states
     isLoadingData: boolean;
     isTimeRangeChanging: boolean;
-    hasData: boolean;
 
     // Actions
     onOpenTable: (table: string, timeRange?: TimeRange) => void;
@@ -40,7 +39,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     chartsData,
     isLoadingData,
     isTimeRangeChanging,
-    hasData,
     onOpenTable,
     onOpenTpsTable,
     onOpenSequencerDistributionTable,

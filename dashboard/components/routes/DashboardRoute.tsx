@@ -13,7 +13,6 @@ interface DashboardContextType {
   refreshTimer: any;
   isLoadingData: boolean;
   isTimeRangeChanging: boolean;
-  hasData: boolean;
   handleManualRefresh: () => void;
   openGenericTable: (table: string, timeRange?: TimeRange) => void;
   openTpsTable: () => void;
@@ -30,7 +29,6 @@ export const DashboardRoute: React.FC = () => {
     refreshTimer,
     isLoadingData,
     isTimeRangeChanging,
-    hasData,
     handleManualRefresh,
     openGenericTable,
     openTpsTable,
@@ -55,7 +53,6 @@ export const DashboardRoute: React.FC = () => {
         chartsData={chartsData}
         isLoadingData={isLoadingData}
         isTimeRangeChanging={isTimeRangeChanging}
-        hasData={hasData}
         onOpenTable={openGenericTable}
         onOpenTpsTable={openTpsTable}
         onOpenSequencerDistributionTable={openSequencerDistributionTable}
