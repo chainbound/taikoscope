@@ -57,15 +57,15 @@ export const formatTime = (ms: number): string =>
   });
 
 export const formatInterval = (
-  ms: number,
+  seconds: number,
   showHours: boolean,
   showMinutes: boolean,
 ): string => {
   return showHours
-    ? `${formatDecimal(ms / 3600000)} hours`
+    ? `${formatDecimal(seconds / 3600)} hours`
     : showMinutes
-      ? `${formatDecimal(ms / 60000)} minutes`
-      : `${Number(formatDecimal(ms / 1000))} seconds`;
+      ? `${formatDecimal(seconds / 60)} minutes`
+      : `${Number(formatDecimal(seconds))} seconds`;
 };
 
 export const formatBatchDuration = (
@@ -86,14 +86,21 @@ export const computeBatchDurationFlags = (data: { value: number }[]) => {
   return { showHours, showMinutes };
 };
 
-export const computeIntervalFlags = (data: { timestamp: number }[]) => {
-  const showHours = data.some((d) => d.timestamp >= 120 * 60 * 1000);
-  const showMinutes = !showHours && data.some((d) => d.timestamp >= 120000);
+export const computeIntervalFlags = (
+  data: { timestamp: number }[],
+  seconds = false,
+) => {
+  const toSeconds = (v: number) => (seconds ? v : v / 1000);
+  const showHours = data.some((d) => toSeconds(d.timestamp) >= 120 * 60);
+  const showMinutes =
+    !showHours && data.some((d) => toSeconds(d.timestamp) >= 120);
   return { showHours, showMinutes };
 };
 
-export const shouldShowMinutes = (data: { timestamp: number }[]) =>
-  computeIntervalFlags(data).showMinutes;
+export const shouldShowMinutes = (
+  data: { timestamp: number }[],
+  seconds = false,
+) => computeIntervalFlags(data, seconds).showMinutes;
 
 export const findMetricValue = (
   metrics: { title: string | unknown; value: string }[],

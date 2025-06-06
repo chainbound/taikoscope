@@ -26,9 +26,9 @@ describe('utils', () => {
     expect(formatSeconds(150)).toBe('2.5m');
     expect(formatSeconds(7200)).toBe('2h');
 
-    expect(formatInterval(30000, false, false)).toBe('30 seconds');
-    expect(formatInterval(180000, false, true)).toBe('3.00 minutes');
-    expect(formatInterval(7200000, true, false)).toBe('2.00 hours');
+    expect(formatInterval(30, false, false)).toBe('30 seconds');
+    expect(formatInterval(180, false, true)).toBe('3.00 minutes');
+    expect(formatInterval(7200, true, false)).toBe('2.00 hours');
 
     expect(formatBatchDuration(45, false, false)).toBe('45 seconds');
     expect(formatBatchDuration(150, false, true)).toBe('2.50 minutes');
@@ -53,35 +53,56 @@ describe('utils', () => {
   });
 
   it('computes interval flags', () => {
-    const flags = computeIntervalFlags([
-      { timestamp: 1000 },
-      { timestamp: 8_000_000 },
-    ]);
+    const flags = computeIntervalFlags(
+      [
+        { timestamp: 1 },
+        { timestamp: 8_000 },
+      ],
+      true,
+    );
     expect(flags.showHours).toBe(true);
     expect(flags.showMinutes).toBe(false);
 
-    const flagsMinutes = computeIntervalFlags([
-      { timestamp: 150_000 },
-      { timestamp: 100_000 },
-    ]);
+    const flagsMinutes = computeIntervalFlags(
+      [
+        { timestamp: 150 },
+        { timestamp: 100 },
+      ],
+      true,
+    );
     expect(flagsMinutes.showHours).toBe(false);
     expect(flagsMinutes.showMinutes).toBe(true);
 
-    const flagsNone = computeIntervalFlags([
-      { timestamp: 50_000 },
-      { timestamp: 80_000 },
-    ]);
+    const flagsNone = computeIntervalFlags(
+      [
+        { timestamp: 50 },
+        { timestamp: 80 },
+      ],
+      true,
+    );
     expect(flagsNone.showHours).toBe(false);
     expect(flagsNone.showMinutes).toBe(false);
   });
 
   it('determines minute display correctly', () => {
     expect(
-      shouldShowMinutes([{ timestamp: 1000 }, { timestamp: 200000 }]),
+      shouldShowMinutes(
+        [
+          { timestamp: 1 },
+          { timestamp: 200 },
+        ],
+        true,
+      ),
     ).toBe(true);
 
     expect(
-      shouldShowMinutes([{ timestamp: 1000 }, { timestamp: 110000 }]),
+      shouldShowMinutes(
+        [
+          { timestamp: 1 },
+          { timestamp: 110 },
+        ],
+        true,
+      ),
     ).toBe(false);
   });
 

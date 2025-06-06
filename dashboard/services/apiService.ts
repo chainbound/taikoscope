@@ -359,7 +359,7 @@ export const fetchL2BlockTimes = async (
   const data = res.data.blocks.slice(1).map(
     (b): TimeSeriesData => ({
       value: b.l2_block_number,
-      timestamp: b.ms_since_prev_block,
+      timestamp: b.ms_since_prev_block / 1000,
     }),
   );
 
@@ -379,7 +379,7 @@ export const fetchBatchPostingTimes = async (
   const data = res.data.batches.map(
     (b): TimeSeriesData => ({
       value: b.batch_id,
-      timestamp: b.ms_since_prev_batch,
+      timestamp: b.ms_since_prev_batch / 1000,
     }),
   );
   return { data, badRequest: res.badRequest, error: res.error };
