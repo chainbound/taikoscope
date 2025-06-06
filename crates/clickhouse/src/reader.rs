@@ -447,7 +447,7 @@ impl ClickhouseReader {
                     toUInt64(toUnixTimestamp64Milli(inserted_at)) AS ts \
              FROM {}.l2_reorgs \
              WHERE inserted_at > toDateTime64({}, 3) \
-             ORDER BY inserted_at ASC",
+             ORDER BY inserted_at DESC",
             self.db_name,
             since.timestamp_millis() as f64 / 1000.0,
         );
