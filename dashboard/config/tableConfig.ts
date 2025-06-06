@@ -220,14 +220,6 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
       { key: 'sequencer', label: 'Sequencer' },
     ],
     mapData: (data) => data as Record<string, string | number>[],
-    chart: (data) => {
-      const BlockTxChart = React.lazy(() =>
-        import('../components/BlockTxChart').then((m) => ({
-          default: m.BlockTxChart,
-        })),
-      );
-      return React.createElement(BlockTxChart, { data, barColor: '#4E79A7' });
-    },
     useUnlimitedData: true,
     urlKey: 'block-tx',
   },
