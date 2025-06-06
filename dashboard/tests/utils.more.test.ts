@@ -56,6 +56,6 @@ describe('utils additional', () => {
     // Ensure localStorage is undefined
     delete (globalThis as any).localStorage;
     expect(loadRefreshRate()).toBe(60000);
-    if (prev) (globalThis as any).localStorage = prev;
+if (prev !== undefined) (globalThis as any).localStorage = prev;
   });
 });
