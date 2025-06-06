@@ -45,7 +45,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
           className="text-3xl font-bold cursor-pointer hover:underline"
           style={{ color: TAIKO_PINK }}
           onClick={() => {
-            navigateToDashboard();
+            navigateToDashboard(true);
           }}
         >
           {' '}
