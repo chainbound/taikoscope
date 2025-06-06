@@ -529,7 +529,7 @@ impl ClickhouseReader {
         let query = format!(
             "SELECT sequencer, l2_block_number FROM {db}.l2_head_events \
              WHERE block_ts > {} \
-             ORDER BY sequencer, l2_block_number",
+             ORDER BY sequencer, l2_block_number DESC",
             since.timestamp(),
             db = self.db_name,
         );
@@ -553,7 +553,7 @@ impl ClickhouseReader {
         if let Some(addr) = sequencer {
             query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
         }
-        query.push_str(" ORDER BY l2_block_number");
+        query.push_str(" ORDER BY l2_block_number DESC");
 
         let rows = self.execute::<BlockTransactionRow>(&query).await?;
         Ok(rows)
@@ -1521,7 +1521,7 @@ impl ClickhouseReader {
         if let Some(addr) = sequencer {
             query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
         }
-        query.push_str(" ORDER BY l2_block_number");
+        query.push_str(" ORDER BY l2_block_number DESC");
         let rows = self.execute::<RawRow>(&query).await?;
         Ok(rows
             .into_iter()
@@ -1560,7 +1560,7 @@ impl ClickhouseReader {
         if let Some(addr) = sequencer {
             query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
         }
-        query.push_str(" ORDER BY l2_block_number");
+        query.push_str(" ORDER BY l2_block_number DESC");
         let rows = self.execute::<RawRow>(&query).await?;
         Ok(rows
             .into_iter()
@@ -1599,7 +1599,7 @@ impl ClickhouseReader {
         if let Some(addr) = sequencer {
             query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
         }
-        query.push_str(" ORDER BY l2_block_number");
+        query.push_str(" ORDER BY l2_block_number DESC");
         let rows = self.execute::<RawRow>(&query).await?;
         Ok(rows
             .into_iter()
@@ -1640,7 +1640,7 @@ impl ClickhouseReader {
         if let Some(addr) = sequencer {
             query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
         }
-        query.push_str(" ORDER BY l2_block_number");
+        query.push_str(" ORDER BY l2_block_number DESC");
         let rows = self.execute::<RawRow>(&query).await?;
         Ok(rows
             .into_iter()
@@ -1739,7 +1739,7 @@ impl ClickhouseReader {
         if let Some(addr) = sequencer {
             query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
         }
-        query.push_str(" ORDER BY l2_block_number");
+        query.push_str(" ORDER BY l2_block_number DESC");
 
         let rows = self.execute::<RawRow>(&query).await?;
         Ok(rows
@@ -1768,7 +1768,7 @@ impl ClickhouseReader {
         if let Some(addr) = sequencer {
             query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
         }
-        query.push_str(" ORDER BY l2_block_number");
+        query.push_str(" ORDER BY l2_block_number DESC");
 
         let rows = self.execute::<RawRow>(&query).await?;
         Ok(rows
@@ -1797,7 +1797,7 @@ impl ClickhouseReader {
         if let Some(addr) = sequencer {
             query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
         }
-        query.push_str(" ORDER BY l2_block_number");
+        query.push_str(" ORDER BY l2_block_number DESC");
 
         let rows = self.execute::<RawRow>(&query).await?;
         Ok(rows
@@ -1828,7 +1828,7 @@ impl ClickhouseReader {
         if let Some(addr) = sequencer {
             query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
         }
-        query.push_str(" ORDER BY l2_block_number");
+        query.push_str(" ORDER BY l2_block_number DESC");
 
         let rows = self.execute::<RawRow>(&query).await?;
         Ok(rows
@@ -1862,7 +1862,7 @@ impl ClickhouseReader {
         if let Some(addr) = sequencer {
             query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
         }
-        query.push_str(" ORDER BY l2_block_number");
+        query.push_str(" ORDER BY l2_block_number DESC");
 
         let rows = self.execute::<RawRow>(&query).await?;
         Ok(rows
@@ -1966,7 +1966,7 @@ impl ClickhouseReader {
              INNER JOIN {db}.l1_head_events l1_events \
                ON b.l1_block_number = l1_events.l1_block_number \
              WHERE l1_events.block_ts >= toUnixTimestamp(now64() - INTERVAL 1 HOUR) \
-             ORDER BY b.l1_block_number",
+             ORDER BY b.l1_block_number DESC",
             db = self.db_name
         );
 
@@ -1982,7 +1982,7 @@ impl ClickhouseReader {
              INNER JOIN {db}.l1_head_events l1_events \
                ON b.l1_block_number = l1_events.l1_block_number \
              WHERE l1_events.block_ts >= toUnixTimestamp(now64() - INTERVAL 24 HOUR) \
-             ORDER BY b.l1_block_number",
+             ORDER BY b.l1_block_number DESC",
             db = self.db_name
         );
 
@@ -1998,7 +1998,7 @@ impl ClickhouseReader {
              INNER JOIN {db}.l1_head_events l1_events \
                ON b.l1_block_number = l1_events.l1_block_number \
              WHERE l1_events.block_ts >= toUnixTimestamp(now64() - INTERVAL 7 DAY) \
-             ORDER BY b.l1_block_number",
+             ORDER BY b.l1_block_number DESC",
             db = self.db_name
         );
 
@@ -2014,7 +2014,7 @@ impl ClickhouseReader {
              INNER JOIN {db}.l1_head_events l1_events \
                ON b.l1_block_number = l1_events.l1_block_number \
              WHERE l1_events.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
-             ORDER BY b.l1_block_number",
+             ORDER BY b.l1_block_number DESC",
             interval = range.interval(),
             db = self.db_name,
         );
