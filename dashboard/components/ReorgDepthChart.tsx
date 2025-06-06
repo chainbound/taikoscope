@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   BarChart,
   Bar,
@@ -24,20 +24,39 @@ const ReorgDepthChartComponent: React.FC<ReorgDepthChartProps> = ({ data }) => {
     );
   }
 
+  const filledData = useMemo(() => {
+    const sorted = [...data].sort((a, b) => a.l2_block_number - b.l2_block_number);
+    const filled: L2ReorgEvent[] = [];
+    if (sorted.length === 0) {
+      return filled;
+    }
+
+    let expected = sorted[0].l2_block_number;
+    for (const event of sorted) {
+      while (expected < event.l2_block_number) {
+        filled.push({ l2_block_number: expected, depth: 0, timestamp: 0 });
+        expected += 1;
+      }
+      filled.push(event);
+      expected = event.l2_block_number + 1;
+    }
+    return filled;
+  }, [data]);
+
   return (
     <ResponsiveContainer width="100%" height="100%">
       <BarChart
-        data={data}
+        data={filledData}
         margin={{ top: 5, right: 70, left: 60, bottom: 40 }}
       >
         <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
         <XAxis
-          dataKey="timestamp"
-          tickFormatter={(v: number) => new Date(v).toLocaleString()}
+          dataKey="l2_block_number"
+          tickFormatter={(v: number) => v.toLocaleString()}
           stroke="#666666"
           fontSize={12}
           label={{
-            value: 'Time',
+            value: 'L2 Block Number',
             position: 'insideBottom',
             offset: -35,
             fontSize: 10,
@@ -59,7 +78,7 @@ const ReorgDepthChartComponent: React.FC<ReorgDepthChartProps> = ({ data }) => {
           }}
         />
         <Tooltip
-          labelFormatter={(label: number) => new Date(label).toLocaleString()}
+          labelFormatter={(label: number) => `Block ${label.toLocaleString()}`}
           formatter={(value: number) => [value.toString(), 'depth']}
           contentStyle={{
             backgroundColor: 'rgba(255, 255, 255, 0.8)',
