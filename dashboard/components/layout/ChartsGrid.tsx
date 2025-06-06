@@ -170,15 +170,17 @@ export const ChartsGrid: React.FC<ChartsGridProps> = ({
                 </div>
             )}
 
-            <h2 className="mb-2 text-lg font-semibold">Network Performance</h2>
+            {selectedSequencer && (
+                <h2 className="mb-2 text-lg font-semibold">Sequencer Performance</h2>
+            )}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
                 {!selectedSequencer && sequencerCharts}
                 {networkPerformanceCharts}
             </div>
 
-            <h2 className="mt-6 mb-2 text-lg font-semibold">
-                {selectedSequencer ? 'Sequencer Health' : 'Network Health'}
-            </h2>
+            {selectedSequencer && (
+                <h2 className="mt-6 mb-2 text-lg font-semibold">Sequencer Health</h2>
+            )}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
                 {networkHealthCharts}
             </div>
