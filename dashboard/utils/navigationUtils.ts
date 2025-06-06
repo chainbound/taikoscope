@@ -94,7 +94,7 @@ export const validateSearchParams = (params: URLSearchParams): boolean => {
     }
 
     const range = params.get('range');
-    if (range && !['1h', '24h', '7d'].includes(range)) {
+    if (range && !['15m', '1h', '24h', '7d'].includes(range)) {
       console.warn('Invalid range parameter:', range);
       return false;
     }
@@ -132,7 +132,7 @@ export const cleanSearchParams = (params: URLSearchParams): URLSearchParams => {
       page: (v) => /^\d+$/.test(v),
       start: (v) => /^\d+$/.test(v),
       end: (v) => /^\d+$/.test(v),
-      range: (v) => ['1h', '24h', '7d'].includes(v),
+      range: (v) => ['15m', '1h', '24h', '7d'].includes(v),
       sequencer: (v) => /^[0-9a-zA-Z]+$/.test(v),
       address: (v) => /^[0-9a-zA-Z]+$/.test(v),
       table: (v) => /^[a-zA-Z0-9_-]+$/.test(v),

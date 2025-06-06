@@ -98,7 +98,7 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
   onTimeRangeChange,
   isChanging,
 }) => {
-  const ranges: TimeRange[] = ['1h', '24h', '7d'];
+  const ranges: TimeRange[] = ['15m', '1h', '24h', '7d'];
 
   return (
     <div className="flex space-x-1 bg-gray-200 dark:bg-gray-700 p-0.5 rounded-md">

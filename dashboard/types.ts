@@ -1,4 +1,4 @@
-export type TimeRange = '1h' | '24h' | '7d';
+export type TimeRange = '15m' | '1h' | '24h' | '7d';
 
 export interface TimeSeriesData {
   timestamp: number; // Unix timestamp (ms)

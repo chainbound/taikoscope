@@ -30,7 +30,7 @@ pub struct TimeRangeParams {
 /// Common query parameters for most endpoints
 #[derive(Debug, Deserialize, ToSchema, IntoParams)]
 pub struct CommonQuery {
-    /// Time range specification (e.g., "1h", "24h", "7d")
+    /// Time range specification (e.g., "15m", "1h", "24h", "7d")
     pub range: Option<String>,
     /// Filter by specific address
     pub address: Option<String>,
@@ -153,10 +153,17 @@ pub const fn has_time_range_params(params: &TimeRangeParams) -> bool {
         params.created_lte.is_some()
 }
 
-/// Convert a range string to `ChronoDuration` (e.g., "1h", "24h", "7d")
+/// Convert a range string to `ChronoDuration` (e.g., "15m", "1h", "24h", "7d")
 pub fn range_duration(range: &Option<String>) -> ChronoDuration {
     if let Some(r) = range.as_deref() {
         let r = r.trim().to_ascii_lowercase();
+
+        if let Some(m) = r.strip_suffix('m') {
+            if let Ok(mins) = m.parse::<i64>() {
+                let mins = mins.max(0); // Only ensure non-negative, no upper limit
+                return ChronoDuration::minutes(mins);
+            }
+        }
 
         if let Some(h) = r.strip_suffix('h') {
             if let Ok(hours) = h.parse::<i64>() {

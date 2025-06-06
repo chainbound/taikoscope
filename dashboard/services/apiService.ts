@@ -12,6 +12,7 @@ import type {
   SlashingEvent,
   ForcedInclusionEvent,
   ErrorResponse,
+  TimeRange,
 } from '../types';
 
 export interface RequestResult<T> {
@@ -74,7 +75,7 @@ export interface AvgTimeResponse {
 }
 
 export const fetchAvgProveTime = async (
-  range: '1h' | '24h' | '7d',
+  range: TimeRange,
 ): Promise<RequestResult<number>> => {
   const url = `${API_BASE}/avg-prove-time?range=${range}`;
   const res = await fetchJson<{ avg_prove_time_ms?: number }>(url);
@@ -86,7 +87,7 @@ export const fetchAvgProveTime = async (
 };
 
 export const fetchAvgVerifyTime = async (
-  range: '1h' | '24h' | '7d',
+  range: TimeRange,
 ): Promise<RequestResult<number>> => {
   const url = `${API_BASE}/avg-verify-time?range=${range}`;
   const res = await fetchJson<{ avg_verify_time_ms?: number }>(url);
@@ -98,7 +99,7 @@ export const fetchAvgVerifyTime = async (
 };
 
 export const fetchL2BlockCadence = async (
-  range: '1h' | '24h' | '7d',
+  range: TimeRange,
   address?: string,
 ): Promise<RequestResult<number>> => {
   const url = `${API_BASE}/l2-block-cadence?range=${range}${address ? `&address=${address}` : ''}`;
@@ -111,7 +112,7 @@ export const fetchL2BlockCadence = async (
 };
 
 export const fetchBatchPostingCadence = async (
-  range: '1h' | '24h' | '7d',
+  range: TimeRange,
 ): Promise<RequestResult<number>> => {
   const url = `${API_BASE}/batch-posting-cadence?range=${range}`;
   const res = await fetchJson<{ batch_posting_cadence_ms?: number }>(url);
@@ -134,7 +135,7 @@ export const fetchActiveSequencerAddresses = async (): Promise<
 };
 
 export const fetchL2Reorgs = async (
-  range: '1h' | '24h' | '7d',
+  range: TimeRange,
 ): Promise<RequestResult<number>> => {
   const url = `${API_BASE}/reorgs?range=${range}`;
   const res = await fetchJson<{ events: unknown[] }>(url);
@@ -146,7 +147,7 @@ export const fetchL2Reorgs = async (
 };
 
 export const fetchL2ReorgEvents = async (
-  range: '1h' | '24h' | '7d',
+  range: TimeRange,
 ): Promise<RequestResult<L2ReorgEvent[]>> => {
   const url = `${API_BASE}/reorgs?range=${range}`;
   const res = await fetchJson<{
@@ -166,7 +167,7 @@ export const fetchL2ReorgEvents = async (
 };
 
 export const fetchSlashingEventCount = async (
-  range: '1h' | '24h' | '7d',
+  range: TimeRange,
 ): Promise<RequestResult<number>> => {
   const url = `${API_BASE}/slashings?range=${range}`;
   const res = await fetchJson<{ events: unknown[] }>(url);
@@ -178,7 +179,7 @@ export const fetchSlashingEventCount = async (
 };
 
 export const fetchForcedInclusionCount = async (
-  range: '1h' | '24h' | '7d',
+  range: TimeRange,
 ): Promise<RequestResult<number>> => {
   const url = `${API_BASE}/forced-inclusions?range=${range}`;
   const res = await fetchJson<{ events: unknown[] }>(url);
@@ -190,7 +191,7 @@ export const fetchForcedInclusionCount = async (
 };
 
 export const fetchSlashingEvents = async (
-  range: '1h' | '24h' | '7d',
+  range: TimeRange,
 ): Promise<RequestResult<SlashingEvent[]>> => {
   const url = `${API_BASE}/slashings?range=${range}`;
   const res = await fetchJson<{ events: SlashingEvent[] }>(url);
@@ -202,7 +203,7 @@ export const fetchSlashingEvents = async (
 };
 
 export const fetchForcedInclusionEvents = async (
-  range: '1h' | '24h' | '7d',
+  range: TimeRange,
 ): Promise<RequestResult<ForcedInclusionEvent[]>> => {
   const url = `${API_BASE}/forced-inclusions?range=${range}`;
   const res = await fetchJson<{ events: ForcedInclusionEvent[] }>(url);
@@ -214,7 +215,7 @@ export const fetchForcedInclusionEvents = async (
 };
 
 export const fetchL2HeadBlock = async (
-  range: '1h' | '24h' | '7d',
+  range: TimeRange,
 ): Promise<RequestResult<number>> => {
   const url = `${API_BASE}/l2-block-times?range=${range}`;
   const res = await fetchJson<{ blocks: { l2_block_number: number }[] }>(url);
@@ -226,7 +227,7 @@ export const fetchL2HeadBlock = async (
 };
 
 export const fetchL1HeadBlock = async (
-  range: '1h' | '24h' | '7d',
+  range: TimeRange,
 ): Promise<RequestResult<number>> => {
   const url = `${API_BASE}/l1-block-times?range=${range}`;
   const res = await fetchJson<{ blocks: { block_number: number }[] }>(url);
@@ -271,7 +272,7 @@ export const fetchL1HeadNumber = async (): Promise<RequestResult<number>> => {
 };
 
 export const fetchProveTimes = async (
-  range: '1h' | '24h' | '7d',
+  range: TimeRange,
 ): Promise<RequestResult<TimeSeriesData[]>> => {
   const url = `${API_BASE}/prove-times?range=${range}`;
   const res = await fetchJson<{
@@ -291,7 +292,7 @@ export const fetchProveTimes = async (
 };
 
 export const fetchVerifyTimes = async (
-  range: '1h' | '24h' | '7d',
+  range: TimeRange,
 ): Promise<RequestResult<TimeSeriesData[]>> => {
   const url = `${API_BASE}/verify-times?range=${range}`;
   const res = await fetchJson<{
@@ -311,7 +312,7 @@ export const fetchVerifyTimes = async (
 };
 
 export const fetchL1BlockTimes = async (
-  range: '1h' | '24h' | '7d',
+  range: TimeRange,
 ): Promise<RequestResult<TimeSeriesData[]>> => {
   const url = `${API_BASE}/l1-block-times?range=${range}`;
   const res = await fetchJson<{
@@ -344,7 +345,7 @@ export const fetchL1BlockTimes = async (
 };
 
 export const fetchL2BlockTimes = async (
-  range: '1h' | '24h' | '7d',
+  range: TimeRange,
   address?: string,
 ): Promise<RequestResult<TimeSeriesData[]>> => {
   const url = `${API_BASE}/l2-block-times?range=${range}${address ? `&address=${address}` : ''}`;
@@ -366,7 +367,7 @@ export const fetchL2BlockTimes = async (
 };
 
 export const fetchBatchPostingTimes = async (
-  range: '1h' | '24h' | '7d',
+  range: TimeRange,
 ): Promise<RequestResult<TimeSeriesData[]>> => {
   const url = `${API_BASE}/batch-posting-times?range=${range}`;
   const res = await fetchJson<{
@@ -385,7 +386,7 @@ export const fetchBatchPostingTimes = async (
 };
 
 export const fetchL2GasUsed = async (
-  range: '1h' | '24h' | '7d',
+  range: TimeRange,
   address?: string,
 ): Promise<RequestResult<TimeSeriesData[]>> => {
   const url = `${API_BASE}/l2-gas-used?range=${range}${address ? `&address=${address}` : ''}`;
@@ -407,7 +408,7 @@ export const fetchL2GasUsed = async (
 };
 
 export const fetchSequencerDistribution = async (
-  range: '1h' | '24h' | '7d',
+  range: TimeRange,
 ): Promise<RequestResult<PieChartDataItem[]>> => {
   const url = `${API_BASE}/sequencer-distribution?range=${range}`;
   const res = await fetchJson<{
@@ -426,7 +427,7 @@ export const fetchSequencerDistribution = async (
 };
 
 export const fetchSequencerBlocks = async (
-  range: '1h' | '24h' | '7d',
+  range: TimeRange,
   address: string,
 ): Promise<RequestResult<number[]>> => {
   const url = `${API_BASE}/sequencer-blocks?range=${range}&address=${address}`;
@@ -446,7 +447,7 @@ export interface BlockTransaction {
 }
 
 export const fetchBlockTransactions = async (
-  range: '1h' | '24h' | '7d',
+  range: TimeRange,
   limit = 50,
   startingAfter?: number,
   endingBefore?: number,
@@ -488,7 +489,7 @@ export const fetchBlockTransactions = async (
 // New function specifically for fetching all block transactions in a time range
 // This will be used by both charts and tables to ensure data consistency
 export const fetchAllBlockTransactions = async (
-  range: '1h' | '24h' | '7d',
+  range: TimeRange,
   address?: string,
 ): Promise<RequestResult<BlockTransaction[]>> => {
   return fetchBlockTransactions(
@@ -508,7 +509,7 @@ export interface BatchBlobCount {
 }
 
 export const fetchBatchBlobCounts = async (
-  range: '1h' | '24h' | '7d',
+  range: TimeRange,
 ): Promise<RequestResult<BatchBlobCount[]>> => {
   const url = `${API_BASE}/blobs-per-batch?range=${range}`;
   const res = await fetchJson<{
@@ -532,7 +533,7 @@ export const fetchBatchBlobCounts = async (
 };
 
 export const fetchAvgBlobsPerBatch = async (
-  range: '1h' | '24h' | '7d',
+  range: TimeRange,
 ): Promise<RequestResult<number>> => {
   const url = `${API_BASE}/avg-blobs-per-batch?range=${range}`;
   const res = await fetchJson<{ avg_blobs?: number }>(url);
@@ -544,7 +545,7 @@ export const fetchAvgBlobsPerBatch = async (
 };
 
 export const fetchAvgL2Tps = async (
-  range: '1h' | '24h' | '7d',
+  range: TimeRange,
   address?: string,
 ): Promise<RequestResult<number>> => {
   const url =
@@ -559,7 +560,7 @@ export const fetchAvgL2Tps = async (
 };
 
 export const fetchL2TxFee = async (
-  range: '1h' | '24h' | '7d',
+  range: TimeRange,
   address?: string,
 ): Promise<RequestResult<number>> => {
   const url =
@@ -574,7 +575,7 @@ export const fetchL2TxFee = async (
 };
 
 export const fetchL2Tps = async (
-  range: '1h' | '24h' | '7d',
+  range: TimeRange,
   address?: string,
 ): Promise<RequestResult<{ block: number; tps: number }[]>> => {
   const url =
@@ -597,7 +598,7 @@ export const fetchL2Tps = async (
 };
 
 export const fetchCloudCost = async (
-  range: '1h' | '24h' | '7d',
+  range: TimeRange,
 ): Promise<RequestResult<number>> => {
   const url = `${API_BASE}/cloud-cost?range=${range}`;
   const res = await fetchJson<{ cost_usd: number }>(url);
