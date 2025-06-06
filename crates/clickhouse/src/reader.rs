@@ -506,9 +506,9 @@ impl ClickhouseReader {
     ) -> Result<Vec<SequencerDistributionRow>> {
         let query = format!(
             "SELECT sequencer, count() AS blocks FROM {db}.l2_head_events \
-             WHERE inserted_at > toDateTime64({}, 3) \
+             WHERE block_ts > {} \
              GROUP BY sequencer ORDER BY blocks DESC",
-            since.timestamp_millis() as f64 / 1000.0,
+            since.timestamp(),
             db = self.db_name,
         );
 
@@ -523,9 +523,9 @@ impl ClickhouseReader {
     ) -> Result<Vec<SequencerBlockRow>> {
         let query = format!(
             "SELECT sequencer, l2_block_number FROM {db}.l2_head_events \
-             WHERE inserted_at > toDateTime64({}, 3) \
+             WHERE block_ts > {} \
              ORDER BY sequencer, l2_block_number",
-            since.timestamp_millis() as f64 / 1000.0,
+            since.timestamp(),
             db = self.db_name,
         );
 
@@ -541,8 +541,8 @@ impl ClickhouseReader {
     ) -> Result<Vec<BlockTransactionRow>> {
         let mut query = format!(
             "SELECT sequencer, l2_block_number, sum_tx FROM {db}.l2_head_events \
-             WHERE inserted_at > toDateTime64({}, 3)",
-            since.timestamp_millis() as f64 / 1000.0,
+             WHERE block_ts > {}",
+            since.timestamp(),
             db = self.db_name,
         );
         if let Some(addr) = sequencer {
@@ -566,8 +566,8 @@ impl ClickhouseReader {
     ) -> Result<Vec<BlockTransactionRow>> {
         let mut query = format!(
             "SELECT sequencer, l2_block_number, sum_tx FROM {db}.l2_head_events \
-             WHERE inserted_at > toDateTime64({}, 3)",
-            since.timestamp_millis() as f64 / 1000.0,
+             WHERE block_ts > {}",
+            since.timestamp(),
             db = self.db_name,
         );
         if let Some(addr) = sequencer {
@@ -710,11 +710,11 @@ impl ClickhouseReader {
         }
 
         let mut query = format!(
-            "SELECT toUInt64(min(toUnixTimestamp64Milli(inserted_at))) AS min_ts, \
-                    toUInt64(max(toUnixTimestamp64Milli(inserted_at))) AS max_ts, \
+            "SELECT toUInt64(min(block_ts) * 1000) AS min_ts, \
+                    toUInt64(max(block_ts) * 1000) AS max_ts, \
                     count() as cnt \
              FROM {db}.l2_head_events \
-             WHERE inserted_at >= now64() - INTERVAL 1 HOUR",
+             WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL 1 HOUR)",
             db = self.db_name
         );
         if let Some(addr) = sequencer {
@@ -748,11 +748,11 @@ impl ClickhouseReader {
         }
 
         let mut query = format!(
-            "SELECT toUInt64(min(toUnixTimestamp64Milli(inserted_at))) AS min_ts, \
-                    toUInt64(max(toUnixTimestamp64Milli(inserted_at))) AS max_ts, \
+            "SELECT toUInt64(min(block_ts) * 1000) AS min_ts, \
+                    toUInt64(max(block_ts) * 1000) AS max_ts, \
                     count() as cnt \
              FROM {db}.l2_head_events \
-             WHERE inserted_at >= now64() - INTERVAL 24 HOUR",
+             WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL 24 HOUR)",
             db = self.db_name
         );
         if let Some(addr) = sequencer {
@@ -786,11 +786,11 @@ impl ClickhouseReader {
         }
 
         let mut query = format!(
-            "SELECT toUInt64(min(toUnixTimestamp64Milli(inserted_at))) AS min_ts, \
-                    toUInt64(max(toUnixTimestamp64Milli(inserted_at))) AS max_ts, \
+            "SELECT toUInt64(min(block_ts) * 1000) AS min_ts, \
+                    toUInt64(max(block_ts) * 1000) AS max_ts, \
                     count() as cnt \
              FROM {db}.l2_head_events \
-             WHERE inserted_at >= now64() - INTERVAL 7 DAY",
+             WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL 7 DAY)",
             db = self.db_name
         );
         if let Some(addr) = sequencer {
@@ -825,11 +825,11 @@ impl ClickhouseReader {
         }
 
         let mut query = format!(
-            "SELECT toUInt64(min(toUnixTimestamp64Milli(inserted_at))) AS min_ts, \
-                    toUInt64(max(toUnixTimestamp64Milli(inserted_at))) AS max_ts, \
+            "SELECT toUInt64(min(block_ts) * 1000) AS min_ts, \
+                    toUInt64(max(block_ts) * 1000) AS max_ts, \
                     count() as cnt \
              FROM {db}.l2_head_events \
-             WHERE inserted_at >= now64() - INTERVAL {interval}",
+             WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})",
             interval = range.interval(),
             db = self.db_name,
         );
@@ -861,11 +861,13 @@ impl ClickhouseReader {
         }
 
         let query = format!(
-            "SELECT toUInt64(min(toUnixTimestamp64Milli(inserted_at))) AS min_ts, \
-                    toUInt64(max(toUnixTimestamp64Milli(inserted_at))) AS max_ts, \
+            "SELECT toUInt64(min(l1_events.block_ts) * 1000) AS min_ts, \
+                    toUInt64(max(l1_events.block_ts) * 1000) AS max_ts, \
                     count() as cnt \
-             FROM {db}.batches \
-             WHERE inserted_at >= now64() - INTERVAL 1 HOUR",
+             FROM {db}.batches b \
+             INNER JOIN {db}.l1_head_events l1_events \
+               ON b.l1_block_number = l1_events.l1_block_number \
+             WHERE l1_events.block_ts >= toUnixTimestamp(now64() - INTERVAL 1 HOUR)",
             db = self.db_name
         );
 
@@ -893,11 +895,13 @@ impl ClickhouseReader {
         }
 
         let query = format!(
-            "SELECT toUInt64(min(toUnixTimestamp64Milli(inserted_at))) AS min_ts, \
-                    toUInt64(max(toUnixTimestamp64Milli(inserted_at))) AS max_ts, \
+            "SELECT toUInt64(min(l1_events.block_ts) * 1000) AS min_ts, \
+                    toUInt64(max(l1_events.block_ts) * 1000) AS max_ts, \
                     count() as cnt \
-             FROM {db}.batches \
-             WHERE inserted_at >= now64() - INTERVAL 24 HOUR",
+             FROM {db}.batches b \
+             INNER JOIN {db}.l1_head_events l1_events \
+               ON b.l1_block_number = l1_events.l1_block_number \
+             WHERE l1_events.block_ts >= toUnixTimestamp(now64() - INTERVAL 24 HOUR)",
             db = self.db_name
         );
 
@@ -925,11 +929,13 @@ impl ClickhouseReader {
         }
 
         let query = format!(
-            "SELECT toUInt64(min(toUnixTimestamp64Milli(inserted_at))) AS min_ts, \
-                    toUInt64(max(toUnixTimestamp64Milli(inserted_at))) AS max_ts, \
+            "SELECT toUInt64(min(l1_events.block_ts) * 1000) AS min_ts, \
+                    toUInt64(max(l1_events.block_ts) * 1000) AS max_ts, \
                     count() as cnt \
-             FROM {db}.batches \
-             WHERE inserted_at >= now64() - INTERVAL 7 DAY",
+             FROM {db}.batches b \
+             INNER JOIN {db}.l1_head_events l1_events \
+               ON b.l1_block_number = l1_events.l1_block_number \
+             WHERE l1_events.block_ts >= toUnixTimestamp(now64() - INTERVAL 7 DAY)",
             db = self.db_name
         );
 
@@ -957,11 +963,13 @@ impl ClickhouseReader {
         }
 
         let query = format!(
-            "SELECT toUInt64(min(toUnixTimestamp64Milli(inserted_at))) AS min_ts, \
-                    toUInt64(max(toUnixTimestamp64Milli(inserted_at))) AS max_ts, \
+            "SELECT toUInt64(min(l1_events.block_ts) * 1000) AS min_ts, \
+                    toUInt64(max(l1_events.block_ts) * 1000) AS max_ts, \
                     count() as cnt \
-             FROM {db}.batches \
-             WHERE inserted_at >= now64() - INTERVAL {interval}",
+             FROM {db}.batches b \
+             INNER JOIN {db}.l1_head_events l1_events \
+               ON b.l1_block_number = l1_events.l1_block_number \
+             WHERE l1_events.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})",
             interval = range.interval(),
             db = self.db_name,
         );
@@ -990,14 +998,16 @@ impl ClickhouseReader {
         }
 
         let query = format!(
-            "SELECT batch_id, \
-                    toUInt64(toUnixTimestamp64Milli(inserted_at)) AS ts, \
-                    toUInt64OrNull(toString(toUnixTimestamp64Milli(inserted_at) - \
-                        lagInFrame(toUnixTimestamp64Milli(inserted_at)) OVER (ORDER BY inserted_at))) \
+            "SELECT b.batch_id, \
+                    toUInt64(l1_events.block_ts * 1000) AS ts, \
+                    toUInt64OrNull(toString((l1_events.block_ts - \
+                        lagInFrame(l1_events.block_ts) OVER (ORDER BY l1_events.block_ts)) * 1000)) \
                         AS ms_since_prev_batch \
-             FROM {db}.batches \
-             WHERE inserted_at >= now64() - INTERVAL 1 HOUR \
-             ORDER BY inserted_at",
+             FROM {db}.batches b \
+             INNER JOIN {db}.l1_head_events l1_events \
+               ON b.l1_block_number = l1_events.l1_block_number \
+             WHERE l1_events.block_ts >= toUnixTimestamp(now64() - INTERVAL 1 HOUR) \
+             ORDER BY l1_events.block_ts",
             db = self.db_name
         );
 
@@ -1026,14 +1036,16 @@ impl ClickhouseReader {
         }
 
         let query = format!(
-            "SELECT batch_id, \
-                    toUInt64(toUnixTimestamp64Milli(inserted_at)) AS ts, \
-                    toUInt64OrNull(toString(toUnixTimestamp64Milli(inserted_at) - \
-                        lagInFrame(toUnixTimestamp64Milli(inserted_at)) OVER (ORDER BY inserted_at))) \
+            "SELECT b.batch_id, \
+                    toUInt64(l1_events.block_ts * 1000) AS ts, \
+                    toUInt64OrNull(toString((l1_events.block_ts - \
+                        lagInFrame(l1_events.block_ts) OVER (ORDER BY l1_events.block_ts)) * 1000)) \
                         AS ms_since_prev_batch \
-             FROM {db}.batches \
-             WHERE inserted_at >= now64() - INTERVAL 24 HOUR \
-             ORDER BY inserted_at",
+             FROM {db}.batches b \
+             INNER JOIN {db}.l1_head_events l1_events \
+               ON b.l1_block_number = l1_events.l1_block_number \
+             WHERE l1_events.block_ts >= toUnixTimestamp(now64() - INTERVAL 24 HOUR) \
+             ORDER BY l1_events.block_ts",
             db = self.db_name
         );
 
@@ -1062,14 +1074,16 @@ impl ClickhouseReader {
         }
 
         let query = format!(
-            "SELECT batch_id, \
-                    toUInt64(toUnixTimestamp64Milli(inserted_at)) AS ts, \
-                    toUInt64OrNull(toString(toUnixTimestamp64Milli(inserted_at) - \
-                        lagInFrame(toUnixTimestamp64Milli(inserted_at)) OVER (ORDER BY inserted_at))) \
+            "SELECT b.batch_id, \
+                    toUInt64(l1_events.block_ts * 1000) AS ts, \
+                    toUInt64OrNull(toString((l1_events.block_ts - \
+                        lagInFrame(l1_events.block_ts) OVER (ORDER BY l1_events.block_ts)) * 1000)) \
                         AS ms_since_prev_batch \
-             FROM {db}.batches \
-             WHERE inserted_at >= now64() - INTERVAL 7 DAY \
-             ORDER BY inserted_at",
+             FROM {db}.batches b \
+             INNER JOIN {db}.l1_head_events l1_events \
+               ON b.l1_block_number = l1_events.l1_block_number \
+             WHERE l1_events.block_ts >= toUnixTimestamp(now64() - INTERVAL 7 DAY) \
+             ORDER BY l1_events.block_ts",
             db = self.db_name
         );
 
@@ -1101,14 +1115,16 @@ impl ClickhouseReader {
         }
 
         let query = format!(
-            "SELECT batch_id, \
-                    toUInt64(toUnixTimestamp64Milli(inserted_at)) AS ts, \
-                    toUInt64OrNull(toString(toUnixTimestamp64Milli(inserted_at) - \
-                        lagInFrame(toUnixTimestamp64Milli(inserted_at)) OVER (ORDER BY inserted_at))) \
+            "SELECT b.batch_id, \
+                    toUInt64(l1_events.block_ts * 1000) AS ts, \
+                    toUInt64OrNull(toString((l1_events.block_ts - \
+                        lagInFrame(l1_events.block_ts) OVER (ORDER BY l1_events.block_ts)) * 1000)) \
                         AS ms_since_prev_batch \
-             FROM {db}.batches \
-             WHERE inserted_at >= now64() - INTERVAL {interval} \
-             ORDER BY inserted_at",
+             FROM {db}.batches b \
+             INNER JOIN {db}.l1_head_events l1_events \
+               ON b.l1_block_number = l1_events.l1_block_number \
+             WHERE l1_events.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
+             ORDER BY l1_events.block_ts",
             interval = range.interval(),
             db = self.db_name,
         );
@@ -1944,9 +1960,12 @@ impl ClickhouseReader {
     /// Get the blob count for each batch in the last hour
     pub async fn get_blobs_per_batch_last_hour(&self) -> Result<Vec<BatchBlobCountRow>> {
         let query = format!(
-            "SELECT l1_block_number, batch_id, blob_count FROM {db}.batches \
-             WHERE inserted_at >= now64() - INTERVAL 1 HOUR \
-             ORDER BY l1_block_number",
+            "SELECT b.l1_block_number, b.batch_id, b.blob_count \
+             FROM {db}.batches b \
+             INNER JOIN {db}.l1_head_events l1_events \
+               ON b.l1_block_number = l1_events.l1_block_number \
+             WHERE l1_events.block_ts >= toUnixTimestamp(now64() - INTERVAL 1 HOUR) \
+             ORDER BY b.l1_block_number",
             db = self.db_name
         );
 
@@ -1957,9 +1976,12 @@ impl ClickhouseReader {
     /// Get the blob count for each batch in the last 24 hours
     pub async fn get_blobs_per_batch_last_24_hours(&self) -> Result<Vec<BatchBlobCountRow>> {
         let query = format!(
-            "SELECT l1_block_number, batch_id, blob_count FROM {db}.batches \
-             WHERE inserted_at >= now64() - INTERVAL 24 HOUR \
-             ORDER BY l1_block_number",
+            "SELECT b.l1_block_number, b.batch_id, b.blob_count \
+             FROM {db}.batches b \
+             INNER JOIN {db}.l1_head_events l1_events \
+               ON b.l1_block_number = l1_events.l1_block_number \
+             WHERE l1_events.block_ts >= toUnixTimestamp(now64() - INTERVAL 24 HOUR) \
+             ORDER BY b.l1_block_number",
             db = self.db_name
         );
 
@@ -1970,9 +1992,12 @@ impl ClickhouseReader {
     /// Get the blob count for each batch in the last 7 days
     pub async fn get_blobs_per_batch_last_7_days(&self) -> Result<Vec<BatchBlobCountRow>> {
         let query = format!(
-            "SELECT l1_block_number, batch_id, blob_count FROM {db}.batches \
-             WHERE inserted_at >= now64() - INTERVAL 7 DAY \
-             ORDER BY l1_block_number",
+            "SELECT b.l1_block_number, b.batch_id, b.blob_count \
+             FROM {db}.batches b \
+             INNER JOIN {db}.l1_head_events l1_events \
+               ON b.l1_block_number = l1_events.l1_block_number \
+             WHERE l1_events.block_ts >= toUnixTimestamp(now64() - INTERVAL 7 DAY) \
+             ORDER BY b.l1_block_number",
             db = self.db_name
         );
 
@@ -1983,9 +2008,12 @@ impl ClickhouseReader {
     /// Get the blob count for each batch within the given range
     pub async fn get_blobs_per_batch(&self, range: TimeRange) -> Result<Vec<BatchBlobCountRow>> {
         let query = format!(
-            "SELECT l1_block_number, batch_id, blob_count FROM {db}.batches \
-             WHERE inserted_at >= now64() - INTERVAL {interval} \
-             ORDER BY l1_block_number",
+            "SELECT b.l1_block_number, b.batch_id, b.blob_count \
+             FROM {db}.batches b \
+             INNER JOIN {db}.l1_head_events l1_events \
+               ON b.l1_block_number = l1_events.l1_block_number \
+             WHERE l1_events.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
+             ORDER BY b.l1_block_number",
             interval = range.interval(),
             db = self.db_name,
         );
@@ -2002,8 +2030,11 @@ impl ClickhouseReader {
         }
 
         let query = format!(
-            "SELECT avg(blob_count) AS avg FROM {db}.batches \
-             WHERE inserted_at >= now64() - INTERVAL {}",
+            "SELECT avg(b.blob_count) AS avg \
+             FROM {db}.batches b \
+             INNER JOIN {db}.l1_head_events l1_events \
+               ON b.l1_block_number = l1_events.l1_block_number \
+             WHERE l1_events.block_ts >= toUnixTimestamp(now64() - INTERVAL {})",
             range.interval(),
             db = self.db_name
         );
