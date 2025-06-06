@@ -305,3 +305,34 @@ pub struct L1HeadBlockResponse {
     /// Number of the most recent L1 block.
     pub l1_head_block: Option<u64>,
 }
+
+/// Aggregated data for the main dashboard.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct DashboardDataResponse {
+    /// Average delay between L2 blocks in milliseconds.
+    pub l2_block_cadence_ms: Option<u64>,
+    /// Average delay between batch submissions in milliseconds.
+    pub batch_posting_cadence_ms: Option<u64>,
+    /// Average time to prove a batch in milliseconds.
+    pub avg_prove_time_ms: Option<u64>,
+    /// Average time to verify a batch in milliseconds.
+    pub avg_verify_time_ms: Option<u64>,
+    /// Average L2 transactions per second.
+    pub avg_tps: Option<f64>,
+    /// Latest preconfiguration data.
+    pub preconf_data: Option<PreconfDataResponse>,
+    /// Number of L2 reorg events in the selected range.
+    pub l2_reorgs: usize,
+    /// Number of slashing events in the selected range.
+    pub slashings: usize,
+    /// Number of forced inclusion events in the selected range.
+    pub forced_inclusions: usize,
+    /// Number of the most recent L2 block.
+    pub l2_block: Option<u64>,
+    /// Number of the most recent L1 block.
+    pub l1_block: Option<u64>,
+    /// Sum of priority fee and 75% of base fee for the range.
+    pub l2_tx_fee: Option<u128>,
+    /// Estimated infrastructure cost in USD for the requested range.
+    pub cloud_cost: Option<f64>,
+}

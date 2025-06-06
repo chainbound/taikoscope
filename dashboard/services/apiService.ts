@@ -608,3 +608,29 @@ export const fetchCloudCost = async (
     error: res.error,
   };
 };
+
+export interface DashboardDataResponse {
+  l2_block_cadence_ms: number | null;
+  batch_posting_cadence_ms: number | null;
+  avg_prove_time_ms: number | null;
+  avg_verify_time_ms: number | null;
+  avg_tps: number | null;
+  preconf_data: PreconfData | null;
+  l2_reorgs: number;
+  slashings: number;
+  forced_inclusions: number;
+  l2_block: number | null;
+  l1_block: number | null;
+  l2_tx_fee: number | null;
+  cloud_cost: number | null;
+}
+
+export const fetchDashboardData = async (
+  range: TimeRange,
+  address?: string,
+): Promise<RequestResult<DashboardDataResponse>> => {
+  const url =
+    `${API_BASE}/dashboard-data?range=${range}` +
+    (address ? `&address=${address}` : '');
+  return fetchJson<DashboardDataResponse>(url);
+};
