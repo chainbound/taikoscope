@@ -9,26 +9,17 @@ use axum::{
     Json, Router,
     extract::{Query, State},
     http::StatusCode,
-    middleware,
-    response::{
-        IntoResponse,
-        sse::{Event, KeepAlive, Sse},
-    },
+    response::sse::{Event, KeepAlive, Sse},
     routing::get,
 };
 use chrono::{Duration as ChronoDuration, TimeZone, Utc};
 #[cfg(test)]
 use clickhouse_lib::HashBytes;
 use clickhouse_lib::{AddressBytes, ClickhouseReader};
-use dashmap::DashMap;
 use futures::stream::Stream;
 use hex::encode;
 use primitives::hardware::TOTAL_HARDWARE_COST_USD;
-use runtime::rate_limiter::RateLimiter;
-use std::{
-    convert::Infallible,
-    time::{Duration as StdDuration, Instant},
-};
+use std::{convert::Infallible, time::Duration as StdDuration};
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 use validation::{
@@ -38,11 +29,11 @@ use validation::{
 };
 
 /// Default maximum number of requests allowed during the rate limiting period.
-pub const DEFAULT_MAX_REQUESTS: u64 = 1000;
+pub const DEFAULT_MAX_REQUESTS: u64 = u64::MAX;
 /// Default duration for the rate limiting window.
-pub const DEFAULT_RATE_PERIOD: StdDuration = StdDuration::from_secs(60);
+pub const DEFAULT_RATE_PERIOD: StdDuration = StdDuration::from_secs(1);
 /// Maximum number of records returned by the `/block-transactions` endpoint.
-pub const MAX_BLOCK_TRANSACTIONS_LIMIT: u64 = 1000;
+pub const MAX_BLOCK_TRANSACTIONS_LIMIT: u64 = u64::MAX;
 
 /// `OpenAPI` documentation structure
 #[derive(Debug, OpenApi)]
@@ -144,61 +135,26 @@ pub const MAX_BLOCK_TRANSACTIONS_LIMIT: u64 = 1000;
 )]
 pub struct ApiDoc;
 
-/// Rate limiter entry with last access time.
-#[derive(Clone, Debug)]
-struct RateLimitEntry {
-    limiter: RateLimiter,
-    last_seen: Instant,
-}
-
 /// Shared state for API handlers.
 #[derive(Clone)]
 pub struct ApiState {
     client: ClickhouseReader,
-    limiters: std::sync::Arc<DashMap<std::net::IpAddr, RateLimitEntry>>,
-    max_requests: u64,
-    rate_period: StdDuration,
 }
 
 impl std::fmt::Debug for ApiState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("ApiState")
-            .field("max_requests", &self.max_requests)
-            .field("rate_period", &self.rate_period)
-            .finish_non_exhaustive()
+        f.debug_struct("ApiState").finish_non_exhaustive()
     }
 }
 
 impl ApiState {
     /// Create a new [`ApiState`].
-    pub fn new(client: ClickhouseReader, max_requests: u64, rate_period: StdDuration) -> Self {
-        let limiters = std::sync::Arc::new(DashMap::new());
-
-        let cleanup_limiters = std::sync::Arc::clone(&limiters);
-        let ttl = rate_period * 10;
-        tokio::spawn(async move {
-            let mut interval = tokio::time::interval(rate_period);
-            loop {
-                interval.tick().await;
-                let now = Instant::now();
-                cleanup_limiters.retain(|_, entry: &mut RateLimitEntry| {
-                    now.duration_since(entry.last_seen) <= ttl
-                });
-            }
-        });
-
-        Self { client, limiters, max_requests, rate_period }
-    }
-
-    fn try_acquire(&self, ip: std::net::IpAddr) -> bool {
-        let now = Instant::now();
-        let mut entry = self.limiters.entry(ip).or_insert_with(|| RateLimitEntry {
-            limiter: RateLimiter::new(self.max_requests, self.rate_period),
-            last_seen: now,
-        });
-        let guard = entry.value_mut();
-        guard.last_seen = now;
-        guard.limiter.try_acquire()
+    pub const fn new(
+        client: ClickhouseReader,
+        _max_requests: u64,
+        _rate_period: StdDuration,
+    ) -> Self {
+        Self { client }
     }
 }
 
@@ -1527,7 +1483,7 @@ async fn block_transactions(
     validate_range_exclusivity(has_time_range, has_slot_range)?;
 
     let since = resolve_time_range_since(&params.common.range, &params.common.time_range);
-    let limit = params.limit.unwrap_or(50);
+    let limit = params.limit.unwrap_or(MAX_BLOCK_TRANSACTIONS_LIMIT);
 
     let rows = match state
         .client
@@ -1571,81 +1527,9 @@ async fn block_transactions(
     Ok(Json(BlockTransactionsResponse { blocks }))
 }
 
-/// Extracts the client IP address from proxy headers or connection info.
-///
-/// Attempts to determine the real client IP by checking headers in order of preference:
-/// 1. `Forwarded` header (RFC 7239)
-/// 2. `X-Forwarded-For` header (legacy)
-/// 3. `X-Real-IP` header (legacy)
-/// 4. Direct connection IP address
-///
-/// Returns the first valid IP address found, or UNSPECIFIED if none can be determined.
-fn client_ip(req: &axum::http::Request<axum::body::Body>) -> std::net::IpAddr {
-    use axum::extract::connect_info::ConnectInfo;
-    use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-
-    if let Some(forwarded) = req.headers().get("Forwarded") {
-        if let Ok(forwarded) = forwarded.to_str() {
-            for part in forwarded.split(',') {
-                for sub in part.split(';') {
-                    if let Some(v) = sub.trim().strip_prefix("for=") {
-                        let ip_str = v.trim_matches('"').trim_matches(['[', ']']);
-                        if let Ok(ip) = ip_str.parse() {
-                            return ip;
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    if let Some(forwarded_for) = req.headers().get("X-Forwarded-For") {
-        if let Ok(forwarded_for) = forwarded_for.to_str() {
-            if let Some(ip_str) = forwarded_for.split(',').next() {
-                if let Ok(ip) = ip_str.trim().parse() {
-                    return ip;
-                }
-            }
-        }
-    }
-
-    if let Some(real_ip) = req.headers().get("X-Real-IP") {
-        if let Ok(real_ip) = real_ip.to_str() {
-            if let Ok(ip) = real_ip.trim().parse() {
-                return ip;
-            }
-        }
-    }
-
-    req.extensions()
-        .get::<ConnectInfo<SocketAddr>>()
-        .map(|c| c.0.ip())
-        .unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED))
-}
-
-async fn rate_limit(
-    State(state): State<ApiState>,
-    req: axum::http::Request<axum::body::Body>,
-    next: middleware::Next,
-) -> axum::response::Response {
-    let ip = client_ip(&req);
-
-    if state.try_acquire(ip) {
-        next.run(req).await
-    } else {
-        api_types::ErrorResponse::new(
-            "rate-limit-exceeded",
-            "Too Many Requests",
-            axum::http::StatusCode::TOO_MANY_REQUESTS,
-            "Request limit exceeded",
-        )
-        .into_response()
-    }
-}
-
 /// Build the router with all API endpoints.
 pub fn router(state: ApiState) -> Router {
-    let rate_limited = Router::new()
+    let api_routes = Router::new()
         .route("/l2-head", get(l2_head))
         .route("/l1-head", get(l1_head))
         .route("/l2-head-block", get(l2_head_block))
@@ -1678,13 +1562,12 @@ pub fn router(state: ApiState) -> Router {
         .route("/tps", get(l2_tps))
         .route("/sequencer-distribution", get(sequencer_distribution))
         .route("/sequencer-blocks", get(sequencer_blocks))
-        .route("/block-transactions", get(block_transactions))
-        .layer(middleware::from_fn_with_state(state.clone(), rate_limit));
+        .route("/block-transactions", get(block_transactions));
 
     Router::new()
         .merge(SwaggerUi::new("/swagger-ui").url("/api-doc/openapi.json", ApiDoc::openapi()))
         .route("/health", get(health))
-        .merge(rate_limited)
+        .merge(api_routes)
         .with_state(state)
 }
 #[cfg(test)]
@@ -2545,8 +2428,9 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn rate_limit_error_response() {
+    async fn no_rate_limiting() {
         let mock = Mock::new();
+        mock.add(handlers::provide(vec![MaxRow { block_ts: 42u64 }]));
         mock.add(handlers::provide(vec![MaxRow { block_ts: 42u64 }]));
         let url = Url::parse(mock.url()).unwrap();
         let client =
@@ -2565,15 +2449,14 @@ mod tests {
             .await
             .unwrap();
 
-        assert_eq!(resp.status(), StatusCode::TOO_MANY_REQUESTS);
-        let bytes = body::to_bytes(resp.into_body(), usize::MAX).await.unwrap();
-        let err: api_types::ErrorResponse = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(err.r#type, "rate-limit-exceeded");
+        // Should succeed since rate limiting is disabled
+        assert_eq!(resp.status(), StatusCode::OK);
     }
 
     #[tokio::test]
-    async fn rate_limit_honors_x_forwarded_for() {
+    async fn multiple_requests_succeed_without_rate_limiting() {
         let mock = Mock::new();
+        mock.add(handlers::provide(vec![MaxRow { block_ts: 42u64 }]));
         mock.add(handlers::provide(vec![MaxRow { block_ts: 42u64 }]));
         let url = Url::parse(mock.url()).unwrap();
         let client =
@@ -2594,12 +2477,14 @@ mod tests {
             .body(Body::empty())
             .unwrap();
         let resp = app.oneshot(req).await.unwrap();
-        assert_eq!(resp.status(), StatusCode::TOO_MANY_REQUESTS);
+        // Should succeed since rate limiting is disabled
+        assert_eq!(resp.status(), StatusCode::OK);
     }
 
     #[tokio::test]
-    async fn rate_limit_honors_forwarded_header() {
+    async fn forwarded_header_requests_succeed() {
         let mock = Mock::new();
+        mock.add(handlers::provide(vec![MaxRow { block_ts: 42u64 }]));
         mock.add(handlers::provide(vec![MaxRow { block_ts: 42u64 }]));
         let url = Url::parse(mock.url()).unwrap();
         let client =
@@ -2620,12 +2505,14 @@ mod tests {
             .body(Body::empty())
             .unwrap();
         let resp = app.oneshot(req).await.unwrap();
-        assert_eq!(resp.status(), StatusCode::TOO_MANY_REQUESTS);
+        // Should succeed since rate limiting is disabled
+        assert_eq!(resp.status(), StatusCode::OK);
     }
 
     #[tokio::test]
-    async fn rate_limit_honors_x_real_ip() {
+    async fn x_real_ip_requests_succeed() {
         let mock = Mock::new();
+        mock.add(handlers::provide(vec![MaxRow { block_ts: 42u64 }]));
         mock.add(handlers::provide(vec![MaxRow { block_ts: 42u64 }]));
         let url = Url::parse(mock.url()).unwrap();
         let client =
@@ -2646,7 +2533,8 @@ mod tests {
             .body(Body::empty())
             .unwrap();
         let resp = app.oneshot(req).await.unwrap();
-        assert_eq!(resp.status(), StatusCode::TOO_MANY_REQUESTS);
+        // Should succeed since rate limiting is disabled
+        assert_eq!(resp.status(), StatusCode::OK);
     }
 
     #[test]
@@ -2656,15 +2544,15 @@ mod tests {
     }
 
     #[test]
-    fn range_duration_clamps_long_hours() {
+    fn range_duration_allows_long_hours() {
         let d = range_duration(&Some("200h".to_owned()));
-        assert_eq!(d.num_hours(), 168);
+        assert_eq!(d.num_hours(), 200);
     }
 
     #[test]
-    fn range_duration_clamps_long_days() {
+    fn range_duration_allows_long_days() {
         let d = range_duration(&Some("10d".to_owned()));
-        assert_eq!(d.num_hours(), 168);
+        assert_eq!(d.num_hours(), 240);
     }
 
     #[test]

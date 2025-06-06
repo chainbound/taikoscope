@@ -155,21 +155,19 @@ pub const fn has_time_range_params(params: &TimeRangeParams) -> bool {
 
 /// Convert a range string to `ChronoDuration` (e.g., "1h", "24h", "7d")
 pub fn range_duration(range: &Option<String>) -> ChronoDuration {
-    const MAX_RANGE_HOURS: i64 = 24 * 7; // maximum range of 7 days
-
     if let Some(r) = range.as_deref() {
         let r = r.trim().to_ascii_lowercase();
 
         if let Some(h) = r.strip_suffix('h') {
             if let Ok(hours) = h.parse::<i64>() {
-                let hours = hours.clamp(0, MAX_RANGE_HOURS);
+                let hours = hours.max(0); // Only ensure non-negative, no upper limit
                 return ChronoDuration::hours(hours);
             }
         }
 
         if let Some(d) = r.strip_suffix('d') {
             if let Ok(days) = d.parse::<i64>() {
-                let hours = (days * 24).clamp(0, MAX_RANGE_HOURS);
+                let hours = (days * 24).max(0); // Only ensure non-negative, no upper limit
                 return ChronoDuration::hours(hours);
             }
         }
@@ -217,16 +215,13 @@ pub fn resolve_time_range_since(
 
     if let Some(timestamp_ms) = lower_bound {
         if let Some(dt) = Utc.timestamp_millis_opt(timestamp_ms as i64).single() {
-            // Clamp to reasonable range (last 7 days minimum)
-            let min_time = now - ChronoDuration::days(7);
-            return if dt < min_time { min_time } else { dt };
+            // No time limit enforcement - return the requested time
+            return dt;
         }
     }
 
-    // Fall back to range parameter or default
-    let start = now - range_duration(range);
-    let limit = now - ChronoDuration::days(7);
-    if start < limit { limit } else { start }
+    // Fall back to range parameter or default - no time limit enforcement
+    now - range_duration(range)
 }
 
 #[cfg(test)]
