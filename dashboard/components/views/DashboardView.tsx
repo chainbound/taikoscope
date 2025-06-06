@@ -3,10 +3,8 @@ import { ErrorDisplay } from '../layout/ErrorDisplay';
 import { MetricsGrid } from '../layout/MetricsGrid';
 import { ChartsGrid } from '../layout/ChartsGrid';
 import { ProfitCalculator } from '../ProfitCalculator';
-import { DataQualityIndicator } from '../DataQualityIndicator';
 import { TimeRange, MetricData } from '../../types';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useDataValidation } from '../../hooks/useDataValidation';
 
 interface DashboardViewProps {
     timeRange: TimeRange;
@@ -50,19 +48,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const isEconomicsView = searchParams.get('view') === 'economics';
-
-    // Data validation for consistency monitoring
-    const {
-        validationResult,
-        dataQualityScore,
-        hasWarnings,
-        hasErrors,
-        isDataReliable,
-    } = useDataValidation({
-        timeRange,
-        chartsData,
-        hasData,
-    });
 
     const visibleMetrics = React.useMemo(
         () =>
@@ -146,16 +131,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             />
 
             <main className="mt-6">
-                {!isEconomicsView && hasData && (
-                    <DataQualityIndicator
-                        validationResult={validationResult}
-                        dataQualityScore={dataQualityScore}
-                        hasWarnings={hasWarnings}
-                        hasErrors={hasErrors}
-                        isDataReliable={isDataReliable}
-                    />
-                )}
-
                 <MetricsGrid
                     isLoading={metricsData.loadingMetrics}
                     groupedMetrics={groupedMetrics}
