@@ -1,0 +1,337 @@
+//! Validation functions for API query parameters
+
+use crate::ErrorResponse;
+use axum::http::StatusCode;
+use serde::Deserialize;
+use utoipa::{IntoParams, ToSchema};
+
+/// Maximum allowed timestamp (reasonable upper bound to prevent overflow)
+const MAX_TIMESTAMP_MS: u64 = 4_102_444_800_000; // Year 2100
+
+/// Base time range filtering parameters
+#[derive(Debug, Deserialize, ToSchema, IntoParams)]
+pub struct TimeRangeParams {
+    /// Filter for timestamps greater than this value (exclusive)
+    #[serde(rename = "created[gt]")]
+    pub created_gt: Option<u64>,
+    /// Filter for timestamps greater than or equal to this value (inclusive)
+    #[serde(rename = "created[gte]")]
+    pub created_gte: Option<u64>,
+    /// Filter for timestamps less than this value (exclusive)
+    #[serde(rename = "created[lt]")]
+    pub created_lt: Option<u64>,
+    /// Filter for timestamps less than or equal to this value (inclusive)
+    #[serde(rename = "created[lte]")]
+    pub created_lte: Option<u64>,
+}
+
+/// Common query parameters for most endpoints
+#[derive(Debug, Deserialize, ToSchema, IntoParams)]
+pub struct CommonQuery {
+    /// Time range specification (e.g., "1h", "24h", "7d")
+    pub range: Option<String>,
+    /// Filter by specific address
+    pub address: Option<String>,
+    /// Time range filtering parameters
+    #[serde(flatten)]
+    pub time_range: TimeRangeParams,
+}
+
+/// Extended query with pagination for endpoints that need it
+#[derive(Debug, Deserialize, ToSchema, IntoParams)]
+pub struct PaginatedQuery {
+    /// Common query parameters
+    #[serde(flatten)]
+    pub common: CommonQuery,
+    /// Maximum number of items to return
+    pub limit: Option<u64>,
+    /// Return items after this cursor (exclusive)
+    pub starting_after: Option<u64>,
+    /// Return items before this cursor (exclusive)
+    pub ending_before: Option<u64>,
+}
+
+/// Validate time range parameters for logical consistency
+pub fn validate_time_range(params: &TimeRangeParams) -> Result<(), ErrorResponse> {
+    // Check for mutually exclusive parameters
+    if let (Some(_), Some(_)) = (params.created_gt, params.created_gte) {
+        return Err(ErrorResponse::new(
+            "invalid-params",
+            "Bad Request",
+            StatusCode::BAD_REQUEST,
+            "created[gt] and created[gte] cannot be used together",
+        ));
+    }
+
+    if let (Some(_), Some(_)) = (params.created_lt, params.created_lte) {
+        return Err(ErrorResponse::new(
+            "invalid-params",
+            "Bad Request",
+            StatusCode::BAD_REQUEST,
+            "created[lt] and created[lte] cannot be used together",
+        ));
+    }
+
+    // Validate timestamp bounds
+    for &timestamp in [params.created_gt, params.created_gte, params.created_lt, params.created_lte]
+        .iter()
+        .flatten()
+    {
+        if timestamp > MAX_TIMESTAMP_MS {
+            return Err(ErrorResponse::new(
+                "invalid-params",
+                "Bad Request",
+                StatusCode::BAD_REQUEST,
+                format!("Timestamp {} is too large (max: {})", timestamp, MAX_TIMESTAMP_MS),
+            ));
+        }
+    }
+
+    // Validate logical ranges
+    let lower_bound = params.created_gt.map(|v| v + 1).or(params.created_gte);
+    let upper_bound = params.created_lt.or(params.created_lte);
+
+    if let (Some(lower), Some(upper)) = (lower_bound, upper_bound) {
+        let is_inclusive = params.created_lte.is_some();
+        if (is_inclusive && lower > upper) || (!is_inclusive && lower >= upper) {
+            return Err(ErrorResponse::new(
+                "invalid-params",
+                "Bad Request",
+                StatusCode::BAD_REQUEST,
+                "Invalid time range: start time must be before end time",
+            ));
+        }
+    }
+
+    Ok(())
+}
+
+/// Validate pagination parameters
+pub fn validate_pagination(
+    starting_after: Option<&u64>,
+    ending_before: Option<&u64>,
+    limit: Option<&u64>,
+    max_limit: u64,
+) -> Result<(), ErrorResponse> {
+    if starting_after.is_some() && ending_before.is_some() {
+        return Err(ErrorResponse::new(
+            "invalid-params",
+            "Bad Request",
+            StatusCode::BAD_REQUEST,
+            "starting_after and ending_before parameters are mutually exclusive",
+        ));
+    }
+
+    if let Some(&limit) = limit {
+        if limit == 0 || limit > max_limit {
+            return Err(ErrorResponse::new(
+                "invalid-params",
+                "Bad Request",
+                StatusCode::BAD_REQUEST,
+                format!("limit must be between 1 and {}", max_limit),
+            ));
+        }
+    }
+
+    Ok(())
+}
+
+/// Validate that time range and slot range parameters are not mixed
+pub fn validate_range_exclusivity(
+    has_time_range: bool,
+    has_slot_range: bool,
+) -> Result<(), ErrorResponse> {
+    if has_time_range && has_slot_range {
+        return Err(ErrorResponse::new(
+            "invalid-params",
+            "Bad Request",
+            StatusCode::BAD_REQUEST,
+            "Time range params cannot be combined with slot range params",
+        ));
+    }
+    Ok(())
+}
+
+/// Check if `TimeRangeParams` has any values set
+pub const fn has_time_range_params(params: &TimeRangeParams) -> bool {
+    params.created_gt.is_some() ||
+        params.created_gte.is_some() ||
+        params.created_lt.is_some() ||
+        params.created_lte.is_some()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_time_range_validation_mutually_exclusive_gt_gte() {
+        let params = TimeRangeParams {
+            created_gt: Some(100),
+            created_gte: Some(200),
+            created_lt: None,
+            created_lte: None,
+        };
+
+        let result = validate_time_range(&params);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err.r#type, "invalid-params");
+        assert!(err.detail.contains("created[gt] and created[gte] cannot be used together"));
+    }
+
+    #[test]
+    fn test_time_range_validation_mutually_exclusive_lt_lte() {
+        let params = TimeRangeParams {
+            created_gt: None,
+            created_gte: None,
+            created_lt: Some(100),
+            created_lte: Some(200),
+        };
+
+        let result = validate_time_range(&params);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err.r#type, "invalid-params");
+        assert!(err.detail.contains("created[lt] and created[lte] cannot be used together"));
+    }
+
+    #[test]
+    fn test_time_range_validation_invalid_range_gt_lt() {
+        let params = TimeRangeParams {
+            created_gt: Some(200),
+            created_gte: None,
+            created_lt: Some(100),
+            created_lte: None,
+        };
+
+        let result = validate_time_range(&params);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err.r#type, "invalid-params");
+        assert!(err.detail.contains("Invalid time range: start time must be before end time"));
+    }
+
+    #[test]
+    fn test_time_range_validation_invalid_range_gte_lte() {
+        let params = TimeRangeParams {
+            created_gt: None,
+            created_gte: Some(200),
+            created_lt: None,
+            created_lte: Some(100),
+        };
+
+        let result = validate_time_range(&params);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err.r#type, "invalid-params");
+        assert!(err.detail.contains("Invalid time range: start time must be before end time"));
+    }
+
+    #[test]
+    fn test_time_range_validation_valid_range() {
+        let params = TimeRangeParams {
+            created_gt: Some(100),
+            created_gte: None,
+            created_lt: Some(200),
+            created_lte: None,
+        };
+
+        let result = validate_time_range(&params);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_time_range_validation_equal_boundary_with_lte() {
+        let params = TimeRangeParams {
+            created_gt: None,
+            created_gte: Some(100),
+            created_lt: None,
+            created_lte: Some(100),
+        };
+
+        let result = validate_time_range(&params);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_time_range_validation_too_large_timestamp() {
+        let params = TimeRangeParams {
+            created_gt: Some(MAX_TIMESTAMP_MS + 1),
+            created_gte: None,
+            created_lt: None,
+            created_lte: None,
+        };
+
+        let result = validate_time_range(&params);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err.r#type, "invalid-params");
+        assert!(err.detail.contains("Timestamp"));
+        assert!(err.detail.contains("is too large"));
+    }
+
+    #[test]
+    fn test_pagination_validation_mutually_exclusive() {
+        let result = validate_pagination(Some(&100), Some(&200), None, 1000);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err.r#type, "invalid-params");
+        assert!(
+            err.detail
+                .contains("starting_after and ending_before parameters are mutually exclusive")
+        );
+    }
+
+    #[test]
+    fn test_pagination_validation_invalid_limit_zero() {
+        let result = validate_pagination(None, None, Some(&0), 1000);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err.r#type, "invalid-params");
+        assert!(err.detail.contains("limit must be between 1 and"));
+    }
+
+    #[test]
+    fn test_pagination_validation_invalid_limit_too_large() {
+        let result = validate_pagination(None, None, Some(&1001), 1000);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err.r#type, "invalid-params");
+        assert!(err.detail.contains("limit must be between 1 and 1000"));
+    }
+
+    #[test]
+    fn test_pagination_validation_valid() {
+        let result = validate_pagination(Some(&100), None, Some(&50), 1000);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_range_exclusivity_validation() {
+        let result = validate_range_exclusivity(true, true);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err.r#type, "invalid-params");
+        assert!(err.detail.contains("Time range params cannot be combined with slot range params"));
+    }
+
+    #[test]
+    fn test_has_time_range_params() {
+        let empty_params = TimeRangeParams {
+            created_gt: None,
+            created_gte: None,
+            created_lt: None,
+            created_lte: None,
+        };
+        assert!(!has_time_range_params(&empty_params));
+
+        let with_gt = TimeRangeParams {
+            created_gt: Some(100),
+            created_gte: None,
+            created_lt: None,
+            created_lte: None,
+        };
+        assert!(has_time_range_params(&with_gt));
+    }
+}

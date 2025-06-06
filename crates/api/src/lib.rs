@@ -1,5 +1,7 @@
 //! Thin HTTP API for accessing `ClickHouse` data
 
+pub mod validation;
+
 use alloy_primitives::Address;
 use api_types::*;
 use async_stream::stream;
@@ -23,13 +25,16 @@ use futures::stream::Stream;
 use hex::encode;
 use primitives::hardware::TOTAL_HARDWARE_COST_USD;
 use runtime::rate_limiter::RateLimiter;
-use serde::Deserialize;
 use std::{
     convert::Infallible,
     time::{Duration as StdDuration, Instant},
 };
-use utoipa::{IntoParams, OpenApi, ToSchema};
+use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
+use validation::{
+    CommonQuery, PaginatedQuery, TimeRangeParams, has_time_range_params, validate_pagination,
+    validate_range_exclusivity, validate_time_range,
+};
 
 /// Default maximum number of requests allowed during the rate limiting period.
 pub const DEFAULT_MAX_REQUESTS: u64 = 1000;
@@ -76,9 +81,9 @@ pub const MAX_BLOCK_TRANSACTIONS_LIMIT: u64 = 1000;
     ),
     components(
         schemas(
-            RangeQuery,
-            SequencerBlocksQuery,
-            BlockTransactionsQuery,
+            CommonQuery,
+            PaginatedQuery,
+            TimeRangeParams,
             L2HeadResponse,
             L1HeadResponse,
             L2HeadBlockResponse,
@@ -196,39 +201,10 @@ impl ApiState {
     }
 }
 
-#[derive(Debug, Deserialize, ToSchema, IntoParams)]
-struct RangeAddressQuery {
-    range: Option<String>,
-    address: Option<String>,
-    #[serde(rename = "created[gt]")]
-    created_gt: Option<i64>,
-    #[serde(rename = "created[gte]")]
-    created_gte: Option<i64>,
-    #[serde(rename = "created[lt]")]
-    created_lt: Option<i64>,
-    #[serde(rename = "created[lte]")]
-    created_lte: Option<i64>,
-}
-
-type RangeQuery = RangeAddressQuery;
-type SequencerBlocksQuery = RangeAddressQuery;
-
-#[derive(Debug, Deserialize, ToSchema, IntoParams)]
-struct BlockTransactionsQuery {
-    range: Option<String>,
-    limit: Option<u64>,
-    starting_after: Option<u64>,
-    ending_before: Option<u64>,
-    address: Option<String>,
-    #[serde(rename = "created[gt]")]
-    created_gt: Option<i64>,
-    #[serde(rename = "created[gte]")]
-    created_gte: Option<i64>,
-    #[serde(rename = "created[lt]")]
-    created_lt: Option<i64>,
-    #[serde(rename = "created[lte]")]
-    created_lte: Option<i64>,
-}
+// Legacy type aliases for backward compatibility
+type RangeQuery = CommonQuery;
+type SequencerBlocksQuery = CommonQuery;
+type BlockTransactionsQuery = PaginatedQuery;
 
 fn range_duration(range: &Option<String>) -> ChronoDuration {
     const MAX_RANGE_HOURS: i64 = 24 * 7; // maximum range of 7 days
@@ -254,29 +230,27 @@ fn range_duration(range: &Option<String>) -> ChronoDuration {
     ChronoDuration::hours(1)
 }
 
-fn range_start(
+/// Resolve the effective time range for queries, prioritizing explicit time range params
+fn resolve_time_range(
     range: &Option<String>,
-    gt: &Option<i64>,
-    gte: &Option<i64>,
-    lt: &Option<i64>,
-    lte: &Option<i64>,
+    time_params: &TimeRangeParams,
 ) -> chrono::DateTime<Utc> {
     let now = Utc::now();
-    let _ = (lt, lte);
-    let ts = match (gt.as_ref(), gte.as_ref()) {
-        (Some(gt), Some(gte)) => Some((*gt + 1).max(*gte)),
-        (Some(gt), None) => Some(*gt + 1),
-        (None, Some(gte)) => Some(*gte),
-        (None, None) => None,
-    };
-    let mut start = ts.and_then(|t| Utc.timestamp_millis_opt(t).single());
 
-    if start.is_none() {
-        start = Some(now - range_duration(range));
+    // If explicit time range parameters are provided, use them
+    let lower_bound = time_params.created_gt.map(|v| v + 1).or(time_params.created_gte);
+
+    if let Some(timestamp_ms) = lower_bound {
+        if let Some(dt) = Utc.timestamp_millis_opt(timestamp_ms as i64).single() {
+            // Clamp to reasonable range (last 7 days minimum)
+            let min_time = now - ChronoDuration::days(7);
+            return if dt < min_time { min_time } else { dt };
+        }
     }
 
+    // Fall back to range parameter or default
+    let start = now - range_duration(range);
     let limit = now - ChronoDuration::days(7);
-    let start = start.unwrap_or(now);
     if start < limit { limit } else { start }
 }
 
@@ -530,7 +504,7 @@ async fn sse_l1_head(
     get,
     path = "/slashings",
     params(
-        RangeQuery
+        CommonQuery
     ),
     responses(
         (status = 200, description = "Slashing events", body = SlashingEventsResponse),
@@ -542,13 +516,14 @@ async fn slashings(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
 ) -> Result<Json<SlashingEventsResponse>, ErrorResponse> {
-    let since = range_start(
-        &params.range,
-        &params.created_gt,
-        &params.created_gte,
-        &params.created_lt,
-        &params.created_lte,
-    );
+    // Validate time range parameters
+    validate_time_range(&params.time_range)?;
+
+    // Check for range exclusivity (no slot ranges in this endpoint, so only time ranges)
+    let has_time_range = has_time_range_params(&params.time_range);
+    validate_range_exclusivity(has_time_range, false)?;
+
+    let since = resolve_time_range(&params.range, &params.time_range);
     let events = state.client.get_slashing_events_since(since).await.map_err(|e| {
         tracing::error!(error = %e, "Failed to get slashing events");
         ErrorResponse::new(
@@ -566,7 +541,7 @@ async fn slashings(
     get,
     path = "/forced-inclusions",
     params(
-        RangeQuery
+        CommonQuery
     ),
     responses(
         (status = 200, description = "Forced inclusion events", body = ForcedInclusionEventsResponse),
@@ -578,13 +553,14 @@ async fn forced_inclusions(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
 ) -> Result<Json<ForcedInclusionEventsResponse>, ErrorResponse> {
-    let since = range_start(
-        &params.range,
-        &params.created_gt,
-        &params.created_gte,
-        &params.created_lt,
-        &params.created_lte,
-    );
+    // Validate time range parameters
+    validate_time_range(&params.time_range)?;
+
+    // Check for range exclusivity
+    let has_time_range = has_time_range_params(&params.time_range);
+    validate_range_exclusivity(has_time_range, false)?;
+
+    let since = resolve_time_range(&params.range, &params.time_range);
     let events = state.client.get_forced_inclusions_since(since).await.map_err(|e| {
         tracing::error!(error = %e, "Failed to get forced inclusion events");
         ErrorResponse::new(
@@ -614,13 +590,14 @@ async fn reorgs(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
 ) -> Result<Json<ReorgEventsResponse>, ErrorResponse> {
-    let since = range_start(
-        &params.range,
-        &params.created_gt,
-        &params.created_gte,
-        &params.created_lt,
-        &params.created_lte,
-    );
+    // Validate time range parameters
+    validate_time_range(&params.time_range)?;
+
+    // Check for range exclusivity
+    let has_time_range = has_time_range_params(&params.time_range);
+    validate_range_exclusivity(has_time_range, false)?;
+
+    let since = resolve_time_range(&params.range, &params.time_range);
     let events = state.client.get_l2_reorgs_since(since).await.map_err(|e| {
         tracing::error!(error = %e, "Failed to get reorg events");
         ErrorResponse::new(
@@ -650,13 +627,14 @@ async fn active_gateways(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
 ) -> Result<Json<ActiveGatewaysResponse>, ErrorResponse> {
-    let since = range_start(
-        &params.range,
-        &params.created_gt,
-        &params.created_gte,
-        &params.created_lt,
-        &params.created_lte,
-    );
+    // Validate time range parameters
+    validate_time_range(&params.time_range)?;
+
+    // Check for range exclusivity
+    let has_time_range = has_time_range_params(&params.time_range);
+    validate_range_exclusivity(has_time_range, false)?;
+
+    let since = resolve_time_range(&params.range, &params.time_range);
     let gateways = state.client.get_active_gateways_since(since).await.map_err(|e| {
         tracing::error!(error = %e, "Failed to get active gateways");
         ErrorResponse::new(
@@ -1364,13 +1342,14 @@ async fn sequencer_distribution(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
 ) -> Result<Json<SequencerDistributionResponse>, ErrorResponse> {
-    let since = range_start(
-        &params.range,
-        &params.created_gt,
-        &params.created_gte,
-        &params.created_lt,
-        &params.created_lte,
-    );
+    // Validate time range parameters
+    validate_time_range(&params.time_range)?;
+
+    // Check for range exclusivity
+    let has_time_range = has_time_range_params(&params.time_range);
+    validate_range_exclusivity(has_time_range, false)?;
+
+    let since = resolve_time_range(&params.range, &params.time_range);
     let rows = state.client.get_sequencer_distribution_since(since).await.map_err(|e| {
         tracing::error!(error = %e, "Failed to get sequencer distribution");
         ErrorResponse::new(
@@ -1407,13 +1386,14 @@ async fn sequencer_blocks(
     Query(params): Query<SequencerBlocksQuery>,
     State(state): State<ApiState>,
 ) -> Result<Json<SequencerBlocksResponse>, ErrorResponse> {
-    let since = range_start(
-        &params.range,
-        &params.created_gt,
-        &params.created_gte,
-        &params.created_lt,
-        &params.created_lte,
-    );
+    // Validate time range parameters
+    validate_time_range(&params.time_range)?;
+
+    // Check for range exclusivity
+    let has_time_range = has_time_range_params(&params.time_range);
+    validate_range_exclusivity(has_time_range, false)?;
+
+    let since = resolve_time_range(&params.range, &params.time_range);
     let rows = state.client.get_sequencer_blocks_since(since).await.map_err(|e| {
         tracing::error!(error = %e, "Failed to get sequencer blocks");
         ErrorResponse::new(
@@ -1467,31 +1447,25 @@ async fn block_transactions(
     Query(params): Query<BlockTransactionsQuery>,
     State(state): State<ApiState>,
 ) -> Result<Json<BlockTransactionsResponse>, ErrorResponse> {
-    if (params.created_gt.is_some() ||
-        params.created_gte.is_some() ||
-        params.created_lt.is_some() ||
-        params.created_lte.is_some()) &&
-        (params.starting_after.is_some() || params.ending_before.is_some())
-    {
-        return Err(ErrorResponse::new(
-            "invalid-params",
-            "Time range params cannot be combined with slot range params",
-            StatusCode::BAD_REQUEST,
-            "",
-        ));
-    }
+    // Validate time range parameters
+    validate_time_range(&params.common.time_range)?;
 
-    let since = range_start(
-        &params.range,
-        &params.created_gt,
-        &params.created_gte,
-        &params.created_lt,
-        &params.created_lte,
-    );
+    // Validate pagination parameters
+    validate_pagination(
+        params.starting_after.as_ref(),
+        params.ending_before.as_ref(),
+        params.limit.as_ref(),
+        MAX_BLOCK_TRANSACTIONS_LIMIT,
+    )?;
+
+    // Check for range exclusivity between time range and slot range
+    let has_time_range = has_time_range_params(&params.common.time_range);
+    let has_slot_range = params.starting_after.is_some() || params.ending_before.is_some();
+    validate_range_exclusivity(has_time_range, has_slot_range)?;
+
+    let since = resolve_time_range(&params.common.range, &params.common.time_range);
     let limit = params.limit.unwrap_or(50).clamp(1, MAX_BLOCK_TRANSACTIONS_LIMIT);
-    if params.starting_after.is_some() && params.ending_before.is_some() {
-        tracing::warn!("starting_after and ending_before are mutually exclusive");
-    }
+
     let rows = match state
         .client
         .get_block_transactions_paginated(
@@ -1499,7 +1473,7 @@ async fn block_transactions(
             limit,
             params.starting_after,
             params.ending_before,
-            params.address.as_ref().and_then(|addr| match addr.parse::<Address>() {
+            params.common.address.as_ref().and_then(|addr| match addr.parse::<Address>() {
                 Ok(a) => Some(AddressBytes::from(a)),
                 Err(e) => {
                     tracing::warn!(error = %e, "Failed to parse address");
