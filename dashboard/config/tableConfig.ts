@@ -70,16 +70,6 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
         l2_block_number: blockLink(e.l2_block_number),
         depth: e.depth,
       })),
-    chart: (data) => {
-      const ReorgDepthChart = React.lazy(() =>
-        import('../components/ReorgDepthChart').then((m) => ({
-          default: m.ReorgDepthChart,
-        })),
-      );
-      return React.createElement(ReorgDepthChart, {
-        data: data as L2ReorgEvent[],
-      });
-    },
     urlKey: 'reorgs',
   },
 
