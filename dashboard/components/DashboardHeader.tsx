@@ -25,6 +25,7 @@ interface DashboardHeaderProps {
   onRefreshRateChange: (rate: number) => void;
   lastRefresh: number;
   onManualRefresh: () => void;
+  isTimeRangeChanging?: boolean;
 }
 
 export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
@@ -34,6 +35,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   onRefreshRateChange,
   lastRefresh,
   onManualRefresh,
+  isTimeRangeChanging,
 }) => {
   const { navigateToDashboard } = useRouterNavigation();
   return (
@@ -66,6 +68,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
         <TimeRangeSelector
           currentTimeRange={timeRange}
           onTimeRangeChange={onTimeRangeChange}
+          isChanging={isTimeRangeChanging}
         />
         <RefreshRateInput
           refreshRate={refreshRate}
@@ -87,22 +90,30 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
 export interface TimeRangeSelectorProps {
   currentTimeRange: TimeRange;
   onTimeRangeChange: (range: TimeRange) => void;
+  isChanging?: boolean;
 }
 
 export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
   currentTimeRange,
   onTimeRangeChange,
+  isChanging,
 }) => {
   const ranges: TimeRange[] = ['1h', '24h', '7d'];
 
   return (
     <div className="flex space-x-1 bg-gray-200 dark:bg-gray-700 p-0.5 rounded-md">
+      {isChanging && (
+        <div className="flex items-center px-2">
+          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current opacity-50"></div>
+        </div>
+      )}
       {ranges.map((range) => (
         <button
           key={range}
-          onClick={() => onTimeRangeChange(range)}
-          className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors
-            ${currentTimeRange === range ? 'bg-white dark:bg-gray-800 shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'}`} /* Updated Taiko Pink for active button */
+          onClick={() => !isChanging && onTimeRangeChange(range)}
+          disabled={isChanging}
+          className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors disabled:opacity-50
+            ${currentTimeRange === range ? 'bg-white dark:bg-gray-800 shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'}`}
           style={currentTimeRange === range ? { color: TAIKO_PINK } : undefined}
         >
           {range.toUpperCase()}

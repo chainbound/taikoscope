@@ -189,12 +189,12 @@ export const DataTable: React.FC<DataTableProps> = ({
                   onClick={
                     onRowClick && !isNavigating
                       ? () => {
-                          try {
-                            onRowClick(row);
-                          } catch (err) {
-                            console.error('Failed to handle row click:', err);
-                          }
+                        try {
+                          onRowClick(row);
+                        } catch (err) {
+                          console.error('Failed to handle row click:', err);
                         }
+                      }
                       : undefined
                   }
                 >
@@ -277,15 +277,15 @@ export const DataTable: React.FC<DataTableProps> = ({
                       onClick={
                         extraTable.onRowClick && !isNavigating
                           ? () => {
-                              try {
-                                extraTable.onRowClick!(row);
-                              } catch (err) {
-                                console.error(
-                                  'Failed to handle extra table row click:',
-                                  err,
-                                );
-                              }
+                            try {
+                              extraTable.onRowClick!(row);
+                            } catch (err) {
+                              console.error(
+                                'Failed to handle extra table row click:',
+                                err,
+                              );
                             }
+                          }
                           : undefined
                       }
                     >

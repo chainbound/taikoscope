@@ -3,147 +3,182 @@ import { ErrorDisplay } from '../layout/ErrorDisplay';
 import { MetricsGrid } from '../layout/MetricsGrid';
 import { ChartsGrid } from '../layout/ChartsGrid';
 import { ProfitCalculator } from '../ProfitCalculator';
+import { DataQualityIndicator } from '../DataQualityIndicator';
 import { TimeRange, MetricData } from '../../types';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useDataValidation } from '../../hooks/useDataValidation';
 
 interface DashboardViewProps {
-  timeRange: TimeRange;
-  selectedSequencer: string | null;
+    timeRange: TimeRange;
+    selectedSequencer: string | null;
 
-  // Data hooks
-  metricsData: {
-    metrics: MetricData[];
-    loadingMetrics: boolean;
-    errorMessage: string;
-    setErrorMessage: (msg: string) => void;
-  };
-  chartsData: any;
-  // Actions
-  onOpenTable: (table: string, timeRange?: TimeRange) => void;
-  onOpenTpsTable: () => void;
-  onOpenSequencerDistributionTable: (
-    timeRange: TimeRange,
-    page: number,
-  ) => void;
+    // Data hooks
+    metricsData: {
+        metrics: MetricData[];
+        loadingMetrics: boolean;
+        errorMessage: string;
+        setErrorMessage: (msg: string) => void;
+    };
+    chartsData: any;
+
+    // Loading states
+    isLoadingData: boolean;
+    isTimeRangeChanging: boolean;
+    hasData: boolean;
+
+    // Actions
+    onOpenTable: (table: string, timeRange?: TimeRange) => void;
+    onOpenTpsTable: () => void;
+    onOpenSequencerDistributionTable: (
+        timeRange: TimeRange,
+        page: number,
+    ) => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
-  timeRange,
-  selectedSequencer,
-  metricsData,
-  chartsData,
-  onOpenTable,
-  onOpenTpsTable,
-  onOpenSequencerDistributionTable,
+    timeRange,
+    selectedSequencer,
+    metricsData,
+    chartsData,
+    isLoadingData,
+    isTimeRangeChanging,
+    hasData,
+    onOpenTable,
+    onOpenTpsTable,
+    onOpenSequencerDistributionTable,
 }) => {
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const isEconomicsView = searchParams.get('view') === 'economics';
+    const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const isEconomicsView = searchParams.get('view') === 'economics';
 
-  const visibleMetrics = React.useMemo(
-    () =>
-      metricsData.metrics.filter((m) => {
-        if (selectedSequencer && m.group === 'Sequencers') return false;
-        if (isEconomicsView) return m.group === 'Network Economics';
-        return m.group !== 'Network Economics';
-      }),
-    [metricsData.metrics, selectedSequencer, isEconomicsView],
-  );
+    // Data validation for consistency monitoring
+    const {
+        validationResult,
+        dataQualityScore,
+        hasWarnings,
+        hasErrors,
+        isDataReliable,
+    } = useDataValidation({
+        timeRange,
+        chartsData,
+        hasData,
+    });
 
-  const groupedMetrics = visibleMetrics.reduce<Record<string, MetricData[]>>(
-    (acc, m) => {
-      const group = m.group ?? 'Other';
-      if (!acc[group]) acc[group] = [];
-      acc[group].push(m);
-      return acc;
-    },
-    {},
-  );
+    const visibleMetrics = React.useMemo(
+        () =>
+            metricsData.metrics.filter((m) => {
+                if (selectedSequencer && m.group === 'Sequencers') return false;
+                if (isEconomicsView) return m.group === 'Network Economics';
+                return m.group !== 'Network Economics';
+            }),
+        [metricsData.metrics, selectedSequencer, isEconomicsView],
+    );
 
-  const groupOrder = isEconomicsView
-    ? ['Network Economics']
-    : ['Network Performance', 'Network Health', 'Sequencers', 'Other'];
+    const groupedMetrics = visibleMetrics.reduce<Record<string, MetricData[]>>(
+        (acc, m) => {
+            const group = m.group ?? 'Other';
+            if (!acc[group]) acc[group] = [];
+            acc[group].push(m);
+            return acc;
+        },
+        {},
+    );
 
-  const skeletonGroupCounts: Record<string, number> = isEconomicsView
-    ? { 'Network Economics': 1 }
-    : {
-        'Network Performance': 5,
-        'Network Health': 4,
-        Sequencers: 3,
-      };
+    const groupOrder = isEconomicsView
+        ? ['Network Economics']
+        : ['Network Performance', 'Network Health', 'Sequencers', 'Other'];
 
-  const displayGroupName = useCallback(
-    (group: string): string => {
-      if (!selectedSequencer) return group;
-      if (group === 'Network Performance') return 'Sequencer Performance';
-      if (group === 'Network Health') return 'Sequencer Health';
-      return group;
-    },
-    [selectedSequencer],
-  );
+    const skeletonGroupCounts: Record<string, number> = isEconomicsView
+        ? { 'Network Economics': 1 }
+        : {
+            'Network Performance': 5,
+            'Network Health': 4,
+            Sequencers: 3,
+        };
 
-  const displayedGroupOrder = selectedSequencer
-    ? groupOrder.filter((g) => g !== 'Sequencers')
-    : groupOrder;
+    const displayGroupName = useCallback(
+        (group: string): string => {
+            if (!selectedSequencer) return group;
+            if (group === 'Network Performance') return 'Sequencer Performance';
+            if (group === 'Network Health') return 'Sequencer Health';
+            return group;
+        },
+        [selectedSequencer],
+    );
 
-  const handleResetNavigation = useCallback(() => {
-    navigate('/', { replace: true });
-    metricsData.setErrorMessage('');
-  }, [navigate, metricsData]);
+    const displayedGroupOrder = selectedSequencer
+        ? groupOrder.filter((g) => g !== 'Sequencers')
+        : groupOrder;
 
-  const handleClearError = useCallback(() => {
-    metricsData.setErrorMessage('');
-  }, [metricsData]);
+    const handleResetNavigation = useCallback(() => {
+        navigate('/', { replace: true });
+        metricsData.setErrorMessage('');
+    }, [navigate, metricsData]);
 
-  const getMetricAction = useCallback(
-    (title: string) => {
-      const actions: Record<string, () => void> = {
-        'Avg. L2 TPS': onOpenTpsTable,
-        'L2 Reorgs': () => onOpenTable('reorgs'),
-        'Slashing Events': () => onOpenTable('slashings'),
-        'Forced Inclusions': () => onOpenTable('forced-inclusions'),
-        'Active Sequencers': () => onOpenTable('gateways'),
-        'Batch Posting Cadence': () => onOpenTable('batch-posting-cadence'),
-      };
-      return actions[title];
-    },
-    [onOpenTable, onOpenTpsTable],
-  );
+    const handleClearError = useCallback(() => {
+        metricsData.setErrorMessage('');
+    }, [metricsData]);
 
-  return (
-    <div
-      className="bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 p-4 md:p-6 lg:p-8"
-      style={{ fontFamily: "'Inter', sans-serif" }}
-    >
-      <ErrorDisplay
-        errorMessage={metricsData.errorMessage}
-        onResetNavigation={handleResetNavigation}
-        onClearError={handleClearError}
-      />
+    const getMetricAction = useCallback(
+        (title: string) => {
+            const actions: Record<string, () => void> = {
+                'Avg. L2 TPS': onOpenTpsTable,
+                'L2 Reorgs': () => onOpenTable('reorgs'),
+                'Slashing Events': () => onOpenTable('slashings'),
+                'Forced Inclusions': () => onOpenTable('forced-inclusions'),
+                'Active Sequencers': () => onOpenTable('gateways'),
+                'Batch Posting Cadence': () => onOpenTable('batch-posting-cadence'),
+            };
+            return actions[title];
+        },
+        [onOpenTable, onOpenTpsTable],
+    );
 
-      <main className="mt-6">
-        <MetricsGrid
-          isLoading={metricsData.loadingMetrics}
-          groupedMetrics={groupedMetrics}
-          groupOrder={displayedGroupOrder}
-          skeletonGroupCounts={skeletonGroupCounts}
-          displayGroupName={displayGroupName}
-          onMetricAction={getMetricAction}
-        />
+    return (
+        <div
+            className="bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 p-4 md:p-6 lg:p-8"
+            style={{ fontFamily: "'Inter', sans-serif" }}
+        >
+            <ErrorDisplay
+                errorMessage={metricsData.errorMessage}
+                onResetNavigation={handleResetNavigation}
+                onClearError={handleClearError}
+            />
 
-        {isEconomicsView && <ProfitCalculator metrics={metricsData.metrics} />}
+            <main className="mt-6">
+                {!isEconomicsView && hasData && (
+                    <DataQualityIndicator
+                        validationResult={validationResult}
+                        dataQualityScore={dataQualityScore}
+                        hasWarnings={hasWarnings}
+                        hasErrors={hasErrors}
+                        isDataReliable={isDataReliable}
+                    />
+                )}
 
-        {!isEconomicsView && (
-          <ChartsGrid
-            isLoading={metricsData.loadingMetrics}
-            timeRange={timeRange}
-            selectedSequencer={selectedSequencer}
-            chartsData={chartsData}
-            onOpenTable={onOpenTable}
-            onOpenSequencerDistributionTable={onOpenSequencerDistributionTable}
-          />
-        )}
-      </main>
-    </div>
-  );
+                <MetricsGrid
+                    isLoading={metricsData.loadingMetrics}
+                    groupedMetrics={groupedMetrics}
+                    groupOrder={displayedGroupOrder}
+                    skeletonGroupCounts={skeletonGroupCounts}
+                    displayGroupName={displayGroupName}
+                    onMetricAction={getMetricAction}
+                />
+
+                {isEconomicsView && <ProfitCalculator metrics={metricsData.metrics} />}
+
+                {!isEconomicsView && (
+                    <ChartsGrid
+                        isLoading={isLoadingData}
+                        isTimeRangeChanging={isTimeRangeChanging}
+                        timeRange={timeRange}
+                        selectedSequencer={selectedSequencer}
+                        chartsData={chartsData}
+                        onOpenTable={onOpenTable}
+                        onOpenSequencerDistributionTable={onOpenSequencerDistributionTable}
+                    />
+                )}
+            </main>
+        </div>
+    );
 };

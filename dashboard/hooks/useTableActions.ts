@@ -166,18 +166,18 @@ export const useTableActions = (
             setTableView((prev) =>
               prev
                 ? {
-                    ...prev,
-                    rows: prev.useClientSidePagination
-                      ? prev.rows
-                      : refreshMappedData,
-                    allRows: prev.useClientSidePagination
-                      ? refreshMappedData
-                      : undefined,
-                    chart: refreshChart,
-                    totalRecords: prev.useClientSidePagination
-                      ? refreshMappedData.length
-                      : undefined,
-                  }
+                  ...prev,
+                  rows: prev.useClientSidePagination
+                    ? prev.rows
+                    : refreshMappedData,
+                  allRows: prev.useClientSidePagination
+                    ? refreshMappedData
+                    : undefined,
+                  chart: refreshChart,
+                  totalRecords: prev.useClientSidePagination
+                    ? refreshMappedData.length
+                    : undefined,
+                }
                 : null,
             );
           } catch (error) {
@@ -186,11 +186,11 @@ export const useTableActions = (
             setTableView((prev) =>
               prev
                 ? {
-                    ...prev,
-                    rows: [], // Clear data on error to prevent stale data
-                    allRows: prev.useClientSidePagination ? [] : undefined,
-                    totalRecords: 0,
-                  }
+                  ...prev,
+                  rows: [], // Clear data on error to prevent stale data
+                  allRows: prev.useClientSidePagination ? [] : undefined,
+                  totalRecords: 0,
+                }
                 : null,
             );
           }
@@ -206,9 +206,9 @@ export const useTableActions = (
           useUnlimitedData ? mappedData.slice(0, 50) : mappedData, // Show first 50 for display
           tableKey === 'sequencer-dist'
             ? (row) =>
-                openGenericTable('sequencer-blocks', range, {
-                  address: row.name,
-                })
+              openGenericTable('sequencer-blocks', range, {
+                address: row.name,
+              })
             : undefined,
           undefined,
           undefined,
@@ -337,25 +337,25 @@ export const useTableActions = (
           setTableView((prev) =>
             prev
               ? {
-                  ...prev,
-                  rows: (refreshDistRes.data || []) as unknown as Record<
-                    string,
-                    string | number
-                  >[],
-                  extraTable: prev.extraTable
-                    ? {
-                        ...prev.extraTable,
-                        rows: (refreshTxRes.data || []).map((t) => ({
-                          block: blockLink(t.block),
-                          txs: t.txs,
-                          sequencer: t.sequencer,
-                        })) as unknown as Record<
-                          string,
-                          React.ReactNode | string | number
-                        >[],
-                      }
-                    : undefined,
-                }
+                ...prev,
+                rows: (refreshDistRes.data || []) as unknown as Record<
+                  string,
+                  string | number
+                >[],
+                extraTable: prev.extraTable
+                  ? {
+                    ...prev.extraTable,
+                    rows: (refreshTxRes.data || []).map((t) => ({
+                      block: blockLink(t.block),
+                      txs: t.txs,
+                      sequencer: t.sequencer,
+                    })) as unknown as Record<
+                      string,
+                      React.ReactNode | string | number
+                    >[],
+                  }
+                  : undefined,
+              }
               : null,
           );
         } catch (error) {
@@ -367,15 +367,15 @@ export const useTableActions = (
           setTableView((prev) =>
             prev
               ? {
-                  ...prev,
-                  rows: [],
-                  extraTable: prev.extraTable
-                    ? {
-                        ...prev.extraTable,
-                        rows: [],
-                      }
-                    : undefined,
-                }
+                ...prev,
+                rows: [],
+                extraTable: prev.extraTable
+                  ? {
+                    ...prev.extraTable,
+                    rows: [],
+                  }
+                  : undefined,
+              }
               : null,
           );
         }

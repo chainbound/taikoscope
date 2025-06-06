@@ -48,7 +48,7 @@ export const useDashboardController = () => {
   );
 
   // Data fetching coordination
-  const { handleManualRefresh } = useDataFetcher({
+  const { handleManualRefresh, isLoadingData, isTimeRangeChanging, hasData } = useDataFetcher({
     timeRange,
     selectedSequencer,
     tableView,
@@ -94,6 +94,11 @@ export const useDashboardController = () => {
     blockData,
     refreshTimer,
     searchParams,
+
+    // Loading states
+    isLoadingData,
+    isTimeRangeChanging,
+    hasData,
 
     // Table state
     tableView,

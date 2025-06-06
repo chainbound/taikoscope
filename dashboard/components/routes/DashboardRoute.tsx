@@ -2,8 +2,6 @@ import React from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { DashboardView } from '../views/DashboardView';
 import { DashboardHeader } from '../DashboardHeader';
-import { useDataFetcher } from '../../hooks/useDataFetcher';
-import { useTableActions } from '../../hooks/useTableActions';
 import { TimeRange } from '../../types';
 
 interface DashboardContextType {
@@ -13,6 +11,13 @@ interface DashboardContextType {
   chartsData: any;
   metricsData: any;
   refreshTimer: any;
+  isLoadingData: boolean;
+  isTimeRangeChanging: boolean;
+  hasData: boolean;
+  handleManualRefresh: () => void;
+  openGenericTable: (table: string, timeRange?: TimeRange) => void;
+  openTpsTable: () => void;
+  openSequencerDistributionTable: (timeRange: TimeRange, page: number) => void;
 }
 
 export const DashboardRoute: React.FC = () => {
@@ -23,26 +28,14 @@ export const DashboardRoute: React.FC = () => {
     chartsData,
     metricsData,
     refreshTimer,
+    isLoadingData,
+    isTimeRangeChanging,
+    hasData,
+    handleManualRefresh,
+    openGenericTable,
+    openTpsTable,
+    openSequencerDistributionTable,
   } = useOutletContext<DashboardContextType>();
-
-  const { openGenericTable, openTpsTable, openSequencerDistributionTable } =
-    useTableActions(
-      timeRange,
-      setTimeRange,
-      selectedSequencer,
-      chartsData.blockTxData,
-      chartsData.l2BlockTimeData,
-    );
-
-  const { handleManualRefresh } = useDataFetcher({
-    timeRange,
-    selectedSequencer,
-    tableView: null,
-    fetchMetricsData: metricsData.fetchMetricsData,
-    updateChartsData: chartsData.updateChartsData,
-    refreshRate: refreshTimer.refreshRate,
-    updateLastRefresh: refreshTimer.updateLastRefresh,
-  });
 
   return (
     <>
@@ -53,12 +46,16 @@ export const DashboardRoute: React.FC = () => {
         onRefreshRateChange={refreshTimer.setRefreshRate}
         lastRefresh={refreshTimer.lastRefresh}
         onManualRefresh={handleManualRefresh}
+        isTimeRangeChanging={isTimeRangeChanging}
       />
       <DashboardView
         timeRange={timeRange}
         selectedSequencer={selectedSequencer}
         metricsData={metricsData}
         chartsData={chartsData}
+        isLoadingData={isLoadingData}
+        isTimeRangeChanging={isTimeRangeChanging}
+        hasData={hasData}
         onOpenTable={openGenericTable}
         onOpenTpsTable={openTpsTable}
         onOpenSequencerDistributionTable={openSequencerDistributionTable}

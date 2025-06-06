@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { TimeRange } from '../types';
 import { useSearchParams } from 'react-router-dom';
@@ -27,6 +27,8 @@ export const useDataFetcher = ({
   updateLastRefresh,
 }: UseDataFetcherProps) => {
   const [searchParams] = useSearchParams();
+  const [isTimeRangeChanging, setIsTimeRangeChanging] = useState(false);
+  const [lastFetchedTimeRange, setLastFetchedTimeRange] = useState<TimeRange | null>(null);
 
   // Memoize the specific value we need to prevent infinite re-renders
   const viewParam = searchParams.get('view');
@@ -39,17 +41,29 @@ export const useDataFetcher = ({
     ? null
     : ['metrics', timeRange, selectedSequencer];
 
-  const { data, mutate } = useSWR(
+  const { data, mutate, isLoading, isValidating } = useSWR(
     fetchKey,
     () => fetchMetricsData(timeRange, selectedSequencer),
     {
       refreshInterval: Math.max(refreshRate, 60000),
       revalidateOnFocus: true,
       refreshWhenHidden: false,
+      onSuccess: () => {
+        setIsTimeRangeChanging(false);
+        setLastFetchedTimeRange(timeRange);
+      },
     },
   );
 
+  // Detect time range changes
+  useEffect(() => {
+    if (lastFetchedTimeRange && lastFetchedTimeRange !== timeRange && !isTableView) {
+      setIsTimeRangeChanging(true);
+    }
+  }, [timeRange, lastFetchedTimeRange, isTableView]);
+
   const fetchData = useCallback(async () => {
+    setIsTimeRangeChanging(true);
     await mutate();
   }, [mutate]);
 
@@ -71,8 +85,14 @@ export const useDataFetcher = ({
     }
   }, [data, updateChartsData, updateLastRefresh]);
 
+  // Enhanced loading state that considers both SWR loading and time range changes
+  const isLoadingData = isLoading || isValidating || isTimeRangeChanging;
+
   return {
     fetchData,
     handleManualRefresh,
+    isLoadingData,
+    isTimeRangeChanging,
+    hasData: !!data,
   };
 };
