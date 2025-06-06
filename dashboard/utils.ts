@@ -93,7 +93,7 @@ export const computeIntervalFlags = (
   const toSeconds = (v: number) => (seconds ? v : v / 1000);
   const showHours = data.some((d) => toSeconds(d.timestamp) >= 120 * 60);
   const showMinutes =
-    !showHours && data.some((d) => toSeconds(d.timestamp) >= 120);
+    !showHours && data.every((d) => toSeconds(d.timestamp) >= 120);
   return { showHours, showMinutes };
 };
 

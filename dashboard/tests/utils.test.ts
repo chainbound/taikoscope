@@ -54,30 +54,28 @@ describe('utils', () => {
 
   it('computes interval flags', () => {
     const flags = computeIntervalFlags(
-      [
-        { timestamp: 1 },
-        { timestamp: 8_000 },
-      ],
+      [{ timestamp: 1 }, { timestamp: 8_000 }],
       true,
     );
     expect(flags.showHours).toBe(true);
     expect(flags.showMinutes).toBe(false);
 
     const flagsMinutes = computeIntervalFlags(
-      [
-        { timestamp: 150 },
-        { timestamp: 100 },
-      ],
+      [{ timestamp: 150 }, { timestamp: 100 }],
       true,
     );
     expect(flagsMinutes.showHours).toBe(false);
-    expect(flagsMinutes.showMinutes).toBe(true);
+    expect(flagsMinutes.showMinutes).toBe(false);
+
+    const flagsMinutesAll = computeIntervalFlags(
+      [{ timestamp: 150 }, { timestamp: 200 }],
+      true,
+    );
+    expect(flagsMinutesAll.showHours).toBe(false);
+    expect(flagsMinutesAll.showMinutes).toBe(true);
 
     const flagsNone = computeIntervalFlags(
-      [
-        { timestamp: 50 },
-        { timestamp: 80 },
-      ],
+      [{ timestamp: 50 }, { timestamp: 80 }],
       true,
     );
     expect(flagsNone.showHours).toBe(false);
@@ -86,23 +84,15 @@ describe('utils', () => {
 
   it('determines minute display correctly', () => {
     expect(
-      shouldShowMinutes(
-        [
-          { timestamp: 1 },
-          { timestamp: 200 },
-        ],
-        true,
-      ),
+      shouldShowMinutes([{ timestamp: 1 }, { timestamp: 200 }], true),
+    ).toBe(false);
+
+    expect(
+      shouldShowMinutes([{ timestamp: 200 }, { timestamp: 250 }], true),
     ).toBe(true);
 
     expect(
-      shouldShowMinutes(
-        [
-          { timestamp: 1 },
-          { timestamp: 110 },
-        ],
-        true,
-      ),
+      shouldShowMinutes([{ timestamp: 1 }, { timestamp: 110 }], true),
     ).toBe(false);
   });
 
