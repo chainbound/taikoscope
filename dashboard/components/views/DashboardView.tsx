@@ -57,14 +57,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     [metricsData.metrics, selectedSequencer, isEconomicsView],
   );
 
-  const groupedMetrics = visibleMetrics.reduce<Record<string, MetricData[]>>(
-    (acc, m) => {
-      const group = m.group ?? 'Other';
-      if (!acc[group]) acc[group] = [];
-      acc[group].push(m);
-      return acc;
-    },
-    {},
+  const groupedMetrics = React.useMemo(
+    () =>
+      visibleMetrics.reduce<Record<string, MetricData[]>>((acc, m) => {
+        const group = m.group ?? 'Other';
+        if (!acc[group]) acc[group] = [];
+        acc[group].push(m);
+        return acc;
+      }, {}),
+    [visibleMetrics],
   );
 
   const groupOrder = isEconomicsView
