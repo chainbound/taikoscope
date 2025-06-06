@@ -120,20 +120,6 @@ impl ClickhouseReader {
         result.map_err(Into::into)
     }
 
-    /// SQL condition to filter out blocks that were later reorged.
-    fn reorg_filter(&self, alias: &str) -> String {
-        format!(
-            "NOT EXISTS (\
-                SELECT 1 FROM {db}.l2_reorgs r \
-                WHERE {alias}.l2_block_number >= r.l2_block_number \
-                  AND {alias}.l2_block_number <= r.l2_block_number + r.depth \
-                  AND {alias}.inserted_at < r.inserted_at\
-            )",
-            db = self.db_name,
-            alias = alias
-        )
-    }
-
     /// SQL join to exclude blocks that were later reorged.
     fn reorg_join(&self, alias: &str) -> String {
         format!(
