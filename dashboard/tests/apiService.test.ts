@@ -8,6 +8,7 @@ import {
   fetchBlockTransactions,
   fetchAvgL2Tps,
 } from '../services/apiService.ts';
+import { cacheManager } from '../utils/smartCache';
 
 const originalFetch = globalThis.fetch;
 
@@ -15,6 +16,7 @@ beforeEach(() => {
   vi.stubGlobal('window', {
     dispatchEvent: vi.fn(),
   });
+  cacheManager.invalidateAll();
 });
 
 // helper to create mock fetch response
