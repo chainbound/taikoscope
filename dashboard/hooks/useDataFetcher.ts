@@ -46,7 +46,7 @@ export const useDataFetcher = ({
     () => fetchMetricsData(timeRange, selectedSequencer),
     {
       refreshInterval: Math.max(refreshRate, 60000),
-      revalidateOnFocus: true,
+      revalidateOnFocus: false,
       refreshWhenHidden: false,
       onSuccess: () => {
         setIsTimeRangeChanging(false);
