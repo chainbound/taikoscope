@@ -95,6 +95,7 @@ pub struct L2ReorgRow {
     /// Depth
     pub depth: u16,
     /// Time the reorg was recorded
+    #[serde(with = "clickhouse::serde::chrono::datetime64::millis")]
     pub inserted_at: DateTime<Utc>,
 }
 

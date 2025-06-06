@@ -25,7 +25,7 @@ async-stream = "0.3"
 axum = { version = "0.7.9", features = ["json"] }
 chrono = { version = "0.4.41", features = ["serde"] }
 clap = { version = "4.5.39", features = ["derive", "env"] }
-clickhouse = { version = "0.13.3", features = ["native-tls", "test-util"] }
+clickhouse = { version = "0.13.3", features = ["native-tls", "test-util", "chrono"] }
 derive_more = { version = "1.0.0", features = ["debug", "deref"] }
 dotenvy = "0.15.7"
 eyre = "0.6.12"
