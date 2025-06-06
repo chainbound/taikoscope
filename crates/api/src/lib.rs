@@ -1552,6 +1552,9 @@ mod tests {
     struct SequencerRowTest {
         sequencer: AddressBytes,
         blocks: u64,
+        min_ts: u64,
+        max_ts: u64,
+        tx_sum: u64,
     }
 
     #[tokio::test]
@@ -1560,12 +1563,15 @@ mod tests {
         mock.add(handlers::provide(vec![SequencerRowTest {
             sequencer: AddressBytes([1u8; 20]),
             blocks: 5,
+            min_ts: 100,
+            max_ts: 200,
+            tx_sum: 500,
         }]));
         let app = build_app(mock.url());
         let body = send_request(app, "/sequencer-distribution?range=1h").await;
         assert_eq!(
             body,
-            json!({ "sequencers": [ { "address": "0x0101010101010101010101010101010101010101", "blocks": 5 } ] })
+            json!({ "sequencers": [ { "address": "0x0101010101010101010101010101010101010101", "blocks": 5, "tps": 5.0 } ] })
         );
     }
 
