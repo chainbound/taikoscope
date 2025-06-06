@@ -125,7 +125,7 @@ impl ClickhouseReader {
         format!(
             "NOT EXISTS (\
                 SELECT 1 FROM {db}.l2_reorgs r \
-                WHERE {alias}.l2_block_number > r.l2_block_number \
+                WHERE {alias}.l2_block_number >= r.l2_block_number \
                   AND {alias}.l2_block_number <= r.l2_block_number + r.depth \
                   AND {alias}.inserted_at < r.inserted_at\
             )",
