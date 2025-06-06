@@ -7,7 +7,6 @@ import { showToast } from '../utils/toast';
 
 import type {
   TimeSeriesData,
-  PieChartDataItem,
   L2ReorgEvent,
   SlashingEvent,
   ForcedInclusionEvent,
