@@ -9,9 +9,9 @@ const SequencerPieChart = lazy(() =>
         default: m.SequencerPieChart,
     })),
 );
-const BlockTimeChart = lazy(() =>
-    import('../BlockTimeChart').then((m) => ({
-        default: m.BlockTimeChart,
+const BlockTimeDistributionChart = lazy(() =>
+    import('../BlockTimeDistributionChart').then((m) => ({
+        default: m.BlockTimeDistributionChart,
     })),
 );
 const BatchProcessChart = lazy(() =>
@@ -89,10 +89,10 @@ export const ChartsGrid: React.FC<ChartsGridProps> = ({
                 onMore={() => onOpenTable('l2-block-times', timeRange)}
                 loading={isLoading}
             >
-                <BlockTimeChart
+                <BlockTimeDistributionChart
                     key={timeRange}
                     data={chartsData.l2BlockTimeData}
-                    lineColor="#FAA43A"
+                    barColor="#FAA43A"
                 />
             </ChartCard>
         </>
@@ -131,6 +131,17 @@ export const ChartsGrid: React.FC<ChartsGridProps> = ({
                     key={timeRange}
                     data={chartsData.batchBlobCounts}
                     barColor="#A0CBE8"
+                />
+            </ChartCard>
+            <ChartCard
+                title="L2 Block Time Distribution"
+                onMore={() => onOpenTable('l2-block-times', timeRange)}
+                loading={isLoading}
+            >
+                <BlockTimeDistributionChart
+                    key={timeRange}
+                    data={chartsData.l2BlockTimeData}
+                    barColor="#FAA43A"
                 />
             </ChartCard>
         </>
