@@ -27,13 +27,13 @@ export const useChartsData = () => {
       blobsPerBatch: BatchBlobCount[];
       sequencerDist: PieChartDataItem[];
     }) => {
-      setSecondsToProveData(data.proveTimes);
-      setSecondsToVerifyData(data.verifyTimes);
-      setL2BlockTimeData(data.l2Times);
-      setL2GasUsedData(data.l2Gas);
-      setBlockTxData(data.txPerBlock);
-      setBatchBlobCounts(data.blobsPerBatch);
-      setSequencerDistribution(data.sequencerDist);
+      setSecondsToProveData([...data.proveTimes]);
+      setSecondsToVerifyData([...data.verifyTimes]);
+      setL2BlockTimeData([...data.l2Times]);
+      setL2GasUsedData([...data.l2Gas]);
+      setBlockTxData([...data.txPerBlock]);
+      setBatchBlobCounts([...data.blobsPerBatch]);
+      setSequencerDistribution([...data.sequencerDist]);
     },
     [],
   );
