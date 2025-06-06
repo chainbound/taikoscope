@@ -30,6 +30,24 @@ const BlockTxChartComponent: React.FC<BlockTxChartProps> = ({
     () => [...data].sort((a, b) => a.block - b.block),
     [data],
   );
+
+  // Calculate intelligent tick configuration based on data range
+  const tickConfig = useMemo(() => {
+    if (sortedData.length === 0) return {};
+    
+    const minBlock = sortedData[0].block;
+    const maxBlock = sortedData[sortedData.length - 1].block;
+    const range = maxBlock - minBlock;
+    
+    // For small ranges, show more ticks. For large ranges, show fewer ticks.
+    let tickCount = 6; // Default
+    if (range <= 10) tickCount = Math.max(2, range);
+    else if (range <= 50) tickCount = 8;
+    else if (range <= 200) tickCount = 6;
+    else tickCount = 5;
+    
+    return { tickCount };
+  }, [sortedData]);
   return (
     <ResponsiveContainer width="100%" height="100%">
       <BarChart
@@ -50,6 +68,10 @@ const BlockTxChartComponent: React.FC<BlockTxChartProps> = ({
             fill: '#666666',
           }}
           padding={{ left: 10, right: 10 }}
+          type="number"
+          scale="linear"
+          domain={['dataMin', 'dataMax']}
+          tickCount={tickConfig.tickCount}
         />
         <YAxis
           stroke="#666666"
