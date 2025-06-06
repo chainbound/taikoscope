@@ -1,16 +1,7 @@
 import { TimeRange } from '../types';
 import { getSequencerAddress } from '../sequencerConfig';
 import {
-  fetchAvgProveTime,
-  fetchAvgVerifyTime,
-  fetchL2BlockCadence,
-  fetchBatchPostingCadence,
-  fetchL2Reorgs,
-  fetchSlashingEventCount,
-  fetchForcedInclusionCount,
-  fetchPreconfData,
-  fetchL2HeadBlock,
-  fetchL1HeadBlock,
+  fetchDashboardData,
   fetchProveTimes,
   fetchVerifyTimes,
   fetchL2BlockTimes,
@@ -19,8 +10,8 @@ import {
   fetchAllBlockTransactions,
   fetchBatchBlobCounts,
   fetchL2TxFee,
-  fetchCloudCost,
-  fetchAvgL2Tps,
+  fetchL2HeadBlock,
+  fetchL1HeadBlock,
 } from '../services/apiService';
 
 export interface MainDashboardData {
@@ -58,18 +49,12 @@ export const fetchMainDashboardData = async (
   timeRange: TimeRange,
   selectedSequencer: string | null,
 ): Promise<MainDashboardData> => {
+  const address = selectedSequencer
+    ? getSequencerAddress(selectedSequencer)
+    : undefined;
+
   const [
-    l2CadenceRes,
-    batchCadenceRes,
-    avgProveRes,
-    avgVerifyRes,
-    avgTpsRes,
-    preconfRes,
-    l2ReorgsRes,
-    slashingCountRes,
-    forcedInclusionCountRes,
-    l2BlockRes,
-    l1BlockRes,
+    dashboardRes,
     proveTimesRes,
     verifyTimesRes,
     l2TimesRes,
@@ -77,61 +62,21 @@ export const fetchMainDashboardData = async (
     sequencerDistRes,
     blockTxRes,
     batchBlobCountsRes,
-    l2TxFeeRes,
-    cloudCostRes,
   ] = await Promise.all([
-    fetchL2BlockCadence(
-      timeRange,
-      selectedSequencer ? getSequencerAddress(selectedSequencer) : undefined,
-    ),
-    fetchBatchPostingCadence(timeRange),
-    fetchAvgProveTime(timeRange),
-    fetchAvgVerifyTime(timeRange),
-    fetchAvgL2Tps(
-      timeRange,
-      selectedSequencer ? getSequencerAddress(selectedSequencer) : undefined,
-    ),
-    fetchPreconfData(),
-    fetchL2Reorgs(timeRange),
-    fetchSlashingEventCount(timeRange),
-    fetchForcedInclusionCount(timeRange),
-    fetchL2HeadBlock(timeRange),
-    fetchL1HeadBlock(timeRange),
+    fetchDashboardData(timeRange, address),
     fetchProveTimes(timeRange),
     fetchVerifyTimes(timeRange),
-    fetchL2BlockTimes(
-      timeRange,
-      selectedSequencer ? getSequencerAddress(selectedSequencer) : undefined,
-    ),
-    fetchL2GasUsed(
-      timeRange,
-      selectedSequencer ? getSequencerAddress(selectedSequencer) : undefined,
-    ),
+    fetchL2BlockTimes(timeRange, address),
+    fetchL2GasUsed(timeRange, address),
     fetchSequencerDistribution(timeRange),
-    fetchAllBlockTransactions(
-      timeRange,
-      selectedSequencer ? getSequencerAddress(selectedSequencer) : undefined,
-    ),
+    fetchAllBlockTransactions(timeRange, address),
     fetchBatchBlobCounts(timeRange),
-    fetchL2TxFee(
-      timeRange,
-      selectedSequencer ? getSequencerAddress(selectedSequencer) : undefined,
-    ),
-    fetchCloudCost(timeRange),
   ]);
 
+  const data = dashboardRes.data;
+
   const allResults = [
-    l2CadenceRes,
-    batchCadenceRes,
-    avgProveRes,
-    avgVerifyRes,
-    avgTpsRes,
-    preconfRes,
-    l2ReorgsRes,
-    slashingCountRes,
-    forcedInclusionCountRes,
-    l2BlockRes,
-    l1BlockRes,
+    dashboardRes,
     proveTimesRes,
     verifyTimesRes,
     l2TimesRes,
@@ -142,17 +87,17 @@ export const fetchMainDashboardData = async (
   ];
 
   return {
-    l2Cadence: l2CadenceRes.data,
-    batchCadence: batchCadenceRes.data,
-    avgProve: avgProveRes.data,
-    avgVerify: avgVerifyRes.data,
-    avgTps: avgTpsRes.data,
-    preconfData: preconfRes.data,
-    l2Reorgs: l2ReorgsRes.data,
-    slashings: slashingCountRes.data,
-    forcedInclusions: forcedInclusionCountRes.data,
-    l2Block: l2BlockRes.data,
-    l1Block: l1BlockRes.data,
+    l2Cadence: data?.l2_block_cadence_ms ?? null,
+    batchCadence: data?.batch_posting_cadence_ms ?? null,
+    avgProve: data?.avg_prove_time_ms ?? null,
+    avgVerify: data?.avg_verify_time_ms ?? null,
+    avgTps: data?.avg_tps ?? null,
+    preconfData: data?.preconf_data ?? null,
+    l2Reorgs: data?.l2_reorgs ?? null,
+    slashings: data?.slashings ?? null,
+    forcedInclusions: data?.forced_inclusions ?? null,
+    l2Block: data?.l2_block ?? null,
+    l1Block: data?.l1_block ?? null,
     proveTimes: proveTimesRes.data || [],
     verifyTimes: verifyTimesRes.data || [],
     l2Times: l2TimesRes.data || [],
@@ -160,8 +105,8 @@ export const fetchMainDashboardData = async (
     sequencerDist: sequencerDistRes.data || [],
     txPerBlock: blockTxRes.data || [],
     blobsPerBatch: batchBlobCountsRes.data || [],
-    l2TxFee: l2TxFeeRes.data,
-    cloudCost: cloudCostRes.data,
+    l2TxFee: data?.l2_tx_fee ?? null,
+    cloudCost: data?.cloud_cost ?? null,
     badRequestResults: allResults,
   };
 };

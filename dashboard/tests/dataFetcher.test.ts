@@ -23,21 +23,25 @@ beforeEach(() => {
 describe('dataFetcher', () => {
   it('aggregates main dashboard data', async () => {
     setAll({
-      fetchL2BlockCadence: ok(1),
-      fetchBatchPostingCadence: ok(2),
-      fetchAvgProveTime: ok(3),
-      fetchAvgVerifyTime: ok(4),
-      fetchAvgL2Tps: ok(5),
-      fetchPreconfData: ok({
-        candidates: ['a'],
-        current_operator: 'x',
-        next_operator: 'y',
+      fetchDashboardData: ok({
+        l2_block_cadence_ms: 1,
+        batch_posting_cadence_ms: 2,
+        avg_prove_time_ms: 3,
+        avg_verify_time_ms: 4,
+        avg_tps: 5,
+        preconf_data: {
+          candidates: ['a'],
+          current_operator: 'x',
+          next_operator: 'y',
+        },
+        l2_reorgs: 6,
+        slashings: 7,
+        forced_inclusions: 8,
+        l2_block: 10,
+        l1_block: 11,
+        l2_tx_fee: 12,
+        cloud_cost: 13,
       }),
-      fetchL2Reorgs: ok(6),
-      fetchSlashingEventCount: ok(7),
-      fetchForcedInclusionCount: ok(8),
-      fetchL2HeadBlock: ok(10),
-      fetchL1HeadBlock: ok(11),
       fetchProveTimes: ok([{ name: '1', value: 1, timestamp: 0 }]),
       fetchVerifyTimes: ok([{ name: '2', value: 2, timestamp: 0 }]),
       fetchL2BlockTimes: ok([{ value: 2, timestamp: 0 }]),
@@ -45,8 +49,6 @@ describe('dataFetcher', () => {
       fetchSequencerDistribution: ok([{ name: 'foo', value: 1 }]),
       fetchAllBlockTransactions: ok([{ block: 1, txs: 2, sequencer: 'bar' }]),
       fetchBatchBlobCounts: ok([{ block: 10, batch: 1, blobs: 2 }]),
-      fetchL2TxFee: ok(12),
-      fetchCloudCost: ok(13),
     });
 
     const res = await fetchMainDashboardData('1h', null);
@@ -54,22 +56,12 @@ describe('dataFetcher', () => {
     expect(res.avgVerify).toBe(4);
     expect(res.sequencerDist[0].name).toBe('foo');
     expect(res.txPerBlock).toHaveLength(1);
-    expect(res.badRequestResults).toHaveLength(18);
+    expect(res.badRequestResults).toHaveLength(8);
   });
 
   it('defaults to empty arrays when service data missing', async () => {
     setAll({
-      fetchL2BlockCadence: ok(null),
-      fetchBatchPostingCadence: ok(null),
-      fetchAvgProveTime: ok(null),
-      fetchAvgVerifyTime: ok(null),
-      fetchAvgL2Tps: ok(null),
-      fetchPreconfData: ok(null),
-      fetchL2Reorgs: ok(null),
-      fetchSlashingEventCount: ok(null),
-      fetchForcedInclusionCount: ok(null),
-      fetchL2HeadBlock: ok(null),
-      fetchL1HeadBlock: ok(null),
+      fetchDashboardData: ok(null),
       fetchProveTimes: ok(null),
       fetchVerifyTimes: ok(null),
       fetchL2BlockTimes: ok(null),
@@ -77,8 +69,6 @@ describe('dataFetcher', () => {
       fetchSequencerDistribution: ok(null),
       fetchAllBlockTransactions: ok(null),
       fetchBatchBlobCounts: ok(null),
-      fetchL2TxFee: ok(null),
-      fetchCloudCost: ok(null),
     });
 
     const res = await fetchMainDashboardData('1h', null);
@@ -86,6 +76,7 @@ describe('dataFetcher', () => {
     expect(res.sequencerDist).toEqual([]);
     expect(res.txPerBlock).toEqual([]);
     expect(res.blobsPerBatch).toEqual([]);
+    expect(res.badRequestResults).toHaveLength(8);
   });
 
   it('fetches economics data', async () => {

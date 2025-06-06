@@ -69,7 +69,8 @@ pub const MAX_BLOCK_TRANSACTIONS_LIMIT: u64 = u64::MAX;
         l2_tps,
         sequencer_distribution,
         sequencer_blocks,
-        block_transactions
+        block_transactions,
+        dashboard_data
     ),
     components(
         schemas(
@@ -121,6 +122,7 @@ pub const MAX_BLOCK_TRANSACTIONS_LIMIT: u64 = u64::MAX;
             clickhouse_lib::BatchPostingTimeRow,
             HealthResponse,
             PreconfDataResponse,
+            DashboardDataResponse,
             api_types::ErrorResponse
         )
     ),
@@ -1527,6 +1529,101 @@ async fn block_transactions(
     Ok(Json(BlockTransactionsResponse { blocks }))
 }
 
+#[utoipa::path(
+    get,
+    path = "/dashboard-data",
+    params(
+        RangeQuery
+    ),
+    responses(
+        (status = 200, description = "Aggregated dashboard data", body = DashboardDataResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
+    ),
+    tag = "taikoscope"
+)]
+async fn dashboard_data(
+    Query(params): Query<RangeQuery>,
+    State(state): State<ApiState>,
+) -> Result<Json<DashboardDataResponse>, ErrorResponse> {
+    validate_time_range(&params.time_range)?;
+
+    let has_time_range = has_time_range_params(&params.time_range);
+    validate_range_exclusivity(has_time_range, false)?;
+
+    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
+    let since = resolve_time_range_since(&params.range, &params.time_range);
+    let address = params.address.as_ref().and_then(|addr| match addr.parse::<Address>() {
+        Ok(a) => Some(AddressBytes::from(a)),
+        Err(e) => {
+            tracing::warn!(error = %e, "Failed to parse address");
+            None
+        }
+    });
+
+    let (
+        l2_block_cadence,
+        batch_posting_cadence,
+        avg_prove_time,
+        avg_verify_time,
+        avg_tps,
+        preconf,
+        reorgs,
+        slashings,
+        forced_inclusions,
+        l2_block,
+        l1_block,
+        l2_tx_fee,
+    ) = tokio::try_join!(
+        state.client.get_l2_block_cadence(address, time_range),
+        state.client.get_batch_posting_cadence(time_range),
+        state.client.get_avg_prove_time(time_range),
+        state.client.get_avg_verify_time(time_range),
+        state.client.get_avg_l2_tps(address, time_range),
+        state.client.get_last_preconf_data(),
+        state.client.get_l2_reorgs_since(since),
+        state.client.get_slashing_events_since(since),
+        state.client.get_forced_inclusions_since(since),
+        state.client.get_last_l2_block_number(),
+        state.client.get_last_l1_block_number(),
+        state.client.get_l2_tx_fee(address, time_range)
+    )
+    .map_err(|e| {
+        tracing::error!(error = %e, "Failed to get dashboard data");
+        ErrorResponse::new(
+            "database-error",
+            "Database error",
+            StatusCode::INTERNAL_SERVER_ERROR,
+            e.to_string(),
+        )
+    })?;
+
+    let preconf_data = preconf.map(|d| PreconfDataResponse {
+        candidates: d.candidates.into_iter().map(|a| format!("0x{}", encode(a))).collect(),
+        current_operator: d.current_operator.map(|a| format!("0x{}", encode(a))),
+        next_operator: d.next_operator.map(|a| format!("0x{}", encode(a))),
+    });
+
+    let hours = time_range.seconds() as f64 / 3600.0;
+    let hourly_rate = TOTAL_HARDWARE_COST_USD / (30.0 * 24.0);
+    let cost = hourly_rate * hours;
+
+    Ok(Json(DashboardDataResponse {
+        l2_block_cadence_ms: l2_block_cadence,
+        batch_posting_cadence_ms: batch_posting_cadence,
+        avg_prove_time_ms: avg_prove_time,
+        avg_verify_time_ms: avg_verify_time,
+        avg_tps,
+        preconf_data,
+        l2_reorgs: reorgs.len(),
+        slashings: slashings.len(),
+        forced_inclusions: forced_inclusions.len(),
+        l2_block,
+        l1_block,
+        l2_tx_fee,
+        cloud_cost: Some(cost),
+    }))
+}
+
 /// Build the router with all API endpoints.
 pub fn router(state: ApiState) -> Router {
     let api_routes = Router::new()
@@ -1562,7 +1659,8 @@ pub fn router(state: ApiState) -> Router {
         .route("/tps", get(l2_tps))
         .route("/sequencer-distribution", get(sequencer_distribution))
         .route("/sequencer-blocks", get(sequencer_blocks))
-        .route("/block-transactions", get(block_transactions));
+        .route("/block-transactions", get(block_transactions))
+        .route("/dashboard-data", get(dashboard_data));
 
     Router::new()
         .merge(SwaggerUi::new("/swagger-ui").url("/api-doc/openapi.json", ApiDoc::openapi()))
