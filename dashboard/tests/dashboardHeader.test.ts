@@ -29,7 +29,6 @@ describe('DashboardHeader', () => {
     expect(html.includes('15M')).toBe(true);
     expect(html.includes('1H')).toBe(true);
     expect(html.includes('24H')).toBe(true);
-    expect(html.includes('7D')).toBe(true);
     expect(html.includes('Refresh')).toBe(true);
     expect(html.includes('Status')).toBe(true);
     expect(html.includes('Economics')).toBe(false);

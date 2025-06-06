@@ -26,7 +26,7 @@ import {
 import { createMetrics, hasBadRequest } from '../helpers';
 import type { MetricData } from '../types';
 
-type TimeRange = '15m' | '1h' | '24h' | '7d';
+type TimeRange = '15m' | '1h' | '24h';
 
 type State = {
   metrics: MetricData[];
@@ -141,9 +141,7 @@ const responses: Record<string, Record<string, unknown>> = {
   '/v1/l2-head-block': { l2_head_block: 123 },
   '/v1/l1-head-block': { l1_head_block: 456 },
   '/v1/l2-tx-fee?range=24h': { tx_fee: 2000 },
-  '/v1/l2-tx-fee?range=7d': { tx_fee: 3000 },
   '/v1/cloud-cost?range=24h': { cost_usd: 72 },
-  '/v1/cloud-cost?range=7d': { cost_usd: 504 },
 };
 
 (
