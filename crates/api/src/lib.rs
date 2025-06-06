@@ -32,8 +32,8 @@ use std::{
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 use validation::{
-    CommonQuery, PaginatedQuery, TimeRangeParams, has_time_range_params, validate_pagination,
-    validate_range_exclusivity, validate_time_range,
+    CommonQuery, PaginatedQuery, TimeRangeParams, has_time_range_params, resolve_time_range_enum,
+    resolve_time_range_since, validate_pagination, validate_range_exclusivity, validate_time_range,
 };
 
 /// Default maximum number of requests allowed during the rate limiting period.
@@ -230,8 +230,9 @@ fn range_duration(range: &Option<String>) -> ChronoDuration {
     ChronoDuration::hours(1)
 }
 
-/// Resolve the effective time range for queries, prioritizing explicit time range params
-fn resolve_time_range(
+/// Resolve the effective time range for queries, prioritizing explicit time range params (legacy
+/// function)
+fn _legacy_resolve_time_range(
     range: &Option<String>,
     time_params: &TimeRangeParams,
 ) -> chrono::DateTime<Utc> {
@@ -523,7 +524,7 @@ async fn slashings(
     let has_time_range = has_time_range_params(&params.time_range);
     validate_range_exclusivity(has_time_range, false)?;
 
-    let since = resolve_time_range(&params.range, &params.time_range);
+    let since = resolve_time_range_since(&params.range, &params.time_range);
     let events = state.client.get_slashing_events_since(since).await.map_err(|e| {
         tracing::error!(error = %e, "Failed to get slashing events");
         ErrorResponse::new(
@@ -560,7 +561,7 @@ async fn forced_inclusions(
     let has_time_range = has_time_range_params(&params.time_range);
     validate_range_exclusivity(has_time_range, false)?;
 
-    let since = resolve_time_range(&params.range, &params.time_range);
+    let since = resolve_time_range_since(&params.range, &params.time_range);
     let events = state.client.get_forced_inclusions_since(since).await.map_err(|e| {
         tracing::error!(error = %e, "Failed to get forced inclusion events");
         ErrorResponse::new(
@@ -597,7 +598,7 @@ async fn reorgs(
     let has_time_range = has_time_range_params(&params.time_range);
     validate_range_exclusivity(has_time_range, false)?;
 
-    let since = resolve_time_range(&params.range, &params.time_range);
+    let since = resolve_time_range_since(&params.range, &params.time_range);
     let events = state.client.get_l2_reorgs_since(since).await.map_err(|e| {
         tracing::error!(error = %e, "Failed to get reorg events");
         ErrorResponse::new(
@@ -634,7 +635,7 @@ async fn active_gateways(
     let has_time_range = has_time_range_params(&params.time_range);
     validate_range_exclusivity(has_time_range, false)?;
 
-    let since = resolve_time_range(&params.range, &params.time_range);
+    let since = resolve_time_range_since(&params.range, &params.time_range);
     let gateways = state.client.get_active_gateways_since(since).await.map_err(|e| {
         tracing::error!(error = %e, "Failed to get active gateways");
         ErrorResponse::new(
@@ -758,8 +759,15 @@ async fn avg_prove_time(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
 ) -> Result<Json<AvgProveTimeResponse>, ErrorResponse> {
-    let duration = range_duration(&params.range);
-    let avg = match state.client.get_avg_prove_time(TimeRange::from_duration(duration)).await {
+    // Validate time range parameters
+    validate_time_range(&params.time_range)?;
+
+    // Check for range exclusivity
+    let has_time_range = has_time_range_params(&params.time_range);
+    validate_range_exclusivity(has_time_range, false)?;
+
+    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
+    let avg = match state.client.get_avg_prove_time(time_range).await {
         Ok(val) => val,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get avg prove time");
@@ -791,8 +799,15 @@ async fn avg_verify_time(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
 ) -> Result<Json<AvgVerifyTimeResponse>, ErrorResponse> {
-    let duration = range_duration(&params.range);
-    let avg = match state.client.get_avg_verify_time(TimeRange::from_duration(duration)).await {
+    // Validate time range parameters
+    validate_time_range(&params.time_range)?;
+
+    // Check for range exclusivity
+    let has_time_range = has_time_range_params(&params.time_range);
+    validate_range_exclusivity(has_time_range, false)?;
+
+    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
+    let avg = match state.client.get_avg_verify_time(time_range).await {
         Ok(val) => val,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get avg verify time");
@@ -1349,7 +1364,7 @@ async fn sequencer_distribution(
     let has_time_range = has_time_range_params(&params.time_range);
     validate_range_exclusivity(has_time_range, false)?;
 
-    let since = resolve_time_range(&params.range, &params.time_range);
+    let since = resolve_time_range_since(&params.range, &params.time_range);
     let rows = state.client.get_sequencer_distribution_since(since).await.map_err(|e| {
         tracing::error!(error = %e, "Failed to get sequencer distribution");
         ErrorResponse::new(
@@ -1393,7 +1408,7 @@ async fn sequencer_blocks(
     let has_time_range = has_time_range_params(&params.time_range);
     validate_range_exclusivity(has_time_range, false)?;
 
-    let since = resolve_time_range(&params.range, &params.time_range);
+    let since = resolve_time_range_since(&params.range, &params.time_range);
     let rows = state.client.get_sequencer_blocks_since(since).await.map_err(|e| {
         tracing::error!(error = %e, "Failed to get sequencer blocks");
         ErrorResponse::new(
@@ -1463,7 +1478,7 @@ async fn block_transactions(
     let has_slot_range = params.starting_after.is_some() || params.ending_before.is_some();
     validate_range_exclusivity(has_time_range, has_slot_range)?;
 
-    let since = resolve_time_range(&params.common.range, &params.common.time_range);
+    let since = resolve_time_range_since(&params.common.range, &params.common.time_range);
     let limit = params.limit.unwrap_or(50).clamp(1, MAX_BLOCK_TRANSACTIONS_LIMIT);
 
     let rows = match state
