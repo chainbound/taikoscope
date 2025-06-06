@@ -17,13 +17,11 @@ export const ErrorBoundary: React.FC<
   React.PropsWithChildren<ErrorBoundaryProps>
 > = ({ fallback, reportError, children }) => {
   const handleError = (error: Error, info: React.ErrorInfo) => {
-    // eslint-disable-next-line no-console
     console.error('Error boundary caught an error:', error, info);
     if (reportError) {
       try {
         reportError(error, info);
       } catch (reportError) {
-        // eslint-disable-next-line no-console
         console.error('Failed to report error', reportError);
       }
     }

@@ -25,17 +25,14 @@ export const DashboardRoute: React.FC = () => {
     refreshTimer,
   } = useOutletContext<DashboardContextType>();
 
-  const {
-    openGenericTable,
-    openTpsTable,
-    openSequencerDistributionTable,
-  } = useTableActions(
-    timeRange,
-    setTimeRange,
-    selectedSequencer,
-    chartsData.blockTxData,
-    chartsData.l2BlockTimeData,
-  );
+  const { openGenericTable, openTpsTable, openSequencerDistributionTable } =
+    useTableActions(
+      timeRange,
+      setTimeRange,
+      selectedSequencer,
+      chartsData.blockTxData,
+      chartsData.l2BlockTimeData,
+    );
 
   const { handleManualRefresh } = useDataFetcher({
     timeRange,

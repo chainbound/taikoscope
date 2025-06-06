@@ -130,10 +130,10 @@ let intervals: IntervalId[] = [];
   fn: () => Promise<void> | void,
   ms: number,
 ): NodeJS.Timeout => {
-    const id: IntervalId = { fn, ms };
-    intervals.push(id);
-    return id as unknown as NodeJS.Timeout;
-  };
+  const id: IntervalId = { fn, ms };
+  intervals.push(id);
+  return id as unknown as NodeJS.Timeout;
+};
 (
   globalThis as unknown as { clearInterval: (id: NodeJS.Timeout) => void }
 ).clearInterval = (id: NodeJS.Timeout) => {
@@ -152,11 +152,7 @@ async function fetchData(range: TimeRange, state: State, economics = false) {
     const l2Block = l2BlockRes.data;
     const l1Block = l1BlockRes.data;
 
-    const anyBadRequest = hasBadRequest([
-      l2TxFeeRes,
-      l2BlockRes,
-      l1BlockRes,
-    ]);
+    const anyBadRequest = hasBadRequest([l2TxFeeRes, l2BlockRes, l1BlockRes]);
 
     const currentMetrics: MetricData[] = createMetrics({
       avgTps: 3,
@@ -360,9 +356,7 @@ it('app integration', async () => {
   expect(state.l2GasUsedData.length).toBe(1);
 
   await fetchData('1h', state, true);
-  const econMetric = state.metrics.find(
-    (m) => m.group === 'Network Economics',
-  );
+  const econMetric = state.metrics.find((m) => m.group === 'Network Economics');
   expect(econMetric).toBeDefined();
 
   setupPolling(state);

@@ -15,26 +15,29 @@ export const DashboardLayout: React.FC = () => {
   const metricsData = useMetricsData();
   const refreshTimer = useRefreshTimer();
 
-  const { selectedSequencer, setSelectedSequencer, sequencerList } = useSequencerHandler({
-    chartsData,
-    blockData,
-    metricsData,
-  });
+  const { selectedSequencer, setSelectedSequencer, sequencerList } =
+    useSequencerHandler({
+      chartsData,
+      blockData,
+      metricsData,
+    });
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 flex flex-col">
       <main className="flex-grow px-4 py-6 md:px-6 lg:px-8">
-        <Outlet context={{
-          timeRange,
-          setTimeRange,
-          selectedSequencer,
-          setSelectedSequencer,
-          sequencerList,
-          chartsData,
-          blockData,
-          metricsData,
-          refreshTimer,
-        }} />
+        <Outlet
+          context={{
+            timeRange,
+            setTimeRange,
+            selectedSequencer,
+            setSelectedSequencer,
+            sequencerList,
+            chartsData,
+            blockData,
+            metricsData,
+            refreshTimer,
+          }}
+        />
       </main>
       <DashboardFooter
         l2HeadBlock={blockData.l2HeadBlock}

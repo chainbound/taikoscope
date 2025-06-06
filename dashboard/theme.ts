@@ -61,4 +61,3 @@ export const darkTheme: ThemeColors = {
   input: '#334155',
   ring: TAIKO_PINK,
 };
-

@@ -35,7 +35,8 @@ export const useSearchParams = (): URLSearchParams & {
       setNavigationState((prev) => ({
         ...prev,
         isNavigating: false,
-        canGoBack: typeof window !== 'undefined' ? window.history.length > 1 : false,
+        canGoBack:
+          typeof window !== 'undefined' ? window.history.length > 1 : false,
       }));
     },
     [routerNavigate],

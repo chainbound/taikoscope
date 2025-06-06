@@ -4,7 +4,7 @@ import { getErrorMessage } from '../utils/errorHandler';
 describe('errorHandler', () => {
   it('returns warning message when bad request detected', () => {
     expect(getErrorMessage(true)).toBe(
-      'Invalid parameters provided. Some data may not be available.'
+      'Invalid parameters provided. Some data may not be available.',
     );
   });
 

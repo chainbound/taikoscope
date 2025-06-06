@@ -1,11 +1,12 @@
 #!/usr/bin/env node
+/* eslint-env node */
 const { execSync } = require('child_process');
 const fs = require('fs');
 
 const files = execSync('git ls-files dashboard')
   .toString()
   .split('\n')
-  .filter(f => /\.(tsx?|jsx?|css|md|html)$/.test(f));
+  .filter((f) => /\.(tsx?|jsx?|css|md|html)$/.test(f));
 
 let hasTrailing = false;
 for (const file of files) {

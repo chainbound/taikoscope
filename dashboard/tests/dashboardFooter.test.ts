@@ -9,7 +9,7 @@ describe('DashboardFooter', () => {
       React.createElement(DashboardFooter, {
         l2HeadBlock: '409,253',
         l1HeadBlock: '3,951,872',
-      })
+      }),
     );
     expect(html.includes('L2 Head Block')).toBe(true);
     expect(html.includes('409,253')).toBe(true);
@@ -17,4 +17,3 @@ describe('DashboardFooter', () => {
     expect(html.includes('3,951,872')).toBe(true);
   });
 });
-

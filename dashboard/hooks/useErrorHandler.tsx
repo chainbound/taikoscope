@@ -8,12 +8,16 @@ interface ErrorContextValue {
 
 const ErrorContext = createContext<ErrorContextValue | undefined>(undefined);
 
-export const ErrorProvider: React.FC<React.PropsWithChildren> = ({ children }) => {
+export const ErrorProvider: React.FC<React.PropsWithChildren> = ({
+  children,
+}) => {
   const [errorMessage, setErrorMessage] = useState('');
   const clearError = () => setErrorMessage('');
 
   return (
-    <ErrorContext.Provider value={{ errorMessage, setErrorMessage, clearError }}>
+    <ErrorContext.Provider
+      value={{ errorMessage, setErrorMessage, clearError }}
+    >
       {children}
     </ErrorContext.Provider>
   );

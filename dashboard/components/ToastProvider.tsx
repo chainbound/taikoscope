@@ -6,8 +6,9 @@ interface Toast {
   message: string;
 }
 
-
-export const ToastProvider: React.FC<React.PropsWithChildren> = ({ children }) => {
+export const ToastProvider: React.FC<React.PropsWithChildren> = ({
+  children,
+}) => {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   useEffect(() => {
@@ -20,8 +21,8 @@ export const ToastProvider: React.FC<React.PropsWithChildren> = ({ children }) =
         setToasts((t) => t.filter((x) => x.id !== id));
       }, 5000);
     };
-    window.addEventListener(TOAST_EVENT, handler as EventListener);
-    return () => window.removeEventListener(TOAST_EVENT, handler as EventListener);
+    window.addEventListener(TOAST_EVENT, handler);
+    return () => window.removeEventListener(TOAST_EVENT, handler);
   }, []);
 
   return (
@@ -40,4 +41,3 @@ export const ToastProvider: React.FC<React.PropsWithChildren> = ({ children }) =
     </>
   );
 };
-

@@ -34,6 +34,10 @@ interface DataTableProps {
   chart?: React.ReactNode;
   rowsPerPage?: number;
   isNavigating?: boolean;
+  allRows?: Array<Record<string, React.ReactNode | string | number>>;
+  useClientSidePagination?: boolean;
+  totalRecords?: number;
+  timeRange?: string;
 }
 
 export const DataTable: React.FC<DataTableProps> = ({
@@ -48,6 +52,10 @@ export const DataTable: React.FC<DataTableProps> = ({
   chart,
   rowsPerPage = DEFAULT_ROWS_PER_PAGE,
   isNavigating = false,
+  allRows,
+  useClientSidePagination = false,
+  totalRecords,
+  timeRange,
 }) => {
   const [page, setPage] = React.useState(0);
 
@@ -75,13 +83,22 @@ export const DataTable: React.FC<DataTableProps> = ({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [onBack, isNavigating]);
 
-  const pageRows = React.useMemo(
-    () => rows.slice(page * rowsPerPage, (page + 1) * rowsPerPage),
-    [rows, page, rowsPerPage],
-  );
+  // Use client-side pagination if enabled and allRows are provided
+  const dataSource = useClientSidePagination && allRows ? allRows : rows;
+  const currentTotalRecords =
+    useClientSidePagination && totalRecords ? totalRecords : dataSource.length;
+
+  const pageRows = React.useMemo(() => {
+    if (useClientSidePagination && allRows) {
+      // Client-side pagination: slice from full dataset
+      return allRows.slice(page * rowsPerPage, (page + 1) * rowsPerPage);
+    }
+    // Server-side pagination: use provided rows directly
+    return rows.slice(page * rowsPerPage, (page + 1) * rowsPerPage);
+  }, [allRows, rows, page, rowsPerPage, useClientSidePagination]);
 
   const disablePrev = page === 0;
-  const disableNext = (page + 1) * rowsPerPage >= rows.length;
+  const disableNext = (page + 1) * rowsPerPage >= currentTotalRecords;
 
   return (
     <div className="p-4">
@@ -111,8 +128,22 @@ export const DataTable: React.FC<DataTableProps> = ({
           </button>
         )}
       </div>
-      <h2 className="text-xl font-semibold mb-2 text-gray-900 dark:text-gray-100">{title}</h2>
-      {description && <p className="text-gray-600 dark:text-gray-400 mb-2">{description}</p>}
+      <h2 className="text-xl font-semibold mb-2 text-gray-900 dark:text-gray-100">
+        {title}
+      </h2>
+      {description && (
+        <p className="text-gray-600 dark:text-gray-400 mb-2">{description}</p>
+      )}
+
+      {/* Data scope indicator */}
+      {useClientSidePagination && totalRecords && (
+        <div className="mb-2 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded text-sm text-blue-700 dark:text-blue-300">
+          📊 Showing {pageRows.length} of {totalRecords} records from{' '}
+          {timeRange || 'selected time range'}
+          {chart && ' (Chart displays all records)'}
+        </div>
+      )}
+
       {chart && (
         <div className="h-64 md:h-80 w-full mb-4">
           <React.Suspense
@@ -131,7 +162,10 @@ export const DataTable: React.FC<DataTableProps> = ({
           <thead>
             <tr>
               {columns.map((col) => (
-                <th key={col.key} className="px-2 py-1 text-left text-gray-900 dark:text-gray-100">
+                <th
+                  key={col.key}
+                  className="px-2 py-1 text-left text-gray-900 dark:text-gray-100"
+                >
                   {col.label}
                 </th>
               ))}
@@ -165,7 +199,10 @@ export const DataTable: React.FC<DataTableProps> = ({
                   }
                 >
                   {columns.map((col) => (
-                    <td key={col.key} className="px-2 py-1 text-gray-900 dark:text-gray-100">
+                    <td
+                      key={col.key}
+                      className="px-2 py-1 text-gray-900 dark:text-gray-100"
+                    >
                       {row[col.key] as React.ReactNode}
                     </td>
                   ))}
@@ -175,7 +212,7 @@ export const DataTable: React.FC<DataTableProps> = ({
           </tbody>
         </table>
       </div>
-      {rows.length > 0 && (
+      {currentTotalRecords > 0 && (
         <div className="flex items-center justify-between mt-2">
           <button
             onClick={() => setPage((p) => p - 1)}
@@ -187,7 +224,9 @@ export const DataTable: React.FC<DataTableProps> = ({
           >
             Prev
           </button>
-          <span className="text-gray-900 dark:text-gray-100">Page {page + 1}</span>
+          <span className="text-gray-900 dark:text-gray-100">
+            Page {page + 1} of {Math.ceil(currentTotalRecords / rowsPerPage)}
+          </span>
           <button
             onClick={() => setPage((p) => p + 1)}
             disabled={disableNext || isNavigating}
@@ -203,13 +242,18 @@ export const DataTable: React.FC<DataTableProps> = ({
 
       {extraTable ? (
         <div className="mt-8">
-          <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-gray-100">{extraTable.title}</h3>
+          <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-gray-100">
+            {extraTable.title}
+          </h3>
           <div className="overflow-x-auto">
             <table className="min-w-full border border-gray-200 dark:border-gray-700 divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
               <thead>
                 <tr>
                   {extraTable.columns.map((col) => (
-                    <th key={col.key} className="px-2 py-1 text-left text-gray-900 dark:text-gray-100">
+                    <th
+                      key={col.key}
+                      className="px-2 py-1 text-left text-gray-900 dark:text-gray-100"
+                    >
                       {col.label}
                     </th>
                   ))}
@@ -246,7 +290,10 @@ export const DataTable: React.FC<DataTableProps> = ({
                       }
                     >
                       {extraTable.columns.map((col) => (
-                        <td key={col.key} className="px-2 py-1 text-gray-900 dark:text-gray-100">
+                        <td
+                          key={col.key}
+                          className="px-2 py-1 text-gray-900 dark:text-gray-100"
+                        >
                           {row[col.key] as React.ReactNode}
                         </td>
                       ))}
@@ -270,7 +317,9 @@ export const DataTable: React.FC<DataTableProps> = ({
               >
                 Prev
               </button>
-              <span className="text-gray-900 dark:text-gray-100">Page {extraTable.pagination.page + 1}</span>
+              <span className="text-gray-900 dark:text-gray-100">
+                Page {extraTable.pagination.page + 1}
+              </span>
               <button
                 onClick={extraTable.pagination.onNext}
                 disabled={extraTable.pagination.disableNext || isNavigating}

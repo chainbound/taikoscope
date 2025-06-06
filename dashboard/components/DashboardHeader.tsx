@@ -5,7 +5,16 @@ import { TAIKO_PINK } from '../theme';
 import { isValidRefreshRate } from '../utils';
 import { useRouterNavigation } from '../hooks/useRouterNavigation';
 
-const metaEnv = (import.meta as any).env as ImportMetaEnv | undefined;
+interface ImportMetaEnv {
+  readonly VITE_NETWORK_NAME?: string;
+  readonly NETWORK_NAME?: string;
+}
+
+interface ImportMeta {
+  readonly env: ImportMetaEnv;
+}
+
+const metaEnv = (import.meta as ImportMeta).env;
 const NETWORK_NAME =
   metaEnv?.VITE_NETWORK_NAME ?? metaEnv?.NETWORK_NAME ?? 'Taiko Masaya Testnet';
 

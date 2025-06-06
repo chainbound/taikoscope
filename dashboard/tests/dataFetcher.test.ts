@@ -11,8 +11,8 @@ const ok = <T>(data: T): Res<T> => ({ data, badRequest: false, error: null });
 // helper to set all mocks to return provided data
 function setAll(data: Partial<Record<keyof typeof api, unknown>>) {
   for (const [key, value] of Object.entries(data)) {
-    // @ts-ignore
-    vi.spyOn(api, key as any).mockResolvedValue(value);
+    // @ts-expect-error - Dynamic property access for test mocking
+    vi.spyOn(api, key as keyof typeof api).mockResolvedValue(value);
   }
 }
 
@@ -43,7 +43,7 @@ describe('dataFetcher', () => {
       fetchL2BlockTimes: ok([{ value: 2, timestamp: 0 }]),
       fetchL2GasUsed: ok([{ value: 3, timestamp: 0 }]),
       fetchSequencerDistribution: ok([{ name: 'foo', value: 1 }]),
-      fetchBlockTransactions: ok([{ block: 1, txs: 2, sequencer: 'bar' }]),
+      fetchAllBlockTransactions: ok([{ block: 1, txs: 2, sequencer: 'bar' }]),
       fetchBatchBlobCounts: ok([{ block: 10, batch: 1, blobs: 2 }]),
       fetchL2TxFee: ok(12),
       fetchCloudCost: ok(13),
@@ -75,7 +75,7 @@ describe('dataFetcher', () => {
       fetchL2BlockTimes: ok(null),
       fetchL2GasUsed: ok(null),
       fetchSequencerDistribution: ok(null),
-      fetchBlockTransactions: ok(null),
+      fetchAllBlockTransactions: ok(null),
       fetchBatchBlobCounts: ok(null),
       fetchL2TxFee: ok(null),
       fetchCloudCost: ok(null),

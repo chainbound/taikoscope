@@ -213,7 +213,6 @@ export const fetchForcedInclusionEvents = async (
   };
 };
 
-
 export const fetchL2HeadBlock = async (
   range: '1h' | '24h' | '7d',
 ): Promise<RequestResult<number>> => {
@@ -452,13 +451,22 @@ export const fetchBlockTransactions = async (
   startingAfter?: number,
   endingBefore?: number,
   address?: string,
+  unlimited = false,
 ): Promise<RequestResult<BlockTransaction[]>> => {
-  let url = `${API_BASE}/block-transactions?range=${range}&limit=${limit}`;
-  if (startingAfter !== undefined) {
-    url += `&starting_after=${startingAfter}`;
-  } else if (endingBefore !== undefined) {
-    url += `&ending_before=${endingBefore}`;
+  // If unlimited is true, use a large limit to get all data within the time range
+  const actualLimit = unlimited ? 10000 : limit;
+
+  let url = `${API_BASE}/block-transactions?range=${range}&limit=${actualLimit}`;
+
+  // For unlimited fetching, we ignore pagination parameters to get all data
+  if (!unlimited) {
+    if (startingAfter !== undefined) {
+      url += `&starting_after=${startingAfter}`;
+    } else if (endingBefore !== undefined) {
+      url += `&ending_before=${endingBefore}`;
+    }
   }
+
   if (address) {
     url += `&address=${address}`;
   }
@@ -475,6 +483,22 @@ export const fetchBlockTransactions = async (
   };
 };
 
+// New function specifically for fetching all block transactions in a time range
+// This will be used by both charts and tables to ensure data consistency
+export const fetchAllBlockTransactions = async (
+  range: '1h' | '24h' | '7d',
+  address?: string,
+): Promise<RequestResult<BlockTransaction[]>> => {
+  return fetchBlockTransactions(
+    range,
+    undefined,
+    undefined,
+    undefined,
+    address,
+    true,
+  );
+};
+
 export interface BatchBlobCount {
   block: number;
   batch: number;
@@ -486,7 +510,11 @@ export const fetchBatchBlobCounts = async (
 ): Promise<RequestResult<BatchBlobCount[]>> => {
   const url = `${API_BASE}/blobs-per-batch?range=${range}`;
   const res = await fetchJson<{
-    batches: { l1_block_number?: number; batch_id: number; blob_count: number }[];
+    batches: {
+      l1_block_number?: number;
+      batch_id: number;
+      blob_count: number;
+    }[];
   }>(url);
   return {
     data: res.data

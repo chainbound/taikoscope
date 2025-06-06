@@ -20,7 +20,9 @@ export interface TableViewState {
     title: string;
     columns: { key: string; label: string }[];
     rows: Record<string, React.ReactNode | string | number>[];
-    onRowClick?: (row: Record<string, React.ReactNode | string | number>) => void;
+    onRowClick?: (
+      row: Record<string, React.ReactNode | string | number>,
+    ) => void;
     pagination?: {
       page: number;
       onNext: () => void;
@@ -33,6 +35,9 @@ export interface TableViewState {
   onTimeRangeChange?: (range: TimeRange) => void;
   onRefresh?: () => void;
   chart?: React.ReactNode;
+  allRows?: Record<string, React.ReactNode | string | number>[];
+  useClientSidePagination?: boolean;
+  totalRecords?: number;
 }
 
 export const useTableActions = (
@@ -72,13 +77,18 @@ export const useTableActions = (
       description: React.ReactNode | undefined,
       columns: { key: string; label: string }[],
       rows: Record<string, React.ReactNode | string | number>[],
-      onRowClick?: (row: Record<string, React.ReactNode | string | number>) => void,
+      onRowClick?: (
+        row: Record<string, React.ReactNode | string | number>,
+      ) => void,
       extraAction?: { label: string; onClick: () => void },
       extraTable?: TableViewState['extraTable'],
       range?: TimeRange,
       onRangeChange?: (range: TimeRange) => void,
       onRefresh?: () => void,
       chart?: React.ReactNode,
+      allRows?: Record<string, React.ReactNode | string | number>[],
+      useClientSidePagination?: boolean,
+      totalRecords?: number,
     ) => {
       setTableView({
         title,
@@ -92,6 +102,9 @@ export const useTableActions = (
         onTimeRangeChange: onRangeChange,
         onRefresh,
         chart,
+        allRows,
+        useClientSidePagination,
+        totalRecords,
       });
       setTableLoading(false);
     },
@@ -154,8 +167,16 @@ export const useTableActions = (
               prev
                 ? {
                     ...prev,
-                    rows: refreshMappedData,
+                    rows: prev.useClientSidePagination
+                      ? prev.rows
+                      : refreshMappedData,
+                    allRows: prev.useClientSidePagination
+                      ? refreshMappedData
+                      : undefined,
                     chart: refreshChart,
+                    totalRecords: prev.useClientSidePagination
+                      ? refreshMappedData.length
+                      : undefined,
                   }
                 : null,
             );
@@ -167,19 +188,22 @@ export const useTableActions = (
                 ? {
                     ...prev,
                     rows: [], // Clear data on error to prevent stale data
+                    allRows: prev.useClientSidePagination ? [] : undefined,
+                    totalRecords: 0,
                   }
                 : null,
             );
           }
         };
 
-
+        // Check if this table should use unlimited data (for chart consistency)
+        const useUnlimitedData = config.useUnlimitedData || false;
 
         openTable(
           title,
           config.description,
           config.columns,
-          mappedData,
+          useUnlimitedData ? mappedData.slice(0, 50) : mappedData, // Show first 50 for display
           tableKey === 'sequencer-dist'
             ? (row) =>
                 openGenericTable('sequencer-blocks', range, {
@@ -192,6 +216,9 @@ export const useTableActions = (
           (r) => openGenericTable(tableKey, r, extraParams),
           refreshData,
           chart,
+          useUnlimitedData ? mappedData : undefined, // Pass full dataset for client-side pagination
+          useUnlimitedData, // Enable client-side pagination flag
+          useUnlimitedData ? mappedData.length : undefined, // Total record count
         );
       } catch (error) {
         console.error(`Failed to open ${tableKey} table:`, error);
@@ -229,6 +256,11 @@ export const useTableActions = (
       import('../components/TpsChart').then((m) => ({ default: m.TpsChart })),
     );
 
+    const mappedData = data.map((d) => ({
+      block: blockLink(d.block),
+      tps: d.tps.toFixed(2),
+    })) as Record<string, React.ReactNode | string | number>[];
+
     openTable(
       'L2 Transactions Per Second',
       'Transactions per second for each L2 block.',
@@ -236,10 +268,7 @@ export const useTableActions = (
         { key: 'block', label: 'L2 Block Number' },
         { key: 'tps', label: 'TPS' },
       ],
-      data.map((d) => ({
-        block: blockLink(d.block),
-        tps: d.tps.toFixed(2),
-      })) as Record<string, React.ReactNode | string | number>[],
+      mappedData.slice(0, 50), // Show first 50 for display
       undefined,
       undefined,
       undefined,
@@ -247,6 +276,9 @@ export const useTableActions = (
       undefined,
       undefined, // No refresh function for TPS table since it depends on other data
       React.createElement(TpsChart, { data, lineColor: '#4E79A7' }),
+      mappedData, // Pass full dataset for client-side pagination
+      true, // Enable client-side pagination
+      mappedData.length, // Total record count
     );
   }, [blockTxData, l2BlockTimeData, openTable, setTableUrl]);
 
@@ -317,7 +349,10 @@ export const useTableActions = (
                           block: blockLink(t.block),
                           txs: t.txs,
                           sequencer: t.sequencer,
-                        })) as unknown as Record<string, React.ReactNode | string | number>[],
+                        })) as unknown as Record<
+                          string,
+                          React.ReactNode | string | number
+                        >[],
                       }
                     : undefined,
                 }
@@ -353,7 +388,10 @@ export const useTableActions = (
           { key: 'name', label: 'Sequencer' },
           { key: 'value', label: 'Blocks' },
         ],
-        (distRes.data || []) as unknown as Record<string, React.ReactNode | string | number>[],
+        (distRes.data || []) as unknown as Record<
+          string,
+          React.ReactNode | string | number
+        >[],
         (row) => {
           const cleanParams: Record<string, string | number> = {
             address: String(row.name),

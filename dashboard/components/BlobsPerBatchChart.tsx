@@ -27,7 +27,6 @@ const BlobsPerBatchChartComponent: React.FC<BlobsPerBatchChartProps> = ({
     );
   }
 
-
   return (
     <ResponsiveContainer width="100%" height="100%">
       <BarChart

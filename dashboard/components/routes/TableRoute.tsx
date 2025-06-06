@@ -1,9 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import {
-  useParams,
-  useSearchParams,
-  useOutletContext,
-} from 'react-router-dom';
+import { useParams, useSearchParams, useOutletContext } from 'react-router-dom';
 import { useRouterNavigation } from '../../hooks/useRouterNavigation';
 import { TableView } from '../views/TableView';
 import { DashboardHeader } from '../DashboardHeader';

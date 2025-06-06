@@ -44,7 +44,9 @@ export const MetricCard: React.FC<MetricCardProps> = ({
         {value}
       </p>
       {description && (
-        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{description}</p>
+        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+          {description}
+        </p>
       )}
     </div>
   );

@@ -1,6 +1,7 @@
 # Dashboard Agent Guidelines
 
 ## Build & Serve
+
 - Install dependencies with `npm install`.
 - Start the dev server with `npm run dev`.
 - Build for production with `npm run build`.
@@ -10,9 +11,11 @@
 - Always run `just ci` after any changes.
 
 ## Code Style
+
 - Use TypeScript and keep components typed.
 - Format using `prettier`.
 - Avoid lines with trailing whitespace (spaces or tabs)
 
 ## Git
+
 - Use Conventional Commits for commits.

@@ -14,7 +14,7 @@ import {
   fetchBatchPostingTimes,
   fetchProveTimes,
   fetchVerifyTimes,
-  fetchBlockTransactions,
+  fetchAllBlockTransactions,
   fetchL2BlockTimes,
   fetchL2GasUsed,
   fetchSequencerDistribution,
@@ -41,6 +41,7 @@ export interface TableConfig {
   chart?: (data: any[]) => React.ReactNode;
   supportsPagination?: boolean;
   urlKey: string;
+  useUnlimitedData?: boolean;
 }
 
 export const TABLE_CONFIGS: Record<string, TableConfig> = {
@@ -109,7 +110,6 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
       })),
     urlKey: 'forced-inclusions',
   },
-
 
   gateways: {
     title: 'Active Sequencers',
@@ -222,7 +222,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
   'block-tx': {
     title: 'Tx Count Per L2 Block',
     description: 'Transactions included in each L2 block.',
-    fetcher: (range) => fetchBlockTransactions(range, 50),
+    fetcher: fetchAllBlockTransactions,
     columns: [
       { key: 'block', label: 'L2 Block Number' },
       { key: 'txs', label: 'Tx Count' },
@@ -237,6 +237,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
       );
       return React.createElement(BlockTxChart, { data, barColor: '#4E79A7' });
     },
+    useUnlimitedData: true,
     urlKey: 'block-tx',
   },
 
@@ -262,6 +263,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
         seconds: true,
       });
     },
+    useUnlimitedData: true,
     urlKey: 'l2-block-times',
   },
 
@@ -285,6 +287,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
         lineColor: '#E573B5',
       });
     },
+    useUnlimitedData: true,
     urlKey: 'l2-gas-used',
   },
 

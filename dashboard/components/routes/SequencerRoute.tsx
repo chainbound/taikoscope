@@ -18,12 +18,9 @@ interface DashboardContextType {
 export const SequencerRoute: React.FC = () => {
   const { address } = useParams<{ address: string }>();
   const { navigateToTable, navigateToDashboard } = useRouterNavigation();
-  
-  const {
-    setSelectedSequencer,
-    sequencerList,
-    timeRange,
-  } = useOutletContext<DashboardContextType>();
+
+  const { setSelectedSequencer, sequencerList, timeRange } =
+    useOutletContext<DashboardContextType>();
 
   useEffect(() => {
     if (address && sequencerList.includes(address)) {
@@ -32,7 +29,14 @@ export const SequencerRoute: React.FC = () => {
     } else {
       navigateToDashboard();
     }
-  }, [address, sequencerList, setSelectedSequencer, navigateToTable, navigateToDashboard, timeRange]);
+  }, [
+    address,
+    sequencerList,
+    setSelectedSequencer,
+    navigateToTable,
+    navigateToDashboard,
+    timeRange,
+  ]);
 
   return <div>Redirecting...</div>;
 };
