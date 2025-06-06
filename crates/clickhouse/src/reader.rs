@@ -933,7 +933,7 @@ impl ClickhouseReader {
         if let Some(addr) = sequencer {
             query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
         }
-        query.push_str(" ORDER BY l2_block_number DESC");
+        query.push_str(" ORDER BY l2_block_number ASC");
 
         let rows = self.execute::<RawRow>(&query).await?;
         Ok(rows
