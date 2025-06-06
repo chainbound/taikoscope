@@ -1,4 +1,5 @@
 import React, { Suspense } from 'react';
+import { LazyMount } from './LazyMount';
 
 type ChartCardProps = React.PropsWithChildren<{
   title: string;
@@ -29,15 +30,17 @@ export const ChartCard: React.FC<ChartCardProps> = ({
         )}
       </div>
       <div className="h-64 md:h-80 w-full relative">
-        <Suspense
-          fallback={
-            <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
-              Loading...
-            </div>
-          }
-        >
-          {children}
-        </Suspense>
+        <LazyMount>
+          <Suspense
+            fallback={
+              <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
+                Loading...
+              </div>
+            }
+          >
+            {children}
+          </Suspense>
+        </LazyMount>
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center bg-white/60 dark:bg-gray-800/60">
             <span className="text-gray-500 dark:text-gray-400">Loading...</span>
