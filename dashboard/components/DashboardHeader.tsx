@@ -116,7 +116,7 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
             ${currentTimeRange === range ? 'bg-white dark:bg-gray-800 shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'}`}
           style={currentTimeRange === range ? { color: TAIKO_PINK } : undefined}
         >
-          {range.toUpperCase()}
+          {range}
         </button>
       ))}
     </div>

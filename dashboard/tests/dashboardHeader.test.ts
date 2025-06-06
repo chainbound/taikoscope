@@ -16,19 +16,19 @@ describe('DashboardHeader', () => {
           null,
           React.createElement(DashboardHeader, {
             timeRange: '1h',
-            onTimeRangeChange: () => {},
+            onTimeRangeChange: () => { },
             refreshRate: 60000,
-            onRefreshRateChange: () => {},
+            onRefreshRateChange: () => { },
             lastRefresh: Date.now(),
-            onManualRefresh: () => {},
+            onManualRefresh: () => { },
           }),
         ),
       ),
     );
     expect(html.includes('Taiko Masaya Testnet')).toBe(true);
-    expect(html.includes('15M')).toBe(true);
-    expect(html.includes('1H')).toBe(true);
-    expect(html.includes('24H')).toBe(true);
+    expect(html.includes('15m')).toBe(true);
+    expect(html.includes('1h')).toBe(true);
+    expect(html.includes('24h')).toBe(true);
     expect(html.includes('Refresh')).toBe(true);
     expect(html.includes('Status')).toBe(true);
     expect(html.includes('Economics')).toBe(false);
