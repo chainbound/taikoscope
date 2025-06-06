@@ -37,6 +37,8 @@ pub const DEFAULT_MAX_REQUESTS: u64 = 1000;
 pub const DEFAULT_RATE_PERIOD: StdDuration = StdDuration::from_secs(60);
 /// Maximum number of records returned by the `/block-transactions` endpoint.
 pub const MAX_BLOCK_TRANSACTIONS_LIMIT: u64 = 1000;
+/// Maximum number of records returned by the paginated `/l2-gas-used` endpoint.
+pub const MAX_L2_GAS_USED_LIMIT: u64 = 1000;
 
 /// `OpenAPI` documentation structure
 #[derive(Debug, OpenApi)]
@@ -79,6 +81,7 @@ pub const MAX_BLOCK_TRANSACTIONS_LIMIT: u64 = 1000;
             RangeQuery,
             SequencerBlocksQuery,
             BlockTransactionsQuery,
+            L2GasUsedQuery,
             L2HeadResponse,
             L1HeadResponse,
             L2HeadBlockResponse,
@@ -228,6 +231,15 @@ struct BlockTransactionsQuery {
     created_lt: Option<i64>,
     #[serde(rename = "created[lte]")]
     created_lte: Option<i64>,
+}
+
+#[derive(Debug, Deserialize, ToSchema, IntoParams)]
+struct L2GasUsedQuery {
+    range: Option<String>,
+    limit: Option<u64>,
+    starting_after: Option<u64>,
+    ending_before: Option<u64>,
+    address: Option<String>,
 }
 
 fn range_duration(range: &Option<String>) -> ChronoDuration {
@@ -1268,7 +1280,7 @@ async fn l2_block_times(
     get,
     path = "/l2-gas-used",
     params(
-        RangeQuery
+        L2GasUsedQuery
     ),
     responses(
         (status = 200, description = "L2 gas used", body = L2GasUsedResponse),
@@ -1277,9 +1289,14 @@ async fn l2_block_times(
     tag = "taikoscope"
 )]
 async fn l2_gas_used(
-    Query(params): Query<RangeQuery>,
+    Query(params): Query<L2GasUsedQuery>,
     State(state): State<ApiState>,
 ) -> Result<Json<L2GasUsedResponse>, ErrorResponse> {
+    let since = Utc::now() - range_duration(&params.range);
+    let limit = params.limit.unwrap_or(50).clamp(1, MAX_L2_GAS_USED_LIMIT);
+    if params.starting_after.is_some() && params.ending_before.is_some() {
+        tracing::warn!("starting_after and ending_before are mutually exclusive");
+    }
     let address = params.address.as_ref().and_then(|addr| match addr.parse::<Address>() {
         Ok(a) => Some(AddressBytes::from(a)),
         Err(e) => {
@@ -1289,7 +1306,13 @@ async fn l2_gas_used(
     });
     let blocks = match state
         .client
-        .get_l2_gas_used(address, TimeRange::from_duration(range_duration(&params.range)))
+        .get_l2_gas_used_paginated(
+            since,
+            limit,
+            params.starting_after,
+            params.ending_before,
+            address,
+        )
         .await
     {
         Ok(rows) => rows,

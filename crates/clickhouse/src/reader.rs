@@ -1820,6 +1820,54 @@ impl ClickhouseReader {
             .collect())
     }
 
+    /// Get the gas used for each L2 block within the given range using cursor-based
+    /// pagination. Results are returned in ascending order by block number and the
+    /// first row is skipped on the initial page to avoid partial data at the range
+    /// boundary.
+    pub async fn get_l2_gas_used_paginated(
+        &self,
+        since: DateTime<Utc>,
+        limit: u64,
+        starting_after: Option<u64>,
+        ending_before: Option<u64>,
+        sequencer: Option<AddressBytes>,
+    ) -> Result<Vec<L2GasUsedRow>> {
+        #[derive(Row, Deserialize)]
+        struct RawRow {
+            l2_block_number: u64,
+            gas_used: u64,
+        }
+
+        let mut query = format!(
+            "SELECT l2_block_number, toUInt64(sum_gas_used) AS gas_used \
+             FROM {db}.l2_head_events \
+             WHERE block_ts >= {since}",
+            since = since.timestamp(),
+            db = self.db_name,
+        );
+        if let Some(addr) = sequencer {
+            query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
+        }
+        if let Some(start) = starting_after {
+            query.push_str(&format!(" AND l2_block_number > {}", start));
+        }
+        if let Some(end) = ending_before {
+            query.push_str(&format!(" AND l2_block_number < {}", end));
+        }
+
+        let skip_first = starting_after.is_none() && ending_before.is_none();
+        let query_limit = if skip_first { limit + 1 } else { limit };
+
+        query.push_str(" ORDER BY l2_block_number");
+        query.push_str(&format!(" LIMIT {}", query_limit));
+
+        let rows = self.execute::<RawRow>(&query).await?;
+        let iter = rows.into_iter().skip(if skip_first { 1 } else { 0 });
+        Ok(iter
+            .map(|r| L2GasUsedRow { l2_block_number: r.l2_block_number, gas_used: r.gas_used })
+            .collect())
+    }
+
     /// Get the transactions per second for each L2 block within the given range
     pub async fn get_l2_tps(
         &self,
