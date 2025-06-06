@@ -281,8 +281,13 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     columns: [
       { key: 'name', label: 'Sequencer' },
       { key: 'value', label: 'Blocks' },
+      { key: 'tps', label: 'TPS' },
     ],
-    mapData: (data) => data as Record<string, string | number>[],
+    mapData: (data) =>
+      (data as any[]).map((d) => ({
+        ...d,
+        tps: d.tps ? d.tps.toFixed(2) : 'N/A',
+      })),
     supportsPagination: true,
     urlKey: 'sequencer-dist',
   },
