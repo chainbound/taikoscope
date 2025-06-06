@@ -120,12 +120,12 @@ impl ClickhouseReader {
         result.map_err(Into::into)
     }
 
-    /// SQL join to exclude blocks that were later reorged.
-    fn reorg_join(&self, alias: &str) -> String {
+    /// SQL filter to exclude blocks that were later reorged, using a correlated subquery.
+    /// This is used instead of a JOIN with range conditions, which is not supported well
+    /// in all `ClickHouse` versions.
+    fn reorg_filter(&self, alias: &str) -> String {
         format!(
-            "LEFT JOIN {db}.l2_reorgs r ON {alias}.l2_block_number >= r.l2_block_number \
-                 AND {alias}.l2_block_number <= r.l2_block_number + r.depth \
-                 AND {alias}.inserted_at < r.inserted_at",
+            "AND NOT EXISTS (SELECT 1 FROM {db}.l2_reorgs r WHERE {alias}.l2_block_number >= r.l2_block_number AND {alias}.l2_block_number <= r.l2_block_number + r.depth AND {alias}.inserted_at < r.inserted_at)",
             db = self.db_name,
             alias = alias
         )
@@ -522,11 +522,10 @@ impl ClickhouseReader {
     ) -> Result<Vec<SequencerDistributionRow>> {
         let query = format!(
             "SELECT sequencer, count(DISTINCT h.l2_block_number) AS blocks FROM {db}.l2_head_events h \
-             {join} \
-             WHERE h.block_ts > {} AND r.l2_block_number IS NULL \
+             WHERE h.block_ts > {} {filter} \
              GROUP BY sequencer ORDER BY blocks DESC",
             since.timestamp(),
-            join = self.reorg_join("h"),
+            filter = self.reorg_filter("h"),
             db = self.db_name,
         );
 
@@ -541,11 +540,10 @@ impl ClickhouseReader {
     ) -> Result<Vec<SequencerBlockRow>> {
         let query = format!(
             "SELECT sequencer, h.l2_block_number FROM {db}.l2_head_events h \
-             {join} \
-             WHERE h.block_ts > {} AND r.l2_block_number IS NULL \
+             WHERE h.block_ts > {} {filter} \
              ORDER BY sequencer, h.l2_block_number DESC",
             since.timestamp(),
-            join = self.reorg_join("h"),
+            filter = self.reorg_filter("h"),
             db = self.db_name,
         );
 
@@ -561,10 +559,9 @@ impl ClickhouseReader {
     ) -> Result<Vec<BlockTransactionRow>> {
         let mut query = format!(
             "SELECT sequencer, h.l2_block_number, sum_tx FROM {db}.l2_head_events h \
-             {join} \
-             WHERE h.block_ts >= {} AND r.l2_block_number IS NULL",
+             WHERE h.block_ts >= {} {filter}",
             since.timestamp(),
-            join = self.reorg_join("h"),
+            filter = self.reorg_filter("h"),
             db = self.db_name,
         );
         if let Some(addr) = sequencer {
@@ -588,10 +585,9 @@ impl ClickhouseReader {
     ) -> Result<Vec<BlockTransactionRow>> {
         let mut query = format!(
             "SELECT sequencer, h.l2_block_number, sum_tx FROM {db}.l2_head_events h \
-             {join} \
-             WHERE h.block_ts >= {} AND r.l2_block_number IS NULL",
+             WHERE h.block_ts >= {} {filter}",
             since.timestamp(),
-            join = self.reorg_join("h"),
+            filter = self.reorg_filter("h"),
             db = self.db_name,
         );
         if let Some(addr) = sequencer {
@@ -738,9 +734,8 @@ impl ClickhouseReader {
                     toUInt64(max(h.block_ts) * 1000) AS max_ts, \
                     count() as cnt \
              FROM {db}.l2_head_events h \
-             {join} \
-             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL 1 HOUR) AND r.l2_block_number IS NULL",
-            join = self.reorg_join("h"),
+             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL 1 HOUR) {filter}",
+            filter = self.reorg_filter("h"),
             db = self.db_name
         );
         if let Some(addr) = sequencer {
@@ -778,9 +773,8 @@ impl ClickhouseReader {
                     toUInt64(max(h.block_ts) * 1000) AS max_ts, \
                     count() as cnt \
              FROM {db}.l2_head_events h \
-             {join} \
-             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL 24 HOUR) AND r.l2_block_number IS NULL",
-            join = self.reorg_join("h"),
+             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL 24 HOUR) {filter}",
+            filter = self.reorg_filter("h"),
             db = self.db_name
         );
         if let Some(addr) = sequencer {
@@ -818,9 +812,8 @@ impl ClickhouseReader {
                     toUInt64(max(h.block_ts) * 1000) AS max_ts, \
                     count() as cnt \
              FROM {db}.l2_head_events h \
-             {join} \
-             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL 7 DAY) AND r.l2_block_number IS NULL",
-            join = self.reorg_join("h"),
+             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL 7 DAY) {filter}",
+            filter = self.reorg_filter("h"),
             db = self.db_name
         );
         if let Some(addr) = sequencer {
@@ -859,10 +852,9 @@ impl ClickhouseReader {
                     toUInt64(max(h.block_ts) * 1000) AS max_ts, \
                     count() as cnt \
              FROM {db}.l2_head_events h \
-             {join} \
-             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) AND r.l2_block_number IS NULL",
+             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) {filter}",
             interval = range.interval(),
-            join = self.reorg_join("h"),
+            filter = self.reorg_filter("h"),
             db = self.db_name,
         );
         if let Some(addr) = sequencer {
@@ -1542,9 +1534,8 @@ impl ClickhouseReader {
                     toUInt64OrNull(toString((h.block_ts - lagInFrame(h.block_ts) OVER (ORDER BY h.l2_block_number)) * 1000)) \
                         AS ms_since_prev_block \
              FROM {db}.l2_head_events h \
-             {join} \
-             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL 1 HOUR) AND r.l2_block_number IS NULL",
-            join = self.reorg_join("h"),
+             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL 1 HOUR) {filter}",
+            filter = self.reorg_filter("h"),
             db = self.db_name
         );
         if let Some(addr) = sequencer {
@@ -1583,9 +1574,8 @@ impl ClickhouseReader {
                     toUInt64OrNull(toString((h.block_ts - lagInFrame(h.block_ts) OVER (ORDER BY h.l2_block_number)) * 1000)) \
                         AS ms_since_prev_block \
              FROM {db}.l2_head_events h \
-             {join} \
-             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL 24 HOUR) AND r.l2_block_number IS NULL",
-            join = self.reorg_join("h"),
+             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL 24 HOUR) {filter}",
+            filter = self.reorg_filter("h"),
             db = self.db_name
         );
         if let Some(addr) = sequencer {
@@ -1624,9 +1614,8 @@ impl ClickhouseReader {
                     toUInt64OrNull(toString((h.block_ts - lagInFrame(h.block_ts) OVER (ORDER BY h.l2_block_number)) * 1000)) \
                         AS ms_since_prev_block \
              FROM {db}.l2_head_events h \
-             {join} \
-             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL 7 DAY) AND r.l2_block_number IS NULL",
-            join = self.reorg_join("h"),
+             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL 7 DAY) {filter}",
+            filter = self.reorg_filter("h"),
             db = self.db_name
         );
         if let Some(addr) = sequencer {
@@ -1666,10 +1655,9 @@ impl ClickhouseReader {
                     toUInt64OrNull(toString((h.block_ts - lagInFrame(h.block_ts) OVER (ORDER BY h.l2_block_number)) * 1000)) \
                         AS ms_since_prev_block \
              FROM {db}.l2_head_events h \
-             {join} \
-             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) AND r.l2_block_number IS NULL",
+             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) {filter}",
             interval = range.interval(),
-            join = self.reorg_join("h"),
+            filter = self.reorg_filter("h"),
             db = self.db_name,
         );
         if let Some(addr) = sequencer {
@@ -1708,10 +1696,9 @@ impl ClickhouseReader {
                     toUInt64(max(h.block_ts)) AS max_ts, \
                     sum(sum_tx) AS tx_sum \
              FROM {db}.l2_head_events h \
-             {join} \
-             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) AND r.l2_block_number IS NULL",
+             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) {filter}",
             interval = range.interval(),
-            join = self.reorg_join("h"),
+            filter = self.reorg_filter("h"),
             db = self.db_name
         );
         if let Some(addr) = sequencer {
@@ -1770,10 +1757,8 @@ impl ClickhouseReader {
         let mut query = format!(
             "SELECT h.l2_block_number, toUInt64(sum_gas_used) AS gas_used \
              FROM {db}.l2_head_events h \
-             {join} \
-             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL 1 HOUR) \
-               AND r.l2_block_number IS NULL",
-            join = self.reorg_join("h"),
+             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL 1 HOUR) {filter}",
+            filter = self.reorg_filter("h"),
             db = self.db_name
         );
         if let Some(addr) = sequencer {
@@ -1802,10 +1787,8 @@ impl ClickhouseReader {
         let mut query = format!(
             "SELECT h.l2_block_number, toUInt64(sum_gas_used) AS gas_used \
              FROM {db}.l2_head_events h \
-             {join} \
-             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL 24 HOUR) \
-               AND r.l2_block_number IS NULL",
-            join = self.reorg_join("h"),
+             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL 24 HOUR) {filter}",
+            filter = self.reorg_filter("h"),
             db = self.db_name
         );
         if let Some(addr) = sequencer {
@@ -1834,10 +1817,8 @@ impl ClickhouseReader {
         let mut query = format!(
             "SELECT h.l2_block_number, toUInt64(sum_gas_used) AS gas_used \
              FROM {db}.l2_head_events h \
-             {join} \
-             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL 7 DAY) \
-               AND r.l2_block_number IS NULL",
-            join = self.reorg_join("h"),
+             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL 7 DAY) {filter}",
+            filter = self.reorg_filter("h"),
             db = self.db_name
         );
         if let Some(addr) = sequencer {
@@ -1867,11 +1848,9 @@ impl ClickhouseReader {
         let mut query = format!(
             "SELECT h.l2_block_number, toUInt64(sum_gas_used) AS gas_used \
              FROM {db}.l2_head_events h \
-             {join} \
-             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
-               AND r.l2_block_number IS NULL",
+             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) {filter}",
             interval = range.interval(),
-            join = self.reorg_join("h"),
+            filter = self.reorg_filter("h"),
             db = self.db_name,
         );
         if let Some(addr) = sequencer {
@@ -1904,10 +1883,9 @@ impl ClickhouseReader {
                     toUInt64OrNull(toString((h.block_ts - lagInFrame(h.block_ts) OVER (ORDER BY h.l2_block_number)) * 1000)) \
                         AS ms_since_prev_block \
              FROM {db}.l2_head_events h \
-             {join} \
-             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) AND r.l2_block_number IS NULL",
+             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) {filter}",
             interval = range.interval(),
-            join = self.reorg_join("h"),
+            filter = self.reorg_filter("h"),
             db = self.db_name,
         );
         if let Some(addr) = sequencer {
@@ -1969,10 +1947,9 @@ impl ClickhouseReader {
         let mut query = format!(
             "SELECT sum(sum_priority_fee + toUInt128(sum_base_fee * 3 / 4)) AS total \
              FROM {db}.l2_head_events h \
-             {join} \
-             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) AND r.l2_block_number IS NULL",
+             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) {filter}",
             interval = range.interval(),
-            join = self.reorg_join("h"),
+            filter = self.reorg_filter("h"),
             db = self.db_name
         );
         if let Some(addr) = sequencer {
@@ -2721,5 +2698,96 @@ mod tests {
 
         let result = ch.get_last_l2_head_time().await;
         assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_reorg_filter_sql_generation() {
+        let ch = ClickhouseReader::new(
+            Url::parse("http://localhost:8123").unwrap(),
+            "test_db".into(),
+            String::new(),
+            String::new(),
+        )
+        .unwrap();
+        let filter = ch.reorg_filter("h");
+        let expected = "AND NOT EXISTS (SELECT 1 FROM test_db.l2_reorgs r WHERE h.l2_block_number >= r.l2_block_number AND h.l2_block_number <= r.l2_block_number + r.depth AND h.inserted_at < r.inserted_at)";
+        assert_eq!(filter, expected);
+    }
+
+    #[tokio::test]
+    async fn test_reorg_filter_with_different_params() {
+        let ch = ClickhouseReader::new(
+            Url::parse("http://localhost:8123").unwrap(),
+            "prod".into(),
+            String::new(),
+            String::new(),
+        )
+        .unwrap();
+        let filter = ch.reorg_filter("events_table");
+        let expected = "AND NOT EXISTS (SELECT 1 FROM prod.l2_reorgs r WHERE events_table.l2_block_number >= r.l2_block_number AND events_table.l2_block_number <= r.l2_block_number + r.depth AND events_table.inserted_at < r.inserted_at)";
+        assert_eq!(filter, expected);
+    }
+
+    #[tokio::test]
+    async fn test_reorg_filter_edge_cases() {
+        // Test with a different alias
+        let ch = ClickhouseReader::new(
+            Url::parse("http://localhost:8123").unwrap(),
+            "db".into(),
+            String::new(),
+            String::new(),
+        )
+        .unwrap();
+        let filter_t1 = ch.reorg_filter("t1");
+        let expected_t1 = "AND NOT EXISTS (SELECT 1 FROM db.l2_reorgs r WHERE t1.l2_block_number >= r.l2_block_number AND t1.l2_block_number <= r.l2_block_number + r.depth AND t1.inserted_at < r.inserted_at)";
+        assert_eq!(filter_t1, expected_t1);
+
+        // Test with an alias containing special characters that are valid in SQL
+        let filter_special = ch.reorg_filter("\"my table\"");
+        let expected_special = "AND NOT EXISTS (SELECT 1 FROM db.l2_reorgs r WHERE \"my table\".l2_block_number >= r.l2_block_number AND \"my table\".l2_block_number <= r.l2_block_number + r.depth AND \"my table\".inserted_at < r.inserted_at)";
+        assert_eq!(filter_special, expected_special);
+    }
+
+    #[tokio::test]
+    async fn test_gas_used_query_with_reorg_filter() {
+        let ch = ClickhouseReader::new(
+            Url::parse("http://localhost:8123").unwrap(),
+            "my_db".into(),
+            String::new(),
+            String::new(),
+        )
+        .unwrap();
+        let range = TimeRange::LastHour;
+        let sequencer = Some(AddressBytes::from([1u8; 20]));
+
+        // Recreate the query logic from `get_l2_gas_used`
+        let mut query = format!(
+            "SELECT h.l2_block_number, toUInt64(sum_gas_used) AS gas_used \
+             FROM {db}.l2_head_events h \
+             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) {filter}",
+            interval = range.interval(),
+            filter = ch.reorg_filter("h"),
+            db = ch.db_name,
+        );
+        if let Some(addr) = sequencer {
+            query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
+        }
+        query.push_str(" ORDER BY l2_block_number DESC");
+
+        let expected_filter = "AND NOT EXISTS (SELECT 1 FROM my_db.l2_reorgs r WHERE h.l2_block_number >= r.l2_block_number AND h.l2_block_number <= r.l2_block_number + r.depth AND h.inserted_at < r.inserted_at)";
+        let expected_query = format!(
+            "SELECT h.l2_block_number, toUInt64(sum_gas_used) AS gas_used \
+             FROM my_db.l2_head_events h \
+             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL 1 HOUR) {} \
+             AND sequencer = unhex('0101010101010101010101010101010101010101') \
+             ORDER BY l2_block_number DESC",
+            expected_filter
+        );
+
+        // Normalize whitespace for comparison
+        let normalized_query = query.split_whitespace().collect::<Vec<_>>().join(" ");
+        let normalized_expected = expected_query.split_whitespace().collect::<Vec<_>>().join(" ");
+
+        assert_eq!(normalized_query, normalized_expected);
     }
 }
