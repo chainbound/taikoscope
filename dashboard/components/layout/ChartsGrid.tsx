@@ -116,7 +116,7 @@ export const ChartsGrid: React.FC<ChartsGridProps> = ({
         <BlockTxChart
           key={timeRange}
           data={chartsData.blockTxData}
-          barColor="#4E79A7"
+          lineColor="#4E79A7"
         />
       </ChartCard>
       <ChartCard
