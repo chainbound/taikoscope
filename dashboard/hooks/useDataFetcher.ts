@@ -3,6 +3,7 @@ import useSWR from 'swr';
 import { TimeRange } from '../types';
 import { useSearchParams } from 'react-router-dom';
 import { TableViewState } from './useTableActions';
+import { useErrorHandler } from './useErrorHandler';
 
 interface UseDataFetcherProps {
   timeRange: TimeRange;
@@ -27,6 +28,7 @@ export const useDataFetcher = ({
   updateLastRefresh,
 }: UseDataFetcherProps) => {
   const [searchParams] = useSearchParams();
+  const { setErrorMessage } = useErrorHandler();
   const [isTimeRangeChanging, setIsTimeRangeChanging] = useState(false);
   const [lastFetchedTimeRange, setLastFetchedTimeRange] =
     useState<TimeRange | null>(null);
@@ -53,6 +55,10 @@ export const useDataFetcher = ({
         setIsTimeRangeChanging(false);
         setLastFetchedTimeRange(timeRange);
       },
+      onError: () => {
+        setIsTimeRangeChanging(false);
+        setErrorMessage('Failed to fetch dashboard data. Please try again.');
+      },
     },
   );
 
@@ -69,8 +75,13 @@ export const useDataFetcher = ({
 
   const fetchData = useCallback(async () => {
     setIsTimeRangeChanging(true);
-    await mutate();
-  }, [mutate]);
+    try {
+      await mutate();
+    } catch {
+      setIsTimeRangeChanging(false);
+      setErrorMessage('Failed to fetch dashboard data. Please try again.');
+    }
+  }, [mutate, setErrorMessage]);
 
   const handleManualRefresh = useCallback(() => {
     if (tableView && tableView.onRefresh) {

@@ -4,6 +4,8 @@ import { RefreshCountdown } from './RefreshCountdown';
 import { TAIKO_PINK } from '../theme';
 import { isValidRefreshRate } from '../utils';
 import { useRouterNavigation } from '../hooks/useRouterNavigation';
+import { useErrorHandler } from '../hooks/useErrorHandler';
+import { showToast } from '../utils/toast';
 
 interface ImportMetaEnv {
   readonly VITE_NETWORK_NAME?: string;
@@ -38,6 +40,12 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   isTimeRangeChanging,
 }) => {
   const { navigateToDashboard } = useRouterNavigation();
+  const { errorMessage } = useErrorHandler();
+  React.useEffect(() => {
+    if (errorMessage) {
+      showToast(errorMessage);
+    }
+  }, [errorMessage]);
   return (
     <header className="flex flex-col md:flex-row justify-between items-center pb-4 border-b border-gray-200 dark:border-gray-700">
       <div className="flex items-baseline space-x-4">
