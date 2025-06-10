@@ -3,6 +3,8 @@ use alloy_primitives::Address;
 use clap::Parser;
 use url::Url;
 
+/// Default origins allowed to access the API.
+pub const DEFAULT_ALLOWED_ORIGINS: &str = "https://taikoscope.xyz,https://www.taikoscope.xyz";
 /// Clickhouse database configuration options
 #[derive(Debug, Clone, Parser)]
 pub struct ClickhouseOpts {
@@ -100,8 +102,13 @@ pub struct ApiOpts {
     /// API server port
     #[clap(long = "api-port", env = "API_PORT", default_value = "3000")]
     pub port: u16,
-    /// Additional allowed CORS origins (comma separated)
-    #[clap(long = "allowed-origin", env = "ALLOWED_ORIGINS", value_delimiter = ',')]
+    /// Allowed CORS origins (comma separated)
+    #[clap(
+        long = "allowed-origin",
+        env = "ALLOWED_ORIGINS",
+        value_delimiter = ',',
+        default_value = DEFAULT_ALLOWED_ORIGINS
+    )]
     pub allowed_origins: Vec<String>,
 
     /// Maximum number of requests allowed during the rate limiting period
@@ -147,7 +154,7 @@ pub struct Opts {
 
 #[cfg(test)]
 mod tests {
-    use super::Opts;
+    use super::{DEFAULT_ALLOWED_ORIGINS, Opts};
     use clap::Parser;
 
     #[test]
@@ -206,7 +213,10 @@ mod tests {
         assert_eq!(opts.instatus.batch_proof_timeout_secs, 10800);
         assert_eq!(opts.api.host, "127.0.0.1");
         assert_eq!(opts.api.port, 3000);
-        assert!(opts.api.allowed_origins.is_empty());
+        assert_eq!(
+            opts.api.allowed_origins,
+            DEFAULT_ALLOWED_ORIGINS.split(',').map(|s| s.to_owned()).collect::<Vec<_>>()
+        );
         assert_eq!(opts.api.rate_limit_max_requests, 1000);
         assert_eq!(opts.api.rate_limit_period_secs, 60);
         assert!(!opts.reset_db);

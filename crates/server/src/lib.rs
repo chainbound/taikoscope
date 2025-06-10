@@ -15,23 +15,18 @@ use tower_http::{
 };
 use tracing::{Level, info};
 
-/// Allowed CORS origins for dashboard requests.
-const ALLOWED_ORIGINS: &[&str] = &["https://taikoscope.xyz", "https://www.taikoscope.xyz"];
-
 /// Version prefix for all API routes.
 pub const API_VERSION: &str = "v1";
 
 /// Build the API router with CORS and tracing layers.
-pub fn router(state: ApiState, extra_origins: Vec<String>) -> Router {
-    let extra = Arc::new(extra_origins);
+pub fn router(state: ApiState, allowed_origins: Vec<String>) -> Router {
+    let allowed = Arc::new(allowed_origins);
     let cors = CorsLayer::new()
         .allow_origin(AllowOrigin::predicate({
-            let extra = Arc::clone(&extra);
+            let allowed = Arc::clone(&allowed);
             move |origin: &HeaderValue, _| match origin.to_str() {
                 Ok(origin) => {
-                    ALLOWED_ORIGINS.contains(&origin) ||
-                        origin.ends_with(".vercel.app") ||
-                        extra.iter().any(|o| o == origin)
+                    allowed.iter().any(|o| o == origin) || origin.ends_with(".vercel.app")
                 }
                 Err(_) => false,
             }
@@ -51,12 +46,12 @@ pub fn router(state: ApiState, extra_origins: Vec<String>) -> Router {
 pub async fn run(
     addr: SocketAddr,
     client: ClickhouseReader,
-    extra_origins: Vec<String>,
+    allowed_origins: Vec<String>,
     max_requests: u64,
     rate_period: Duration,
 ) -> Result<()> {
     let state = ApiState::new(client, max_requests, rate_period);
-    let app = router(state, extra_origins);
+    let app = router(state, allowed_origins);
 
     info!("Starting API server on {}", addr);
     let listener = tokio::net::TcpListener::bind(addr).await?;
@@ -87,12 +82,12 @@ mod tests {
         block_ts: u64,
     }
 
-    fn build_app(mock_url: &str, extra: Vec<String>) -> Router {
+    fn build_app(mock_url: &str, allowed: Vec<String>) -> Router {
         let url = Url::parse(mock_url).unwrap();
         let client =
             ClickhouseReader::new(url, "db".to_owned(), "user".into(), "pass".into()).unwrap();
         let state = ApiState::new(client, DEFAULT_MAX_REQUESTS, DEFAULT_RATE_PERIOD);
-        router(state, extra)
+        router(state, allowed)
     }
 
     async fn send_request(app: Router, origin: &str) -> (StatusCode, Value, Option<String>) {
@@ -121,7 +116,10 @@ mod tests {
     async fn allows_default_origin() {
         let mock = Mock::new();
         mock.add(handlers::provide(vec![MaxRow { block_ts: 1 }]));
-        let app = build_app(mock.url(), vec![]);
+        let app = build_app(
+            mock.url(),
+            config::DEFAULT_ALLOWED_ORIGINS.split(',').map(|s| s.to_owned()).collect(),
+        );
         let (status, body, cors) = send_request(app, "https://taikoscope.xyz").await;
         let expected = json!({
             "last_l2_head_time": Utc.timestamp_opt(1, 0).single().unwrap().to_rfc3339()
@@ -135,7 +133,10 @@ mod tests {
     async fn allows_extra_origin() {
         let mock = Mock::new();
         mock.add(handlers::provide(vec![MaxRow { block_ts: 1 }]));
-        let app = build_app(mock.url(), vec!["https://example.com".to_owned()]);
+        let mut origins =
+            config::DEFAULT_ALLOWED_ORIGINS.split(',').map(|s| s.to_owned()).collect::<Vec<_>>();
+        origins.push("https://example.com".to_owned());
+        let app = build_app(mock.url(), origins);
         let (status, _, cors) = send_request(app, "https://example.com").await;
         assert_eq!(status, StatusCode::OK);
         assert_eq!(cors.as_deref(), Some("https://example.com"));
@@ -145,7 +146,10 @@ mod tests {
     async fn denies_other_origin() {
         let mock = Mock::new();
         mock.add(handlers::provide(vec![MaxRow { block_ts: 1 }]));
-        let app = build_app(mock.url(), vec![]);
+        let app = build_app(
+            mock.url(),
+            config::DEFAULT_ALLOWED_ORIGINS.split(',').map(|s| s.to_owned()).collect(),
+        );
         let (status, _, cors) = send_request(app, "https://notallowed.com").await;
         assert_eq!(status, StatusCode::OK);
         assert!(cors.is_none());
