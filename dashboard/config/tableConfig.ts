@@ -149,18 +149,6 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
         value: blockLink(d.value as number),
         timestamp: d.timestamp,
       })),
-    chart: (data) => {
-      const BlockTimeChart = React.lazy(() =>
-        import('../components/BlockTimeChart').then((m) => ({
-          default: m.BlockTimeChart,
-        })),
-      );
-      return React.createElement(BlockTimeChart, {
-        data,
-        lineColor: '#FF9DA7',
-        seconds: true,
-      });
-    },
     urlKey: 'batch-posting-cadence',
   },
 
