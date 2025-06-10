@@ -43,8 +43,9 @@ export const useTimeRangeSync = () => {
       }
 
       // Use replace to avoid adding history entries for time range changes
+      // Only update query parameters without forcing navigation to '/'
       navigate(
-        { pathname: '/', search: newParams.toString() },
+        { search: newParams.toString() },
         { replace: true },
       );
     },
