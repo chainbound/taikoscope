@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import { TimeRange } from '../types';
 import { TABLE_CONFIGS } from '../config/tableConfig';
 import { getSequencerAddress } from '../sequencerConfig';
@@ -46,6 +47,7 @@ export const useTableActions = (
   const [tableLoading, setTableLoading] = useState<boolean>(false);
   const [seqDistTxPage, setSeqDistTxPage] = useState<number>(0);
   const { navigateToTable } = useRouterNavigation();
+  const location = useLocation();
 
   const setTableUrl = useCallback(
     (
@@ -114,6 +116,13 @@ export const useTableActions = (
     ) => {
       const config = TABLE_CONFIGS[tableKey];
       if (!config) return;
+
+      const onTableRoute = location.pathname.startsWith('/table/');
+
+      if (!onTableRoute) {
+        setTableUrl(config.urlKey, { range, ...extraParams });
+        return;
+      }
 
       setTableLoading(true);
       setTimeRange(range);
@@ -229,6 +238,7 @@ export const useTableActions = (
       openTable,
       setTableUrl,
       setTableView,
+      location.pathname,
     ],
   );
 
