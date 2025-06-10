@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import useSWR from 'swr';
 import { TimeRange } from '../types';
 import { useSearchParams } from 'react-router-dom';
@@ -29,9 +29,6 @@ export const useDataFetcher = ({
 }: UseDataFetcherProps) => {
   const [searchParams] = useSearchParams();
   const { setErrorMessage } = useErrorHandler();
-  const [isTimeRangeChanging, setIsTimeRangeChanging] = useState(false);
-  const [lastFetchedTimeRange, setLastFetchedTimeRange] =
-    useState<TimeRange | null>(null);
 
   // Memoize the specific value we need to prevent infinite re-renders
   const viewParam = searchParams.get('view');
@@ -51,34 +48,16 @@ export const useDataFetcher = ({
       refreshInterval: Math.max(refreshRate, 60000),
       revalidateOnFocus: false,
       refreshWhenHidden: false,
-      onSuccess: () => {
-        setIsTimeRangeChanging(false);
-        setLastFetchedTimeRange(timeRange);
-      },
       onError: () => {
-        setIsTimeRangeChanging(false);
         setErrorMessage('Failed to fetch dashboard data. Please try again.');
       },
     },
   );
 
-  // Detect time range changes
-  useEffect(() => {
-    if (
-      lastFetchedTimeRange &&
-      lastFetchedTimeRange !== timeRange &&
-      !isTableView
-    ) {
-      setIsTimeRangeChanging(true);
-    }
-  }, [timeRange, lastFetchedTimeRange, isTableView]);
-
   const fetchData = useCallback(async () => {
-    setIsTimeRangeChanging(true);
     try {
       await mutate();
     } catch {
-      setIsTimeRangeChanging(false);
       setErrorMessage('Failed to fetch dashboard data. Please try again.');
     }
   }, [mutate, setErrorMessage]);
@@ -102,13 +81,13 @@ export const useDataFetcher = ({
   }, [data, updateChartsData, updateLastRefresh]);
 
   // Enhanced loading state that considers both SWR loading and time range changes
-  const isLoadingData = isLoading || isValidating || isTimeRangeChanging;
+  const isLoadingData = isLoading || isValidating;
 
   return {
     fetchData,
     handleManualRefresh,
     isLoadingData,
-    isTimeRangeChanging,
+    isTimeRangeChanging: isValidating,
     hasData: !!data,
   };
 };
