@@ -25,7 +25,11 @@ struct MaxRow {
 
 async fn spawn_server(client: ClickhouseReader) -> (SocketAddr, tokio::task::JoinHandle<()>) {
     let state = ApiState::new(client, DEFAULT_MAX_REQUESTS, DEFAULT_RATE_PERIOD);
-    let app = router(state, vec![]);
+    let allowed = config::DEFAULT_ALLOWED_ORIGINS
+        .split(',')
+        .map(|s| s.to_owned())
+        .collect();
+    let app = router(state, allowed);
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
     let handle =
