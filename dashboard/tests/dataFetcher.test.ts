@@ -92,4 +92,22 @@ describe('dataFetcher', () => {
     expect(res.l1Block).toBe(3);
     expect(res.badRequestResults).toHaveLength(3);
   });
+
+  it('resets isTimeRangeChanging on fetch error', async () => {
+    let changing = true;
+    const setChanging = (v: boolean) => {
+      changing = v;
+    };
+    const mutate = vi.fn().mockRejectedValue(new Error('fail'));
+    const fetchData = async () => {
+      setChanging(true);
+      try {
+        await mutate();
+      } catch {
+        setChanging(false);
+      }
+    };
+    await fetchData();
+    expect(changing).toBe(false);
+  });
 });

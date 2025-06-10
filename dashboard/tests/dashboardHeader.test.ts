@@ -4,6 +4,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
 import { DashboardHeader } from '../components/DashboardHeader';
 import { ThemeProvider } from '../contexts/ThemeContext';
+import { ErrorProvider } from '../hooks/useErrorHandler';
 
 describe('DashboardHeader', () => {
   it('renders time range and refresh controls', () => {
@@ -12,16 +13,20 @@ describe('DashboardHeader', () => {
         ThemeProvider,
         null,
         React.createElement(
-          MemoryRouter,
+          ErrorProvider,
           null,
-          React.createElement(DashboardHeader, {
-            timeRange: '1h',
-            onTimeRangeChange: () => { },
-            refreshRate: 60000,
-            onRefreshRateChange: () => { },
-            lastRefresh: Date.now(),
-            onManualRefresh: () => { },
-          }),
+          React.createElement(
+            MemoryRouter,
+            null,
+            React.createElement(DashboardHeader, {
+              timeRange: '1h',
+              onTimeRangeChange: () => {},
+              refreshRate: 60000,
+              onRefreshRateChange: () => {},
+              lastRefresh: Date.now(),
+              onManualRefresh: () => {},
+            }),
+          ),
         ),
       ),
     );

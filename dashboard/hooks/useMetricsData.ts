@@ -102,6 +102,7 @@ export const useMetricsData = () => {
       } catch (error) {
         console.error('Failed to fetch metrics data:', error);
         setErrorMessage('Failed to fetch dashboard data. Please try again.');
+        throw error;
       } finally {
         setLoadingMetrics(false);
       }
