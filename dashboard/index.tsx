@@ -13,16 +13,23 @@ if (!rootElement) {
 }
 
 const root = ReactDOM.createRoot(rootElement);
+
+const app = (
+  <ToastProvider>
+    <ErrorBoundary>
+      <ErrorProvider>
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
+      </ErrorProvider>
+    </ErrorBoundary>
+  </ToastProvider>
+);
+
 root.render(
-  <React.StrictMode>
-    <ToastProvider>
-      <ErrorBoundary>
-        <ErrorProvider>
-          <BrowserRouter>
-            <App />
-          </BrowserRouter>
-        </ErrorProvider>
-      </ErrorBoundary>
-    </ToastProvider>
-  </React.StrictMode>,
+  process.env.NODE_ENV === 'development' ? (
+    <React.StrictMode>{app}</React.StrictMode>
+  ) : (
+    app
+  ),
 );
