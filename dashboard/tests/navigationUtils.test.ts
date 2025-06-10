@@ -1,4 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import React from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import {
   isValidUrl,
   sanitizeUrl,
@@ -7,6 +9,21 @@ import {
   cleanSearchParams,
   safeNavigate,
 } from '../utils/navigationUtils';
+
+// Mock react-router hooks for time range sync tests
+const navSpy = vi.fn();
+let currentSearch = '?range=1h';
+
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual<typeof import('react-router-dom')>(
+    'react-router-dom',
+  );
+  return {
+    ...actual,
+    useNavigate: () => navSpy,
+    useLocation: () => ({ search: currentSearch }),
+  };
+});
 
 // Mock window.location
 const mockLocation = {
@@ -19,6 +36,8 @@ beforeEach(() => {
   vi.stubGlobal('window', {
     location: mockLocation,
   });
+  currentSearch = '?range=1h';
+  navSpy.mockClear();
 });
 
 describe('navigationUtils', () => {
@@ -191,6 +210,29 @@ describe('navigationUtils', () => {
       expect(nav).toHaveBeenCalledWith('/dashboard?view=table', {
         replace: false,
       });
+    });
+  });
+
+  describe('useTimeRangeSync', () => {
+    it('handles rapid range changes via history navigation', async () => {
+      const { useTimeRangeSync } = await import('../hooks/useTimeRangeSync');
+      let setFn: (r: string) => void = () => {};
+
+      function Wrapper() {
+        const { setTimeRange } = useTimeRangeSync();
+        setFn = (r) => setTimeRange(r as any);
+        return null;
+      }
+
+      renderToStaticMarkup(React.createElement(Wrapper));
+      setFn('24h');
+      expect(navSpy).toHaveBeenCalledWith({ search: 'range=24h' }, { replace: true });
+      navSpy.mockClear();
+
+      currentSearch = '?range=15m';
+      renderToStaticMarkup(React.createElement(Wrapper));
+      setFn('1h');
+      expect(navSpy).toHaveBeenCalledWith({ search: '' }, { replace: true });
     });
   });
 });
