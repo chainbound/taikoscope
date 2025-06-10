@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { MetricData } from '../types';
 import { findMetricValue } from '../utils';
-import { getEthPrice } from '../services/priceService';
+import { useEthPrice } from '../services/priceService';
 
 interface ProfitCalculatorProps {
   metrics: MetricData[];
@@ -15,20 +15,10 @@ export const ProfitCalculator: React.FC<ProfitCalculatorProps> = ({
 
   const [cloudCost, setCloudCost] = useState(0);
   const [proverCost, setProverCost] = useState(0);
-  const [ethPrice, setEthPrice] = useState(0);
-  const [ethPriceError, setEthPriceError] = useState(false);
-
-  useEffect(() => {
-    getEthPrice()
-      .then((p) => {
-        setEthPrice(p);
-        setEthPriceError(false);
-      })
-      .catch((err) => {
-        console.error('Failed to fetch ETH price', err);
-        setEthPriceError(true);
-      });
-  }, []);
+  const {
+    data: ethPrice = 0,
+    error: ethPriceError,
+  } = useEthPrice();
 
   const profit = fee * ethPrice - cloudCost - proverCost;
 
