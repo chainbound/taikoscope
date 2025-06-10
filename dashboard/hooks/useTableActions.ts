@@ -119,127 +119,14 @@ export const useTableActions = (
 
       const onTableRoute = location.pathname.startsWith('/table/');
 
-      if (!onTableRoute) {
-        setTableUrl(config.urlKey, { range, ...extraParams });
-        return;
+      if (onTableRoute) {
+        setTableLoading(true);
+        setTimeRange(range);
       }
 
-      setTableLoading(true);
-      setTimeRange(range);
-
-      try {
-        const fetcherArgs: any[] = [];
-        if (tableKey === 'sequencer-blocks' && extraParams.address) {
-          fetcherArgs.push(extraParams.address);
-        } else if (
-          ['l2-block-times', 'l2-gas-used', 'l2-tps'].includes(tableKey)
-        ) {
-          fetcherArgs.push(
-            selectedSequencer
-              ? getSequencerAddress(selectedSequencer)
-              : undefined,
-          );
-        }
-
-        const res = await config.fetcher(range, ...fetcherArgs);
-        const data = res.data || [];
-
-        const title =
-          typeof config.title === 'function'
-            ? config.title(extraParams)
-            : config.title;
-
-        const mappedData = config.mapData
-          ? config.mapData(data, extraParams)
-          : data;
-        const chart = config.chart ? config.chart(data) : undefined;
-
-        setTableUrl(config.urlKey, { range, ...extraParams });
-
-        // Create a refresh function that fetches fresh data
-        const refreshData = async () => {
-          try {
-            console.log(`Refreshing ${tableKey} table data`);
-            const refreshRes = await config.fetcher(range, ...fetcherArgs);
-            const refreshDataResult = refreshRes.data || [];
-            const refreshMappedData = config.mapData
-              ? config.mapData(refreshDataResult, extraParams)
-              : refreshDataResult;
-            const refreshChart = config.chart
-              ? config.chart(refreshDataResult)
-              : undefined;
-
-            setTableView((prev) =>
-              prev
-                ? {
-                    ...prev,
-                    rows: prev.useClientSidePagination
-                      ? prev.rows
-                      : refreshMappedData,
-                    allRows: prev.useClientSidePagination
-                      ? refreshMappedData
-                      : undefined,
-                    chart: refreshChart,
-                    totalRecords: prev.useClientSidePagination
-                      ? refreshMappedData.length
-                      : undefined,
-                  }
-                : null,
-            );
-          } catch (error) {
-            console.error(`Failed to refresh ${tableKey} table:`, error);
-            // Optionally show user-facing error
-            setTableView((prev) =>
-              prev
-                ? {
-                    ...prev,
-                    rows: [], // Clear data on error to prevent stale data
-                    allRows: prev.useClientSidePagination ? [] : undefined,
-                    totalRecords: 0,
-                  }
-                : null,
-            );
-          }
-        };
-
-        // Check if this table should use unlimited data (for chart consistency)
-        const useUnlimitedData = config.useUnlimitedData || false;
-
-        openTable(
-          title,
-          config.description,
-          config.columns,
-          useUnlimitedData ? mappedData.slice(0, 50) : mappedData, // Show first 50 for display
-          tableKey === 'sequencer-dist'
-            ? (row) =>
-                openGenericTable('sequencer-blocks', range, {
-                  address: row.name,
-                })
-            : undefined,
-          undefined,
-          undefined,
-          range,
-          (r) => openGenericTable(tableKey, r, extraParams),
-          refreshData,
-          chart,
-          useUnlimitedData ? mappedData : undefined, // Pass full dataset for client-side pagination
-          useUnlimitedData, // Enable client-side pagination flag
-          useUnlimitedData ? mappedData.length : undefined, // Total record count
-        );
-      } catch (error) {
-        console.error(`Failed to open ${tableKey} table:`, error);
-        setTableLoading(false);
-      }
+      setTableUrl(config.urlKey, { range, ...extraParams });
     },
-    [
-      timeRange,
-      setTimeRange,
-      selectedSequencer,
-      openTable,
-      setTableUrl,
-      setTableView,
-      location.pathname,
-    ],
+    [timeRange, setTimeRange, setTableLoading, setTableUrl, location.pathname],
   );
 
   const openSequencerDistributionTable = useCallback(
