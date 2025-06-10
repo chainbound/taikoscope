@@ -415,9 +415,14 @@ pub struct ReorgDetector {
     head_number: BlockNumber,
 }
 
+impl Default for ReorgDetector {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ReorgDetector {
     /// Create a new reorg detector
-    #[allow(clippy::new_without_default)]
     pub const fn new() -> Self {
         Self { head_number: 0 }
     }
