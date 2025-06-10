@@ -58,8 +58,11 @@ export const TableRoute: React.FC = () => {
     timeRange: currentTimeRange,
     selectedSequencer,
     tableView: tableView || null,
-    fetchMetricsData: metricsData.fetchMetricsData,
     updateChartsData: chartsData.updateChartsData,
+    setMetrics: metricsData.setMetrics,
+    setLoadingMetrics: metricsData.setLoadingMetrics,
+    setErrorMessage: metricsData.setErrorMessage,
+    isEconomicsView: metricsData.isEconomicsView,
     refreshRate: refreshTimer.refreshRate,
     updateLastRefresh: refreshTimer.updateLastRefresh,
   });

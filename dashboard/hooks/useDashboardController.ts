@@ -47,8 +47,11 @@ export const useDashboardController = () => {
       timeRange,
       selectedSequencer,
       tableView,
-      fetchMetricsData: metricsData.fetchMetricsData,
       updateChartsData: chartsData.updateChartsData,
+      setMetrics: metricsData.setMetrics,
+      setLoadingMetrics: metricsData.setLoadingMetrics,
+      setErrorMessage: metricsData.setErrorMessage,
+      isEconomicsView: metricsData.isEconomicsView,
       refreshRate: refreshTimer.refreshRate,
       updateLastRefresh: refreshTimer.updateLastRefresh,
     });
