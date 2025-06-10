@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { TimeRange } from '../types';
 
@@ -24,6 +24,9 @@ export const useTimeRangeSync = () => {
 
   const [timeRange, setTimeRangeState] =
     useState<TimeRange>(getInitialTimeRange);
+
+  // Track the last processed URL to avoid redundant state updates
+  const prevSearchRef = useRef(location.search);
 
   // Update time range and sync with URL
   const setTimeRange = useCallback(
@@ -55,6 +58,9 @@ export const useTimeRangeSync = () => {
 
   // Sync state when URL changes (e.g., browser back/forward)
   useEffect(() => {
+    if (prevSearchRef.current === location.search) return;
+
+    prevSearchRef.current = location.search;
     const urlRange = getInitialTimeRange();
     if (urlRange !== timeRange) {
       setTimeRangeState(urlRange);
