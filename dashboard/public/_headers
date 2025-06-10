@@ -10,5 +10,8 @@
   Content-Type: font/ttf
   Access-Control-Allow-Origin: *
 
+/index.html
+  Cache-Control: no-cache
+
 /*
   Access-Control-Allow-Origin: https://api.taikoscope.xyz
