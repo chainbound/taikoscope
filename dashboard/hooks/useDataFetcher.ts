@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { TimeRange } from '../types';
 import { useSearchParams } from 'react-router-dom';
@@ -82,6 +82,16 @@ export const useDataFetcher = ({
       setErrorMessage('Failed to fetch dashboard data. Please try again.');
     }
   }, [mutate, setErrorMessage]);
+
+  // When leaving a table view, refresh dashboard data
+  const prevIsTableViewRef = useRef<boolean>(Boolean(isTableView));
+  useEffect(() => {
+    const isTable = Boolean(isTableView);
+    if (prevIsTableViewRef.current && !isTable) {
+      void fetchData();
+    }
+    prevIsTableViewRef.current = isTable;
+  }, [isTableView, fetchData]);
 
   const handleManualRefresh = useCallback(() => {
     if (tableView && tableView.onRefresh) {
