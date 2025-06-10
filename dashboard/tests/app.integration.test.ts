@@ -57,10 +57,12 @@ const responses: Record<string, Record<string, unknown>> = {
   '/v1/batch-posting-cadence?range=1h': { batch_posting_cadence_ms: 120000 },
   '/v1/avg-prove-time?range=1h': { avg_prove_time_ms: 1500 },
   '/v1/avg-verify-time?range=1h': { avg_verify_time_ms: 2500 },
-  '/v1/preconf-data': {
-    candidates: ['gw1', 'gw2'],
-    current_operator: '0xaaa',
-    next_operator: '0xbbb',
+  '/v1/dashboard-data?range=1h': {
+    preconf_data: {
+      candidates: ['gw1', 'gw2'],
+      current_operator: '0xaaa',
+      next_operator: '0xbbb',
+    },
   },
   '/v1/reorgs?range=1h': {
     events: [

@@ -252,8 +252,12 @@ export interface PreconfData {
 export const fetchPreconfData = async (): Promise<
   RequestResult<PreconfData>
 > => {
-  const url = `${API_BASE}/preconf-data`;
-  return fetchJson<PreconfData>(url);
+  const res = await fetchDashboardData('1h');
+  return {
+    data: res.data?.preconf_data ?? null,
+    badRequest: res.badRequest,
+    error: res.error,
+  };
 };
 
 export const fetchL2HeadNumber = async (): Promise<RequestResult<number>> => {
