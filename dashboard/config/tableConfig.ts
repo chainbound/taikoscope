@@ -233,19 +233,6 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
       { key: 'timestamp', label: 'Interval (s)' },
     ],
     mapData: (data) => data as Record<string, string | number>[],
-    chart: (data) => {
-      const BlockTimeChart = React.lazy(() =>
-        import('../components/BlockTimeChart').then((m) => ({
-          default: m.BlockTimeChart,
-        })),
-      );
-      return React.createElement(BlockTimeChart, {
-        data,
-        lineColor: '#FAA43A',
-        histogram: true,
-        seconds: true,
-      });
-    },
     useUnlimitedData: true,
     urlKey: 'l2-block-times',
   },
