@@ -87,6 +87,15 @@ pub struct ProvedBatchRow {
     pub state_root: HashBytes,
 }
 
+/// L2 reorg row for insertion (without `inserted_at`)
+#[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq)]
+pub struct L2ReorgInsertRow {
+    /// Block number
+    pub l2_block_number: u64,
+    /// Depth
+    pub depth: u16,
+}
+
 /// L2 reorg row
 #[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
 pub struct L2ReorgRow {
@@ -95,9 +104,7 @@ pub struct L2ReorgRow {
     /// Depth
     pub depth: u16,
     /// Time the reorg was recorded.
-    /// This is not sent on insert, but is read from the database.
-    #[cfg_attr(not(test), serde(skip_serializing_if = "Option::is_none"))]
-    #[serde(default)]
+    /// This is populated when reading from the database.
     pub inserted_at: Option<DateTime<Utc>>,
 }
 

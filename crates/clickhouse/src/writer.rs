@@ -151,8 +151,8 @@ fn validate_migration_name(name: &str) -> bool {
 use crate::{
     L1Header,
     models::{
-        BatchRow, ForcedInclusionProcessedRow, L1HeadEvent, L2HeadEvent, L2ReorgRow, PreconfData,
-        ProvedBatchRow, VerifiedBatchRow,
+        BatchRow, ForcedInclusionProcessedRow, L1HeadEvent, L2HeadEvent, L2ReorgInsertRow,
+        PreconfData, ProvedBatchRow, VerifiedBatchRow,
     },
     schema::{TABLE_SCHEMAS, TABLES, TableSchema},
     types::{AddressBytes, HashBytes},
@@ -369,7 +369,7 @@ impl ClickhouseWriter {
     /// Insert L2 reorg row
     pub async fn insert_l2_reorg(&self, block_number: BlockNumber, depth: u16) -> Result<()> {
         let client = self.base.clone();
-        let row = L2ReorgRow { l2_block_number: block_number, depth, inserted_at: None };
+        let row = L2ReorgInsertRow { l2_block_number: block_number, depth };
         let mut insert = client.insert("l2_reorgs")?;
         insert.write(&row).await?;
         insert.end().await?;
@@ -393,6 +393,8 @@ impl ClickhouseWriter {
 
 #[cfg(test)]
 mod tests {
+    use crate::L2ReorgInsertRow;
+
     use super::*;
 
     use alloy::primitives::B256;
@@ -466,7 +468,7 @@ mod tests {
     #[tokio::test]
     async fn insert_l2_reorg_writes_expected_row() {
         let mock = Mock::new();
-        let ctl = mock.add(handlers::record::<L2ReorgRow>());
+        let ctl = mock.add(handlers::record::<L2ReorgInsertRow>());
 
         let url = Url::parse(mock.url()).unwrap();
         let writer =
@@ -474,11 +476,10 @@ mod tests {
 
         writer.insert_l2_reorg(10, 3).await.unwrap();
 
-        let rows: Vec<L2ReorgRow> = ctl.collect().await;
+        let rows: Vec<L2ReorgInsertRow> = ctl.collect().await;
         assert_eq!(rows.len(), 1);
         assert_eq!(rows[0].l2_block_number, 10);
         assert_eq!(rows[0].depth, 3);
-        assert!(rows[0].inserted_at.is_none());
     }
 
     #[tokio::test]
