@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import {
-  BarChart,
-  Bar,
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -12,12 +12,12 @@ import type { BlockTransaction } from '../services/apiService';
 
 interface BlockTxChartProps {
   data: BlockTransaction[];
-  barColor: string;
+  lineColor: string;
 }
 
 const BlockTxChartComponent: React.FC<BlockTxChartProps> = ({
   data,
-  barColor,
+  lineColor,
 }) => {
   if (!data || data.length === 0) {
     return (
@@ -32,7 +32,7 @@ const BlockTxChartComponent: React.FC<BlockTxChartProps> = ({
   );
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <BarChart
+      <LineChart
         data={sortedData}
         margin={{ top: 5, right: 70, left: 80, bottom: 40 }}
       >
@@ -71,12 +71,20 @@ const BlockTxChartComponent: React.FC<BlockTxChartProps> = ({
           formatter={(value: number) => [value.toLocaleString(), 'txs']}
           contentStyle={{
             backgroundColor: 'rgba(255, 255, 255, 0.8)',
-            borderColor: barColor,
+            borderColor: lineColor,
           }}
           labelStyle={{ color: '#333' }}
         />
-        <Bar dataKey="txs" fill={barColor} name="Txs" />
-      </BarChart>
+        <Line
+          type="monotone"
+          dataKey="txs"
+          stroke={lineColor}
+          strokeWidth={2}
+          dot={false}
+          activeDot={sortedData.length <= 100 ? { r: 6 } : false}
+          name="Txs"
+        />
+      </LineChart>
     </ResponsiveContainer>
   );
 };
