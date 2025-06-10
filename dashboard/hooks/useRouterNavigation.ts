@@ -1,5 +1,9 @@
 import { useCallback } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import {
+  useNavigate,
+  useSearchParams,
+  createSearchParams,
+} from 'react-router-dom';
 import { safeNavigate } from '../utils/navigationUtils';
 import { TimeRange } from '../types';
 
@@ -13,19 +17,19 @@ export const useRouterNavigation = () => {
       params?: Record<string, string | number>,
       range?: TimeRange,
     ) => {
-      const queryParams = new URLSearchParams();
+      const queryParams: Record<string, string> = {};
 
       if (range) {
-        queryParams.set('range', range);
+        queryParams.range = range;
       }
 
       if (params) {
         Object.entries(params).forEach(([key, value]) => {
-          queryParams.set(key, String(value));
+          queryParams[key] = String(value);
         });
       }
 
-      const queryString = queryParams.toString();
+      const queryString = createSearchParams(queryParams).toString();
       const path = `/table/${tableType}${queryString ? `?${queryString}` : ''}`;
       safeNavigate(navigate, path);
     },
@@ -42,14 +46,14 @@ export const useRouterNavigation = () => {
   const navigateToDashboard = useCallback(
     (preserveParams = false) => {
       if (preserveParams) {
-        const params = new URLSearchParams();
+        const params: Record<string, string> = {};
         const sequencer = searchParams.get('sequencer');
         const range = searchParams.get('range');
 
-        if (sequencer) params.set('sequencer', sequencer);
-        if (range) params.set('range', range);
+        if (sequencer) params.sequencer = sequencer;
+        if (range) params.range = range;
 
-        const queryString = params.toString();
+        const queryString = createSearchParams(params).toString();
         safeNavigate(navigate, `/${queryString ? `?${queryString}` : ''}`);
       } else {
         safeNavigate(navigate, '/');
@@ -60,17 +64,20 @@ export const useRouterNavigation = () => {
 
   const updateSearchParams = useCallback(
     (updates: Record<string, string | null>) => {
-      const newParams = new URLSearchParams(searchParams);
+      const params: Record<string, string> = {};
+      searchParams.forEach((value, key) => {
+        params[key] = value;
+      });
 
       Object.entries(updates).forEach(([key, value]) => {
         if (value === null) {
-          newParams.delete(key);
+          delete params[key];
         } else {
-          newParams.set(key, value);
+          params[key] = value;
         }
       });
 
-      const queryString = newParams.toString();
+      const queryString = createSearchParams(params).toString();
       safeNavigate(navigate, `?${queryString}`, true);
     },
     [navigate, searchParams],
