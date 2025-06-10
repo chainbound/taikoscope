@@ -135,8 +135,7 @@ export const TableRoute: React.FC = () => {
     searchParams,
     currentTimeRange,
     selectedSequencer,
-    chartsData,
-    metricsData,
+    metricsData.setErrorMessage,
   ]);
 
   const handleBack = () => {

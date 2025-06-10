@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import { useMetricsData } from './useMetricsData';
 import { useChartsData } from './useChartsData';
 import { useBlockData } from './useBlockData';
@@ -75,9 +76,9 @@ export const useDashboardController = () => {
   };
 
   // Create a TPS table opener that uses the generic table function
-  const openTpsTable = () => {
-    openGenericTable('l2-tps', timeRange);
-  };
+  const openTpsTable = useCallback(() => {
+    openGenericTable('l2-tps');
+  }, [openGenericTable]);
 
   return {
     // State

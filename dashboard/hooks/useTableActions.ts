@@ -121,7 +121,9 @@ export const useTableActions = (
 
       if (onTableRoute) {
         setTableLoading(true);
-        setTimeRange(range);
+        if (range !== timeRange) {
+          setTimeRange(range);
+        }
       }
 
       setTableUrl(config.urlKey, { range, ...extraParams });
