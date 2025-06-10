@@ -59,8 +59,13 @@ export const DataTable: React.FC<DataTableProps> = ({
 }) => {
   const [page, setPage] = React.useState(0);
 
+  const prevRowsLength = React.useRef(rows.length);
+
   React.useEffect(() => {
-    setPage(0);
+    if (rows.length !== prevRowsLength.current) {
+      setPage(0);
+    }
+    prevRowsLength.current = rows.length;
   }, [rows]);
 
   React.useEffect(() => {
