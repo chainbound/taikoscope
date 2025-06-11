@@ -12,15 +12,15 @@ export const ProfitCalculator: React.FC<ProfitCalculatorProps> = ({
   metrics,
   timeRange,
 }) => {
-  const feeStr = findMetricValue(metrics, 'transaction fee');
-  const fee = parseFloat(feeStr.replace(/[^0-9.]/g, '')) || 0;
+  const priorityStr = findMetricValue(metrics, 'priority fee');
+  const baseStr = findMetricValue(metrics, 'base fee');
+  const priority = parseFloat(priorityStr.replace(/[^0-9.]/g, '')) || 0;
+  const base = parseFloat(baseStr.replace(/[^0-9.]/g, '')) || 0;
+  const totalFee = priority + base;
 
   const [cloudCost, setCloudCost] = useState(100);
   const [proverCost, setProverCost] = useState(100);
-  const {
-    data: ethPrice = 0,
-    error: ethPriceError,
-  } = useEthPrice();
+  const { data: ethPrice = 0, error: ethPriceError } = useEthPrice();
 
   const HOURS_IN_MONTH = 30 * 24;
   const RANGE_HOURS: Record<TimeRange, number> = {
@@ -32,7 +32,7 @@ export const ProfitCalculator: React.FC<ProfitCalculatorProps> = ({
 
   const scaledCloudCost = (cloudCost / HOURS_IN_MONTH) * hours;
   const scaledProverCost = (proverCost / HOURS_IN_MONTH) * hours;
-  const profit = fee * ethPrice - scaledCloudCost - scaledProverCost;
+  const profit = totalFee * ethPrice - scaledCloudCost - scaledProverCost;
 
   return (
     <div className="mt-6 p-4 border border-gray-200 dark:border-gray-700 rounded-md bg-gray-50 dark:bg-gray-800">
@@ -60,7 +60,9 @@ export const ProfitCalculator: React.FC<ProfitCalculatorProps> = ({
       <p className="mt-3 text-sm">
         Profit: <span className="font-semibold">${profit.toFixed(2)}</span>
         {ethPriceError && (
-          <span className="text-red-500 ml-2 text-xs">(ETH price unavailable)</span>
+          <span className="text-red-500 ml-2 text-xs">
+            (ETH price unavailable)
+          </span>
         )}
       </p>
     </div>
