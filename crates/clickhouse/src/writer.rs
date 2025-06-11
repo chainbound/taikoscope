@@ -171,11 +171,7 @@ pub struct ClickhouseWriter {
 impl ClickhouseWriter {
     /// Create a new `ClickHouse` writer client
     pub fn new(url: Url, db_name: String, username: String, password: String) -> Result<Self> {
-        let client = Client::default()
-            .with_url(url)
-            .with_database(db_name.clone())
-            .with_user(username)
-            .with_password(password);
+        let client = Client::default().with_url(url).with_user(username).with_password(password);
 
         Ok(Self { base: client, db_name })
     }
@@ -282,7 +278,7 @@ impl ClickhouseWriter {
             slot: header.slot,
             block_ts: header.timestamp,
         };
-        let mut insert = client.insert("l1_head_events")?;
+        let mut insert = client.insert(&format!("{}.l1_head_events", self.db_name))?;
         insert.write(&event).await?;
         insert.end().await?;
         Ok(())
@@ -304,7 +300,7 @@ impl ClickhouseWriter {
             current_operator: current_operator.map(AddressBytes::from),
             next_operator: next_operator.map(AddressBytes::from),
         };
-        let mut insert = client.insert("preconf_data")?;
+        let mut insert = client.insert(&format!("{}.preconf_data", self.db_name))?;
         insert.write(&data).await?;
         insert.end().await?;
         Ok(())
@@ -313,7 +309,7 @@ impl ClickhouseWriter {
     /// Insert L2 header event
     pub async fn insert_l2_header(&self, event: &L2HeadEvent) -> Result<()> {
         let client = self.base.clone();
-        let mut insert = client.insert("l2_head_events")?;
+        let mut insert = client.insert(&format!("{}.l2_head_events", self.db_name))?;
         insert.write(event).await?;
         insert.end().await?;
         Ok(())
@@ -323,7 +319,7 @@ impl ClickhouseWriter {
     pub async fn insert_batch(&self, batch: &chainio::ITaikoInbox::BatchProposed) -> Result<()> {
         let client = self.base.clone();
         let batch_row = BatchRow::try_from(batch)?;
-        let mut insert = client.insert("batches")?;
+        let mut insert = client.insert(&format!("{}.batches", self.db_name))?;
         insert.write(&batch_row).await?;
         insert.end().await?;
         Ok(())
@@ -346,7 +342,7 @@ impl ClickhouseWriter {
                 transitions: vec![proved.transitions[i].clone()],
             };
             let proved_row = ProvedBatchRow::try_from((&single_proved, l1_block_number))?;
-            let mut insert = client.insert("proved_batches")?;
+            let mut insert = client.insert(&format!("{}.proved_batches", self.db_name))?;
             insert.write(&proved_row).await?;
             insert.end().await?;
         }
@@ -360,7 +356,7 @@ impl ClickhouseWriter {
     ) -> Result<()> {
         let client = self.base.clone();
         let row = ForcedInclusionProcessedRow::try_from(event)?;
-        let mut insert = client.insert("forced_inclusion_processed")?;
+        let mut insert = client.insert(&format!("{}.forced_inclusion_processed", self.db_name))?;
         insert.write(&row).await?;
         insert.end().await?;
         Ok(())
@@ -370,7 +366,7 @@ impl ClickhouseWriter {
     pub async fn insert_l2_reorg(&self, block_number: BlockNumber, depth: u16) -> Result<()> {
         let client = self.base.clone();
         let row = L2ReorgInsertRow { l2_block_number: block_number, depth };
-        let mut insert = client.insert("l2_reorgs")?;
+        let mut insert = client.insert(&format!("{}.l2_reorgs", self.db_name))?;
         insert.write(&row).await?;
         insert.end().await?;
         Ok(())
@@ -384,7 +380,7 @@ impl ClickhouseWriter {
     ) -> Result<()> {
         let client = self.base.clone();
         let verified_row = VerifiedBatchRow::try_from((verified, l1_block_number))?;
-        let mut insert = client.insert("verified_batches")?;
+        let mut insert = client.insert(&format!("{}.verified_batches", self.db_name))?;
         insert.write(&verified_row).await?;
         insert.end().await?;
         Ok(())

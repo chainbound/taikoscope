@@ -94,11 +94,7 @@ pub struct ClickhouseReader {
 impl ClickhouseReader {
     /// Create a new `ClickHouse` reader client
     pub fn new(url: Url, db_name: String, username: String, password: String) -> Result<Self> {
-        let client = Client::default()
-            .with_url(url)
-            .with_database(db_name.clone())
-            .with_user(username)
-            .with_password(password);
+        let client = Client::default().with_url(url).with_user(username).with_password(password);
 
         Ok(Self { base: client, db_name })
     }
