@@ -25,6 +25,7 @@ export const TableRoute: React.FC = () => {
 
   const {
     timeRange,
+    setTimeRange,
     selectedSequencer,
     chartsData,
     metricsData,
@@ -41,8 +42,9 @@ export const TableRoute: React.FC = () => {
         newParams.set('range', newRange);
       }
       setSearchParams(newParams, { replace: true });
+      setTimeRange(newRange);
     },
-    [searchParams, setSearchParams],
+    [searchParams, setSearchParams, setTimeRange],
   );
 
   const [tableView, setTableView] = useState<TableViewState | undefined>(
