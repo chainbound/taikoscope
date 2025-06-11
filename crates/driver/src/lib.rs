@@ -33,11 +33,11 @@ pub struct Driver {
     clickhouse_reader: ClickhouseReader,
     extractor: Extractor,
     reorg: ReorgDetector,
-    incident_client: IncidentClient,
-    instatus_batch_submission_component_id: String,
-    instatus_proof_submission_component_id: String,
-    instatus_proof_verification_component_id: String,
-    instatus_transaction_sequencing_component_id: String,
+    incident_client: Option<IncidentClient>,
+    instatus_batch_component_id: String,
+    instatus_batch_proof_timeout_component_id: String,
+    instatus_batch_verify_timeout_component_id: String,
+    instatus_l2_component_id: String,
     instatus_monitor_poll_interval_secs: u64,
     instatus_monitor_threshold_secs: u64,
     batch_proof_timeout_secs: u64,
@@ -93,17 +93,19 @@ impl Driver {
         .await?;
 
         // init incident client and component IDs
+        if opts.instatus.monitors_enabled && !opts.instatus.configured() {
+            return Err(eyre::eyre!("missing Instatus configuration"));
+        }
 
-        let instatus_batch_submission_component_id =
-            opts.instatus.batch_submission_component_id.clone();
-        let instatus_proof_submission_component_id =
-            opts.instatus.proof_submission_component_id.clone();
-        let instatus_proof_verification_component_id =
-            opts.instatus.proof_verification_component_id.clone();
-        let instatus_transaction_sequencing_component_id =
-            opts.instatus.transaction_sequencing_component_id.clone();
-        let incident_client =
-            IncidentClient::new(opts.instatus.api_key.clone(), opts.instatus.page_id.clone());
+        let instatus_batch_component_id = opts.instatus.batch_component_id.clone();
+        let instatus_batch_proof_timeout_component_id =
+            opts.instatus.batch_proof_timeout_component_id.clone();
+        let instatus_batch_verify_timeout_component_id =
+            opts.instatus.batch_verify_timeout_component_id.clone();
+        let instatus_l2_component_id = opts.instatus.l2_component_id.clone();
+        let incident_client = opts.instatus.enabled().then(|| {
+            IncidentClient::new(opts.instatus.api_key.clone(), opts.instatus.page_id.clone())
+        });
 
         Ok(Self {
             clickhouse,
@@ -111,10 +113,10 @@ impl Driver {
             extractor,
             reorg: ReorgDetector::new(),
             incident_client,
-            instatus_batch_submission_component_id,
-            instatus_proof_submission_component_id,
-            instatus_proof_verification_component_id,
-            instatus_transaction_sequencing_component_id,
+            instatus_batch_component_id,
+            instatus_batch_proof_timeout_component_id,
+            instatus_batch_verify_timeout_component_id,
+            instatus_l2_component_id,
             instatus_monitor_poll_interval_secs: opts.instatus.monitor_poll_interval_secs,
             instatus_monitor_threshold_secs: opts.instatus.monitor_threshold_secs,
             batch_proof_timeout_secs: opts.instatus.batch_proof_timeout_secs,
@@ -236,10 +238,14 @@ impl Driver {
     /// Each monitor runs in its own task and reports incidents via the
     /// [`IncidentClient`].
     fn spawn_monitors(&self) {
+        let Some(client) = &self.incident_client else {
+            return;
+        };
+
         InstatusL1Monitor::new(
             self.clickhouse_reader.clone(),
-            self.incident_client.clone(),
-            self.instatus_batch_submission_component_id.clone(),
+            client.clone(),
+            self.instatus_batch_component_id.clone(),
             Duration::from_secs(self.instatus_monitor_threshold_secs),
             Duration::from_secs(self.instatus_monitor_poll_interval_secs),
         )
@@ -247,8 +253,8 @@ impl Driver {
 
         InstatusMonitor::new(
             self.clickhouse_reader.clone(),
-            self.incident_client.clone(),
-            self.instatus_transaction_sequencing_component_id.clone(),
+            client.clone(),
+            self.instatus_l2_component_id.clone(),
             Duration::from_secs(self.instatus_monitor_threshold_secs),
             Duration::from_secs(self.instatus_monitor_poll_interval_secs),
         )
@@ -256,8 +262,8 @@ impl Driver {
 
         BatchProofTimeoutMonitor::new(
             self.clickhouse_reader.clone(),
-            self.incident_client.clone(),
-            self.instatus_proof_submission_component_id.clone(),
+            client.clone(),
+            self.instatus_batch_proof_timeout_component_id.clone(),
             Duration::from_secs(self.batch_proof_timeout_secs),
             Duration::from_secs(60),
         )
@@ -265,8 +271,8 @@ impl Driver {
 
         BatchVerifyTimeoutMonitor::new(
             self.clickhouse_reader.clone(),
-            self.incident_client.clone(),
-            self.instatus_proof_verification_component_id.clone(),
+            client.clone(),
+            self.instatus_batch_verify_timeout_component_id.clone(),
             Duration::from_secs(self.batch_proof_timeout_secs),
             Duration::from_secs(60),
         )
@@ -591,10 +597,11 @@ mod tests {
             instatus: InstatusOpts {
                 api_key: "key".into(),
                 page_id: "page".into(),
-                batch_submission_component_id: "batch".into(),
-                proof_submission_component_id: "proof".into(),
-                proof_verification_component_id: "verify".into(),
-                transaction_sequencing_component_id: "l2".into(),
+                batch_component_id: "batch".into(),
+                batch_proof_timeout_component_id: "proof".into(),
+                batch_verify_timeout_component_id: "verify".into(),
+                l2_component_id: "l2".into(),
+                monitors_enabled: true,
                 monitor_poll_interval_secs: 30,
                 monitor_threshold_secs: 96,
                 batch_proof_timeout_secs: 999,

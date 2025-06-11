@@ -69,6 +69,7 @@ API_HOST=127.0.0.1
 API_PORT=3000
 RATE_LIMIT_MAX_REQUESTS=1000
 RATE_LIMIT_PERIOD_SECS=60
+INSTATUS_MONITORS_ENABLED=true
 ```
 
 These variables map to the configuration structs defined in

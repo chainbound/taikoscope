@@ -56,18 +56,21 @@ pub struct InstatusOpts {
     /// Instatus page ID
     #[clap(long, env = "INSTATUS_PAGE_ID", default_value = "")]
     pub page_id: String,
-    /// Instatus component ID for batch submission monitor
-    #[clap(long, env = "INSTATUS_BATCH_SUBMISSION_COMPONENT_ID", default_value = "")]
-    pub batch_submission_component_id: String,
-    /// Instatus component ID for proof submission timeout monitor
-    #[clap(long, env = "INSTATUS_PROOF_SUBMISSION_COMPONENT_ID", default_value = "")]
-    pub proof_submission_component_id: String,
-    /// Instatus component ID for proof verification timeout monitor
-    #[clap(long, env = "INSTATUS_PROOF_VERIFICATION_COMPONENT_ID", default_value = "")]
-    pub proof_verification_component_id: String,
-    /// Instatus component ID for transaction sequencing monitor
-    #[clap(long, env = "INSTATUS_TRANSACTION_SEQUENCING_COMPONENT_ID", default_value = "")]
-    pub transaction_sequencing_component_id: String,
+    /// Instatus component ID for batch proposals monitor
+    #[clap(long, env = "INSTATUS_BATCH_COMPONENT_ID", default_value = "")]
+    pub batch_component_id: String,
+    /// Instatus component ID for batch proof timeout monitor
+    #[clap(long, env = "INSTATUS_BATCH_PROOF_TIMEOUT_COMPONENT_ID", default_value = "")]
+    pub batch_proof_timeout_component_id: String,
+    /// Instatus component ID for batch verify timeout monitor
+    #[clap(long, env = "INSTATUS_BATCH_VERIFY_TIMEOUT_COMPONENT_ID", default_value = "")]
+    pub batch_verify_timeout_component_id: String,
+    /// Instatus component ID for L2 head monitor
+    #[clap(long, env = "INSTATUS_L2_COMPONENT_ID", default_value = "")]
+    pub l2_component_id: String,
+    /// Whether Instatus monitors should run
+    #[clap(long, env = "INSTATUS_MONITORS_ENABLED", default_value_t = true)]
+    pub monitors_enabled: bool,
     /// Instatus monitor poll interval in seconds
     #[clap(long, env = "INSTATUS_MONITOR_POLL_INTERVAL_SECS", default_value = "30")]
     pub monitor_poll_interval_secs: u64,
@@ -83,13 +86,19 @@ pub struct InstatusOpts {
 impl InstatusOpts {
     /// Returns `true` if all required values are set.
     #[allow(clippy::missing_const_for_fn)]
-    pub fn enabled(&self) -> bool {
+    pub fn configured(&self) -> bool {
         !(self.api_key.is_empty() ||
             self.page_id.is_empty() ||
-            self.batch_submission_component_id.is_empty() ||
-            self.proof_submission_component_id.is_empty() ||
-            self.proof_verification_component_id.is_empty() ||
-            self.transaction_sequencing_component_id.is_empty())
+            self.batch_component_id.is_empty() ||
+            self.batch_proof_timeout_component_id.is_empty() ||
+            self.batch_verify_timeout_component_id.is_empty() ||
+            self.l2_component_id.is_empty())
+    }
+
+    /// Returns `true` if monitors should run and configuration is complete.
+    #[allow(clippy::missing_const_for_fn)]
+    pub fn enabled(&self) -> bool {
+        self.monitors_enabled && self.configured()
     }
 }
 
@@ -190,13 +199,13 @@ mod tests {
             "key",
             "--page-id",
             "page",
-            "--batch-submission-component-id",
+            "--batch-component-id",
             "batch",
-            "--proof-submission-component-id",
+            "--batch-proof-timeout-component-id",
             "proof",
-            "--proof-verification-component-id",
+            "--batch-verify-timeout-component-id",
             "verify",
-            "--transaction-sequencing-component-id",
+            "--l2-component-id",
             "l2",
             "--api-host",
             "127.0.0.1",
@@ -224,6 +233,7 @@ mod tests {
         assert_eq!(opts.instatus.monitor_poll_interval_secs, 30);
         assert_eq!(opts.instatus.monitor_threshold_secs, 96);
         assert_eq!(opts.instatus.batch_proof_timeout_secs, 10800);
+        assert!(opts.instatus.monitors_enabled);
         assert_eq!(opts.api.host, "127.0.0.1");
         assert_eq!(opts.api.port, 3000);
 
@@ -260,6 +270,7 @@ mod tests {
             env::set_var("INSTATUS_MONITOR_POLL_INTERVAL_SECS", "42");
             env::set_var("INSTATUS_MONITOR_THRESHOLD_SECS", "33");
             env::set_var("BATCH_PROOF_TIMEOUT_SECS", "99");
+            env::set_var("INSTATUS_MONITORS_ENABLED", "false");
             env::set_var("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:5173");
             env::set_var("RATE_LIMIT_MAX_REQUESTS", "500");
             env::set_var("RATE_LIMIT_PERIOD_SECS", "120");
@@ -273,6 +284,7 @@ mod tests {
         assert_eq!(opts.instatus.monitor_poll_interval_secs, 42);
         assert_eq!(opts.instatus.monitor_threshold_secs, 33);
         assert_eq!(opts.instatus.batch_proof_timeout_secs, 99);
+        assert!(!opts.instatus.monitors_enabled);
         assert_eq!(opts.api.host, "127.0.0.1");
         assert_eq!(opts.api.port, 3000);
         assert_eq!(
@@ -288,6 +300,7 @@ mod tests {
             env::remove_var("INSTATUS_MONITOR_POLL_INTERVAL_SECS");
             env::remove_var("INSTATUS_MONITOR_THRESHOLD_SECS");
             env::remove_var("BATCH_PROOF_TIMEOUT_SECS");
+            env::remove_var("INSTATUS_MONITORS_ENABLED");
             env::remove_var("ALLOWED_ORIGINS");
             env::remove_var("RATE_LIMIT_MAX_REQUESTS");
             env::remove_var("RATE_LIMIT_PERIOD_SECS");
