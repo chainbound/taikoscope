@@ -165,11 +165,13 @@ pub struct AvgL2TpsResponse {
     pub avg_tps: Option<f64>,
 }
 
-/// Total L2 transaction fee.
+/// Total L2 fees broken down by component.
 #[derive(Debug, Serialize, ToSchema)]
-pub struct L2TxFeeResponse {
-    /// Sum of priority fee and 75% of base fee for the range.
-    pub tx_fee: Option<u128>,
+pub struct L2FeesResponse {
+    /// Sum of priority fees for the range.
+    pub priority_fee: Option<u128>,
+    /// 75% of the sum of base fees for the range.
+    pub base_fee: Option<u128>,
 }
 
 /// Estimated cloud infrastructure cost in USD.
@@ -333,8 +335,10 @@ pub struct DashboardDataResponse {
     pub l2_block: Option<u64>,
     /// Number of the most recent L1 block.
     pub l1_block: Option<u64>,
-    /// Sum of priority fee and 75% of base fee for the range.
-    pub l2_tx_fee: Option<u128>,
+    /// Sum of priority fees for the range.
+    pub priority_fee: Option<u128>,
+    /// 75% of the sum of base fees for the range.
+    pub base_fee: Option<u128>,
     /// Estimated infrastructure cost in USD for the requested range.
     pub cloud_cost: Option<f64>,
 }

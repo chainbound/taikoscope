@@ -567,16 +567,21 @@ export const fetchAvgL2Tps = async (
   };
 };
 
-export const fetchL2TxFee = async (
+export interface L2FeesResponse {
+  priority_fee: number | null;
+  base_fee: number | null;
+}
+
+export const fetchL2Fees = async (
   range: TimeRange,
   address?: string,
-): Promise<RequestResult<number>> => {
+): Promise<RequestResult<L2FeesResponse>> => {
   const url =
-    `${API_BASE}/l2-tx-fee?range=${range}` +
+    `${API_BASE}/l2-fees?range=${range}` +
     (address ? `&address=${address}` : '');
-  const res = await fetchJson<{ tx_fee?: number }>(url);
+  const res = await fetchJson<L2FeesResponse>(url);
   return {
-    data: res.data?.tx_fee ?? null,
+    data: res.data ?? null,
     badRequest: res.badRequest,
     error: res.error,
   };
@@ -629,7 +634,8 @@ export interface DashboardDataResponse {
   forced_inclusions: number;
   l2_block: number | null;
   l1_block: number | null;
-  l2_tx_fee: number | null;
+  priority_fee: number | null;
+  base_fee: number | null;
   cloud_cost: number | null;
 }
 

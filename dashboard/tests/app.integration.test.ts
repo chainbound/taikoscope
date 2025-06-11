@@ -20,7 +20,7 @@ import {
   fetchL2BlockTimes,
   fetchL2GasUsed,
   fetchSequencerDistribution,
-  fetchL2TxFee,
+  fetchL2Fees,
   fetchCloudCost,
 } from '../services/apiService.ts';
 import { createMetrics, hasBadRequest } from '../helpers';
@@ -130,8 +130,8 @@ const responses: Record<string, Record<string, unknown>> = {
       { l2_block_number: 2, gas_used: 150 },
     ],
   },
-  '/v1/l2-tx-fee?range=1h': { tx_fee: 1000 },
-  '/v1/l2-tx-fee?range=15m': { tx_fee: 1000 },
+  '/v1/l2-fees?range=1h': { priority_fee: 600, base_fee: 400 },
+  '/v1/l2-fees?range=15m': { priority_fee: 600, base_fee: 400 },
   '/v1/cloud-cost?range=1h': { cost_usd: 3 },
   '/v1/cloud-cost?range=15m': { cost_usd: 3 },
   '/v1/sequencer-distribution?range=1h': {
@@ -142,7 +142,7 @@ const responses: Record<string, Record<string, unknown>> = {
   },
   '/v1/l2-head-block': { l2_head_block: 123 },
   '/v1/l1-head-block': { l1_head_block: 456 },
-  '/v1/l2-tx-fee?range=24h': { tx_fee: 2000 },
+  '/v1/l2-fees?range=24h': { priority_fee: 1200, base_fee: 800 },
   '/v1/cloud-cost?range=24h': { cost_usd: 72 },
 };
 
@@ -184,17 +184,19 @@ let intervals: IntervalId[] = [];
 
 async function fetchData(range: TimeRange, state: State, economics = false) {
   if (economics) {
-    const [l2TxFeeRes, l2BlockRes, l1BlockRes] = await Promise.all([
-      fetchL2TxFee(range, undefined),
+    const [l2FeesRes, l2BlockRes, l1BlockRes] = await Promise.all([
+      fetchL2Fees(range, undefined),
       fetchL2HeadBlock(range),
       fetchL1HeadBlock(range),
     ]);
 
-    const l2TxFee = l2TxFeeRes.data;
+    const l2FeeData = l2FeesRes.data;
+    const priorityFee = l2FeeData?.priority_fee ?? null;
+    const baseFee = l2FeeData?.base_fee ?? null;
     const l2Block = l2BlockRes.data;
     const l1Block = l1BlockRes.data;
 
-    const anyBadRequest = hasBadRequest([l2TxFeeRes, l2BlockRes, l1BlockRes]);
+    const anyBadRequest = hasBadRequest([l2FeesRes, l2BlockRes, l1BlockRes]);
 
     const currentMetrics: MetricData[] = createMetrics({
       avgTps: 3,
@@ -208,7 +210,8 @@ async function fetchData(range: TimeRange, state: State, economics = false) {
       l2Reorgs: null,
       slashings: null,
       forcedInclusions: null,
-      l2TxFee,
+      priorityFee,
+      baseFee,
       l2Block,
       l1Block,
       cloudCost: null,
@@ -243,7 +246,7 @@ async function fetchData(range: TimeRange, state: State, economics = false) {
     l2TimesRes,
     l2GasUsedRes,
     sequencerDistRes,
-    l2TxFeeRes,
+    l2FeesRes,
     cloudCostRes,
   ] = await Promise.all([
     fetchL2BlockCadence(range, undefined),
@@ -264,7 +267,7 @@ async function fetchData(range: TimeRange, state: State, economics = false) {
     fetchL2BlockTimes(range, undefined),
     fetchL2GasUsed(range, undefined),
     fetchSequencerDistribution(range),
-    fetchL2TxFee(range, undefined),
+    fetchL2Fees(range, undefined),
     fetchCloudCost(range),
   ]);
 
@@ -289,7 +292,9 @@ async function fetchData(range: TimeRange, state: State, economics = false) {
   const l2Times = l2TimesRes.data || [];
   const l2Gas = l2GasUsedRes.data || [];
   const sequencerDist = sequencerDistRes.data || [];
-  const l2TxFee = l2TxFeeRes.data;
+  const l2FeeData = l2FeesRes.data;
+  const priorityFee = l2FeeData?.priority_fee ?? null;
+  const baseFee = l2FeeData?.base_fee ?? null;
   const cloudCost = cloudCostRes.data;
 
   const anyBadRequest = hasBadRequest([
@@ -309,6 +314,7 @@ async function fetchData(range: TimeRange, state: State, economics = false) {
     l2TimesRes,
     l2GasUsedRes,
     sequencerDistRes,
+    l2FeesRes,
   ]);
 
   const currentMetrics: MetricData[] = createMetrics({
@@ -323,7 +329,8 @@ async function fetchData(range: TimeRange, state: State, economics = false) {
     l2Reorgs,
     slashings,
     forcedInclusions,
-    l2TxFee,
+    priorityFee,
+    baseFee,
     cloudCost,
     l2Block,
     l1Block,

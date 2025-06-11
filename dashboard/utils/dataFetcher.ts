@@ -9,7 +9,7 @@ import {
   fetchSequencerDistribution,
   fetchAllBlockTransactions,
   fetchBatchBlobCounts,
-  fetchL2TxFee,
+  fetchL2Fees,
   fetchL2HeadBlock,
   fetchL1HeadBlock,
 } from '../services/apiService';
@@ -33,13 +33,15 @@ export interface MainDashboardData {
   sequencerDist: any[];
   txPerBlock: any[];
   blobsPerBatch: any[];
-  l2TxFee: number | null;
+  priorityFee: number | null;
+  baseFee: number | null;
   cloudCost: number | null;
   badRequestResults: any[];
 }
 
 export interface EconomicsData {
-  l2TxFee: number | null;
+  priorityFee: number | null;
+  baseFee: number | null;
   l2Block: number | null;
   l1Block: number | null;
   badRequestResults: any[];
@@ -105,7 +107,8 @@ export const fetchMainDashboardData = async (
     sequencerDist: sequencerDistRes.data || [],
     txPerBlock: blockTxRes.data || [],
     blobsPerBatch: batchBlobCountsRes.data || [],
-    l2TxFee: data?.l2_tx_fee ?? null,
+    priorityFee: data?.priority_fee ?? null,
+    baseFee: data?.base_fee ?? null,
     cloudCost: data?.cloud_cost ?? null,
     badRequestResults: allResults,
   };
@@ -115,8 +118,8 @@ export const fetchEconomicsData = async (
   timeRange: TimeRange,
   selectedSequencer: string | null,
 ): Promise<EconomicsData> => {
-  const [l2TxFeeRes, l2BlockRes, l1BlockRes] = await Promise.all([
-    fetchL2TxFee(
+  const [l2FeesRes, l2BlockRes, l1BlockRes] = await Promise.all([
+    fetchL2Fees(
       timeRange,
       selectedSequencer ? getSequencerAddress(selectedSequencer) : undefined,
     ),
@@ -125,9 +128,10 @@ export const fetchEconomicsData = async (
   ]);
 
   return {
-    l2TxFee: l2TxFeeRes.data,
+    priorityFee: l2FeesRes.data?.priority_fee ?? null,
+    baseFee: l2FeesRes.data?.base_fee ?? null,
     l2Block: l2BlockRes.data,
     l1Block: l1BlockRes.data,
-    badRequestResults: [l2TxFeeRes, l2BlockRes, l1BlockRes],
+    badRequestResults: [l2FeesRes, l2BlockRes, l1BlockRes],
   };
 };

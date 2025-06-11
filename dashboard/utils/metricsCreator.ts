@@ -17,7 +17,8 @@ export interface MetricInputData {
   forcedInclusions: number | null;
   l2Block: number | null;
   l1Block: number | null;
-  l2TxFee: number | null;
+  priorityFee: number | null;
+  baseFee: number | null;
   cloudCost: number | null;
 }
 
@@ -102,8 +103,13 @@ export const createMetrics = (data: MetricInputData): MetricData[] => [
     group: 'Network Health',
   },
   {
-    title: 'L2 Transaction Fee',
-    value: data.l2TxFee != null ? formatEth(data.l2TxFee) : 'N/A',
+    title: 'Priority Fee',
+    value: data.priorityFee != null ? formatEth(data.priorityFee) : 'N/A',
+    group: 'Network Economics',
+  },
+  {
+    title: 'Base Fee',
+    value: data.baseFee != null ? formatEth(data.baseFee) : 'N/A',
     group: 'Network Economics',
   },
   {

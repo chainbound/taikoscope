@@ -39,7 +39,8 @@ describe('dataFetcher', () => {
         forced_inclusions: 8,
         l2_block: 10,
         l1_block: 11,
-        l2_tx_fee: 12,
+        priority_fee: 12,
+        base_fee: 5,
         cloud_cost: 13,
       }),
       fetchProveTimes: ok([{ name: '1', value: 1, timestamp: 0 }]),
@@ -81,13 +82,14 @@ describe('dataFetcher', () => {
 
   it('fetches economics data', async () => {
     setAll({
-      fetchL2TxFee: ok(1),
+      fetchL2Fees: ok({ priority_fee: 1, base_fee: 2 }),
       fetchL2HeadBlock: ok(2),
       fetchL1HeadBlock: ok(3),
     });
 
     const res = await fetchEconomicsData('1h', null);
-    expect(res.l2TxFee).toBe(1);
+    expect(res.priorityFee).toBe(1);
+    expect(res.baseFee).toBe(2);
     expect(res.l2Block).toBe(2);
     expect(res.l1Block).toBe(3);
     expect(res.badRequestResults).toHaveLength(3);

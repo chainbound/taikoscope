@@ -19,13 +19,14 @@ describe('metricsCreator', () => {
       l2Reorgs: 1,
       slashings: 2,
       forcedInclusions: 3,
-      l2TxFee: 42e18,
+      priorityFee: 40e18,
+      baseFee: 2e18,
       cloudCost: 7.89,
       l2Block: 100,
       l1Block: 50,
     });
 
-    expect(metrics).toHaveLength(15);
+    expect(metrics).toHaveLength(16);
     expect(metrics[0].value).toBe('1.23');
 
     const verifyMetric = metrics.find((m) => React.isValidElement(m.title));
@@ -55,7 +56,8 @@ describe('metricsCreator', () => {
       l2Reorgs: null,
       slashings: null,
       forcedInclusions: null,
-      l2TxFee: null,
+      priorityFee: null,
+      baseFee: null,
       cloudCost: null,
       l2Block: null,
       l1Block: null,

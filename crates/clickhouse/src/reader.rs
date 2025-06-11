@@ -1023,6 +1023,70 @@ impl ClickhouseReader {
         Ok(Some(row.total))
     }
 
+    /// Get the total priority fee for the given range
+    pub async fn get_l2_priority_fee(
+        &self,
+        sequencer: Option<AddressBytes>,
+        range: TimeRange,
+    ) -> Result<Option<u128>> {
+        #[derive(Row, Deserialize)]
+        struct SumRow {
+            total: u128,
+        }
+
+        let mut query = format!(
+            "SELECT sum(sum_priority_fee) AS total \
+             FROM {db}.l2_head_events h \
+             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
+               AND {filter}",
+            interval = range.interval(),
+            filter = self.reorg_filter("h"),
+            db = self.db_name
+        );
+        if let Some(addr) = sequencer {
+            query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
+        }
+
+        let rows = self.execute::<SumRow>(&query).await?;
+        let row = match rows.into_iter().next() {
+            Some(r) => r,
+            None => return Ok(None),
+        };
+        Ok(Some(row.total))
+    }
+
+    /// Get 75% of the total base fee for the given range
+    pub async fn get_l2_base_fee(
+        &self,
+        sequencer: Option<AddressBytes>,
+        range: TimeRange,
+    ) -> Result<Option<u128>> {
+        #[derive(Row, Deserialize)]
+        struct SumRow {
+            total: u128,
+        }
+
+        let mut query = format!(
+            "SELECT sum(toUInt128(sum_base_fee * 3 / 4)) AS total \
+             FROM {db}.l2_head_events h \
+             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
+               AND {filter}",
+            interval = range.interval(),
+            filter = self.reorg_filter("h"),
+            db = self.db_name
+        );
+        if let Some(addr) = sequencer {
+            query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
+        }
+
+        let rows = self.execute::<SumRow>(&query).await?;
+        let row = match rows.into_iter().next() {
+            Some(r) => r,
+            None => return Ok(None),
+        };
+        Ok(Some(row.total))
+    }
+
     /// Get the blob count for each batch within the given range
     pub async fn get_blobs_per_batch(&self, range: TimeRange) -> Result<Vec<BatchBlobCountRow>> {
         let query = format!(
