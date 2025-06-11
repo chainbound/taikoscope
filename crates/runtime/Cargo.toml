@@ -10,6 +10,9 @@ repository.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "sync", "signal"] }
 tracing.workspace = true
 futures.workspace = true
+axum.workspace = true
+api-types = { path = "../api-types" }
+eyre.workspace = true
 
 [dev-dependencies]
 eyre.workspace = true
