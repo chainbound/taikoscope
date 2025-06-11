@@ -34,6 +34,17 @@ export const ProfitCalculator: React.FC<ProfitCalculatorProps> = ({
   const scaledProverCost = (proverCost / HOURS_IN_MONTH) * hours;
   const profit = totalFee * ethPrice - scaledCloudCost - scaledProverCost;
 
+  const formatProfit = (value: number): string => {
+    const abs = Math.abs(value);
+    if (abs >= 1000) {
+      return Math.trunc(value).toLocaleString();
+    }
+    return value.toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
+
   return (
     <div className="mt-6 p-4 border border-gray-200 dark:border-gray-700 rounded-md bg-gray-50 dark:bg-gray-800">
       <h2 className="text-lg font-semibold mb-2">Profit Calculator</h2>
@@ -58,7 +69,7 @@ export const ProfitCalculator: React.FC<ProfitCalculatorProps> = ({
         </label>
       </div>
       <p className="mt-3 text-sm">
-        Profit: <span className="font-semibold">${profit.toFixed(2)}</span>
+        Profit: <span className="font-semibold">${formatProfit(profit)}</span>
         {ethPriceError && (
           <span className="text-red-500 ml-2 text-xs">
             (ETH price unavailable)
