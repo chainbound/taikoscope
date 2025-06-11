@@ -6,12 +6,15 @@ import * as priceService from '../services/priceService';
 
 describe('ProfitCalculator', () => {
   it('calculates profit for time range', () => {
-    vi
-      .spyOn(priceService, 'useEthPrice')
-      .mockReturnValue({ data: 2000 } as any);
+    vi.spyOn(priceService, 'useEthPrice').mockReturnValue({
+      data: 2000,
+    } as any);
     const html = renderToStaticMarkup(
       React.createElement(ProfitCalculator, {
-        metrics: [{ title: 'L2 Transaction Fee', value: '1 ETH' }],
+        metrics: [
+          { title: 'Priority Fee', value: '0.6 ETH' },
+          { title: 'Base Fee', value: '0.4 ETH' },
+        ],
         timeRange: '1h',
       }),
     );
