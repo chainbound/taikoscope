@@ -69,7 +69,7 @@ export const useDataFetcher = ({
         baseFee: data.baseFee,
         l2Block: data.l2Block,
         l1Block: data.l1Block,
-        cloudCost: null,
+        cloudCost: data.cloudCost,
       };
 
       const metrics = createMetrics(metricsInput);
