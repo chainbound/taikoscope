@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
-import { MetricData } from '../types';
+import { MetricData, TimeRange } from '../types';
 import { findMetricValue } from '../utils';
 import { useEthPrice } from '../services/priceService';
 
 interface ProfitCalculatorProps {
   metrics: MetricData[];
+  timeRange: TimeRange;
 }
 
 export const ProfitCalculator: React.FC<ProfitCalculatorProps> = ({
   metrics,
+  timeRange,
 }) => {
   const feeStr = findMetricValue(metrics, 'transaction fee');
   const fee = parseFloat(feeStr.replace(/[^0-9.]/g, '')) || 0;
@@ -20,7 +22,17 @@ export const ProfitCalculator: React.FC<ProfitCalculatorProps> = ({
     error: ethPriceError,
   } = useEthPrice();
 
-  const profit = fee * ethPrice - cloudCost - proverCost;
+  const HOURS_IN_MONTH = 30 * 24;
+  const RANGE_HOURS: Record<TimeRange, number> = {
+    '15m': 0.25,
+    '1h': 1,
+    '24h': 24,
+  };
+  const hours = RANGE_HOURS[timeRange];
+
+  const scaledCloudCost = (cloudCost / HOURS_IN_MONTH) * hours;
+  const scaledProverCost = (proverCost / HOURS_IN_MONTH) * hours;
+  const profit = fee * ethPrice - scaledCloudCost - scaledProverCost;
 
   return (
     <div className="mt-6 p-4 border border-gray-200 dark:border-gray-700 rounded-md bg-gray-50 dark:bg-gray-800">

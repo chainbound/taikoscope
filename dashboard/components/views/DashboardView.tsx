@@ -140,7 +140,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           economicsView={isEconomicsView}
         />
 
-        {isEconomicsView && <ProfitCalculator metrics={metricsData.metrics} />}
+        {isEconomicsView && (
+          <ProfitCalculator metrics={metricsData.metrics} timeRange={timeRange} />
+        )}
 
         {!isEconomicsView && (
           <ChartsGrid
