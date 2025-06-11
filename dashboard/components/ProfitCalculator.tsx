@@ -13,8 +13,8 @@ export const ProfitCalculator: React.FC<ProfitCalculatorProps> = ({
   const feeStr = findMetricValue(metrics, 'transaction fee');
   const fee = parseFloat(feeStr.replace(/[^0-9.]/g, '')) || 0;
 
-  const [cloudCost, setCloudCost] = useState(0);
-  const [proverCost, setProverCost] = useState(0);
+  const [cloudCost, setCloudCost] = useState(100);
+  const [proverCost, setProverCost] = useState(100);
   const {
     data: ethPrice = 0,
     error: ethPriceError,
