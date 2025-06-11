@@ -56,18 +56,18 @@ pub struct InstatusOpts {
     /// Instatus page ID
     #[clap(long, env = "INSTATUS_PAGE_ID", default_value = "")]
     pub page_id: String,
-    /// Instatus component ID for batch proposals monitor
-    #[clap(long, env = "INSTATUS_BATCH_COMPONENT_ID", default_value = "")]
-    pub batch_component_id: String,
-    /// Instatus component ID for batch proof timeout monitor
-    #[clap(long, env = "INSTATUS_BATCH_PROOF_TIMEOUT_COMPONENT_ID", default_value = "")]
-    pub batch_proof_timeout_component_id: String,
-    /// Instatus component ID for batch verify timeout monitor
-    #[clap(long, env = "INSTATUS_BATCH_VERIFY_TIMEOUT_COMPONENT_ID", default_value = "")]
-    pub batch_verify_timeout_component_id: String,
-    /// Instatus component ID for L2 head monitor
-    #[clap(long, env = "INSTATUS_L2_COMPONENT_ID", default_value = "")]
-    pub l2_component_id: String,
+    /// Instatus component ID for batch submission monitor
+    #[clap(long, env = "INSTATUS_BATCH_SUBMISSION_COMPONENT_ID", default_value = "")]
+    pub batch_submission_component_id: String,
+    /// Instatus component ID for proof submission timeout monitor
+    #[clap(long, env = "INSTATUS_PROOF_SUBMISSION_COMPONENT_ID", default_value = "")]
+    pub proof_submission_component_id: String,
+    /// Instatus component ID for proof verification timeout monitor
+    #[clap(long, env = "INSTATUS_PROOF_VERIFICATION_COMPONENT_ID", default_value = "")]
+    pub proof_verification_component_id: String,
+    /// Instatus component ID for transaction sequencing monitor
+    #[clap(long, env = "INSTATUS_TRANSACTION_SEQUENCING_COMPONENT_ID", default_value = "")]
+    pub transaction_sequencing_component_id: String,
     /// Instatus monitor poll interval in seconds
     #[clap(long, env = "INSTATUS_MONITOR_POLL_INTERVAL_SECS", default_value = "30")]
     pub monitor_poll_interval_secs: u64,
@@ -86,10 +86,10 @@ impl InstatusOpts {
     pub fn enabled(&self) -> bool {
         !(self.api_key.is_empty() ||
             self.page_id.is_empty() ||
-            self.batch_component_id.is_empty() ||
-            self.batch_proof_timeout_component_id.is_empty() ||
-            self.batch_verify_timeout_component_id.is_empty() ||
-            self.l2_component_id.is_empty())
+            self.batch_submission_component_id.is_empty() ||
+            self.proof_submission_component_id.is_empty() ||
+            self.proof_verification_component_id.is_empty() ||
+            self.transaction_sequencing_component_id.is_empty())
     }
 }
 
@@ -188,13 +188,13 @@ mod tests {
             "key",
             "--page-id",
             "page",
-            "--batch-component-id",
+            "--batch-submission-component-id",
             "batch",
-            "--batch-proof-timeout-component-id",
+            "--proof-submission-component-id",
             "proof",
-            "--batch-verify-timeout-component-id",
+            "--proof-verification-component-id",
             "verify",
-            "--l2-component-id",
+            "--transaction-sequencing-component-id",
             "l2",
             "--api-host",
             "127.0.0.1",
