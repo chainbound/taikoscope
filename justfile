@@ -2,10 +2,10 @@ set shell := ["bash", "-cu"]
 set dotenv-load := true
 
 # common configuration
-container := "taikoscope-hekla"
+container := "taikoscope-masaya"
 ssh_alias := "taikoscope"
-remote_dir := "~/hekla/taikoscope"
-env_file := "$HOME/hekla/taikoscope/masaya.env"
+remote_dir := "~/masaya/taikoscope"
+env_file := "$HOME/masaya/taikoscope/masaya.env"
 port := "48100:3000"
 
 # display a help message about available commands
@@ -62,11 +62,11 @@ set-log-level level:
     ssh {{ssh_alias}} "grep -q '^RUST_LOG=' \{{env_file}} && \
         sed -i 's/^RUST_LOG=.*/RUST_LOG={{level}}/' \{{env_file}} || \
         echo 'RUST_LOG={{level}}' >> \{{env_file}}"
-    @just start-remote-hekla
+    @just start-remote-masaya
     @echo "Log level set to {{level}} and service restarted."
 
 # deploy Taikoscope via SSH alias '{{ssh_alias}}'
-deploy-remote-hekla:
+deploy-remote-masaya:
     @echo "Deploying Taikoscope via SSH alias '{{ssh_alias}}'"
     @just test || (echo "Tests failed, aborting deployment" && exit 1)
     test -f masaya.env || (echo "No masaya.env file found. Exiting." && exit 1)
@@ -74,46 +74,46 @@ deploy-remote-hekla:
     rsync -av --exclude target --exclude .git --exclude dashboard . {{ssh_alias}}:{{remote_dir}}
     @echo "Building Taikoscope on {{ssh_alias}} (path: {{remote_dir}})"
     ssh {{ssh_alias}} "cd {{remote_dir}} && docker buildx build --load -t {{container}} ."
-    @just start-remote-hekla
+    @just start-remote-masaya
 
 # Check the status of the service
-status-remote-hekla:
+status-remote-masaya:
     ssh {{ssh_alias}} "docker ps -f name={{container}}"
 
 # View the logs of the service
-logs-remote-hekla:
+logs-remote-masaya:
     ssh {{ssh_alias}} "docker logs --tail 1000 -f {{container}}"
 
 # Deploy and tail logs
-deploy-logs-remote-hekla:
-    @just deploy-remote-hekla
-    @just logs-remote-hekla
+deploy-logs-remote-masaya:
+    @just deploy-remote-masaya
+    @just logs-remote-masaya
 
-# Start the remote Hekla service (runs a new container from the existing image)
-start-remote-hekla:
-    @echo "Starting Taikoscope Hekla service on remote..."
+# Start the remote masaya service (runs a new container from the existing image)
+start-remote-masaya:
+    @echo "Starting Taikoscope masaya service on remote..."
     @just stop-container
     @just run-container
-    @echo "Taikoscope Hekla service started."
+    @echo "Taikoscope masaya service started."
 
-# Stop and remove the remote Hekla service
-stop-remote-hekla:
+# Stop and remove the remote masaya service
+stop-remote-masaya:
     @just stop-container
 
 # Set log level to debug on remote server and restart the service
-debug-log-remote-hekla:
+debug-log-remote-masaya:
     @just set-log-level debug
 
 # Set log level to info on remote server and restart the service
-info-log-remote-hekla:
+info-log-remote-masaya:
     @just set-log-level info
 
 # Search in logs for a specific term
-search-logs-remote-hekla term:
+search-logs-remote-masaya term:
     ssh {{ssh_alias}} "docker logs {{container}} | grep -i \"{{term}}\""
 
 # --- API Server Deployment ---
-api_container := "taikoscope-api-hekla"
+api_container := "taikoscope-api-masaya"
 api_port := "48101:3000"
 
 stop-api-container:
@@ -129,7 +129,7 @@ run-api-container:
         -p {{api_port}} \
         {{api_container}}"
 
-deploy-api-remote-hekla:
+deploy-api-remote-masaya:
     @echo "Deploying API server via SSH alias '{{ssh_alias}}'"
     @just test || (echo "Tests failed, aborting deployment" && exit 1)
     test -f masaya.env || (echo "No masaya.env file found. Exiting." && exit 1)
@@ -137,22 +137,22 @@ deploy-api-remote-hekla:
     rsync -av --exclude target --exclude .git --exclude dashboard . {{ssh_alias}}:{{remote_dir}}
     @echo "Building API server on {{ssh_alias}} (path: {{remote_dir}})"
     ssh {{ssh_alias}} "cd {{remote_dir}} && docker buildx build --load -f Dockerfile.api -t {{api_container}} ."
-    @just start-api-remote-hekla
+    @just start-api-remote-masaya
 
-start-api-remote-hekla:
+start-api-remote-masaya:
     @echo "Starting API server on remote..."
     @just stop-api-container
     @just run-api-container
     @echo "API server started."
 
-logs-api-remote-hekla:
+logs-api-remote-masaya:
     ssh {{ssh_alias}} "docker logs --tail 1000 -f {{api_container}}"
 
 # Deploy and tail logs for the API server
-deploy-logs-api-remote-hekla:
-    @just deploy-api-remote-hekla
-    @just logs-api-remote-hekla
-status-api-remote-hekla:
+deploy-logs-api-remote-masaya:
+    @just deploy-api-remote-masaya
+    @just logs-api-remote-masaya
+status-api-remote-masaya:
     ssh {{ssh_alias}} "docker ps -f name={{api_container}}"
 
 # --- Dashboard ---
