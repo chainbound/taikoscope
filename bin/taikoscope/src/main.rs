@@ -5,7 +5,11 @@ use driver::Driver;
 use clap::Parser;
 use config::Opts;
 use dotenvy::dotenv;
-use runtime::shutdown::{ShutdownSignal, run_until_shutdown};
+use runtime::{
+    health,
+    shutdown::{ShutdownSignal, run_until_shutdown},
+};
+use std::net::SocketAddr;
 use tracing::info;
 use tracing_subscriber::filter::EnvFilter;
 
@@ -25,6 +29,13 @@ async fn main() -> eyre::Result<()> {
             EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")),
         )
         .init();
+
+    let health_addr: SocketAddr = format!("{}:{}", opts.api.host, opts.api.port).parse()?;
+    tokio::spawn(async move {
+        if let Err(e) = health::serve(health_addr).await {
+            tracing::error!(error = %e, "Health server failed");
+        }
+    });
 
     info!("🔭 Taikoscope engine starting...");
 
