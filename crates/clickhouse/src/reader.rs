@@ -702,17 +702,17 @@ impl ClickhouseReader {
 
         let query = format!(
             "SELECT batch_id, ts, \
-                    toUInt64OrNull(toString(ts - prev_ts)) AS ms_since_prev_batch \
+                    toUInt64OrNull(toString(toInt128(ts) - toInt128(prev_ts))) AS ms_since_prev_batch \
              FROM ( \
                  SELECT b.batch_id AS batch_id, \
                         toUInt64(l1_events.block_ts * 1000) AS ts, \
-                        lagInFrame(toUInt64(l1_events.block_ts * 1000)) \
-                            OVER (ORDER BY l1_events.block_ts) AS prev_ts \
+                        lagInFrame(toNullable(toUInt64(l1_events.block_ts * 1000))) \
+                            OVER (ORDER BY l1_events.block_ts, b.batch_id) AS prev_ts \
                    FROM {db}.batches b \
                    INNER JOIN {db}.l1_head_events l1_events \
                      ON b.l1_block_number = l1_events.l1_block_number \
                   WHERE l1_events.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
-                  ORDER BY l1_events.block_ts \
+                  ORDER BY l1_events.block_ts, b.batch_id \
              ) \
              WHERE prev_ts IS NOT NULL \
              ORDER BY ts",
