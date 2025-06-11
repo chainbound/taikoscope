@@ -10,6 +10,7 @@ interface MetricsGridProps {
   skeletonGroupCounts: Record<string, number>;
   displayGroupName: (group: string) => string;
   onMetricAction: (title: string) => (() => void) | undefined;
+  economicsView?: boolean;
 }
 
 export const MetricsGrid: React.FC<MetricsGridProps> = ({
@@ -19,8 +20,13 @@ export const MetricsGrid: React.FC<MetricsGridProps> = ({
   skeletonGroupCounts,
   displayGroupName,
   onMetricAction,
+  economicsView,
 }) => {
   const displayedGroupOrder = groupOrder;
+  const regularGrid =
+    'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4 md:gap-6';
+  const economicsGrid =
+    'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-2 gap-4 md:gap-6';
 
   return (
     <>
@@ -33,7 +39,7 @@ export const MetricsGrid: React.FC<MetricsGridProps> = ({
                   {displayGroupName(group)}
                 </h2>
               )}
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4 md:gap-6">
+              <div className={economicsView ? economicsGrid : regularGrid}>
                 {Array.from({ length: skeletonGroupCounts[group] }).map(
                   (_, idx) => (
                     <MetricCardSkeleton key={`${group}-s-${idx}`} />
@@ -48,7 +54,7 @@ export const MetricsGrid: React.FC<MetricsGridProps> = ({
                   {displayGroupName(group)}
                 </h2>
               )}
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4 md:gap-6">
+              <div className={economicsView ? economicsGrid : regularGrid}>
                 {groupedMetrics[group].map((m, idx) => (
                   <MetricCard
                     key={`${group}-${idx}`}
