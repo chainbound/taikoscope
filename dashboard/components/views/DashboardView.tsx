@@ -3,6 +3,7 @@ import { ErrorDisplay } from '../layout/ErrorDisplay';
 import { MetricsGrid } from '../layout/MetricsGrid';
 import { ChartsGrid } from '../layout/ChartsGrid';
 import { ProfitCalculator } from '../ProfitCalculator';
+import { ProfitabilityChart } from '../ProfitabilityChart';
 import { TimeRange, MetricData } from '../../types';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
@@ -46,6 +47,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const isEconomicsView = searchParams.get('view') === 'economics';
+  const hoursMap: Record<TimeRange, number> = {
+    '15m': 0.25,
+    '1h': 1,
+    '24h': 24,
+  };
 
   const visibleMetrics = React.useMemo(
     () =>
@@ -75,10 +81,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const skeletonGroupCounts: Record<string, number> = isEconomicsView
     ? { 'Network Economics': 1 }
     : {
-        'Network Performance': 5,
-        'Network Health': 4,
-        Sequencers: 3,
-      };
+      'Network Performance': 5,
+      'Network Health': 4,
+      Sequencers: 3,
+    };
 
   const displayGroupName = useCallback(
     (group: string): string => {
@@ -141,7 +147,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         />
 
         {isEconomicsView && (
-          <ProfitCalculator metrics={metricsData.metrics} timeRange={timeRange} />
+          <>
+            <ProfitCalculator metrics={metricsData.metrics} timeRange={timeRange} />
+            <div className="mt-6">
+              <ProfitabilityChart
+                metrics={metricsData.metrics}
+                hours={hoursMap[timeRange]}
+              />
+            </div>
+          </>
         )}
 
         {!isEconomicsView && (
