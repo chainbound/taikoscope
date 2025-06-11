@@ -137,6 +137,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           skeletonGroupCounts={skeletonGroupCounts}
           displayGroupName={displayGroupName}
           onMetricAction={getMetricAction}
+          economicsView={isEconomicsView}
         />
 
         {isEconomicsView && <ProfitCalculator metrics={metricsData.metrics} />}
