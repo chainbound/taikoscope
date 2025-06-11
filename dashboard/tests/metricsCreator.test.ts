@@ -26,7 +26,7 @@ describe('metricsCreator', () => {
       l1Block: 50,
     });
 
-    expect(metrics).toHaveLength(16);
+    expect(metrics).toHaveLength(15);
     expect(metrics[0].value).toBe('1.23');
 
     const verifyMetric = metrics.find((m) => React.isValidElement(m.title));
