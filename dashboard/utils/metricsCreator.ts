@@ -113,11 +113,6 @@ export const createMetrics = (data: MetricInputData): MetricData[] => [
     group: 'Network Economics',
   },
   {
-    title: 'Estimated Cloud Cost',
-    value: data.cloudCost != null ? `$${data.cloudCost.toFixed(2)}` : 'N/A',
-    group: 'Network Economics',
-  },
-  {
     title: 'L2 Block',
     value: data.l2Block != null ? data.l2Block.toLocaleString() : 'N/A',
     group: 'Block Information',
