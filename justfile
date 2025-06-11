@@ -112,7 +112,37 @@ info-log-remote-masaya:
 search-logs-remote-masaya term:
     ssh {{ssh_alias}} "docker logs {{container}} | grep -i \"{{term}}\""
 
-# --- API Server Deployment ---
+# --- Holesky Deployment (Fly.io) ---
+
+# Deploy Taikoscope to Holesky using Fly.io
+deploy-holesky:
+    @echo "Deploying Taikoscope to Holesky via Fly.io"
+    @just test || (echo "Tests failed, aborting deployment" && exit 1)
+    fly deploy
+
+# Deploy API server to Holesky using Fly.io
+deploy-api-holesky:
+    @echo "Deploying API server to Holesky via Fly.io"
+    @just test || (echo "Tests failed, aborting deployment" && exit 1)
+    fly deploy --config fly-api.toml
+
+# View logs for Holesky deployment
+logs-holesky:
+    fly logs
+
+# View logs for API server on Holesky
+logs-api-holesky:
+    fly logs --config fly-api.toml
+
+# Check status of Holesky deployment
+status-holesky:
+    fly status
+
+# Check status of API server on Holesky
+status-api-holesky:
+    fly status --config fly-api.toml
+
+# --- API Server Deployment (Masaya) ---
 api_container := "taikoscope-api-masaya"
 api_port := "48101:3000"
 
@@ -152,6 +182,7 @@ logs-api-remote-masaya:
 deploy-logs-api-remote-masaya:
     @just deploy-api-remote-masaya
     @just logs-api-remote-masaya
+
 status-api-remote-masaya:
     ssh {{ssh_alias}} "docker ps -f name={{api_container}}"
 
