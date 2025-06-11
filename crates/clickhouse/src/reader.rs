@@ -701,16 +701,21 @@ impl ClickhouseReader {
         }
 
         let query = format!(
-            "SELECT b.batch_id, \
-                    toUInt64(l1_events.block_ts * 1000) AS ts, \
-                    toUInt64OrNull(toString((l1_events.block_ts - \
-                        lagInFrame(l1_events.block_ts) OVER (ORDER BY l1_events.block_ts)) * 1000)) \
-                        AS ms_since_prev_batch \
-             FROM {db}.batches b \
-             INNER JOIN {db}.l1_head_events l1_events \
-               ON b.l1_block_number = l1_events.l1_block_number \
-             WHERE l1_events.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
-             ORDER BY l1_events.block_ts",
+            "SELECT batch_id, ts, \
+                    toUInt64OrNull(toString(ts - prev_ts)) AS ms_since_prev_batch \
+             FROM ( \
+                 SELECT b.batch_id AS batch_id, \
+                        toUInt64(l1_events.block_ts * 1000) AS ts, \
+                        lagInFrame(toUInt64(l1_events.block_ts * 1000)) \
+                            OVER (ORDER BY l1_events.block_ts) AS prev_ts \
+                   FROM {db}.batches b \
+                   INNER JOIN {db}.l1_head_events l1_events \
+                     ON b.l1_block_number = l1_events.l1_block_number \
+                  WHERE l1_events.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
+                  ORDER BY l1_events.block_ts \
+             ) \
+             WHERE prev_ts IS NOT NULL \
+             ORDER BY ts",
             interval = range.interval(),
             db = self.db_name,
         );
