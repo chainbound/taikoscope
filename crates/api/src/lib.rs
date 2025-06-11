@@ -57,6 +57,7 @@ pub const MAX_BLOCK_TRANSACTIONS_LIMIT: u64 = u64::MAX;
         sequencer_distribution,
         sequencer_blocks,
         block_transactions,
+        l2_fees,
         dashboard_data
     ),
     components(
@@ -98,6 +99,7 @@ pub const MAX_BLOCK_TRANSACTIONS_LIMIT: u64 = u64::MAX;
             clickhouse_lib::BatchPostingTimeRow,
             HealthResponse,
             PreconfDataResponse,
+            L2FeesResponse,
             DashboardDataResponse,
             api_types::ErrorResponse
         )
@@ -1055,6 +1057,53 @@ async fn block_transactions(
 
 #[utoipa::path(
     get,
+    path = "/l2-fees",
+    params(
+        RangeQuery
+    ),
+    responses(
+        (status = 200, description = "Priority and base fees", body = L2FeesResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
+    ),
+    tag = "taikoscope"
+)]
+async fn l2_fees(
+    Query(params): Query<RangeQuery>,
+    State(state): State<ApiState>,
+) -> Result<Json<L2FeesResponse>, ErrorResponse> {
+    validate_time_range(&params.time_range)?;
+
+    let has_time_range = has_time_range_params(&params.time_range);
+    validate_range_exclusivity(has_time_range, false)?;
+
+    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
+    let address = params.address.as_ref().and_then(|addr| match addr.parse::<Address>() {
+        Ok(a) => Some(AddressBytes::from(a)),
+        Err(e) => {
+            tracing::warn!(error = %e, "Failed to parse address");
+            None
+        }
+    });
+
+    let (priority_fee, base_fee) = tokio::try_join!(
+        state.client.get_l2_priority_fee(address, time_range),
+        state.client.get_l2_base_fee(address, time_range)
+    )
+    .map_err(|e| {
+        tracing::error!(error = %e, "Failed to get L2 fees");
+        ErrorResponse::new(
+            "database-error",
+            "Database error",
+            StatusCode::INTERNAL_SERVER_ERROR,
+            e.to_string(),
+        )
+    })?;
+
+    Ok(Json(L2FeesResponse { priority_fee, base_fee }))
+}
+
+#[utoipa::path(
+    get,
     path = "/dashboard-data",
     params(
         RangeQuery
@@ -1096,7 +1145,8 @@ async fn dashboard_data(
         forced_inclusions,
         l2_block,
         l1_block,
-        l2_tx_fee,
+        priority_fee,
+        base_fee,
     ) = tokio::try_join!(
         state.client.get_l2_block_cadence(address, time_range),
         state.client.get_batch_posting_cadence(time_range),
@@ -1109,7 +1159,8 @@ async fn dashboard_data(
         state.client.get_forced_inclusions_since(since),
         state.client.get_last_l2_block_number(),
         state.client.get_last_l1_block_number(),
-        state.client.get_l2_tx_fee(address, time_range)
+        state.client.get_l2_priority_fee(address, time_range),
+        state.client.get_l2_base_fee(address, time_range)
     )
     .map_err(|e| {
         tracing::error!(error = %e, "Failed to get dashboard data");
@@ -1143,7 +1194,8 @@ async fn dashboard_data(
         forced_inclusions: forced_inclusions.len(),
         l2_block,
         l1_block,
-        l2_tx_fee,
+        priority_fee,
+        base_fee,
         cloud_cost: Some(cost),
     }))
 }
@@ -1172,6 +1224,7 @@ pub fn router(state: ApiState) -> Router {
         .route("/sequencer-distribution", get(sequencer_distribution))
         .route("/sequencer-blocks", get(sequencer_blocks))
         .route("/block-transactions", get(block_transactions))
+        .route("/l2-fees", get(l2_fees))
         .route("/dashboard-data", get(dashboard_data));
 
     Router::new()
@@ -1704,6 +1757,7 @@ mod tests {
             "/sequencer-distribution",
             "/sequencer-blocks",
             "/block-transactions",
+            "/l2-fees",
             "/dashboard-data",
         ];
 
