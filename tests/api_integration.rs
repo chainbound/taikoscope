@@ -170,3 +170,26 @@ async fn sse_l1_head_integration() {
 
     server.abort();
 }
+
+#[tokio::test]
+async fn health_endpoint_unversioned() {
+    let mock = Mock::new();
+    let url = Url::parse(mock.url()).unwrap();
+    let client =
+        ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+    let (addr, server) = spawn_server(client).await;
+    wait_for_server(addr).await;
+
+    // Test that health endpoint is accessible at unversioned path
+    let resp = reqwest::get(format!("http://{addr}/health")).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body: serde_json::Value = resp.json().await.unwrap();
+    assert_eq!(body, serde_json::json!({ "status": "ok" }));
+
+    // Test that health endpoint is NOT accessible at versioned path
+    let resp = reqwest::get(format!("http://{addr}/{API_VERSION}/health")).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+
+    server.abort();
+}

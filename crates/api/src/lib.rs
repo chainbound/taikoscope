@@ -18,7 +18,6 @@ use clickhouse_lib::{AddressBytes, ClickhouseReader};
 use futures::stream::Stream;
 use hex::encode;
 use primitives::hardware::TOTAL_HARDWARE_COST_USD;
-use runtime::health;
 use std::{convert::Infallible, time::Duration as StdDuration};
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
@@ -39,7 +38,6 @@ pub const MAX_BLOCK_TRANSACTIONS_LIMIT: u64 = u64::MAX;
 #[derive(Debug, OpenApi)]
 #[openapi(
     paths(
-        health,
         l2_head,
         l1_head,
         l2_head_block,
@@ -167,18 +165,6 @@ fn _legacy_resolve_time_range(
     let start = now - range_duration(range);
     let limit = now - ChronoDuration::days(7);
     if start < limit { limit } else { start }
-}
-
-#[utoipa::path(
-    get,
-    path = "/health",
-    responses(
-        (status = 200, description = "Service health", body = HealthResponse)
-    ),
-    tag = "taikoscope"
-)]
-async fn health() -> Json<HealthResponse> {
-    health::handler().await
 }
 
 #[utoipa::path(
@@ -1230,10 +1216,10 @@ pub fn router(state: ApiState) -> Router {
 
     Router::new()
         .merge(SwaggerUi::new("/swagger-ui").url("/api-doc/openapi.json", ApiDoc::openapi()))
-        .route("/health", get(health))
         .merge(api_routes)
         .with_state(state)
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1282,37 +1268,6 @@ mod tests {
         assert!(response.status().is_success());
         let bytes = body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
         serde_json::from_slice(&bytes).unwrap()
-    }
-
-    #[tokio::test]
-    async fn health_endpoint() {
-        let mock = Mock::new();
-        let app = build_app(mock.url());
-        let body = send_request(app, "/health").await;
-        assert_eq!(body, json!({ "status": "ok" }));
-    }
-
-    #[tokio::test]
-    async fn health_not_rate_limited() {
-        let mock = Mock::new();
-        let url = Url::parse(mock.url()).unwrap();
-        let client =
-            ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
-        let state = ApiState::new(client, 1, StdDuration::from_secs(60));
-        let app = router(state);
-
-        let resp1 = app
-            .clone()
-            .oneshot(Request::builder().uri("/health").body(Body::empty()).unwrap())
-            .await
-            .unwrap();
-        assert_eq!(resp1.status(), StatusCode::OK);
-
-        let resp2 = app
-            .oneshot(Request::builder().uri("/health").body(Body::empty()).unwrap())
-            .await
-            .unwrap();
-        assert_eq!(resp2.status(), StatusCode::OK);
     }
 
     #[tokio::test]
@@ -1738,9 +1693,8 @@ mod tests {
         assert_eq!(openapi.info.version, "0.1.0");
         assert!(!openapi.paths.paths.is_empty(), "OpenAPI spec should have paths defined");
 
-        // Verify all expected endpoints are documented
+        // Verify all expected endpoints are documented (excluding /health which is now unversioned)
         let expected_paths = [
-            "/health",
             "/l2-head",
             "/l1-head",
             "/l2-head-block",

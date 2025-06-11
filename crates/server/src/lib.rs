@@ -6,9 +6,11 @@ use api::{self, ApiState};
 use axum::{
     Router,
     http::{HeaderValue, Method},
+    routing::get,
 };
 use clickhouse_lib::ClickhouseReader;
 use eyre::Result;
+use runtime::health;
 use tower_http::{
     cors::{AllowOrigin, Any, CorsLayer},
     trace::{DefaultMakeSpan, DefaultOnRequest, DefaultOnResponse, TraceLayer},
@@ -39,7 +41,11 @@ pub fn router(state: ApiState, allowed_origins: Vec<String>) -> Router {
         .on_request(DefaultOnRequest::new().level(Level::INFO))
         .on_response(DefaultOnResponse::new().level(Level::INFO));
 
-    Router::new().nest(&format!("/{API_VERSION}"), api::router(state)).layer(cors).layer(trace)
+    Router::new()
+        .route("/health", get(health::handler))
+        .nest(&format!("/{API_VERSION}"), api::router(state))
+        .layer(cors)
+        .layer(trace)
 }
 
 /// Run the API server on the given address.

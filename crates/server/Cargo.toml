@@ -8,6 +8,7 @@ repository.workspace = true
 [dependencies]
 api = { path = "../api" }
 clickhouse_lib = { path = "../clickhouse", package = "clickhouse" }
+runtime = { path = "../runtime" }
 axum.workspace = true
 tower-http.workspace = true
 tokio.workspace = true
