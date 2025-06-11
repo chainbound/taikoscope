@@ -15,16 +15,16 @@ alloy-contract = { version = "1.0.9" }
 alloy-json-rpc = { version = "1.0.9" }
 alloy-rpc-client = "1.0.9"
 alloy-rpc-types-eth = "1.0.9"
-alloy-primitives = "1.1.2"
+alloy-primitives = "1.2.0"
 alloy-consensus = "1.0.9"
 alloy-network-primitives = "1.0.9"
-alloy-sol-types = "1.1.2"
-alloy-sol-macro = "1.1.2"
+alloy-sol-types = "1.2.0"
+alloy-sol-macro = "1.2.0"
 async-trait = "0.1"
 async-stream = "0.3"
 axum = { version = "0.7.9", features = ["json"] }
 chrono = { version = "0.4.41", features = ["serde"] }
-clap = { version = "4.5.39", features = ["derive", "env"] }
+clap = { version = "4.5.40", features = ["derive", "env"] }
 clickhouse = { version = "0.13.3", features = ["native-tls", "test-util"] }
 derive_more = { version = "1.0.0", features = ["debug", "deref"] }
 dotenvy = "0.15.7"
