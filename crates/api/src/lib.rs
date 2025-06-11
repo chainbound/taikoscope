@@ -18,6 +18,7 @@ use clickhouse_lib::{AddressBytes, ClickhouseReader};
 use futures::stream::Stream;
 use hex::encode;
 use primitives::hardware::TOTAL_HARDWARE_COST_USD;
+use runtime::health;
 use std::{convert::Infallible, time::Duration as StdDuration};
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
@@ -177,7 +178,7 @@ fn _legacy_resolve_time_range(
     tag = "taikoscope"
 )]
 async fn health() -> Json<HealthResponse> {
-    Json(HealthResponse { status: "ok".to_owned() })
+    health::handler().await
 }
 
 #[utoipa::path(

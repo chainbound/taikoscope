@@ -5,13 +5,21 @@ use axum::{Json, Router, routing::get};
 use eyre::Result;
 use tracing::info;
 
+/// Health check handler returning `{ "status": "ok" }`.
+pub async fn handler() -> Json<HealthResponse> {
+    Json(HealthResponse { status: "ok".to_owned() })
+}
+
+/// Create a router exposing the `/health` endpoint.
+pub fn router() -> Router {
+    Router::new().route("/health", get(handler))
+}
+
 /// Start a simple health check server.
 ///
-/// The server listens on the provided address and exposes a `/health` endpoint
-/// returning `{ "status": "ok" }`.
+/// The server exposes a `/health` endpoint that returns `{ "status": "ok" }`.
 pub async fn serve(addr: SocketAddr) -> Result<()> {
-    let app = Router::new()
-        .route("/health", get(|| async { Json(HealthResponse { status: "ok".to_owned() }) }));
+    let app = router();
 
     info!("Starting health server on {}", addr);
     let listener = tokio::net::TcpListener::bind(addr).await?;
