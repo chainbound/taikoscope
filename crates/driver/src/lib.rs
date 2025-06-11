@@ -53,6 +53,13 @@ impl Driver {
 
     /// Build everything with option to skip database migrations (useful for tests)
     pub async fn new_with_migrations(opts: Opts, run_migrations: bool) -> Result<Self> {
+        // verify monitoring configuration before doing any heavy work
+        if !opts.instatus.enabled() {
+            return Err(eyre::eyre!(
+                "Instatus configuration missing; set the INSTATUS_* environment variables"
+            ));
+        }
+
         // init db client
         let clickhouse = ClickhouseWriter::new(
             opts.clickhouse.url.clone(),
@@ -86,9 +93,6 @@ impl Driver {
         .await?;
 
         // init incident client and component IDs
-        if !opts.instatus.enabled() {
-            return Err(eyre::eyre!("missing Instatus configuration"));
-        }
 
         let instatus_batch_submission_component_id =
             opts.instatus.batch_submission_component_id.clone();
