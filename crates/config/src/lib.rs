@@ -4,7 +4,8 @@ use clap::Parser;
 use url::Url;
 
 /// Default origins allowed to access the API.
-pub const DEFAULT_ALLOWED_ORIGINS: &str = "https://taikoscope.xyz,https://www.taikoscope.xyz";
+pub const DEFAULT_ALLOWED_ORIGINS: &str =
+    "https://masaya.taikoscope.xyz,https://www.masaya.taikoscope.xyz";
 /// Clickhouse database configuration options
 #[derive(Debug, Clone, Parser)]
 pub struct ClickhouseOpts {
