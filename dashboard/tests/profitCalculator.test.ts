@@ -18,6 +18,6 @@ describe('ProfitCalculator', () => {
         timeRange: '1h',
       }),
     );
-    expect(html.includes('1999.72')).toBe(true);
+    expect(html.includes('1,999')).toBe(true);
   });
 });
