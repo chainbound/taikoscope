@@ -32,7 +32,7 @@ async fn main() -> eyre::Result<()> {
 
     let health_addr: SocketAddr = format!("{}:{}", opts.api.host, opts.api.port).parse()?;
     tokio::spawn(async move {
-        if let Err(e) = health::serve(health_addr).await {
+        if let Err(e) = health::serve(health_addr, ShutdownSignal::new()).await {
             tracing::error!(error = %e, "Health server failed");
         }
     });
