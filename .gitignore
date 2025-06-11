@@ -9,3 +9,6 @@
 .vscode/
 .claude/
 dashboard/tests-build/
+
+fly.toml
+fly-api.toml
