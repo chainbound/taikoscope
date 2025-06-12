@@ -18,7 +18,7 @@ interface ImportMeta {
 
 const metaEnv = (import.meta as ImportMeta).env;
 const rawNetworkName =
-  metaEnv?.VITE_NETWORK_NAME ?? metaEnv?.NETWORK_NAME ?? 'masaya';
+  metaEnv?.VITE_NETWORK_NAME ?? metaEnv?.NETWORK_NAME ?? 'Masaya';
 const NETWORK_NAME = rawNetworkName.charAt(0).toUpperCase() + rawNetworkName.slice(1).toLowerCase();
 const DASHBOARD_TITLE = `Taikoscope ${NETWORK_NAME}`;
 
