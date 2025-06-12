@@ -28,6 +28,9 @@ interface DashboardHeaderProps {
   lastRefresh: number;
   onManualRefresh: () => void;
   isTimeRangeChanging?: boolean;
+  sequencers: string[];
+  selectedSequencer: string | null;
+  onSequencerChange: (seq: string | null) => void;
 }
 
 export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
@@ -38,6 +41,9 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   lastRefresh,
   onManualRefresh,
   isTimeRangeChanging,
+  sequencers,
+  selectedSequencer,
+  onSequencerChange,
 }) => {
   const { navigateToDashboard } = useRouterNavigation();
   const { errorMessage } = useErrorHandler();
@@ -87,8 +93,11 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
           lastRefresh={lastRefresh}
           onRefresh={onManualRefresh}
         />
-        {/* Sequencer filter can still be set via URL parameters, but the
-            dropdown selector is hidden from the UI. */}
+        <SequencerSelector
+          sequencers={sequencers}
+          value={selectedSequencer}
+          onChange={onSequencerChange}
+        />
         {/* Export button removed as per request */}
       </div>
     </header>
