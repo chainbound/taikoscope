@@ -66,7 +66,7 @@ export const fetchMainDashboardData = async (
     sequencerDistRes,
     blockTxRes,
     batchBlobCountsRes,
-  ] = await Promise.all([
+  ] = await Promise.allSettled([
     fetchDashboardData(timeRange, address),
     fetchProveTimes(timeRange),
     fetchVerifyTimes(timeRange),
@@ -77,7 +77,8 @@ export const fetchMainDashboardData = async (
     fetchBatchBlobCounts(timeRange),
   ]);
 
-  const data = dashboardRes.data;
+  const getValue = (res: PromiseSettledResult<any>) =>
+    res.status === 'fulfilled' ? res.value : null;
 
   const allResults = [
     dashboardRes,
@@ -88,7 +89,20 @@ export const fetchMainDashboardData = async (
     sequencerDistRes,
     blockTxRes,
     batchBlobCountsRes,
-  ];
+  ].map(getValue);
+
+  const [
+    dashboardData,
+    proveTimesData,
+    verifyTimesData,
+    l2TimesData,
+    l2GasUsedData,
+    sequencerDistData,
+    blockTxData,
+    batchBlobCountsData,
+  ] = allResults;
+
+  const data = dashboardData?.data;
 
   return {
     l2Cadence: data?.l2_block_cadence_ms ?? null,
@@ -102,17 +116,17 @@ export const fetchMainDashboardData = async (
     forcedInclusions: data?.forced_inclusions ?? null,
     l2Block: data?.l2_block ?? null,
     l1Block: data?.l1_block ?? null,
-    proveTimes: proveTimesRes.data || [],
-    verifyTimes: verifyTimesRes.data || [],
-    l2Times: l2TimesRes.data || [],
-    l2Gas: l2GasUsedRes.data || [],
-    sequencerDist: sequencerDistRes.data || [],
-    txPerBlock: blockTxRes.data || [],
-    blobsPerBatch: batchBlobCountsRes.data || [],
+    proveTimes: proveTimesData?.data || [],
+    verifyTimes: verifyTimesData?.data || [],
+    l2Times: l2TimesData?.data || [],
+    l2Gas: l2GasUsedData?.data || [],
+    sequencerDist: sequencerDistData?.data || [],
+    txPerBlock: blockTxData?.data || [],
+    blobsPerBatch: batchBlobCountsData?.data || [],
     priorityFee: data?.priority_fee ?? null,
     baseFee: data?.base_fee ?? null,
     cloudCost: data?.cloud_cost ?? null,
-    badRequestResults: allResults,
+    badRequestResults: allResults.filter((res) => res && res.status !== 200),
   };
 };
 

@@ -3,7 +3,6 @@ import { Theme } from '../theme';
 
 interface ThemeContextType {
   theme: Theme;
-  toggleTheme: () => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -23,7 +22,7 @@ interface ThemeProviderProps {
 export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   const [theme, setTheme] = useState<Theme>(() => {
     if (typeof window === 'undefined') {
-      return 'light';
+      return 'dark';
     }
     const saved = localStorage.getItem('theme');
     if (saved === 'light' || saved === 'dark') {
@@ -31,7 +30,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     }
     return window.matchMedia('(prefers-color-scheme: dark)').matches
       ? 'dark'
-      : 'light';
+      : 'dark';
   });
 
   useEffect(() => {
@@ -39,18 +38,12 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
       return;
     }
     const root = window.document.documentElement;
-    root.classList.remove('light', 'dark');
+    root.classList.remove('light');
     root.classList.add(theme);
     localStorage.setItem('theme', theme);
   }, [theme]);
 
-  const toggleTheme = () => {
-    setTheme((prev) => (prev === 'light' ? 'dark' : 'light'));
-  };
-
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
-      {children}
-    </ThemeContext.Provider>
+    <ThemeContext.Provider value={{ theme }}>{children}</ThemeContext.Provider>
   );
 };

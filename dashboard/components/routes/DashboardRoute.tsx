@@ -32,7 +32,6 @@ export const DashboardRoute: React.FC = () => {
     metricsData,
     refreshTimer,
     isLoadingData,
-    isTimeRangeChanging,
     handleManualRefresh,
     openGenericTable,
     openTpsTable,
@@ -48,7 +47,6 @@ export const DashboardRoute: React.FC = () => {
         onRefreshRateChange={refreshTimer.setRefreshRate}
         lastRefresh={refreshTimer.lastRefresh}
         onManualRefresh={handleManualRefresh}
-        isTimeRangeChanging={isTimeRangeChanging}
         sequencers={sequencerList}
         selectedSequencer={selectedSequencer}
         onSequencerChange={setSelectedSequencer}
@@ -59,7 +57,6 @@ export const DashboardRoute: React.FC = () => {
         metricsData={metricsData}
         chartsData={chartsData}
         isLoadingData={isLoadingData}
-        isTimeRangeChanging={isTimeRangeChanging}
         onOpenTable={openGenericTable}
         onOpenTpsTable={openTpsTable}
         onOpenSequencerDistributionTable={openSequencerDistributionTable}
