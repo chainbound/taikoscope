@@ -378,6 +378,7 @@ impl Driver {
                 tracing::info!(
                     slot = header.slot,
                     block = header.number,
+                    candidates = ?c,
                     candidates_count = c.len(),
                     "Successfully retrieved operator candidates"
                 );
