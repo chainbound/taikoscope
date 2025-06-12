@@ -55,20 +55,36 @@ RUN --mount=type=cache,target=$SCCACHE_DIR,sharing=locked \
 FROM debian:bookworm-slim AS runtime
 
 # Install runtime dependencies
+# Including iptables for Tailscale
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     libssl3 \
+    iptables \
+    iproute2 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
+
+# Copy application binary
 COPY --from=builder /app/target/release/taikoscope taikoscope
+
+# Copy Tailscale binaries from the tailscale image on Docker Hub
+COPY --from=docker.io/tailscale/tailscale:stable /usr/local/bin/tailscaled /app/tailscaled
+COPY --from=docker.io/tailscale/tailscale:stable /usr/local/bin/tailscale /app/tailscale
+
+# Create Tailscale directories
+RUN mkdir -p /var/run/tailscale /var/cache/tailscale /var/lib/tailscale
+
+# Copy startup script
+COPY start.sh /app/start.sh
+RUN chmod +x /app/start.sh
 
 # Add taikoscope user
 RUN chmod +x taikoscope && \
     groupadd -r taikoscope && \
     useradd -r -g taikoscope taikoscope
 
-USER taikoscope
+# Note: We need to run as root for Tailscale to manage network interfaces
 
-ENTRYPOINT ["./taikoscope"]
+ENTRYPOINT ["/app/start.sh"]
 
