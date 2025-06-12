@@ -4,7 +4,7 @@ use clap::Parser;
 use url::Url;
 
 /// Default origins allowed to access the API.
-pub const DEFAULT_ALLOWED_ORIGINS: &str = "https://masaya.taikoscope.xyz,https://www.masaya.taikoscope.xyz,https://hekla.taikoscope.xyz,https://www.hekla.taikoscope.xyz";
+pub const DEFAULT_ALLOWED_ORIGINS: &str = "https://taikoscope.xyz,https://www.taikoscope.xyz,https://masaya.taikoscope.xyz,https://www.masaya.taikoscope.xyz,https://hekla.taikoscope.xyz,https://www.hekla.taikoscope.xyz";
 /// Clickhouse database configuration options
 #[derive(Debug, Clone, Parser)]
 pub struct ClickhouseOpts {
@@ -228,6 +228,8 @@ mod tests {
         assert_eq!(opts.api.port, 3000);
 
         let expected_origins = vec![
+            "https://taikoscope.xyz",
+            "https://www.taikoscope.xyz",
             "https://masaya.taikoscope.xyz",
             "https://www.masaya.taikoscope.xyz",
             "https://hekla.taikoscope.xyz",
@@ -293,15 +295,19 @@ mod tests {
     }
 
     #[test]
-    fn test_hekla_origins_included() {
+    fn test_all_origins_included() {
         use super::DEFAULT_ALLOWED_ORIGINS;
 
+        assert!(DEFAULT_ALLOWED_ORIGINS.contains("taikoscope.xyz"));
+        assert!(DEFAULT_ALLOWED_ORIGINS.contains("www.taikoscope.xyz"));
         assert!(DEFAULT_ALLOWED_ORIGINS.contains("hekla.taikoscope.xyz"));
         assert!(DEFAULT_ALLOWED_ORIGINS.contains("www.hekla.taikoscope.xyz"));
 
-        // Verify both masaya and hekla origins are present
+        // Verify all origins are present
         let origins: Vec<&str> = DEFAULT_ALLOWED_ORIGINS.split(',').collect();
-        assert_eq!(origins.len(), 4);
+        assert_eq!(origins.len(), 6);
+        assert!(origins.contains(&"https://taikoscope.xyz"));
+        assert!(origins.contains(&"https://www.taikoscope.xyz"));
         assert!(origins.contains(&"https://masaya.taikoscope.xyz"));
         assert!(origins.contains(&"https://www.masaya.taikoscope.xyz"));
         assert!(origins.contains(&"https://hekla.taikoscope.xyz"));
