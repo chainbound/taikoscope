@@ -112,34 +112,34 @@ info-log-remote-masaya:
 search-logs-remote-masaya term:
     ssh {{ssh_alias}} "docker logs {{container}} | grep -i \"{{term}}\""
 
-# --- Holesky Deployment (Fly.io) ---
+# --- Hekla Deployment (Fly.io) ---
 
-# Deploy Taikoscope to Holesky using Fly.io
-deploy-holesky:
-    @echo "Deploying Taikoscope to Holesky via Fly.io"
+# Deploy Taikoscope to Hekla using Fly.io
+deploy-hekla:
+    @echo "Deploying Taikoscope to Hekla via Fly.io"
     @just test || (echo "Tests failed, aborting deployment" && exit 1)
     fly deploy
 
-# Deploy API server to Holesky using Fly.io
-deploy-api-holesky:
-    @echo "Deploying API server to Holesky via Fly.io"
+# Deploy API server to Hekla using Fly.io
+deploy-api-hekla:
+    @echo "Deploying API server to Hekla via Fly.io"
     @just test || (echo "Tests failed, aborting deployment" && exit 1)
     fly deploy --config fly-api.toml
 
-# View logs for Holesky deployment
-logs-holesky:
+# View logs for Hekla deployment
+logs-hekla:
     fly logs
 
-# View logs for API server on Holesky
-logs-api-holesky:
+# View logs for API server on Hekla
+logs-api-hekla:
     fly logs --config fly-api.toml
 
-# Check status of Holesky deployment
-status-holesky:
+# Check status of Hekla deployment
+status-hekla:
     fly status
 
-# Check status of API server on Holesky
-status-api-holesky:
+# Check status of API server on Hekla
+status-api-hekla:
     fly status --config fly-api.toml
 
 # --- API Server Deployment (Masaya) ---
