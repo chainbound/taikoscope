@@ -3,6 +3,9 @@ import { defineConfig } from 'vite';
 
 export default defineConfig(() => {
   return {
+    define: {
+      'import.meta.env.VITE_NETWORK_NAME': JSON.stringify(process.env.VITE_NETWORK_NAME || process.env.NETWORK_NAME),
+    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),

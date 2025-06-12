@@ -53,7 +53,7 @@ describe('utils additional', () => {
     const prev = (globalThis as any).localStorage;
     // Ensure localStorage is undefined
     delete (globalThis as any).localStorage;
-    expect(loadRefreshRate()).toBe(60000);
+    expect(loadRefreshRate()).toBe(600000);
     if (prev !== undefined) (globalThis as any).localStorage = prev;
   });
 });

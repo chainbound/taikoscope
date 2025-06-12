@@ -76,14 +76,22 @@ export const createMetrics = (data: MetricInputData): MetricData[] => [
     title: 'Current Sequencer',
     value:
       data.currentOperator != null
-        ? getSequencerName(data.currentOperator)
+        ? (() => {
+            const name = getSequencerName(data.currentOperator);
+            return name === 'Unknown' ? data.currentOperator : name;
+          })()
         : 'N/A',
     group: 'Sequencers',
   },
   {
     title: 'Next Sequencer',
     value:
-      data.nextOperator != null ? getSequencerName(data.nextOperator) : 'N/A',
+      data.nextOperator != null
+        ? (() => {
+            const name = getSequencerName(data.nextOperator);
+            return name === 'Unknown' ? data.nextOperator : name;
+          })()
+        : 'N/A',
     group: 'Sequencers',
   },
   {

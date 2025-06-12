@@ -17,8 +17,10 @@ interface ImportMeta {
 }
 
 const metaEnv = (import.meta as ImportMeta).env;
-const NETWORK_NAME =
-  metaEnv?.VITE_NETWORK_NAME ?? metaEnv?.NETWORK_NAME ?? 'Taiko Masaya Testnet';
+const rawNetworkName =
+  metaEnv?.VITE_NETWORK_NAME ?? metaEnv?.NETWORK_NAME ?? 'Masaya';
+const NETWORK_NAME = rawNetworkName.charAt(0).toUpperCase() + rawNetworkName.slice(1).toLowerCase();
+const DASHBOARD_TITLE = `Taikoscope ${NETWORK_NAME}`;
 
 interface DashboardHeaderProps {
   timeRange: TimeRange;
@@ -64,7 +66,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
         >
           {' '}
           {/* Updated Taiko Pink */}
-          {NETWORK_NAME}
+          {DASHBOARD_TITLE}
         </h1>
       </div>
       <div className="flex items-center space-x-2 mt-4 md:mt-0">
