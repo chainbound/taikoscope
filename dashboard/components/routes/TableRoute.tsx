@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useSearchParams, useOutletContext } from 'react-router-dom';
 import { useRouterNavigation } from '../../hooks/useRouterNavigation';
 import { TableView } from '../views/TableView';
@@ -25,6 +25,7 @@ export const TableRoute: React.FC = () => {
 
   const {
     timeRange,
+    setTimeRange,
     selectedSequencer,
     chartsData,
     metricsData,
@@ -41,14 +42,16 @@ export const TableRoute: React.FC = () => {
         newParams.set('range', newRange);
       }
       setSearchParams(newParams, { replace: true });
+      setTimeRange(newRange);
     },
-    [searchParams, setSearchParams],
+    [searchParams, setSearchParams, setTimeRange],
   );
 
   const [tableView, setTableView] = useState<TableViewState | undefined>(
     undefined,
   );
   const [tableLoading, setTableLoading] = useState(false);
+  const fetchIdRef = useRef(0);
 
   // Get current time range from URL params, fallback to context
   const currentTimeRange =
@@ -68,6 +71,8 @@ export const TableRoute: React.FC = () => {
   });
 
   useEffect(() => {
+    const currentFetchId = ++fetchIdRef.current;
+
     const loadTable = async () => {
       if (!tableType) return;
 
@@ -103,6 +108,7 @@ export const TableRoute: React.FC = () => {
         }
 
         const res = await config.fetcher(range, ...fetcherArgs);
+        if (currentFetchId !== fetchIdRef.current) return;
         const data = res.data || [];
 
         const title =
@@ -115,13 +121,15 @@ export const TableRoute: React.FC = () => {
           : data;
         const chart = config.chart ? config.chart(data) : undefined;
 
-        setTableView({
-          title,
-          description: config.description,
-          columns: config.columns,
-          rows: mappedData,
-          chart,
-        });
+        if (currentFetchId === fetchIdRef.current) {
+          setTableView({
+            title,
+            description: config.description,
+            columns: config.columns,
+            rows: mappedData,
+            chart,
+          });
+        }
       } catch (error) {
         console.error('Failed to load table:', error);
         metricsData.setErrorMessage(
@@ -133,6 +141,10 @@ export const TableRoute: React.FC = () => {
     };
 
     loadTable();
+
+    return () => {
+      fetchIdRef.current++;
+    };
   }, [
     tableType,
     searchParams,
