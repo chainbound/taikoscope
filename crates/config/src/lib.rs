@@ -4,8 +4,7 @@ use clap::Parser;
 use url::Url;
 
 /// Default origins allowed to access the API.
-pub const DEFAULT_ALLOWED_ORIGINS: &str =
-    "https://masaya.taikoscope.xyz,https://www.masaya.taikoscope.xyz";
+pub const DEFAULT_ALLOWED_ORIGINS: &str = "https://masaya.taikoscope.xyz,https://www.masaya.taikoscope.xyz,https://hekla.taikoscope.xyz,https://www.hekla.taikoscope.xyz";
 /// Clickhouse database configuration options
 #[derive(Debug, Clone, Parser)]
 pub struct ClickhouseOpts {
@@ -155,7 +154,9 @@ pub struct Opts {
 
 #[cfg(test)]
 mod tests {
-    use super::{DEFAULT_ALLOWED_ORIGINS, Opts};
+    //! Tests that modify environment variables need to be run with --test-threads=1
+    //! to avoid interference between parallel test execution.
+    use super::Opts;
     use clap::Parser;
 
     #[test]
@@ -206,6 +207,17 @@ mod tests {
 
     #[test]
     fn test_default_values() {
+        // Clean up any environment variables that might affect this test
+        use std::env;
+        unsafe {
+            env::remove_var("INSTATUS_MONITOR_POLL_INTERVAL_SECS");
+            env::remove_var("INSTATUS_MONITOR_THRESHOLD_SECS");
+            env::remove_var("BATCH_PROOF_TIMEOUT_SECS");
+            env::remove_var("ALLOWED_ORIGINS");
+            env::remove_var("RATE_LIMIT_MAX_REQUESTS");
+            env::remove_var("RATE_LIMIT_PERIOD_SECS");
+        }
+
         let args = base_args();
         let opts = Opts::try_parse_from(args).expect("failed to parse opts");
 
@@ -214,10 +226,15 @@ mod tests {
         assert_eq!(opts.instatus.batch_proof_timeout_secs, 10800);
         assert_eq!(opts.api.host, "127.0.0.1");
         assert_eq!(opts.api.port, 3000);
-        assert_eq!(
-            opts.api.allowed_origins,
-            DEFAULT_ALLOWED_ORIGINS.split(',').map(|s| s.to_owned()).collect::<Vec<_>>()
-        );
+
+        let expected_origins = vec![
+            "https://masaya.taikoscope.xyz",
+            "https://www.masaya.taikoscope.xyz",
+            "https://hekla.taikoscope.xyz",
+            "https://www.hekla.taikoscope.xyz",
+        ];
+        assert_eq!(opts.api.allowed_origins, expected_origins);
+
         assert_eq!(opts.api.rate_limit_max_requests, 1000);
         assert_eq!(opts.api.rate_limit_period_secs, 60);
         assert!(!opts.reset_db);
@@ -226,6 +243,16 @@ mod tests {
     #[test]
     fn test_env_overrides() {
         use std::env;
+
+        // Clean up first to ensure clean state
+        unsafe {
+            env::remove_var("INSTATUS_MONITOR_POLL_INTERVAL_SECS");
+            env::remove_var("INSTATUS_MONITOR_THRESHOLD_SECS");
+            env::remove_var("BATCH_PROOF_TIMEOUT_SECS");
+            env::remove_var("ALLOWED_ORIGINS");
+            env::remove_var("RATE_LIMIT_MAX_REQUESTS");
+            env::remove_var("RATE_LIMIT_PERIOD_SECS");
+        }
 
         unsafe {
             env::set_var("INSTATUS_MONITOR_POLL_INTERVAL_SECS", "42");
@@ -254,6 +281,7 @@ mod tests {
         assert_eq!(opts.api.rate_limit_period_secs, 120);
         assert!(opts.reset_db);
 
+        // Clean up after test
         unsafe {
             env::remove_var("INSTATUS_MONITOR_POLL_INTERVAL_SECS");
             env::remove_var("INSTATUS_MONITOR_THRESHOLD_SECS");
@@ -262,5 +290,21 @@ mod tests {
             env::remove_var("RATE_LIMIT_MAX_REQUESTS");
             env::remove_var("RATE_LIMIT_PERIOD_SECS");
         }
+    }
+
+    #[test]
+    fn test_hekla_origins_included() {
+        use super::DEFAULT_ALLOWED_ORIGINS;
+
+        assert!(DEFAULT_ALLOWED_ORIGINS.contains("hekla.taikoscope.xyz"));
+        assert!(DEFAULT_ALLOWED_ORIGINS.contains("www.hekla.taikoscope.xyz"));
+
+        // Verify both masaya and hekla origins are present
+        let origins: Vec<&str> = DEFAULT_ALLOWED_ORIGINS.split(',').collect();
+        assert_eq!(origins.len(), 4);
+        assert!(origins.contains(&"https://masaya.taikoscope.xyz"));
+        assert!(origins.contains(&"https://www.masaya.taikoscope.xyz"));
+        assert!(origins.contains(&"https://hekla.taikoscope.xyz"));
+        assert!(origins.contains(&"https://www.hekla.taikoscope.xyz"));
     }
 }
