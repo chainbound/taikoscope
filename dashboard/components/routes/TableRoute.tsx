@@ -113,7 +113,10 @@ export const TableRoute: React.FC = () => {
 
         const res = await config.fetcher(range, ...fetcherArgs);
         if (currentFetchId !== fetchIdRef.current) return;
-        const data = res.data || [];
+        let data = res.data || [];
+        if (config.reverseOrder) {
+          data = [...data].reverse();
+        }
 
         const title =
           typeof config.title === 'function'
