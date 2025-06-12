@@ -62,6 +62,7 @@ CLICKHOUSE_URL=<http://localhost:8123>
 CLICKHOUSE_DB=taikoscope
 L1_RPC_URL=<l1-endpoint>
 L2_RPC_URL=<l2-endpoint>
+PUBLIC_RPC=<hekla-endpoint>
 TAIKO_INBOX_ADDRESS=<0x...>
 TAIKO_PRECONF_WHITELIST_ADDRESS=<0x...>
 TAIKO_WRAPPER_ADDRESS=<0x...>
@@ -69,6 +70,7 @@ API_HOST=127.0.0.1
 API_PORT=3000
 RATE_LIMIT_MAX_REQUESTS=1000
 RATE_LIMIT_PERIOD_SECS=60
+INSTATUS_HEKLA_RPC_COMPONENT_ID=<component>
 ```
 
 These variables map to the configuration structs defined in
@@ -92,7 +94,8 @@ presentation concerns separate:
 4. **Dashboard** – a React application that fetches metrics using the API
    service layer and renders them with lazy loaded charts.
 5. **Monitoring** – background monitors trigger incidents via Instatus when
-   thresholds are exceeded.
+   thresholds are exceeded. This includes polling the public RPC endpoint to
+   ensure it is fully synced.
 
 Events flow through the system continuously. The driver handles header and
 batch streams, inserts rows into ClickHouse and the API aggregates this data for

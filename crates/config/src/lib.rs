@@ -32,6 +32,9 @@ pub struct RpcOpts {
     /// L2 RPC URL
     #[clap(long, env = "L2_RPC_URL")]
     pub l2_url: Url,
+    /// Public RPC URL used on Hekla/Mainnet
+    #[clap(long, env = "PUBLIC_RPC")]
+    pub public_rpc: Option<Url>,
 }
 
 /// Taiko contract address configuration options
@@ -69,6 +72,9 @@ pub struct InstatusOpts {
     /// Instatus component ID for transaction sequencing monitor
     #[clap(long, env = "INSTATUS_TRANSACTION_SEQUENCING_COMPONENT_ID", default_value = "")]
     pub transaction_sequencing_component_id: String,
+    /// Instatus component ID for Hekla RPC monitor
+    #[clap(long, env = "INSTATUS_HEKLA_RPC_COMPONENT_ID", default_value = "")]
+    pub hekla_rpc_component_id: String,
     /// Instatus monitor poll interval in seconds
     #[clap(long, env = "INSTATUS_MONITOR_POLL_INTERVAL_SECS", default_value = "30")]
     pub monitor_poll_interval_secs: u64,
@@ -179,6 +185,8 @@ mod tests {
             "http://l1",
             "--l2-url",
             "http://l2",
+            "--public-rpc",
+            "http://hekla",
             "--inbox-address",
             "0x0000000000000000000000000000000000000001",
             "--preconf-whitelist-address",
@@ -197,6 +205,8 @@ mod tests {
             "verify",
             "--transaction-sequencing-component-id",
             "l2",
+            "--hekla-rpc-component-id",
+            "hekla",
             "--api-host",
             "127.0.0.1",
             "--api-port",
@@ -212,6 +222,8 @@ mod tests {
         assert_eq!(opts.instatus.monitor_poll_interval_secs, 30);
         assert_eq!(opts.instatus.monitor_threshold_secs, 96);
         assert_eq!(opts.instatus.batch_proof_timeout_secs, 10800);
+        assert_eq!(opts.rpc.public_rpc.as_ref().unwrap().as_str(), "http://hekla/");
+        assert_eq!(opts.instatus.hekla_rpc_component_id, "hekla");
         assert_eq!(opts.api.host, "127.0.0.1");
         assert_eq!(opts.api.port, 3000);
         assert_eq!(
@@ -244,6 +256,8 @@ mod tests {
         assert_eq!(opts.instatus.monitor_poll_interval_secs, 42);
         assert_eq!(opts.instatus.monitor_threshold_secs, 33);
         assert_eq!(opts.instatus.batch_proof_timeout_secs, 99);
+        assert_eq!(opts.rpc.public_rpc.as_ref().unwrap().as_str(), "http://hekla/");
+        assert_eq!(opts.instatus.hekla_rpc_component_id, "hekla");
         assert_eq!(opts.api.host, "127.0.0.1");
         assert_eq!(opts.api.port, 3000);
         assert_eq!(

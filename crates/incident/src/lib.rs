@@ -10,4 +10,4 @@ pub mod retry;
 
 // Re-export monitors for easy access
 pub use base_monitor::Monitor;
-pub use monitor::{BatchProofTimeoutMonitor, InstatusL1Monitor, InstatusMonitor};
+pub use monitor::{BatchProofTimeoutMonitor, HeklaRpcMonitor, InstatusL1Monitor, InstatusMonitor};

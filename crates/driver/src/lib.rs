@@ -6,6 +6,7 @@ use alloy_primitives::Address;
 use eyre::Result;
 use tokio_stream::StreamExt;
 use tracing::info;
+use url::Url;
 
 use chainio::{
     ITaikoInbox::{BatchProposed, BatchesProved},
@@ -18,7 +19,7 @@ use extractor::{
     ForcedInclusionStream, ReorgDetector,
 };
 use incident::{
-    BatchProofTimeoutMonitor, InstatusL1Monitor, InstatusMonitor, Monitor,
+    BatchProofTimeoutMonitor, HeklaRpcMonitor, InstatusL1Monitor, InstatusMonitor, Monitor,
     client::Client as IncidentClient, monitor::BatchVerifyTimeoutMonitor,
 };
 use primitives::headers::{L1Header, L1HeaderStream, L2Header, L2HeaderStream};
@@ -38,6 +39,8 @@ pub struct Driver {
     instatus_proof_submission_component_id: String,
     instatus_proof_verification_component_id: String,
     instatus_transaction_sequencing_component_id: String,
+    instatus_hekla_rpc_component_id: String,
+    public_rpc_url: Option<Url>,
     instatus_monitor_poll_interval_secs: u64,
     instatus_monitor_threshold_secs: u64,
     batch_proof_timeout_secs: u64,
@@ -115,6 +118,8 @@ impl Driver {
             instatus_proof_submission_component_id,
             instatus_proof_verification_component_id,
             instatus_transaction_sequencing_component_id,
+            instatus_hekla_rpc_component_id: opts.instatus.hekla_rpc_component_id.clone(),
+            public_rpc_url: opts.rpc.public_rpc.clone(),
             instatus_monitor_poll_interval_secs: opts.instatus.monitor_poll_interval_secs,
             instatus_monitor_threshold_secs: opts.instatus.monitor_threshold_secs,
             batch_proof_timeout_secs: opts.instatus.batch_proof_timeout_secs,
@@ -253,6 +258,19 @@ impl Driver {
             Duration::from_secs(self.instatus_monitor_poll_interval_secs),
         )
         .spawn();
+
+        if let Some(url) = self.public_rpc_url.clone() {
+            if !self.instatus_hekla_rpc_component_id.is_empty() {
+                HeklaRpcMonitor::new(
+                    self.clickhouse_reader.clone(),
+                    self.incident_client.clone(),
+                    self.instatus_hekla_rpc_component_id.clone(),
+                    url,
+                    Duration::from_secs(self.instatus_monitor_poll_interval_secs),
+                )
+                .spawn();
+            }
+        }
 
         BatchProofTimeoutMonitor::new(
             self.clickhouse_reader.clone(),
@@ -575,7 +593,7 @@ mod tests {
                 username: "user".into(),
                 password: "pass".into(),
             },
-            rpc: RpcOpts { l1_url, l2_url },
+            rpc: RpcOpts { l1_url, l2_url: l2_url.clone(), public_rpc: Some(l2_url) },
             api: ApiOpts {
                 host: "127.0.0.1".into(),
                 port: 3000,
@@ -595,6 +613,7 @@ mod tests {
                 proof_submission_component_id: "proof".into(),
                 proof_verification_component_id: "verify".into(),
                 transaction_sequencing_component_id: "l2".into(),
+                hekla_rpc_component_id: "hekla".into(),
                 monitor_poll_interval_secs: 30,
                 monitor_threshold_secs: 96,
                 batch_proof_timeout_secs: 999,

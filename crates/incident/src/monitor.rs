@@ -6,9 +6,11 @@ use async_trait::async_trait;
 use chrono::{DateTime, Duration as ChronoDuration, Utc};
 use clickhouse::ClickhouseReader;
 use eyre::Result;
+use reqwest;
 use serde::Serialize;
 use std::time::Duration;
 use tracing::{debug, error, info, warn};
+use url::Url;
 
 /// Incident‐level state sent to Instatus.
 #[derive(Debug, Serialize, Clone, Copy, PartialEq, Eq)]
@@ -268,6 +270,127 @@ impl Monitor for InstatusL1Monitor {
             interval.tick().await;
             if let Err(e) = self.check_health().await {
                 error!(error = %e, "monitoring check failed for InstatusL1Monitor");
+            }
+        }
+    }
+
+    fn get_interval(&self) -> Duration {
+        self.base.interval
+    }
+
+    fn get_component_id(&self) -> &str {
+        &self.base.component_id
+    }
+
+    fn get_client(&self) -> &IncidentClient {
+        &self.base.client
+    }
+
+    fn get_clickhouse(&self) -> &ClickhouseReader {
+        &self.base.clickhouse
+    }
+}
+
+/// Monitors the Hekla RPC endpoint via `eth_syncing`.
+#[derive(Debug)]
+pub struct HeklaRpcMonitor {
+    base: BaseMonitor<()>,
+    rpc_url: Url,
+    client: reqwest::Client,
+}
+
+impl HeklaRpcMonitor {
+    /// Creates a new `HeklaRpcMonitor`.
+    pub fn new(
+        clickhouse: ClickhouseReader,
+        client: IncidentClient,
+        component_id: String,
+        rpc_url: Url,
+        interval: Duration,
+    ) -> Self {
+        Self {
+            base: BaseMonitor::new(clickhouse, client, component_id, interval),
+            rpc_url,
+            client: reqwest::Client::new(),
+        }
+    }
+
+    async fn open(&self) -> Result<String> {
+        if let Some(id) = self.base.client.open_incident(&self.base.component_id).await? {
+            tracing::info!(incident_id = %id, "existing incident found, skipping creation");
+            return Ok(id);
+        }
+
+        let body = self.base.create_incident_payload(
+            "Hekla RPC not in sync".into(),
+            "Hekla RPC not in sync".into(),
+            Utc::now(),
+        );
+
+        self.base.create_incident_with_payload(&body).await
+    }
+
+    async fn check_rpc(&mut self) -> Result<()> {
+        let payload = serde_json::json!({
+            "jsonrpc": "2.0",
+            "method": "eth_syncing",
+            "params": [],
+            "id": 1
+        });
+
+        let res: eyre::Result<serde_json::Value> = network::http_retry::retry_op(|| async {
+            let resp = self.client.post(self.rpc_url.clone()).json(&payload).send().await?;
+            let resp = resp.error_for_status()?;
+            Ok(resp.json::<serde_json::Value>().await?)
+        })
+        .await;
+
+        let healthy = matches!(
+            res.as_ref().ok().and_then(|v| v.get("result")),
+            Some(serde_json::Value::Bool(false))
+        );
+
+        if healthy {
+            self.base.mark_healthy(&()).await?;
+        } else {
+            self.base.mark_unhealthy();
+            if self.base.active_incidents.is_empty() {
+                let id = self.open().await?;
+                self.base.active_incidents.insert((), id);
+            }
+        }
+        Ok(())
+    }
+}
+
+#[async_trait]
+impl Monitor for HeklaRpcMonitor {
+    type IncidentKey = ();
+
+    async fn create_incident(&self, _key: &Self::IncidentKey) -> Result<String> {
+        self.open().await
+    }
+
+    async fn resolve_incident(&self, incident_id: &str) -> Result<()> {
+        let payload = self.base.create_resolve_payload();
+        self.base.resolve_incident_with_payload(incident_id, &payload).await
+    }
+
+    async fn check_health(&mut self) -> Result<()> {
+        self.check_rpc().await
+    }
+
+    async fn initialize(&mut self) -> Result<()> {
+        self.base.check_existing_incidents(()).await
+    }
+
+    async fn run(mut self) -> Result<()> {
+        self.initialize().await?;
+        let mut interval = tokio::time::interval(self.get_interval());
+        loop {
+            interval.tick().await;
+            if let Err(e) = self.check_health().await {
+                error!(error = %e, "monitoring check failed for HeklaRpcMonitor");
             }
         }
     }
@@ -1148,5 +1271,98 @@ mod tests {
         assert!(monitor.catch_all_only());
         monitor.base.active_incidents.insert((1, 1), "other".to_owned());
         assert!(!monitor.catch_all_only());
+    }
+
+    #[tokio::test]
+    async fn hekla_rpc_monitor_resolves_when_not_syncing() {
+        let (ch_client, _ch_server) = mock_clickhouse_client_async().await;
+        let mut incident_server = Server::new_async().await;
+
+        let put_mock = incident_server
+            .mock("PUT", "/v1/test_page_id/incidents/inc1")
+            .match_header("authorization", "Bearer test_api_key")
+            .match_header("content-type", "application/json")
+            .with_status(200)
+            .with_body("{}")
+            .create_async()
+            .await;
+
+        let incident_client = IncidentClient::with_base_url(
+            "test_api_key".into(),
+            "test_page_id".into(),
+            incident_server.url().parse().unwrap(),
+        );
+
+        let mut rpc_server = Server::new_async().await;
+        rpc_server
+            .mock("POST", "/")
+            .with_status(200)
+            .with_body(r#"{"jsonrpc":"2.0","id":1,"result":false}"#)
+            .create_async()
+            .await;
+
+        let mut monitor = HeklaRpcMonitor::new(
+            ch_client,
+            incident_client,
+            "comp".to_owned(),
+            rpc_server.url().parse().unwrap(),
+            Duration::from_secs(1),
+        );
+        monitor.base.active_incidents.insert((), "inc1".to_owned());
+
+        monitor.check_health().await.unwrap();
+        assert!(monitor.base.active_incidents.is_empty());
+
+        put_mock.assert_async().await;
+    }
+
+    #[tokio::test]
+    async fn hekla_rpc_monitor_opens_on_syncing() {
+        let (ch_client, _ch_server) = mock_clickhouse_client_async().await;
+        let mut incident_server = Server::new_async().await;
+
+        let post_mock = incident_server
+            .mock("POST", "/v1/test_page_id/incidents")
+            .match_header("authorization", "Bearer test_api_key")
+            .match_header("content-type", "application/json")
+            .with_status(200)
+            .with_body(r#"{"id":"inc1"}"#)
+            .create_async()
+            .await;
+        let get_mock = incident_server
+            .mock("GET", "/v1/test_page_id/incidents")
+            .match_query(Matcher::Any)
+            .with_status(200)
+            .with_body("[]")
+            .create_async()
+            .await;
+
+        let incident_client = IncidentClient::with_base_url(
+            "test_api_key".into(),
+            "test_page_id".into(),
+            incident_server.url().parse().unwrap(),
+        );
+
+        let mut rpc_server = Server::new_async().await;
+        rpc_server
+            .mock("POST", "/")
+            .with_status(200)
+            .with_body(r#"{"jsonrpc":"2.0","id":1,"result":{"startingBlock":"0x1"}}"#)
+            .create_async()
+            .await;
+
+        let mut monitor = HeklaRpcMonitor::new(
+            ch_client,
+            incident_client,
+            "comp".to_owned(),
+            rpc_server.url().parse().unwrap(),
+            Duration::from_secs(1),
+        );
+
+        monitor.check_health().await.unwrap();
+        assert_eq!(monitor.base.active_incidents.get(&()), Some(&"inc1".to_owned()));
+
+        post_mock.assert_async().await;
+        get_mock.assert_async().await;
     }
 }
