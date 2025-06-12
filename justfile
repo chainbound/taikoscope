@@ -142,6 +142,25 @@ status-hekla:
 status-api-hekla:
     fly status --config fly-api.toml
 
+# Set log level for Hekla deployment
+set-log-level-hekla level:
+    @echo "Setting log level to {{level}} on Hekla..."
+    fly secrets set RUST_LOG={{level}}
+    @echo "Log level set to {{level}}. Deploying to apply changes..."
+    @just deploy-hekla
+
+# Set log level to debug on Hekla
+debug-log-hekla:
+    @just set-log-level-hekla debug
+
+# Set log level to info on Hekla
+info-log-hekla:
+    @just set-log-level-hekla info
+
+# Search in logs for a specific term on Hekla
+search-logs-hekla term:
+    fly logs | grep -i "{{term}}"
+
 # --- API Server Deployment (Masaya) ---
 api_container := "taikoscope-api-masaya"
 api_port := "48101:3000"
