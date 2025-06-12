@@ -126,18 +126,18 @@ export const bytesToHex = (bytes: number[]): string =>
   `0x${bytes.map((b) => b.toString(16).padStart(2, '0')).join('')}`;
 
 export const loadRefreshRate = (): number => {
-  if (typeof localStorage === 'undefined') return 60000;
+  if (typeof localStorage === 'undefined') return 600000;
   try {
     const stored = localStorage.getItem('refreshRate');
     const value = stored ? parseInt(stored, 10) : NaN;
     if (!Number.isFinite(value) || value < 60000) {
       localStorage.removeItem('refreshRate');
-      return 60000;
+      return 600000;
     }
     return value;
   } catch (err) {
     console.error('Failed to access localStorage:', err);
-    return 60000;
+    return 600000;
   }
 };
 
