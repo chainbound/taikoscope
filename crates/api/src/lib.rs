@@ -1091,7 +1091,7 @@ async fn l2_fees(
         )
     })?;
 
-    tracing::info!(?priority_fee, ?base_fee, "Returning L2 fees");
+    tracing::info!(?priority_fee, ?base_fee, ?l1_data_cost, "Returning L2 fees and L1 data cost");
     Ok(Json(L2FeesResponse { priority_fee, base_fee, l1_data_cost }))
 }
 
