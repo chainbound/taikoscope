@@ -17,6 +17,7 @@ const metrics = createMetrics({
   l1Block: 50,
   priorityFee: 41e18,
   baseFee: 1e18,
+  l1DataCost: 2e18,
 });
 
 const results = [
@@ -40,6 +41,7 @@ const metricsAllNull = createMetrics({
   nextOperator: null,
   priorityFee: null,
   baseFee: null,
+  l1DataCost: null,
 });
 
 describe('helpers', () => {
@@ -70,10 +72,12 @@ describe('helpers', () => {
     expect(metrics[11].group).toBe('Network Economics');
     expect(metrics[12].value).toBe('1.00 ETH');
     expect(metrics[12].group).toBe('Network Economics');
-    expect(metrics[13].value).toBe('100');
-    expect(metrics[13].group).toBe('Block Information');
-    expect(metrics[14].value).toBe('50');
+    expect(metrics[13].value).toBe('2.00 ETH');
+    expect(metrics[13].group).toBe('Network Economics');
+    expect(metrics[14].value).toBe('100');
     expect(metrics[14].group).toBe('Block Information');
+    expect(metrics[15].value).toBe('50');
+    expect(metrics[15].group).toBe('Block Information');
   });
 
   it('detects bad requests', () => {
@@ -100,8 +104,9 @@ describe('helpers', () => {
     expect(metricsAllNull[10].group).toBe('Network Health');
     expect(metricsAllNull[11].group).toBe('Network Economics');
     expect(metricsAllNull[12].group).toBe('Network Economics');
-    expect(metricsAllNull[13].group).toBe('Block Information');
+    expect(metricsAllNull[13].group).toBe('Network Economics');
     expect(metricsAllNull[14].group).toBe('Block Information');
+    expect(metricsAllNull[15].group).toBe('Block Information');
   });
 
   it('handles all successful requests', () => {

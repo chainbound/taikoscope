@@ -21,11 +21,12 @@ describe('metricsCreator', () => {
       forcedInclusions: 3,
       priorityFee: 40e18,
       baseFee: 2e18,
+      l1DataCost: 3e18,
       l2Block: 100,
       l1Block: 50,
     });
 
-    expect(metrics).toHaveLength(15);
+    expect(metrics).toHaveLength(16);
     expect(metrics[0].value).toBe('1.23');
 
     const verifyMetric = metrics.find((m) => React.isValidElement(m.title));
@@ -57,6 +58,7 @@ describe('metricsCreator', () => {
       forcedInclusions: null,
       priorityFee: null,
       baseFee: null,
+      l1DataCost: null,
       l2Block: null,
       l1Block: null,
     });
