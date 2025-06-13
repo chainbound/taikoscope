@@ -1,11 +1,43 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, lazy } from 'react';
 import { ErrorDisplay } from '../layout/ErrorDisplay';
 import { MetricsGrid } from '../layout/MetricsGrid';
-import { ChartsGrid } from '../layout/ChartsGrid';
 import { ProfitCalculator } from '../ProfitCalculator';
 import { ProfitabilityChart } from '../ProfitabilityChart';
+import { ChartCard } from '../ChartCard';
+import { TAIKO_PINK } from '../../theme';
 import { TimeRange, MetricData } from '../../types';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+
+const SequencerPieChart = lazy(() =>
+  import('../SequencerPieChart').then((m) => ({
+    default: m.SequencerPieChart,
+  })),
+);
+const BlockTimeDistributionChart = lazy(() =>
+  import('../BlockTimeDistributionChart').then((m) => ({
+    default: m.BlockTimeDistributionChart,
+  })),
+);
+const BatchProcessChart = lazy(() =>
+  import('../BatchProcessChart').then((m) => ({
+    default: m.BatchProcessChart,
+  })),
+);
+const GasUsedChart = lazy(() =>
+  import('../GasUsedChart').then((m) => ({
+    default: m.GasUsedChart,
+  })),
+);
+const BlockTxChart = lazy(() =>
+  import('../BlockTxChart').then((m) => ({
+    default: m.BlockTxChart,
+  })),
+);
+const BlobsPerBatchChart = lazy(() =>
+  import('../BlobsPerBatchChart').then((m) => ({
+    default: m.BlobsPerBatchChart,
+  })),
+);
 
 interface DashboardViewProps {
   timeRange: TimeRange;
@@ -124,6 +156,119 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     [onOpenTable, onOpenTpsTable],
   );
 
+  const groupedCharts = React.useMemo(() => {
+    if (isEconomicsView) return {} as Record<string, React.ReactNode[]>;
+
+    const performance = [
+      <ChartCard
+        key="prove"
+        title="Prove Time"
+        onMore={() => onOpenTable('prove-time', timeRange)}
+        loading={isLoadingData}
+      >
+        <BatchProcessChart
+          key={timeRange}
+          data={chartsData.secondsToProveData}
+          lineColor={TAIKO_PINK}
+        />
+      </ChartCard>,
+      <ChartCard
+        key="verify"
+        title="Verify Time"
+        onMore={() => onOpenTable('verify-time', timeRange)}
+        loading={isLoadingData}
+      >
+        <BatchProcessChart
+          key={`${timeRange}-v`}
+          data={chartsData.secondsToVerifyData}
+          lineColor="#5DA5DA"
+        />
+      </ChartCard>,
+    ];
+
+    const health = [
+      <ChartCard
+        key="gas"
+        title="Gas Used Per Block"
+        onMore={() => onOpenTable('l2-gas-used', timeRange)}
+        loading={isLoadingData}
+      >
+        <GasUsedChart
+          key={`${timeRange}-g`}
+          data={chartsData.l2GasUsedData}
+          lineColor="#E573B5"
+        />
+      </ChartCard>,
+      <ChartCard
+        key="tx"
+        title="Tx Count Per L2 Block"
+        onMore={() => onOpenTable('block-tx', timeRange)}
+        loading={isLoadingData}
+      >
+        <BlockTxChart
+          key={`${timeRange}-t`}
+          data={chartsData.blockTxData}
+          lineColor="#4E79A7"
+        />
+      </ChartCard>,
+      <ChartCard
+        key="blobs"
+        title="Blobs per Batch"
+        onMore={() => onOpenTable('blobs-per-batch', timeRange)}
+        loading={isLoadingData}
+      >
+        <BlobsPerBatchChart
+          key={`${timeRange}-b`}
+          data={chartsData.batchBlobCounts}
+          barColor="#A0CBE8"
+        />
+      </ChartCard>,
+      <ChartCard
+        key="block-times"
+        title="L2 Block Time Distribution"
+        onMore={() => onOpenTable('l2-block-times', timeRange)}
+        loading={isLoadingData}
+      >
+        <BlockTimeDistributionChart
+          key={`${timeRange}-d`}
+          data={chartsData.l2BlockTimeData}
+          barColor="#FAA43A"
+        />
+      </ChartCard>,
+    ];
+
+    const groups: Record<string, React.ReactNode[]> = {
+      'Network Performance': performance,
+      'Network Health': health,
+    };
+
+    if (!selectedSequencer) {
+      groups['Sequencers'] = [
+        <ChartCard
+          key="seq-dist"
+          title="Sequencer Distribution"
+          onMore={() => onOpenSequencerDistributionTable(timeRange, 0)}
+          loading={isLoadingData}
+        >
+          <SequencerPieChart
+            key={`${timeRange}-s`}
+            data={chartsData.sequencerDistribution}
+          />
+        </ChartCard>,
+      ];
+    }
+
+    return groups;
+  }, [
+    chartsData,
+    timeRange,
+    selectedSequencer,
+    isLoadingData,
+    isEconomicsView,
+    onOpenTable,
+    onOpenSequencerDistributionTable,
+  ]);
+
   return (
     <div
       className="bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 p-4 md:p-6 lg:p-8"
@@ -144,6 +289,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           displayGroupName={displayGroupName}
           onMetricAction={getMetricAction}
           economicsView={isEconomicsView}
+          groupedCharts={groupedCharts}
+          isTimeRangeChanging={isTimeRangeChanging}
+          timeRange={timeRange}
         />
 
         {isEconomicsView && (
@@ -158,17 +306,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </>
         )}
 
-        {!isEconomicsView && (
-          <ChartsGrid
-            isLoading={isLoadingData}
-            isTimeRangeChanging={isTimeRangeChanging}
-            timeRange={timeRange}
-            selectedSequencer={selectedSequencer}
-            chartsData={chartsData}
-            onOpenTable={onOpenTable}
-            onOpenSequencerDistributionTable={onOpenSequencerDistributionTable}
-          />
-        )}
+        {/* Charts are now displayed within MetricsGrid groups */}
       </main>
     </div>
   );
