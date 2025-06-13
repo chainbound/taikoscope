@@ -1,7 +1,7 @@
 //! Taikoscope Extractor
 use chainio::{
     self, DefaultProvider,
-    ITaikoInbox::{BatchProposed, BatchesProved},
+    ITaikoInbox::{BatchProposed, BatchesProved, BatchesVerified as InboxBatchesVerified},
     taiko::{
         preconf_whitelist::TaikoPreconfWhitelist,
         wrapper::{ITaikoWrapper::ForcedInclusionProcessed, TaikoWrapper},
@@ -355,29 +355,21 @@ impl Extractor {
                 };
 
                 while let Some(log) = log_stream.next().await {
-                    // Extract batch_id from the correct position in the data
-                    // For non-indexed uint64, it's in the last 8 bytes of the first 32-byte chunk
-                    let batch_id = if log.data().data.len() >= 32 {
-                        u64::from_be_bytes(log.data().data[24..32].try_into().unwrap_or([0u8; 8]))
-                    } else {
-                        0
-                    };
-
-                    // Extract the block hash - it's the entire second 32-byte chunk
-                    let mut block_hash = [0u8; 32];
-                    if log.data().data.len() >= 64 {
-                        block_hash.copy_from_slice(&log.data().data[32..64]);
-                    }
-
-                    let verified = chainio::BatchesVerified { batch_id, block_hash };
-
-                    // Include the block number in the tuple
-                    let l1_block_number = log.block_number.unwrap_or(0);
-                    if tx.send((verified, l1_block_number)).is_err() {
-                        error!(
-                            "BatchesVerified receiver dropped. Stopping BatchesVerified event task."
-                        );
-                        return; // Exit task if receiver is gone
+                    match decode_batches_verified(&log) {
+                        Ok(verified) => {
+                            // Include the block number in the tuple
+                            let l1_block_number = log.block_number.unwrap_or(0);
+                            if tx.send((verified, l1_block_number)).is_err() {
+                                error!(
+                                    "BatchesVerified receiver dropped. Stopping BatchesVerified event task."
+                                );
+                                return; // Exit task if receiver is gone
+                            }
+                        }
+                        Err(err) => {
+                            warn!(error = %err, "Failed to decode BatchesVerified log");
+                            // Optionally, decide if this is a critical error or can be skipped.
+                        }
                     }
                 }
                 warn!("BatchesVerified log stream ended. Attempting to resubscribe...");
@@ -407,6 +399,14 @@ impl Extractor {
 
         Ok(primitives::block_stats::compute_block_stats(&receipts, base_fee))
     }
+}
+
+fn decode_batches_verified(log: &alloy_rpc_types_eth::Log) -> Result<chainio::BatchesVerified> {
+    let decoded = log.log_decode::<InboxBatchesVerified>()?;
+    let data = decoded.data();
+    let mut block_hash = [0u8; 32];
+    block_hash.copy_from_slice(data.blockHash.as_slice());
+    Ok(chainio::BatchesVerified { batch_id: data.batchId, block_hash })
 }
 
 /// Detects reorgs based on block numbers.
@@ -457,6 +457,9 @@ impl ReorgDetector {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use alloy::primitives::{Address, B256, Log as PrimitiveLog};
+    use alloy_rpc_types_eth::Log;
+    use alloy_sol_types::SolEvent;
 
     #[test]
     fn initial_block() {
@@ -529,5 +532,17 @@ mod tests {
         // New block 0. 0 < 5. Reorg. Depth = 5 - 0 = 5.
         assert_eq!(det.on_new_block(0), Some(5));
         assert_eq!(det.head_number, 0);
+    }
+
+    #[test]
+    fn decode_verified_event() {
+        let event = InboxBatchesVerified { batchId: 7, blockHash: B256::repeat_byte(2) };
+        let primitive = PrimitiveLog { address: Address::ZERO, data: event };
+        let encoded = InboxBatchesVerified::encode_log(&primitive);
+        let log = Log { inner: encoded, ..Default::default() };
+
+        let decoded = decode_batches_verified(&log).unwrap();
+        assert_eq!(decoded.batch_id, 7);
+        assert_eq!(decoded.block_hash, [2u8; 32]);
     }
 }
