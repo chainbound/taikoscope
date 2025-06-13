@@ -152,7 +152,7 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
       <button
         onClick={() => setOpen((o) => !o)}
         disabled={isChanging}
-        className="p-1 border rounded-md text-sm bg-white dark:bg-gray-800 min-w-[4rem]"
+        className="p-1 border rounded-md text-sm bg-white dark:bg-gray-800 min-w-[3rem]"
       >
         {isCustom ? 'Custom range' : currentTimeRange}
       </button>
