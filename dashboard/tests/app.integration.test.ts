@@ -253,7 +253,7 @@ async function fetchData(range: TimeRange, state: State, economics = false) {
     fetchBatchPostingCadence(range),
     fetchAvgProveTime(range),
     fetchAvgVerifyTime(range),
-    fetchPreconfData(),
+    fetchPreconfData(range),
     fetchL2Reorgs(range),
     fetchL2ReorgEvents(range),
     fetchSlashingEventCount(range),

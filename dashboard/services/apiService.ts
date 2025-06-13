@@ -128,10 +128,10 @@ export const fetchBatchPostingCadence = async (
   };
 };
 
-export const fetchActiveSequencerAddresses = async (): Promise<
-  RequestResult<string[]>
-> => {
-  const res = await fetchPreconfData();
+export const fetchActiveSequencerAddresses = async (
+  range: TimeRange = '1h',
+): Promise<RequestResult<string[]>> => {
+  const res = await fetchPreconfData(range);
   return {
     data: res.data?.candidates ?? null,
     badRequest: res.badRequest,
@@ -249,10 +249,10 @@ export interface PreconfData {
   next_operator?: string;
 }
 
-export const fetchPreconfData = async (): Promise<
-  RequestResult<PreconfData>
-> => {
-  const res = await fetchDashboardData('1h');
+export const fetchPreconfData = async (
+  range: TimeRange = '1h',
+): Promise<RequestResult<PreconfData>> => {
+  const res = await fetchDashboardData(range);
   return {
     data: res.data?.preconf_data ?? null,
     badRequest: res.badRequest,
