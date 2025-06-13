@@ -21,7 +21,6 @@ import {
   fetchL2GasUsed,
   fetchSequencerDistribution,
   fetchL2Fees,
-  fetchCloudCost,
 } from '../services/apiService.ts';
 import { createMetrics, hasBadRequest } from '../helpers';
 import type { MetricData } from '../types';
@@ -214,7 +213,6 @@ async function fetchData(range: TimeRange, state: State, economics = false) {
       baseFee,
       l2Block,
       l1Block,
-      cloudCost: null,
     });
 
     state.metrics = currentMetrics;
@@ -247,7 +245,6 @@ async function fetchData(range: TimeRange, state: State, economics = false) {
     l2GasUsedRes,
     sequencerDistRes,
     l2FeesRes,
-    cloudCostRes,
   ] = await Promise.all([
     fetchL2BlockCadence(range, undefined),
     fetchBatchPostingCadence(range),
@@ -268,7 +265,6 @@ async function fetchData(range: TimeRange, state: State, economics = false) {
     fetchL2GasUsed(range, undefined),
     fetchSequencerDistribution(range),
     fetchL2Fees(range, undefined),
-    fetchCloudCost(range),
   ]);
 
   const l2Cadence = l2CadenceRes.data;
@@ -295,7 +291,6 @@ async function fetchData(range: TimeRange, state: State, economics = false) {
   const l2FeeData = l2FeesRes.data;
   const priorityFee = l2FeeData?.priority_fee ?? null;
   const baseFee = l2FeeData?.base_fee ?? null;
-  const cloudCost = cloudCostRes.data;
 
   const anyBadRequest = hasBadRequest([
     l2CadenceRes,
@@ -331,7 +326,6 @@ async function fetchData(range: TimeRange, state: State, economics = false) {
     forcedInclusions,
     priorityFee,
     baseFee,
-    cloudCost,
     l2Block,
     l1Block,
   });

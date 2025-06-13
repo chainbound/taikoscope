@@ -1,4 +1,4 @@
-import React, { useCallback, lazy } from 'react';
+import React, { useCallback, lazy, useState } from 'react';
 import { ErrorDisplay } from '../layout/ErrorDisplay';
 import { MetricsGrid } from '../layout/MetricsGrid';
 import { ProfitCalculator } from '../ProfitCalculator';
@@ -80,6 +80,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const isEconomicsView = searchParams.get('view') === 'economics';
+  const [cloudCost, setCloudCost] = useState(100);
+  const [proverCost, setProverCost] = useState(100);
+  const hoursMap: Record<TimeRange, number> = {
+    '15m': 0.25,
+    '1h': 1,
+    '24h': 24,
+  };
 
   const visibleMetrics = React.useMemo(
     () =>
@@ -292,12 +299,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         {isEconomicsView && (
           <>
-            <ProfitCalculator metrics={metricsData.metrics} timeRange={timeRange} />
-            <div className="mt-6">
-            <ProfitabilityChart
+            <ProfitCalculator
               metrics={metricsData.metrics}
-              hours={rangeToHours(timeRange)}
+              timeRange={timeRange}
+              cloudCost={cloudCost}
+              proverCost={proverCost}
+              onCloudCostChange={setCloudCost}
+              onProverCostChange={setProverCost}
             />
+            <div className="mt-6">
+              <ProfitabilityChart
+                metrics={metricsData.metrics}
+                hours={hoursMap[timeRange]}
+                cloudCost={cloudCost}
+              />
             </div>
           </>
         )}

@@ -19,7 +19,6 @@ export interface MetricInputData {
   l1Block: number | null;
   priorityFee: number | null;
   baseFee: number | null;
-  cloudCost: number | null;
 }
 
 export const createMetrics = (data: MetricInputData): MetricData[] => [

@@ -21,7 +21,6 @@ describe('metricsCreator', () => {
       forcedInclusions: 3,
       priorityFee: 40e18,
       baseFee: 2e18,
-      cloudCost: 7.89,
       l2Block: 100,
       l1Block: 50,
     });
@@ -58,7 +57,6 @@ describe('metricsCreator', () => {
       forcedInclusions: null,
       priorityFee: null,
       baseFee: null,
-      cloudCost: null,
       l2Block: null,
       l1Block: null,
     });
