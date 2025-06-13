@@ -3115,6 +3115,7 @@ dependencies = [
 name = "primitives"
 version = "0.1.0"
 dependencies = [
+ "alloy-consensus",
  "alloy-network-primitives",
  "alloy-primitives",
  "futures",

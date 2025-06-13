@@ -9,6 +9,7 @@ repository.workspace = true
 [dependencies]
 alloy-network-primitives.workspace = true
 alloy-primitives.workspace = true
+alloy-consensus.workspace = true
 futures.workspace = true
 
 [dev-dependencies]
