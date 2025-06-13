@@ -32,9 +32,13 @@ export const ProfitCalculator: React.FC<ProfitCalculatorProps> = ({
 }) => {
   const priorityStr = findMetricValue(metrics, 'priority fee');
   const baseStr = findMetricValue(metrics, 'base fee');
+  const l1DataCostStr = findMetricValue(metrics, 'l1 data cost');
+
   const priority = parseFloat(priorityStr.replace(/[^0-9.]/g, '')) || 0;
   const base = parseFloat(baseStr.replace(/[^0-9.]/g, '')) || 0;
-  const totalFee = priority + base;
+  const l1DataCost = parseFloat(l1DataCostStr.replace(/[^0-9.]/g, '')) || 0;
+
+  const totalFee = priority + base - l1DataCost;
 
   const { data: ethPrice = 0, error: ethPriceError } = useEthPrice();
 

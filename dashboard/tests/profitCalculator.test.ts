@@ -14,6 +14,7 @@ describe('ProfitCalculator', () => {
         metrics: [
           { title: 'Priority Fee', value: '0.6 ETH' },
           { title: 'Base Fee', value: '0.4 ETH' },
+          { title: 'L1 Data Cost', value: '0.1 ETH' },
         ],
         timeRange: '1h',
         cloudCost: 100,
@@ -22,7 +23,7 @@ describe('ProfitCalculator', () => {
         onProverCostChange: () => {},
       }),
     );
-    expect(html.includes('1,999')).toBe(true);
+    expect(html.includes('1,799')).toBe(true);
   });
 
   it('rejects negative values via min attribute', () => {
