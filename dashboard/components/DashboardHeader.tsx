@@ -118,66 +118,79 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
   onTimeRangeChange,
   isChanging,
 }) => {
+  const { updateSearchParams } = useRouterNavigation();
   const presetRanges: TimeRange[] = ['15m', '1h', '3h', '6h', '12h', '24h'];
+  const isCustom = /^\d+-\d+$/.test(currentTimeRange);
+  const [open, setOpen] = React.useState(false);
+  const [start, setStart] = React.useState<string>(
+    isCustom ? new Date(Number(currentTimeRange.split('-')[0])).toISOString().slice(0, 16) : ''
+  );
+  const [end, setEnd] = React.useState<string>(
+    isCustom ? new Date(Number(currentTimeRange.split('-')[1])).toISOString().slice(0, 16) : ''
+  );
 
-const isCustom = !presetRanges.includes(currentTimeRange);
-const [customValue, setCustomValue] = React.useState(
-  isCustom ? currentTimeRange : '1h'
-);
-
-
-  const handleSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const value = e.target.value;
-    if (value === 'custom') {
-      if (isValidTimeRange(customValue)) onTimeRangeChange(customValue);
-    } else {
-      onTimeRangeChange(value);
-    }
+  const handlePreset = (r: TimeRange) => {
+    updateSearchParams({ start: null, end: null, range: r });
+    onTimeRangeChange(r);
+    setOpen(false);
   };
 
   const applyCustom = () => {
-    if (isValidTimeRange(customValue)) {
-      onTimeRangeChange(customValue);
+    const s = Date.parse(start);
+    const e = Date.parse(end);
+    if (isNaN(s) || isNaN(e)) return;
+    const custom = `${s}-${e}`;
+    if (isValidTimeRange(custom)) {
+      updateSearchParams({ start: String(s), end: String(e), range: null });
+      onTimeRangeChange(custom);
+      setOpen(false);
     }
   };
 
   return (
-    <div className="flex items-center space-x-1">
-      {isChanging && (
-        <div className="flex items-center px-2">
-          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current opacity-50" />
-        </div>
-      )}
-      <select
-        value={isCustom ? 'custom' : currentTimeRange}
-        onChange={handleSelect}
+    <div className="relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
         disabled={isChanging}
         className="p-1 border rounded-md text-sm bg-white dark:bg-gray-800"
       >
-        {presetRanges.map((r) => (
-          <option key={r} value={r}>
-            {r}
-          </option>
-        ))}
-        <option value="custom">Custom...</option>
-      </select>
-      {isCustom && (
-        <>
-          <input
-            type="text"
-            value={customValue}
-            onChange={(e) => setCustomValue(e.target.value)}
-            placeholder="e.g. 45m"
-            className="p-1 border rounded-md text-sm w-20 bg-white dark:bg-gray-800"
-          />
-          <button
-            onClick={applyCustom}
-            disabled={isChanging || !isValidTimeRange(customValue)}
-            className="px-2 py-1 text-sm rounded-md bg-gray-200 dark:bg-gray-700 disabled:opacity-50"
-          >
-            Apply
-          </button>
-        </>
+        {isCustom ? 'Custom range' : currentTimeRange}
+      </button>
+      {open && (
+        <div className="absolute right-0 z-10 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 mt-1 rounded-md shadow-lg p-2 space-y-1">
+          {presetRanges.map((r) => (
+            <button
+              key={r}
+              onClick={() => handlePreset(r)}
+              className="block w-full text-left px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+            >
+              {r}
+            </button>
+          ))}
+          <div className="pt-1 border-t border-gray-200 dark:border-gray-700 mt-1">
+            <label className="block text-xs">From</label>
+            <input
+              type="datetime-local"
+              value={start}
+              onChange={(e) => setStart(e.target.value)}
+              className="p-1 border rounded-md text-sm w-52 bg-white dark:bg-gray-700"
+            />
+            <label className="block text-xs mt-1">To</label>
+            <input
+              type="datetime-local"
+              value={end}
+              onChange={(e) => setEnd(e.target.value)}
+              className="p-1 border rounded-md text-sm w-52 bg-white dark:bg-gray-700"
+            />
+            <button
+              onClick={applyCustom}
+              disabled={isChanging}
+              className="mt-1 px-2 py-1 text-sm rounded-md bg-gray-200 dark:bg-gray-700 w-full"
+            >
+              Apply
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
