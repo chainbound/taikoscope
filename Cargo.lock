@@ -1795,6 +1795,7 @@ dependencies = [
  "alloy-network-primitives",
  "alloy-rpc-client",
  "alloy-rpc-types-eth",
+ "alloy-sol-types",
  "chainio",
  "derive_more 1.0.0",
  "eyre",
