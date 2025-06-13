@@ -119,8 +119,12 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
   isChanging,
 }) => {
   const presetRanges: TimeRange[] = ['15m', '1h', '3h', '6h', '12h', '24h'];
-  const [customValue, setCustomValue] = React.useState('1h');
-  const isCustom = !presetRanges.includes(currentTimeRange);
+
+const isCustom = !presetRanges.includes(currentTimeRange);
+const [customValue, setCustomValue] = React.useState(
+  isCustom ? currentTimeRange : '1h'
+);
+
 
   const handleSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
