@@ -43,12 +43,17 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
 
   const profitPerHour = (l2TxFee * ethPrice - scaledCloudCost) / hours;
 
+  const formatHours = (h: number): string => {
+    if (h < 1) return `${Math.round(h * 60)}m`;
+    if (h % 24 === 0) return `${h / 24}d`;
+    return `${h}h`;
+  };
+
   const data = Array.from({ length: 12 }, (_, i) => {
-    const month = i + 1;
-    const hoursInMonth = 30 * 24 * month;
+    const totalHours = hours * (i + 1);
     return {
-      month,
-      profit: profitPerHour * hoursInMonth,
+      label: formatHours(totalHours),
+      profit: profitPerHour * totalHours,
     };
   });
 
@@ -60,11 +65,11 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
       >
         <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
         <XAxis
-          dataKey="month"
+          dataKey="label"
           stroke="#666666"
           fontSize={12}
           label={{
-            value: 'Month',
+            value: 'Time',
             position: 'insideBottom',
             offset: -10,
             fontSize: 10,
@@ -75,7 +80,7 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
           stroke="#666666"
           fontSize={12}
           domain={[0, 'auto']}
-          tickFormatter={(v: number) => `$${v.toFixed(0)}`}
+          tickFormatter={(v: number) => `$${v.toLocaleString()}`}
           label={{
             value: 'Profit (USD)',
             angle: -90,
@@ -86,7 +91,7 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
           }}
         />
         <Tooltip
-          labelFormatter={(v: number) => `Month ${v}`}
+          labelFormatter={(v: string) => v}
           formatter={(value: number) => [`$${value.toFixed(2)}`, 'Profit']}
           contentStyle={{
             backgroundColor: 'rgba(255,255,255,0.8)',
