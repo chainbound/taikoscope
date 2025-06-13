@@ -291,5 +291,6 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
       })),
     useUnlimitedData: true,
     urlKey: 'l2-tps',
+    reverseOrder: true,
   },
 };
