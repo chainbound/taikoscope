@@ -432,7 +432,7 @@ impl Extractor {
             if let Some(h) = tx.blob_versioned_hashes() {
                 if !h.is_empty() && tx.to() == Some(inbox) {
                     total = total
-                        .saturating_add(receipt.gas_used() as u128 * receipt.effective_gas_price());
+                        .saturating_add((receipt.gas_used() as u128).saturating_mul(receipt.effective_gas_price()));
                 }
             }
         }
