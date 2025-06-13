@@ -73,6 +73,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
         depth: e.depth,
       })),
     urlKey: 'reorgs',
+    reverseOrder: true,
   },
 
   slashings: {
@@ -229,6 +230,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     mapData: (data) => data as Record<string, string | number>[],
     useUnlimitedData: true,
     urlKey: 'l2-block-times',
+    reverseOrder: true,
   },
 
   'l2-gas-used': {

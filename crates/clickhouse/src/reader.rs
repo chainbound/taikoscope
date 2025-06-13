@@ -406,7 +406,7 @@ impl ClickhouseReader {
                     toUInt64(toUnixTimestamp64Milli(inserted_at)) AS ts \
              FROM {}.l2_reorgs \
              WHERE inserted_at > toDateTime64({}, 3) \
-             ORDER BY inserted_at DESC",
+             ORDER BY inserted_at ASC",
             self.db_name,
             since.timestamp_millis() as f64 / 1000.0,
         );
@@ -484,7 +484,7 @@ impl ClickhouseReader {
              FROM {db}.l2_head_events h \
              WHERE h.block_ts > {} \
                AND {filter} \
-             ORDER BY sequencer, h.l2_block_number DESC",
+             ORDER BY sequencer, h.l2_block_number ASC",
             since.timestamp(),
             filter = self.reorg_filter("h"),
             db = self.db_name,
@@ -852,7 +852,7 @@ impl ClickhouseReader {
         if let Some(addr) = sequencer {
             query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
         }
-        query.push_str(" ORDER BY l2_block_number DESC");
+        query.push_str(" ORDER BY l2_block_number ASC");
         let rows = self.execute::<RawRow>(&query).await?;
         Ok(rows
             .into_iter()
@@ -969,7 +969,7 @@ impl ClickhouseReader {
         if let Some(addr) = sequencer {
             query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
         }
-        query.push_str(" ORDER BY l2_block_number DESC");
+        query.push_str(" ORDER BY l2_block_number ASC");
 
         let rows = self.execute::<RawRow>(&query).await?;
         Ok(rows
@@ -1091,7 +1091,7 @@ impl ClickhouseReader {
              INNER JOIN {db}.l1_head_events l1_events \
                ON b.l1_block_number = l1_events.l1_block_number \
              WHERE l1_events.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
-             ORDER BY b.l1_block_number DESC",
+             ORDER BY b.l1_block_number ASC",
             interval = range.interval(),
             db = self.db_name,
         );
