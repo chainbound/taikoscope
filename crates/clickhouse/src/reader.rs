@@ -14,9 +14,9 @@ use url::Url;
 use crate::{
     models::{
         BatchBlobCountRow, BatchPostingTimeRow, BatchProveTimeRow, BatchVerifyTimeRow,
-        BlockTransactionRow, ForcedInclusionProcessedRow, L1BlockTimeRow, L1DataCostRow,
-        L2BlockTimeRow, L2GasUsedRow, L2ReorgRow, L2TpsRow, PreconfData, SequencerBlockRow,
-        SequencerDistributionRow, SlashingEventRow,
+        BlockFeeComponentRow, BlockTransactionRow, ForcedInclusionProcessedRow, L1BlockTimeRow,
+        L1DataCostRow, L2BlockTimeRow, L2GasUsedRow, L2ReorgRow, L2TpsRow, PreconfData,
+        SequencerBlockRow, SequencerDistributionRow, SlashingEventRow,
     },
     types::AddressBytes,
 };
@@ -991,6 +991,51 @@ impl ClickhouseReader {
             None => return Ok(None),
         };
         Ok(Some(row.total))
+    }
+
+    /// Get priority fee, base fee and L1 data cost for each L2 block
+    pub async fn get_l2_fee_components(
+        &self,
+        sequencer: Option<AddressBytes>,
+        range: TimeRange,
+    ) -> Result<Vec<BlockFeeComponentRow>> {
+        #[derive(Row, Deserialize)]
+        struct RawRow {
+            l2_block_number: u64,
+            priority_fee: u128,
+            base_fee: u128,
+            l1_data_cost: Option<u128>,
+        }
+
+        let mut query = format!(
+            "SELECT h.l2_block_number, \
+                    sum_priority_fee AS priority_fee, \
+                    toUInt128(sum_base_fee * 3 / 4) AS base_fee, \
+                    dc.cost AS l1_data_cost \
+             FROM {db}.l2_head_events h \
+             LEFT JOIN {db}.l1_data_costs dc \
+               ON h.l2_block_number = dc.l1_block_number \
+             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
+               AND {filter}",
+            interval = range.interval(),
+            filter = self.reorg_filter("h"),
+            db = self.db_name,
+        );
+        if let Some(addr) = sequencer {
+            query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
+        }
+        query.push_str(" ORDER BY l2_block_number ASC");
+
+        let rows = self.execute::<RawRow>(&query).await?;
+        Ok(rows
+            .into_iter()
+            .map(|r| BlockFeeComponentRow {
+                l2_block_number: r.l2_block_number,
+                priority_fee: r.priority_fee,
+                base_fee: r.base_fee,
+                l1_data_cost: r.l1_data_cost,
+            })
+            .collect())
     }
 
     /// Get the transactions per second for each L2 block within the given range

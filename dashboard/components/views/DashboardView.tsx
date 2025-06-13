@@ -81,11 +81,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const isEconomicsView = searchParams.get('view') === 'economics';
   const [cloudCost, setCloudCost] = useState(100);
   const [proverCost, setProverCost] = useState(100);
-  const hoursMap: Record<TimeRange, number> = {
-    '15m': 0.25,
-    '1h': 1,
-    '24h': 24,
-  };
 
   const visibleMetrics = React.useMemo(
     () =>
@@ -308,10 +303,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             />
             <div className="mt-6">
             <ProfitabilityChart
-              metrics={metricsData.metrics}
-              hours={hoursMap[timeRange]}
+              timeRange={timeRange}
               cloudCost={cloudCost}
               proverCost={proverCost}
+              address={selectedSequencer || undefined}
             />
             </div>
           </>
