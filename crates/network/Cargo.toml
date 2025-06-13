@@ -20,6 +20,8 @@ futures.workspace = true
 
 [dev-dependencies]
 mockito.workspace = true
+tokio = { workspace = true, features = ["test-util"] }
+url.workspace = true
 
 [lints]
 workspace = true

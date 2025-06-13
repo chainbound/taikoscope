@@ -64,3 +64,45 @@ async fn check_syncing(client: &Client, url: &Url) -> Result<bool> {
     let syncing = !matches!(value.get("result"), Some(serde_json::Value::Bool(false)));
     Ok(syncing)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use mockito::Server;
+
+    use url::Url;
+
+    #[tokio::test]
+    async fn check_syncing_returns_false_for_result_false() {
+        let mut server = Server::new_async().await;
+        let _mock = server
+            .mock("POST", "/")
+            .with_status(200)
+            .with_body(r#"{"jsonrpc":"2.0","id":1,"result":false}"#)
+            .create_async()
+            .await;
+
+        let client = Client::new();
+        let url = Url::parse(&server.url()).unwrap();
+        let res = check_syncing(&client, &url).await.unwrap();
+        assert!(!res);
+        _mock.assert_async().await;
+    }
+
+    #[tokio::test]
+    async fn check_syncing_returns_true_for_result_true() {
+        let mut server = Server::new_async().await;
+        let _mock = server
+            .mock("POST", "/")
+            .with_status(200)
+            .with_body(r#"{"jsonrpc":"2.0","id":1,"result":true}"#)
+            .create_async()
+            .await;
+
+        let client = Client::new();
+        let url = Url::parse(&server.url()).unwrap();
+        let res = check_syncing(&client, &url).await.unwrap();
+        assert!(res);
+        _mock.assert_async().await;
+    }
+}
