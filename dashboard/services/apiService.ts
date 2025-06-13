@@ -570,6 +570,7 @@ export const fetchAvgL2Tps = async (
 export interface L2FeesResponse {
   priority_fee: number | null;
   base_fee: number | null;
+  l1_data_cost: number | null;
 }
 
 export const fetchL2Fees = async (
@@ -587,24 +588,6 @@ export const fetchL2Fees = async (
   };
 };
 
-export interface L1DataCost {
-  block: number;
-  cost: number;
-}
-
-export const fetchL1DataCost = async (
-  range: TimeRange,
-): Promise<RequestResult<L1DataCost[]>> => {
-  const url = `${API_BASE}/l1-data-cost?range=${range}`;
-  const res = await fetchJson<{ blocks: { l1_block_number: number; cost: number }[] }>(url);
-  return {
-    data: res.data
-      ? res.data.blocks.map((b) => ({ block: b.l1_block_number, cost: b.cost }))
-      : null,
-    badRequest: res.badRequest,
-    error: res.error,
-  };
-};
 
 export const fetchL2Tps = async (
   range: TimeRange,

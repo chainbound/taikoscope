@@ -968,6 +968,31 @@ impl ClickhouseReader {
             .collect())
     }
 
+    /// Get the total L1 data posting cost for the given range
+    pub async fn get_l1_total_data_cost(&self, range: TimeRange) -> Result<Option<u128>> {
+        #[derive(Row, Deserialize)]
+        struct SumRow {
+            total: u128,
+        }
+
+        let query = format!(
+            "SELECT sum(c.cost) AS total \
+             FROM {db}.l1_data_costs c \
+             INNER JOIN {db}.l1_head_events l1 \
+               ON c.l1_block_number = l1.l1_block_number \
+             WHERE l1.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})",
+            interval = range.interval(),
+            db = self.db_name,
+        );
+
+        let rows = self.execute::<SumRow>(&query).await?;
+        let row = match rows.into_iter().next() {
+            Some(r) => r,
+            None => return Ok(None),
+        };
+        Ok(Some(row.total))
+    }
+
     /// Get the transactions per second for each L2 block within the given range
     pub async fn get_l2_tps(
         &self,
