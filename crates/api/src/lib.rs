@@ -52,13 +52,13 @@ pub const MAX_BLOCK_TRANSACTIONS_LIMIT: u64 = u64::MAX;
         l1_block_times,
         l2_block_times,
         l2_gas_used,
-        l1_data_cost,
         l2_tps,
         sequencer_distribution,
         sequencer_blocks,
         block_transactions,
         l2_fees,
-        dashboard_data
+        dashboard_data,
+        l1_data_cost
     ),
     components(
         schemas(
@@ -79,7 +79,6 @@ pub const MAX_BLOCK_TRANSACTIONS_LIMIT: u64 = u64::MAX;
             L1BlockTimesResponse,
             L2BlockTimesResponse,
             L2GasUsedResponse,
-            L1DataCostResponse,
             L2TpsResponse,
             SequencerDistributionResponse,
             SequencerDistributionItem,
@@ -102,7 +101,8 @@ pub const MAX_BLOCK_TRANSACTIONS_LIMIT: u64 = u64::MAX;
             PreconfDataResponse,
             L2FeesResponse,
             DashboardDataResponse,
-            api_types::ErrorResponse
+            api_types::ErrorResponse,
+            L1DataCostResponse
         )
     ),
     tags(
@@ -814,43 +814,6 @@ async fn l2_gas_used(
 
 #[utoipa::path(
     get,
-    path = "/l1-data-cost",
-    params(
-        RangeQuery
-    ),
-    responses(
-        (status = 200, description = "L1 data posting cost", body = L1DataCostResponse),
-        (status = 500, description = "Database error", body = ErrorResponse)
-    ),
-    tag = "taikoscope"
-)]
-async fn l1_data_cost(
-    Query(params): Query<RangeQuery>,
-    State(state): State<ApiState>,
-) -> Result<Json<L1DataCostResponse>, ErrorResponse> {
-    validate_time_range(&params.time_range)?;
-    let has_time_range = has_time_range_params(&params.time_range);
-    validate_range_exclusivity(has_time_range, false)?;
-
-    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
-    let rows = match state.client.get_l1_data_costs(time_range).await {
-        Ok(r) => r,
-        Err(e) => {
-            tracing::error!("Failed to get L1 data cost: {}", e);
-            return Err(ErrorResponse::new(
-                "database-error",
-                "Database error",
-                StatusCode::INTERNAL_SERVER_ERROR,
-                e.to_string(),
-            ));
-        }
-    };
-    tracing::info!(count = rows.len(), "Returning L1 data cost");
-    Ok(Json(L1DataCostResponse { blocks: rows }))
-}
-
-#[utoipa::path(
-    get,
     path = "/l2-tps",
     params(
         RangeQuery
@@ -1113,9 +1076,10 @@ async fn l2_fees(
         }
     });
 
-    let (priority_fee, base_fee) = tokio::try_join!(
+    let (priority_fee, base_fee, l1_data_cost) = tokio::try_join!(
         state.client.get_l2_priority_fee(address, time_range),
-        state.client.get_l2_base_fee(address, time_range)
+        state.client.get_l2_base_fee(address, time_range),
+        state.client.get_l1_total_data_cost(time_range)
     )
     .map_err(|e| {
         tracing::error!(error = %e, "Failed to get L2 fees");
@@ -1128,7 +1092,7 @@ async fn l2_fees(
     })?;
 
     tracing::info!(?priority_fee, ?base_fee, "Returning L2 fees");
-    Ok(Json(L2FeesResponse { priority_fee, base_fee }))
+    Ok(Json(L2FeesResponse { priority_fee, base_fee, l1_data_cost }))
 }
 
 #[utoipa::path(
@@ -1238,6 +1202,43 @@ async fn dashboard_data(
     }))
 }
 
+#[utoipa::path(
+    get,
+    path = "/l1-data-cost",
+    params(
+        RangeQuery
+    ),
+    responses(
+        (status = 200, description = "L1 data posting cost", body = L1DataCostResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
+    ),
+    tag = "taikoscope"
+)]
+async fn l1_data_cost(
+    Query(params): Query<RangeQuery>,
+    State(state): State<ApiState>,
+) -> Result<Json<L1DataCostResponse>, ErrorResponse> {
+    validate_time_range(&params.time_range)?;
+    let has_time_range = has_time_range_params(&params.time_range);
+    validate_range_exclusivity(has_time_range, false)?;
+
+    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
+    let rows = match state.client.get_l1_data_costs(time_range).await {
+        Ok(r) => r,
+        Err(e) => {
+            tracing::error!("Failed to get L1 data cost: {}", e);
+            return Err(ErrorResponse::new(
+                "database-error",
+                "Database error",
+                StatusCode::INTERNAL_SERVER_ERROR,
+                e.to_string(),
+            ));
+        }
+    };
+    tracing::info!(count = rows.len(), "Returning L1 data cost");
+    Ok(Json(L1DataCostResponse { blocks: rows }))
+}
+
 /// Build the router with all API endpoints.
 pub fn router(state: ApiState) -> Router {
     let api_routes = Router::new()
@@ -1257,14 +1258,14 @@ pub fn router(state: ApiState) -> Router {
         .route("/l1-block-times", get(l1_block_times))
         .route("/l2-block-times", get(l2_block_times))
         .route("/l2-gas-used", get(l2_gas_used))
-        .route("/l1-data-cost", get(l1_data_cost))
         .route("/l2-tps", get(l2_tps))
         .route("/tps", get(l2_tps))
         .route("/sequencer-distribution", get(sequencer_distribution))
         .route("/sequencer-blocks", get(sequencer_blocks))
         .route("/block-transactions", get(block_transactions))
         .route("/l2-fees", get(l2_fees))
-        .route("/dashboard-data", get(dashboard_data));
+        .route("/dashboard-data", get(dashboard_data))
+        .route("/l1-data-cost", get(l1_data_cost));
 
     Router::new()
         .merge(SwaggerUi::new("/swagger-ui").url("/api-doc/openapi.json", ApiDoc::openapi()))
@@ -1590,27 +1591,6 @@ mod tests {
     }
 
     #[derive(Serialize, Row)]
-    struct L1DataCostRowTest {
-        l1_block_number: u64,
-        cost: u128,
-    }
-
-    #[tokio::test]
-    async fn l1_data_cost_endpoint() {
-        let mock = Mock::new();
-        mock.add(handlers::provide(vec![
-            L1DataCostRowTest { l1_block_number: 1, cost: 10 },
-            L1DataCostRowTest { l1_block_number: 2, cost: 20 },
-        ]));
-        let app = build_app(mock.url());
-        let body = send_request(app, "/l1-data-cost?range=1h").await;
-        assert_eq!(
-            body,
-            json!({ "blocks": [ { "l1_block_number": 1, "cost": 10 }, { "l1_block_number": 2, "cost": 20 } ] })
-        );
-    }
-
-    #[derive(Serialize, Row)]
     struct L2TpsRowTest {
         l2_block_number: u64,
         sum_tx: u32,
@@ -1787,6 +1767,7 @@ mod tests {
             "/block-transactions",
             "/l2-fees",
             "/dashboard-data",
+            "/l1-data-cost",
         ];
 
         for path in expected_paths {

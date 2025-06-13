@@ -12,7 +12,6 @@ import {
   fetchL2Fees,
   fetchL2HeadBlock,
   fetchL1HeadBlock,
-  fetchL1DataCost,
 } from '../services/apiService';
 
 export interface MainDashboardData {
@@ -118,25 +117,21 @@ export const fetchEconomicsData = async (
   timeRange: TimeRange,
   selectedSequencer: string | null,
 ): Promise<EconomicsData> => {
-  const [l2FeesRes, l2BlockRes, l1BlockRes, l1CostRes] = await Promise.all([
+  const [l2FeesRes, l2BlockRes, l1BlockRes] = await Promise.all([
     fetchL2Fees(
       timeRange,
       selectedSequencer ? getSequencerAddress(selectedSequencer) : undefined,
     ),
     fetchL2HeadBlock(timeRange),
     fetchL1HeadBlock(timeRange),
-    fetchL1DataCost(timeRange),
   ]);
 
   return {
     priorityFee: l2FeesRes.data?.priority_fee ?? null,
     baseFee: l2FeesRes.data?.base_fee ?? null,
-    l1DataCost:
-      l1CostRes.data && l1CostRes.data.length > 0
-        ? l1CostRes.data[l1CostRes.data.length - 1].cost
-        : null,
+    l1DataCost: l2FeesRes.data?.l1_data_cost ?? null,
     l2Block: l2BlockRes.data,
     l1Block: l1BlockRes.data,
-    badRequestResults: [l2FeesRes, l2BlockRes, l1BlockRes, l1CostRes],
+    badRequestResults: [l2FeesRes, l2BlockRes, l1BlockRes],
   };
 };

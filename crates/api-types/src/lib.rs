@@ -172,6 +172,8 @@ pub struct L2FeesResponse {
     pub priority_fee: Option<u128>,
     /// 75% of the sum of base fees for the range.
     pub base_fee: Option<u128>,
+    /// Total L1 data posting cost for the range.
+    pub l1_data_cost: Option<u128>,
 }
 
 /// Estimated cloud infrastructure cost in USD.
