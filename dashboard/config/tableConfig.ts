@@ -43,6 +43,7 @@ export interface TableConfig {
   supportsPagination?: boolean;
   urlKey: string;
   useUnlimitedData?: boolean;
+  reverseOrder?: boolean;
 }
 
 export const TABLE_CONFIGS: Record<string, TableConfig> = {
@@ -72,6 +73,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
         depth: e.depth,
       })),
     urlKey: 'reorgs',
+    reverseOrder: true,
   },
 
   slashings: {
@@ -88,6 +90,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
         validator_addr: bytesToHex(e.validator_addr),
       })),
     urlKey: 'slashings',
+    reverseOrder: true,
   },
 
   'forced-inclusions': {
@@ -100,6 +103,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
         blob_hash: bytesToHex(e.blob_hash),
       })),
     urlKey: 'forced-inclusions',
+    reverseOrder: true,
   },
 
   gateways: {
@@ -150,6 +154,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
         timestamp: d.timestamp,
       })),
     urlKey: 'batch-posting-cadence',
+    reverseOrder: true,
   },
 
   'prove-time': {
@@ -173,6 +178,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
       });
     },
     urlKey: 'prove-time',
+    reverseOrder: true,
   },
 
   'verify-time': {
@@ -196,6 +202,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
       });
     },
     urlKey: 'verify-time',
+    reverseOrder: true,
   },
 
   'block-tx': {
@@ -223,6 +230,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     mapData: (data) => data as Record<string, string | number>[],
     useUnlimitedData: true,
     urlKey: 'l2-block-times',
+    reverseOrder: true,
   },
 
   'l2-gas-used': {
@@ -247,6 +255,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     },
     useUnlimitedData: true,
     urlKey: 'l2-gas-used',
+    reverseOrder: true,
   },
 
   'sequencer-dist': {
