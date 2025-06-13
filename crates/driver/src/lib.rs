@@ -262,13 +262,24 @@ impl Driver {
     /// [`IncidentClient`].
     fn spawn_monitors(&self) {
         if let Some(url) = &self.public_rpc_url {
+            info!(url = url.as_str(), "Spawning public rpc monitor");
             public_rpc_monitor::spawn_public_rpc_monitor(url.clone());
         }
 
-        if !self.instatus_monitors_enabled {
-            return;
+        if self.instatus_monitors_enabled {
+            self.spawn_instatus_monitors();
         }
+    }
 
+    fn spawn_instatus_monitors(&self) {
+        self.spawn_instatus_l1_monitor();
+        self.spawn_instatus_monitor();
+        self.spawn_batch_proof_timeout_monitor();
+        self.spawn_batch_verify_timeout_monitor();
+    }
+
+    fn spawn_instatus_l1_monitor(&self) {
+        info!("Spawning Instatus L1 monitor");
         InstatusL1Monitor::new(
             self.clickhouse_reader.clone(),
             self.incident_client.clone(),
@@ -277,7 +288,10 @@ impl Driver {
             Duration::from_secs(self.instatus_monitor_poll_interval_secs),
         )
         .spawn();
+    }
 
+    fn spawn_instatus_monitor(&self) {
+        info!("Spawning Instatus monitor");
         InstatusMonitor::new(
             self.clickhouse_reader.clone(),
             self.incident_client.clone(),
@@ -286,7 +300,10 @@ impl Driver {
             Duration::from_secs(self.instatus_monitor_poll_interval_secs),
         )
         .spawn();
+    }
 
+    fn spawn_batch_proof_timeout_monitor(&self) {
+        info!("Spawning batch proof timeout monitor");
         BatchProofTimeoutMonitor::new(
             self.clickhouse_reader.clone(),
             self.incident_client.clone(),
@@ -295,7 +312,10 @@ impl Driver {
             Duration::from_secs(60),
         )
         .spawn();
+    }
 
+    fn spawn_batch_verify_timeout_monitor(&self) {
+        info!("Spawning batch verify timeout monitor");
         BatchVerifyTimeoutMonitor::new(
             self.clickhouse_reader.clone(),
             self.incident_client.clone(),

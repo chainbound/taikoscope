@@ -13,6 +13,7 @@ use tracing::{error, info, warn};
 /// If it returns `true` or times out after five seconds, the check is retried
 /// after 15 seconds. Two consecutive negative results lead to an error log.
 pub fn spawn_public_rpc_monitor(url: Url) -> tokio::task::JoinHandle<()> {
+    info!(url = url.as_str(), "Spawning public rpc monitor");
     tokio::spawn(async move {
         let client = Client::new();
         let mut interval = tokio::time::interval(Duration::from_secs(60));
