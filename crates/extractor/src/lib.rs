@@ -21,7 +21,10 @@ use chainio::TaikoInbox;
 use derive_more::Debug;
 use eyre::Result;
 use network::retries::{DEFAULT_RETRY_LAYER, RetryWsConnect};
-use primitives::headers::{L1Header, L1HeaderStream, L2Header, L2HeaderStream};
+use primitives::{
+    blob_fee::calculate_blob_fee_from_receipt,
+    headers::{L1Header, L1HeaderStream, L2Header, L2HeaderStream},
+};
 use std::time::Duration;
 use tokio::{sync::mpsc, time::sleep};
 use tokio_stream::{Stream, StreamExt, wrappers::UnboundedReceiverStream};
@@ -432,15 +435,13 @@ impl Extractor {
             if let Some(h) = tx.blob_versioned_hashes() {
                 if !h.is_empty() && tx.to() == Some(inbox) {
                     // Regular gas cost
-                    let gas_cost = (receipt.gas_used() as u128)
-                        .saturating_mul(receipt.effective_gas_price());
-                    
+                    let gas_cost =
+                        (receipt.gas_used() as u128).saturating_mul(receipt.effective_gas_price());
+
                     // Blob data fee calculation
                     let blob_data_fee = calculate_blob_fee_from_receipt(&receipt);
-                    
-                    total = total
-                        .saturating_add(gas_cost)
-                        .saturating_add(blob_data_fee);
+
+                    total = total.saturating_add(gas_cost).saturating_add(blob_data_fee);
                 }
             }
         }
