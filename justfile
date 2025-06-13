@@ -62,11 +62,11 @@ set-log-level level:
     ssh {{ssh_alias}} "grep -q '^RUST_LOG=' \{{env_file}} && \
         sed -i 's/^RUST_LOG=.*/RUST_LOG={{level}}/' \{{env_file}} || \
         echo 'RUST_LOG={{level}}' >> \{{env_file}}"
-    @just start-remote-masaya
+    @just start-masaya
     @echo "Log level set to {{level}} and service restarted."
 
 # deploy Taikoscope via SSH alias '{{ssh_alias}}'
-deploy-remote-masaya:
+deploy-masaya:
     @echo "Deploying Taikoscope via SSH alias '{{ssh_alias}}'"
     @just test || (echo "Tests failed, aborting deployment" && exit 1)
     test -f masaya.env || (echo "No masaya.env file found. Exiting." && exit 1)
@@ -74,42 +74,42 @@ deploy-remote-masaya:
     rsync -av --exclude target --exclude .git --exclude dashboard . {{ssh_alias}}:{{remote_dir}}
     @echo "Building Taikoscope on {{ssh_alias}} (path: {{remote_dir}})"
     ssh {{ssh_alias}} "cd {{remote_dir}} && docker buildx build --load -t {{container}} ."
-    @just start-remote-masaya
+    @just start-masaya
 
 # Check the status of the service
-status-remote-masaya:
+status-masaya:
     ssh {{ssh_alias}} "docker ps -f name={{container}}"
 
 # View the logs of the service
-logs-remote-masaya:
+logs-masaya:
     ssh {{ssh_alias}} "docker logs --tail 1000 -f {{container}}"
 
 # Deploy and tail logs
-deploy-logs-remote-masaya:
-    @just deploy-remote-masaya
-    @just logs-remote-masaya
+deploy-logs-masaya:
+    @just deploy-masaya
+    @just logs-masaya
 
-# Start the remote masaya service (runs a new container from the existing image)
-start-remote-masaya:
-    @echo "Starting Taikoscope masaya service on remote..."
+# Start the masaya service (runs a new container from the existing image)
+start-masaya:
+    @echo "Starting Taikoscope masaya service..."
     @just stop-container
     @just run-container
     @echo "Taikoscope masaya service started."
 
-# Stop and remove the remote masaya service
-stop-remote-masaya:
+# Stop and remove the masaya service
+stop-masaya:
     @just stop-container
 
-# Set log level to debug on remote server and restart the service
-debug-log-remote-masaya:
+# Set log level to debug on server and restart the service
+debug-log-masaya:
     @just set-log-level debug
 
-# Set log level to info on remote server and restart the service
-info-log-remote-masaya:
+# Set log level to info on server and restart the service
+info-log-masaya:
     @just set-log-level info
 
 # Search in logs for a specific term
-search-logs-remote-masaya term:
+search-logs-masaya term:
     ssh {{ssh_alias}} "docker logs {{container}} | grep -i \"{{term}}\""
 
 # --- Hekla Deployment (Fly.io) ---
@@ -120,11 +120,21 @@ deploy-hekla:
     @just test || (echo "Tests failed, aborting deployment" && exit 1)
     fly deploy
 
+# Deploy and tail logs for Hekla
+deploy-logs-hekla:
+    @just deploy-hekla
+    @just logs-hekla
+
 # Deploy API server to Hekla using Fly.io
 deploy-api-hekla:
     @echo "Deploying API server to Hekla via Fly.io"
     @just test || (echo "Tests failed, aborting deployment" && exit 1)
     fly deploy --config fly-api.toml
+
+# Deploy and tail logs for API server on Hekla
+deploy-logs-api-hekla:
+    @just deploy-api-hekla
+    @just logs-api-hekla
 
 # View logs for Hekla deployment
 logs-hekla:
@@ -178,7 +188,7 @@ run-api-container:
         -p {{api_port}} \
         {{api_container}}"
 
-deploy-api-remote-masaya:
+deploy-api-masaya:
     @echo "Deploying API server via SSH alias '{{ssh_alias}}'"
     @just test || (echo "Tests failed, aborting deployment" && exit 1)
     test -f masaya.env || (echo "No masaya.env file found. Exiting." && exit 1)
@@ -186,23 +196,23 @@ deploy-api-remote-masaya:
     rsync -av --exclude target --exclude .git --exclude dashboard . {{ssh_alias}}:{{remote_dir}}
     @echo "Building API server on {{ssh_alias}} (path: {{remote_dir}})"
     ssh {{ssh_alias}} "cd {{remote_dir}} && docker buildx build --load -f Dockerfile.api -t {{api_container}} ."
-    @just start-api-remote-masaya
+    @just start-api-masaya
 
-start-api-remote-masaya:
-    @echo "Starting API server on remote..."
+start-api-masaya:
+    @echo "Starting API server..."
     @just stop-api-container
     @just run-api-container
     @echo "API server started."
 
-logs-api-remote-masaya:
+logs-api-masaya:
     ssh {{ssh_alias}} "docker logs --tail 1000 -f {{api_container}}"
 
 # Deploy and tail logs for the API server
-deploy-logs-api-remote-masaya:
-    @just deploy-api-remote-masaya
-    @just logs-api-remote-masaya
+deploy-logs-api-masaya:
+    @just deploy-api-masaya
+    @just logs-api-masaya
 
-status-api-remote-masaya:
+status-api-masaya:
     ssh {{ssh_alias}} "docker ps -f name={{api_container}}"
 
 # --- Dashboard ---
