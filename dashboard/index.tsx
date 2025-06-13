@@ -6,6 +6,7 @@ import { ToastProvider } from './components/ToastProvider';
 import { ErrorProvider } from './hooks/useErrorHandler';
 import { BrowserRouter } from 'react-router-dom';
 import './index.css';
+import 'react-day-picker/dist/style.css';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {

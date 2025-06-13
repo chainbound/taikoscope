@@ -7,6 +7,8 @@ import { isValidTimeRange } from '../utils/timeRange';
 import { useRouterNavigation } from '../hooks/useRouterNavigation';
 import { useErrorHandler } from '../hooks/useErrorHandler';
 import { showToast } from '../utils/toast';
+import { DayPicker, DateRange } from 'react-day-picker';
+import * as Popover from '@radix-ui/react-popover';
 
 interface ImportMetaEnv {
   readonly VITE_NETWORK_NAME?: string;
@@ -122,12 +124,13 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
   const presetRanges: TimeRange[] = ['15m', '1h', '3h', '6h', '12h', '24h'];
   const isCustom = /^\d+-\d+$/.test(currentTimeRange);
   const [open, setOpen] = React.useState(false);
-  const [start, setStart] = React.useState<string>(
-    isCustom ? new Date(Number(currentTimeRange.split('-')[0])).toISOString().slice(0, 16) : ''
-  );
-  const [end, setEnd] = React.useState<string>(
-    isCustom ? new Date(Number(currentTimeRange.split('-')[1])).toISOString().slice(0, 16) : ''
-  );
+  const [range, setRange] = React.useState<DateRange | undefined>(() => {
+    if (isCustom) {
+      const [s, e] = currentTimeRange.split('-').map((t) => new Date(Number(t)));
+      return { from: s, to: e };
+    }
+    return undefined;
+  });
 
   const handlePreset = (r: TimeRange) => {
     updateSearchParams({ start: null, end: null, range: r });
@@ -136,9 +139,9 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
   };
 
   const applyCustom = () => {
-    const s = Date.parse(start);
-    const e = Date.parse(end);
-    if (isNaN(s) || isNaN(e)) return;
+    if (!range || !range.from || !range.to) return;
+    const s = range.from.getTime();
+    const e = range.to.getTime();
     const custom = `${s}-${e}`;
     if (isValidTimeRange(custom)) {
       updateSearchParams({ start: String(s), end: String(e), range: null });
@@ -148,51 +151,47 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
   };
 
   return (
-    <div className="relative">
-      <button
-        onClick={() => setOpen((o) => !o)}
-        disabled={isChanging}
-        className="p-1 border rounded-md text-sm bg-white dark:bg-gray-800 min-w-[3rem]"
+    <Popover.Root open={open} onOpenChange={setOpen}>
+      <Popover.Trigger asChild>
+        <button
+          disabled={isChanging}
+          className="p-1 border rounded-md text-sm bg-white dark:bg-gray-800 min-w-[3rem]"
+        >
+          {isCustom ? 'Custom range' : currentTimeRange}
+        </button>
+      </Popover.Trigger>
+      <Popover.Content
+        side="bottom"
+        align="end"
+        className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg p-2 space-y-1 z-10"
       >
-        {isCustom ? 'Custom range' : currentTimeRange}
-      </button>
-      {open && (
-        <div className="absolute right-0 z-10 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 mt-1 rounded-md shadow-lg p-2 space-y-1">
-          {presetRanges.map((r) => (
-            <button
-              key={r}
-              onClick={() => handlePreset(r)}
-              className="block w-full text-left px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-            >
-              {r}
-            </button>
-          ))}
-          <div className="pt-1 border-t border-gray-200 dark:border-gray-700 mt-1">
-            <label className="block text-xs">From</label>
-            <input
-              type="datetime-local"
-              value={start}
-              onChange={(e) => setStart(e.target.value)}
-              className="p-1 border rounded-md text-sm w-52 bg-white dark:bg-gray-700"
-            />
-            <label className="block text-xs mt-1">To</label>
-            <input
-              type="datetime-local"
-              value={end}
-              onChange={(e) => setEnd(e.target.value)}
-              className="p-1 border rounded-md text-sm w-52 bg-white dark:bg-gray-700"
-            />
-            <button
-              onClick={applyCustom}
-              disabled={isChanging}
-              className="mt-1 px-2 py-1 text-sm rounded-md bg-gray-200 dark:bg-gray-700 w-full"
-            >
-              Apply
-            </button>
-          </div>
+        {presetRanges.map((r) => (
+          <button
+            key={r}
+            onClick={() => handlePreset(r)}
+            className="block w-full text-left px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+          >
+            {r}
+          </button>
+        ))}
+        <div className="pt-1 border-t border-gray-200 dark:border-gray-700 mt-1">
+          <DayPicker
+            mode="range"
+            numberOfMonths={2}
+            selected={range}
+            onSelect={(r) => setRange(r ?? undefined)}
+            defaultMonth={range?.from}
+          />
+          <button
+            onClick={applyCustom}
+            disabled={isChanging}
+            className="mt-1 px-2 py-1 text-sm rounded-md bg-gray-200 dark:bg-gray-700 w-full"
+          >
+            Apply
+          </button>
         </div>
-      )}
-    </div>
+      </Popover.Content>
+    </Popover.Root>
   );
 };
 
