@@ -7,7 +7,7 @@ import { isValidTimeRange } from '../utils/timeRange';
 import { useRouterNavigation } from '../hooks/useRouterNavigation';
 import { useErrorHandler } from '../hooks/useErrorHandler';
 import { showToast } from '../utils/toast';
-import { DayPicker, DateRange } from 'react-day-picker';
+import { DayPicker } from 'react-day-picker';
 import * as Popover from '@radix-ui/react-popover';
 
 interface ImportMetaEnv {
@@ -124,13 +124,36 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
   const presetRanges: TimeRange[] = ['15m', '1h', '3h', '6h', '12h', '24h'];
   const isCustom = /^\d+-\d+$/.test(currentTimeRange);
   const [open, setOpen] = React.useState(false);
-  const [range, setRange] = React.useState<DateRange | undefined>(() => {
+  const [date, setDate] = React.useState<Date | undefined>(() => {
     if (isCustom) {
       const [s, e] = currentTimeRange.split('-').map((t) => new Date(Number(t)));
-      return { from: s, to: e };
+      if (s.toDateString() === e.toDateString()) return s;
     }
     return undefined;
   });
+  const [fromTime, setFromTime] = React.useState('');
+  const [toTime, setToTime] = React.useState('');
+
+  React.useEffect(() => {
+    if (isCustom) {
+      const [s, e] = currentTimeRange.split('-').map((t) => new Date(Number(t)));
+      if (s.toDateString() === e.toDateString()) {
+        setDate(s);
+        setFromTime(
+          `${s.getHours().toString().padStart(2, '0')}:${s
+            .getMinutes()
+            .toString()
+            .padStart(2, '0')}`,
+        );
+        setToTime(
+          `${e.getHours().toString().padStart(2, '0')}:${e
+            .getMinutes()
+            .toString()
+            .padStart(2, '0')}`,
+        );
+      }
+    }
+  }, [currentTimeRange, isCustom]);
 
   const handlePreset = (r: TimeRange) => {
     updateSearchParams({ start: null, end: null, range: r });
@@ -139,9 +162,18 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
   };
 
   const applyCustom = () => {
-    if (!range || !range.from || !range.to) return;
-    const s = range.from.getTime();
-    const e = range.to.getTime();
+    if (!date || !fromTime || !toTime) return;
+    const [fh, fm] = fromTime.split(':').map(Number);
+    const [th, tm] = toTime.split(':').map(Number);
+    const start = new Date(date);
+    start.setHours(fh, fm, 0, 0);
+    const end = new Date(date);
+    end.setHours(th, tm, 0, 0);
+    if (end <= start) {
+      end.setDate(end.getDate() + 1);
+    }
+    const s = start.getTime();
+    const e = end.getTime();
     const custom = `${s}-${e}`;
     if (isValidTimeRange(custom)) {
       updateSearchParams({ start: String(s), end: String(e), range: null });
@@ -174,14 +206,28 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
             {r}
           </button>
         ))}
-        <div className="pt-1 border-t border-gray-200 dark:border-gray-700 mt-1">
+        <div className="pt-1 border-t border-gray-200 dark:border-gray-700 mt-1 space-y-1">
           <DayPicker
-            mode="range"
-            numberOfMonths={2}
-            selected={range}
-            onSelect={(r) => setRange(r ?? undefined)}
-            defaultMonth={range?.from}
+            mode="single"
+            selected={date}
+            onSelect={(d) => setDate(d ?? undefined)}
+            defaultMonth={date}
           />
+          <div className="flex items-center space-x-2">
+            <input
+              type="time"
+              value={fromTime}
+              onChange={(e) => setFromTime(e.target.value)}
+              className="border rounded p-1 text-sm bg-white dark:bg-gray-800"
+            />
+            <span className="text-sm">to</span>
+            <input
+              type="time"
+              value={toTime}
+              onChange={(e) => setToTime(e.target.value)}
+              className="border rounded p-1 text-sm bg-white dark:bg-gray-800"
+            />
+          </div>
           <button
             onClick={applyCustom}
             disabled={isChanging}
