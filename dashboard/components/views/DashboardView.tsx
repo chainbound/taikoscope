@@ -307,11 +307,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               onProverCostChange={setProverCost}
             />
             <div className="mt-6">
-              <ProfitabilityChart
-                metrics={metricsData.metrics}
-                hours={hoursMap[timeRange]}
-                cloudCost={cloudCost}
-              />
+            <ProfitabilityChart
+              metrics={metricsData.metrics}
+              hours={hoursMap[timeRange]}
+              cloudCost={cloudCost}
+              proverCost={proverCost}
+            />
             </div>
           </>
         )}

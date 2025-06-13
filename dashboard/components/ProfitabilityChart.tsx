@@ -16,12 +16,14 @@ interface ProfitabilityChartProps {
   metrics: MetricData[];
   hours: number; // hours represented by the metric values
   cloudCost: number; // monthly cloud cost from calculator
+  proverCost: number; // monthly prover cost from calculator
 }
 
 export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
   metrics,
   hours,
   cloudCost,
+  proverCost,
 }) => {
   const priorityStr = findMetricValue(metrics, 'priority fee');
   const baseStr = findMetricValue(metrics, 'base fee');
@@ -29,6 +31,7 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
   const baseFee = parseFloat(baseStr.replace(/[^0-9.]/g, '')) || null;
   const HOURS_IN_MONTH = 30 * 24;
   const scaledCloudCost = (cloudCost / HOURS_IN_MONTH) * hours;
+  const scaledProverCost = (proverCost / HOURS_IN_MONTH) * hours;
   const l2TxFee =
     priorityFee != null && baseFee != null ? priorityFee + baseFee : null;
   const { data: ethPrice = 0 } = useEthPrice();
@@ -41,7 +44,8 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
     );
   }
 
-  const profitPerHour = (l2TxFee * ethPrice - scaledCloudCost) / hours;
+  const profitPerHour =
+    (l2TxFee * ethPrice - scaledCloudCost - scaledProverCost) / hours;
 
   const data = Array.from({ length: 12 }, (_, i) => {
     const month = i + 1;
