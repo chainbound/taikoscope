@@ -114,6 +114,7 @@ export const TableRoute: React.FC = () => {
         const res = await config.fetcher(range, ...fetcherArgs);
         if (currentFetchId !== fetchIdRef.current) return;
         let data = res.data || [];
+        const chartData = data;
         if (config.reverseOrder) {
           data = [...data].reverse();
         }
@@ -126,7 +127,7 @@ export const TableRoute: React.FC = () => {
         const mappedData = config.mapData
           ? config.mapData(data, extraParams)
           : data;
-        const chart = config.chart ? config.chart(data) : undefined;
+        const chart = config.chart ? config.chart(chartData) : undefined;
 
         if (currentFetchId === fetchIdRef.current) {
           setTableView({
