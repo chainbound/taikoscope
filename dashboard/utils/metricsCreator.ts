@@ -48,7 +48,7 @@ export const createMetrics = (data: MetricInputData): MetricData[] => [
       data.avgProve != null && data.avgProve > 0
         ? formatSeconds(data.avgProve / 1000)
         : 'N/A',
-    group: 'Network Performance',
+    group: 'Network Health',
   },
   {
     title: React.createElement(
@@ -65,7 +65,7 @@ export const createMetrics = (data: MetricInputData): MetricData[] => [
       data.avgVerify != null && data.avgVerify > 0
         ? formatSeconds(data.avgVerify / 1000)
         : 'N/A',
-    group: 'Network Performance',
+    group: 'Network Health',
   },
   {
     title: 'Active Sequencers',
