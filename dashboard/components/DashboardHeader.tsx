@@ -74,7 +74,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
           {DASHBOARD_TITLE}
         </h1>
       </div>
-      <div className="flex items-center space-x-2 mt-4 md:mt-0">
+      <div className="flex flex-wrap items-center gap-2 mt-4 md:mt-0 justify-center md:justify-end">
         {/* Economics view is still supported via URL parameters, but the
             navigation button is hidden. */}
         <a
