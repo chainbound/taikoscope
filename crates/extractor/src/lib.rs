@@ -11,10 +11,11 @@ use chainio::{
 use std::pin::Pin;
 
 use alloy::{
-    primitives::{Address, BlockNumber},
+    primitives::{Address, BlockHash, BlockNumber},
     providers::{Provider, ProviderBuilder},
 };
-use alloy_consensus::BlockHeader;
+use alloy_consensus::{BlockHeader, Transaction};
+use alloy_network_primitives::ReceiptResponse;
 use alloy_rpc_client::ClientBuilder;
 use chainio::TaikoInbox;
 use derive_more::Debug;
@@ -406,6 +407,36 @@ impl Extractor {
         let receipts = receipts_opt.ok_or_else(|| eyre::eyre!("missing receipts"))?;
 
         Ok(primitives::block_stats::compute_block_stats(&receipts, base_fee))
+    }
+
+    /// Calculate total L1 data posting cost for a block
+    pub async fn get_l1_data_posting_cost(
+        &self,
+        block_hash: BlockHash,
+        inbox: Address,
+    ) -> Result<u128> {
+        use alloy_rpc_types_eth::BlockId;
+
+        let block = self
+            .l1_provider
+            .get_block_by_hash(block_hash)
+            .full()
+            .await?
+            .ok_or_else(|| eyre::eyre!("missing block"))?;
+        let receipts_opt = self.l1_provider.get_block_receipts(BlockId::hash(block_hash)).await?;
+        let receipts = receipts_opt.ok_or_else(|| eyre::eyre!("missing receipts"))?;
+
+        let mut total = 0u128;
+        let txs = block.transactions.into_transactions_vec();
+        for (tx, receipt) in txs.into_iter().zip(receipts.into_iter()) {
+            if let Some(h) = tx.blob_versioned_hashes() {
+                if !h.is_empty() && tx.to() == Some(inbox) {
+                    total = total
+                        .saturating_add(receipt.gas_used() as u128 * receipt.effective_gas_price());
+                }
+            }
+        }
+        Ok(total)
     }
 }
 
