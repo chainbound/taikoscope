@@ -219,7 +219,7 @@ export const AdvancedDataTable: React.FC<AdvancedDataTableProps> = ({
     searchTerm || Object.values(filters).some((v) => v) || sortBy;
 
   return (
-    <div className="bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 p-4 md:p-6 lg:p-8">
+    <div className="bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 p-2 sm:p-4 md:p-6 lg:p-8">
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 space-y-4 md:space-y-0">
         <div className="flex items-center space-x-4">
