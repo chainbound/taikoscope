@@ -13,6 +13,15 @@ interface ProfitCalculatorProps {
   onProverCostChange: (v: number) => void;
 }
 
+const formatTimeRangeLabel = (range: TimeRange): string => {
+  const match = range.trim().match(/^(\d+)([mh])$/i);
+  if (!match) return range;
+  const value = parseInt(match[1], 10);
+  const unit = match[2].toLowerCase() === 'h' ? 'hour' : 'minute';
+  const plural = value === 1 ? '' : 's';
+  return `last ${value} ${unit}${plural}`;
+};
+
 export const ProfitCalculator: React.FC<ProfitCalculatorProps> = ({
   metrics,
   timeRange,
@@ -71,7 +80,8 @@ export const ProfitCalculator: React.FC<ProfitCalculatorProps> = ({
         </label>
       </div>
       <p className="mt-3 text-sm">
-        Profit: <span className="font-semibold">${formatProfit(profit)}</span>
+        Profit ({formatTimeRangeLabel(timeRange)}):{' '}
+        <span className="font-semibold">${formatProfit(profit)}</span>
         {ethPriceError && (
           <span className="text-red-500 ml-2 text-xs">
             (ETH price unavailable)
