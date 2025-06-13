@@ -431,8 +431,16 @@ impl Extractor {
         for (tx, receipt) in txs.into_iter().zip(receipts.into_iter()) {
             if let Some(h) = tx.blob_versioned_hashes() {
                 if !h.is_empty() && tx.to() == Some(inbox) {
+                    // Regular gas cost
+                    let gas_cost = (receipt.gas_used() as u128)
+                        .saturating_mul(receipt.effective_gas_price());
+                    
+                    // Blob data fee calculation
+                    let blob_data_fee = calculate_blob_fee_from_receipt(&receipt);
+                    
                     total = total
-                        .saturating_add((receipt.gas_used() as u128).saturating_mul(receipt.effective_gas_price()));
+                        .saturating_add(gas_cost)
+                        .saturating_add(blob_data_fee);
                 }
             }
         }
