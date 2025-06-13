@@ -6,8 +6,8 @@
 
 use clickhouse_lib::{
     BatchBlobCountRow, BatchPostingTimeRow, BatchProveTimeRow, BatchVerifyTimeRow,
-    ForcedInclusionProcessedRow, L1BlockTimeRow, L1DataCostRow, L2BlockTimeRow, L2GasUsedRow,
-    L2ReorgRow, L2TpsRow, SlashingEventRow,
+    BlockFeeComponentRow, ForcedInclusionProcessedRow, L1BlockTimeRow, L1DataCostRow,
+    L2BlockTimeRow, L2GasUsedRow, L2ReorgRow, L2TpsRow, SlashingEventRow,
 };
 
 use axum::{Json, http::StatusCode, response::IntoResponse};
@@ -223,6 +223,13 @@ pub struct L2GasUsedResponse {
 pub struct L1DataCostResponse {
     /// Cost per block.
     pub blocks: Vec<L1DataCostRow>,
+}
+
+/// Fee components for each L2 block
+#[derive(Debug, Serialize, ToSchema)]
+pub struct FeeComponentsResponse {
+    /// Fee components per block
+    pub blocks: Vec<BlockFeeComponentRow>,
 }
 
 /// TPS values for each L2 block.

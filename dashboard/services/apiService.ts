@@ -589,6 +589,37 @@ export const fetchL2Fees = async (
 };
 
 
+export interface FeeComponent {
+  block: number;
+  priority: number;
+  base: number;
+  l1Cost: number | null;
+}
+
+export const fetchFeeComponents = async (
+  range: TimeRange,
+  address?: string,
+): Promise<RequestResult<FeeComponent[]>> => {
+  const url =
+    `${API_BASE}/l2-fee-components?range=${range}` +
+    (address ? `&address=${address}` : '');
+  const res = await fetchJson<{
+    blocks: { l2_block_number: number; priority_fee: number; base_fee: number; l1_data_cost: number | null }[];
+  }>(url);
+  return {
+    data: res.data
+      ? res.data.blocks.map((b) => ({
+          block: b.l2_block_number,
+          priority: b.priority_fee,
+          base: b.base_fee,
+          l1Cost: b.l1_data_cost ?? null,
+        }))
+      : null,
+    badRequest: res.badRequest,
+    error: res.error,
+  };
+};
+
 export const fetchL2Tps = async (
   range: TimeRange,
   address?: string,

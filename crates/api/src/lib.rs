@@ -57,6 +57,7 @@ pub const MAX_BLOCK_TRANSACTIONS_LIMIT: u64 = u64::MAX;
         sequencer_blocks,
         block_transactions,
         l2_fees,
+        l2_fee_components,
         dashboard_data,
         l1_data_cost
     ),
@@ -100,6 +101,7 @@ pub const MAX_BLOCK_TRANSACTIONS_LIMIT: u64 = u64::MAX;
             HealthResponse,
             PreconfDataResponse,
             L2FeesResponse,
+            FeeComponentsResponse,
             DashboardDataResponse,
             api_types::ErrorResponse,
             L1DataCostResponse
@@ -1097,6 +1099,49 @@ async fn l2_fees(
 
 #[utoipa::path(
     get,
+    path = "/l2-fee-components",
+    params(
+        RangeQuery
+    ),
+    responses(
+        (status = 200, description = "Fee components per block", body = FeeComponentsResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
+    ),
+    tag = "taikoscope"
+)]
+async fn l2_fee_components(
+    Query(params): Query<RangeQuery>,
+    State(state): State<ApiState>,
+) -> Result<Json<FeeComponentsResponse>, ErrorResponse> {
+    validate_time_range(&params.time_range)?;
+
+    let has_time_range = has_time_range_params(&params.time_range);
+    validate_range_exclusivity(has_time_range, false)?;
+
+    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
+    let address = params.address.as_ref().and_then(|addr| match addr.parse::<Address>() {
+        Ok(a) => Some(AddressBytes::from(a)),
+        Err(e) => {
+            tracing::warn!(error = %e, "Failed to parse address");
+            None
+        }
+    });
+
+    let blocks = state.client.get_l2_fee_components(address, time_range).await.map_err(|e| {
+        tracing::error!(error = %e, "Failed to get fee components");
+        ErrorResponse::new(
+            "database-error",
+            "Database error",
+            StatusCode::INTERNAL_SERVER_ERROR,
+            e.to_string(),
+        )
+    })?;
+
+    Ok(Json(FeeComponentsResponse { blocks }))
+}
+
+#[utoipa::path(
+    get,
     path = "/dashboard-data",
     params(
         RangeQuery
@@ -1264,6 +1309,7 @@ pub fn router(state: ApiState) -> Router {
         .route("/sequencer-blocks", get(sequencer_blocks))
         .route("/block-transactions", get(block_transactions))
         .route("/l2-fees", get(l2_fees))
+        .route("/l2-fee-components", get(l2_fee_components))
         .route("/dashboard-data", get(dashboard_data))
         .route("/l1-data-cost", get(l1_data_cost));
 
@@ -1766,6 +1812,7 @@ mod tests {
             "/sequencer-blocks",
             "/block-transactions",
             "/l2-fees",
+            "/l2-fee-components",
             "/dashboard-data",
             "/l1-data-cost",
         ];

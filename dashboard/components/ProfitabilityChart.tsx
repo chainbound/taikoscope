@@ -8,35 +8,32 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
+import useSWR from 'swr';
 import { useEthPrice } from '../services/priceService';
-import { MetricData } from '../types';
-import { findMetricValue } from '../utils';
+import { fetchFeeComponents } from '../services/apiService';
+import { TimeRange, FeeComponent } from '../types';
+import { rangeToHours } from '../utils/timeRange';
 
 interface ProfitabilityChartProps {
-  metrics: MetricData[];
-  hours: number; // hours represented by the metric values
-  cloudCost: number; // monthly cloud cost from calculator
-  proverCost: number; // monthly prover cost from calculator
+  timeRange: TimeRange;
+  cloudCost: number;
+  proverCost: number;
+  address?: string;
 }
 
 export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
-  metrics,
-  hours,
+  timeRange,
   cloudCost,
   proverCost,
+  address,
 }) => {
-  const priorityStr = findMetricValue(metrics, 'priority fee');
-  const baseStr = findMetricValue(metrics, 'base fee');
-  const priorityFee = parseFloat(priorityStr.replace(/[^0-9.]/g, '')) || null;
-  const baseFee = parseFloat(baseStr.replace(/[^0-9.]/g, '')) || null;
-  const HOURS_IN_MONTH = 30 * 24;
-  const scaledCloudCost = (cloudCost / HOURS_IN_MONTH) * hours;
-  const scaledProverCost = (proverCost / HOURS_IN_MONTH) * hours;
-  const l2TxFee =
-    priorityFee != null && baseFee != null ? priorityFee + baseFee : null;
+  const { data: feeRes } = useSWR(['feeComponents', timeRange, address], () =>
+    fetchFeeComponents(timeRange, address),
+  );
+  const feeData: FeeComponent[] | null = feeRes?.data ?? null;
   const { data: ethPrice = 0 } = useEthPrice();
 
-  if (l2TxFee == null || hours === 0) {
+  if (!feeData || feeData.length === 0) {
     return (
       <div className="flex items-center justify-center h-full text-gray-500">
         No data available
@@ -44,36 +41,27 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
     );
   }
 
-  const profitPerHour =
-    (l2TxFee * ethPrice - scaledCloudCost - scaledProverCost) / hours;
+  const hours = rangeToHours(timeRange);
+  const HOURS_IN_MONTH = 30 * 24;
+  const totalCost = ((cloudCost + proverCost) / HOURS_IN_MONTH) * hours;
+  const costPerBlock = totalCost / feeData.length;
 
-  const formatHours = (h: number): string => {
-    if (h < 1) return `${Math.round(h * 60)}m`;
-    if (h % 24 === 0) return `${h / 24}d`;
-    return `${h}h`;
-  };
-
-  const data = Array.from({ length: 12 }, (_, i) => {
-    const totalHours = hours * (i + 1);
-    return {
-      label: formatHours(totalHours),
-      profit: profitPerHour * totalHours,
-    };
+  const data = feeData.map((b) => {
+    const revenueEth = b.priority + b.base - (b.l1Cost ?? 0);
+    const profit = revenueEth * ethPrice - costPerBlock;
+    return { block: b.block, profit };
   });
 
   return (
     <ResponsiveContainer width="100%" height={240}>
-      <LineChart
-        data={data}
-        margin={{ top: 5, right: 40, left: 20, bottom: 40 }}
-      >
+      <LineChart data={data} margin={{ top: 5, right: 40, left: 20, bottom: 40 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
         <XAxis
-          dataKey="label"
+          dataKey="block"
           stroke="#666666"
           fontSize={12}
           label={{
-            value: 'Time',
+            value: 'L2 Block',
             position: 'insideBottom',
             offset: -10,
             fontSize: 10,
@@ -95,7 +83,7 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
           }}
         />
         <Tooltip
-          labelFormatter={(v: string) => v}
+          labelFormatter={(v: number) => `Block ${v}`}
           formatter={(value: number) => [`$${value.toFixed(2)}`, 'Profit']}
           contentStyle={{
             backgroundColor: 'rgba(255,255,255,0.8)',

@@ -47,3 +47,10 @@ export interface ErrorResponse {
   status: number;
   detail: string;
 }
+
+export interface FeeComponent {
+  block: number;
+  priority: number;
+  base: number;
+  l1Cost: number | null;
+}
