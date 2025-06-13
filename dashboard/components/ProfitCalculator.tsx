@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { MetricData, TimeRange } from '../types';
 import { findMetricValue } from '../utils';
+import { rangeToHours } from '../utils/timeRange';
 import { useEthPrice } from '../services/priceService';
 
 interface ProfitCalculatorProps {
@@ -23,12 +24,7 @@ export const ProfitCalculator: React.FC<ProfitCalculatorProps> = ({
   const { data: ethPrice = 0, error: ethPriceError } = useEthPrice();
 
   const HOURS_IN_MONTH = 30 * 24;
-  const RANGE_HOURS: Record<TimeRange, number> = {
-    '15m': 0.25,
-    '1h': 1,
-    '24h': 24,
-  };
-  const hours = RANGE_HOURS[timeRange];
+  const hours = rangeToHours(timeRange);
 
   const scaledCloudCost = (cloudCost / HOURS_IN_MONTH) * hours;
   const scaledProverCost = (proverCost / HOURS_IN_MONTH) * hours;

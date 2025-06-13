@@ -1,4 +1,4 @@
-export type TimeRange = '15m' | '1h' | '24h';
+export type TimeRange = string;
 
 export interface TimeSeriesData {
   timestamp: number; // Unix timestamp (ms)

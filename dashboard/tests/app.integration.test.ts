@@ -26,7 +26,7 @@ import {
 import { createMetrics, hasBadRequest } from '../helpers';
 import type { MetricData } from '../types';
 
-type TimeRange = '15m' | '1h' | '24h';
+type TimeRange = string;
 
 type State = {
   metrics: MetricData[];
@@ -253,7 +253,7 @@ async function fetchData(range: TimeRange, state: State, economics = false) {
     fetchBatchPostingCadence(range),
     fetchAvgProveTime(range),
     fetchAvgVerifyTime(range),
-    fetchPreconfData(),
+    fetchPreconfData(range),
     fetchL2Reorgs(range),
     fetchL2ReorgEvents(range),
     fetchSlashingEventCount(range),

@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { TimeRange } from '../types';
+import { isValidTimeRange } from '../utils/timeRange';
 
 const DEFAULT_TIME_RANGE: TimeRange = '1h';
-const VALID_TIME_RANGES: TimeRange[] = ['15m', '1h', '24h'];
 
 /**
  * Hook that synchronizes time range state with URL parameters to prevent navigation loops
@@ -16,9 +16,9 @@ export const useTimeRangeSync = () => {
   // Get initial time range from URL or use default
   const getInitialTimeRange = useCallback((): TimeRange => {
     const params = new URLSearchParams(location.search);
-    const urlRange = params.get('range') as TimeRange;
-    return urlRange && VALID_TIME_RANGES.includes(urlRange)
-      ? urlRange
+    const urlRange = params.get('range');
+    return urlRange && isValidTimeRange(urlRange)
+      ? (urlRange as TimeRange)
       : DEFAULT_TIME_RANGE;
   }, [location.search]);
 
@@ -28,7 +28,7 @@ export const useTimeRangeSync = () => {
   // Update time range and sync with URL
   const setTimeRange = useCallback(
     (newRange: TimeRange) => {
-      if (!VALID_TIME_RANGES.includes(newRange)) {
+      if (!isValidTimeRange(newRange)) {
         console.warn('Invalid time range:', newRange);
         return;
       }

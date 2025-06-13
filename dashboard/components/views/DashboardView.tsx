@@ -6,6 +6,7 @@ import { ProfitabilityChart } from '../ProfitabilityChart';
 import { ChartCard } from '../ChartCard';
 import { TAIKO_PINK } from '../../theme';
 import { TimeRange, MetricData } from '../../types';
+import { rangeToHours } from '../../utils/timeRange';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 const SequencerPieChart = lazy(() =>
@@ -79,11 +80,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const isEconomicsView = searchParams.get('view') === 'economics';
-  const hoursMap: Record<TimeRange, number> = {
-    '15m': 0.25,
-    '1h': 1,
-    '24h': 24,
-  };
 
   const visibleMetrics = React.useMemo(
     () =>
@@ -298,10 +294,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <>
             <ProfitCalculator metrics={metricsData.metrics} timeRange={timeRange} />
             <div className="mt-6">
-              <ProfitabilityChart
-                metrics={metricsData.metrics}
-                hours={hoursMap[timeRange]}
-              />
+            <ProfitabilityChart
+              metrics={metricsData.metrics}
+              hours={rangeToHours(timeRange)}
+            />
             </div>
           </>
         )}

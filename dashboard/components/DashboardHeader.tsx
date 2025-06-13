@@ -3,6 +3,7 @@ import { TimeRange } from '../types';
 import { RefreshCountdown } from './RefreshCountdown';
 import { TAIKO_PINK } from '../theme';
 import { isValidRefreshRate } from '../utils';
+import { isValidTimeRange } from '../utils/timeRange';
 import { useRouterNavigation } from '../hooks/useRouterNavigation';
 import { useErrorHandler } from '../hooks/useErrorHandler';
 import { showToast } from '../utils/toast';
@@ -117,27 +118,67 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
   onTimeRangeChange,
   isChanging,
 }) => {
-  const ranges: TimeRange[] = ['15m', '1h', '24h'];
+  const presetRanges: TimeRange[] = ['15m', '1h', '3h', '6h', '12h', '24h'];
+
+const isCustom = !presetRanges.includes(currentTimeRange);
+const [customValue, setCustomValue] = React.useState(
+  isCustom ? currentTimeRange : '1h'
+);
+
+
+  const handleSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    if (value === 'custom') {
+      if (isValidTimeRange(customValue)) onTimeRangeChange(customValue);
+    } else {
+      onTimeRangeChange(value);
+    }
+  };
+
+  const applyCustom = () => {
+    if (isValidTimeRange(customValue)) {
+      onTimeRangeChange(customValue);
+    }
+  };
 
   return (
-    <div className="flex space-x-1 bg-gray-200 dark:bg-gray-700 p-0.5 rounded-md">
+    <div className="flex items-center space-x-1">
       {isChanging && (
         <div className="flex items-center px-2">
-          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current opacity-50"></div>
+          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current opacity-50" />
         </div>
       )}
-      {ranges.map((range) => (
-        <button
-          key={range}
-          onClick={() => !isChanging && onTimeRangeChange(range)}
-          disabled={isChanging}
-          className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors disabled:opacity-50
-            ${currentTimeRange === range ? 'bg-white dark:bg-gray-800 shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'}`}
-          style={currentTimeRange === range ? { color: TAIKO_PINK } : undefined}
-        >
-          {range}
-        </button>
-      ))}
+      <select
+        value={isCustom ? 'custom' : currentTimeRange}
+        onChange={handleSelect}
+        disabled={isChanging}
+        className="p-1 border rounded-md text-sm bg-white dark:bg-gray-800"
+      >
+        {presetRanges.map((r) => (
+          <option key={r} value={r}>
+            {r}
+          </option>
+        ))}
+        <option value="custom">Custom...</option>
+      </select>
+      {isCustom && (
+        <>
+          <input
+            type="text"
+            value={customValue}
+            onChange={(e) => setCustomValue(e.target.value)}
+            placeholder="e.g. 45m"
+            className="p-1 border rounded-md text-sm w-20 bg-white dark:bg-gray-800"
+          />
+          <button
+            onClick={applyCustom}
+            disabled={isChanging || !isValidTimeRange(customValue)}
+            className="px-2 py-1 text-sm rounded-md bg-gray-200 dark:bg-gray-700 disabled:opacity-50"
+          >
+            Apply
+          </button>
+        </>
+      )}
     </div>
   );
 };
