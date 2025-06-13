@@ -14,8 +14,8 @@ use url::Url;
 use crate::{
     models::{
         BatchBlobCountRow, BatchPostingTimeRow, BatchProveTimeRow, BatchVerifyTimeRow,
-        BlockTransactionRow, ForcedInclusionProcessedRow, L1BlockTimeRow, L2BlockTimeRow,
-        L2GasUsedRow, L2ReorgRow, L2TpsRow, PreconfData, SequencerBlockRow,
+        BlockTransactionRow, ForcedInclusionProcessedRow, L1BlockTimeRow, L1DataCostRow,
+        L2BlockTimeRow, L2GasUsedRow, L2ReorgRow, L2TpsRow, PreconfData, SequencerBlockRow,
         SequencerDistributionRow, SlashingEventRow,
     },
     types::AddressBytes,
@@ -939,6 +939,32 @@ impl ClickhouseReader {
         Ok(rows
             .into_iter()
             .map(|r| L2GasUsedRow { l2_block_number: r.l2_block_number, gas_used: r.gas_used })
+            .collect())
+    }
+
+    /// Get the L1 data posting cost for each block within the given range
+    pub async fn get_l1_data_costs(&self, range: TimeRange) -> Result<Vec<L1DataCostRow>> {
+        #[derive(Row, Deserialize)]
+        struct RawRow {
+            l1_block_number: u64,
+            cost: u128,
+        }
+
+        let query = format!(
+            "SELECT l1_block_number, cost \
+             FROM {db}.l1_data_costs \
+             WHERE l1_block_number IN (\
+                 SELECT l1_block_number FROM {db}.l1_head_events \
+                 WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})) \
+             ORDER BY l1_block_number ASC",
+            interval = range.interval(),
+            db = self.db_name,
+        );
+
+        let rows = self.execute::<RawRow>(&query).await?;
+        Ok(rows
+            .into_iter()
+            .map(|r| L1DataCostRow { l1_block_number: r.l1_block_number, cost: r.cost })
             .collect())
     }
 

@@ -52,6 +52,7 @@ pub const MAX_BLOCK_TRANSACTIONS_LIMIT: u64 = u64::MAX;
         l1_block_times,
         l2_block_times,
         l2_gas_used,
+        l1_data_cost,
         l2_tps,
         sequencer_distribution,
         sequencer_blocks,
@@ -78,6 +79,7 @@ pub const MAX_BLOCK_TRANSACTIONS_LIMIT: u64 = u64::MAX;
             L1BlockTimesResponse,
             L2BlockTimesResponse,
             L2GasUsedResponse,
+            L1DataCostResponse,
             L2TpsResponse,
             SequencerDistributionResponse,
             SequencerDistributionItem,
@@ -811,6 +813,42 @@ async fn l2_gas_used(
 
 #[utoipa::path(
     get,
+    path = "/l1-data-cost",
+    params(
+        RangeQuery
+    ),
+    responses(
+        (status = 200, description = "L1 data posting cost", body = L1DataCostResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
+    ),
+    tag = "taikoscope"
+)]
+async fn l1_data_cost(
+    Query(params): Query<RangeQuery>,
+    State(state): State<ApiState>,
+) -> Result<Json<L1DataCostResponse>, ErrorResponse> {
+    validate_time_range(&params.time_range)?;
+    let has_time_range = has_time_range_params(&params.time_range);
+    validate_range_exclusivity(has_time_range, false)?;
+
+    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
+    let rows = match state.client.get_l1_data_costs(time_range).await {
+        Ok(r) => r,
+        Err(e) => {
+            tracing::error!("Failed to get L1 data cost: {}", e);
+            return Err(ErrorResponse::new(
+                "database-error",
+                "Database error",
+                StatusCode::INTERNAL_SERVER_ERROR,
+                e.to_string(),
+            ));
+        }
+    };
+    Ok(Json(L1DataCostResponse { blocks: rows }))
+}
+
+#[utoipa::path(
+    get,
     path = "/l2-tps",
     params(
         RangeQuery
@@ -1206,6 +1244,7 @@ pub fn router(state: ApiState) -> Router {
         .route("/l1-block-times", get(l1_block_times))
         .route("/l2-block-times", get(l2_block_times))
         .route("/l2-gas-used", get(l2_gas_used))
+        .route("/l1-data-cost", get(l1_data_cost))
         .route("/l2-tps", get(l2_tps))
         .route("/tps", get(l2_tps))
         .route("/sequencer-distribution", get(sequencer_distribution))
@@ -1534,6 +1573,27 @@ mod tests {
         assert_eq!(
             body,
             json!({ "blocks": [ { "l2_block_number": 0, "gas_used": 0 }, { "l2_block_number": 1, "gas_used": 42 } ] })
+        );
+    }
+
+    #[derive(Serialize, Row)]
+    struct L1DataCostRowTest {
+        l1_block_number: u64,
+        cost: u128,
+    }
+
+    #[tokio::test]
+    async fn l1_data_cost_endpoint() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(vec![
+            L1DataCostRowTest { l1_block_number: 1, cost: 10 },
+            L1DataCostRowTest { l1_block_number: 2, cost: 20 },
+        ]));
+        let app = build_app(mock.url());
+        let body = send_request(app, "/l1-data-cost?range=1h").await;
+        assert_eq!(
+            body,
+            json!({ "blocks": [ { "l1_block_number": 1, "cost": 10 }, { "l1_block_number": 2, "cost": 20 } ] })
         );
     }
 
