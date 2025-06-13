@@ -24,4 +24,25 @@ describe('ProfitCalculator', () => {
     );
     expect(html.includes('1,999')).toBe(true);
   });
+
+  it('rejects negative values via min attribute', () => {
+    vi.spyOn(priceService, 'useEthPrice').mockReturnValue({
+      data: 2000,
+    } as any);
+    const html = renderToStaticMarkup(
+      React.createElement(ProfitCalculator, {
+        metrics: [
+          { title: 'Priority Fee', value: '0.6 ETH' },
+          { title: 'Base Fee', value: '0.4 ETH' },
+        ],
+        timeRange: '1h',
+        cloudCost: 0,
+        proverCost: 0,
+        onCloudCostChange: () => {},
+        onProverCostChange: () => {},
+      }),
+    );
+    const matches = html.match(/min="0"/g) ?? [];
+    expect(matches.length).toBe(2);
+  });
 });
