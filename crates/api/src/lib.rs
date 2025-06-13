@@ -14,7 +14,7 @@ use axum::{
 };
 use chrono::{Duration as ChronoDuration, TimeZone, Utc};
 
-use clickhouse_lib::{AddressBytes, ClickhouseReader};
+use clickhouse_lib::{AddressBytes, ClickhouseReader, L2BlockTimeRow, L2GasUsedRow};
 use futures::stream::Stream;
 use hex::encode;
 use primitives::hardware::TOTAL_HARDWARE_COST_USD;
@@ -751,7 +751,7 @@ async fn l2_block_times(
             None
         }
     });
-    let blocks = match state.client.get_l2_block_times(address, time_range).await {
+    let mut blocks = match state.client.get_l2_block_times(address, time_range).await {
         Ok(rows) => rows,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get L2 block times");
@@ -763,6 +763,9 @@ async fn l2_block_times(
             ));
         }
     };
+    if time_range.seconds() > 3600 {
+        blocks = aggregate_l2_block_times(blocks);
+    }
     tracing::info!(count = blocks.len(), "Returning L2 block times");
     Ok(Json(L2BlockTimesResponse { blocks }))
 }
@@ -798,7 +801,7 @@ async fn l2_gas_used(
             None
         }
     });
-    let blocks = match state.client.get_l2_gas_used(address, time_range).await {
+    let mut blocks = match state.client.get_l2_gas_used(address, time_range).await {
         Ok(rows) => rows,
         Err(e) => {
             tracing::error!("Failed to get L2 gas used: {}", e);
@@ -810,6 +813,9 @@ async fn l2_gas_used(
             ));
         }
     };
+    if time_range.seconds() > 3600 {
+        blocks = aggregate_l2_gas_used(blocks);
+    }
     tracing::info!(count = blocks.len(), "Returning L2 gas used");
     Ok(Json(L2GasUsedResponse { blocks }))
 }
@@ -1319,6 +1325,43 @@ pub fn router(state: ApiState) -> Router {
         .with_state(state)
 }
 
+fn aggregate_l2_block_times(rows: Vec<L2BlockTimeRow>) -> Vec<L2BlockTimeRow> {
+    use std::collections::BTreeMap;
+    let mut groups: BTreeMap<u64, Vec<L2BlockTimeRow>> = BTreeMap::new();
+    for row in rows {
+        groups.entry(row.l2_block_number / 10).or_default().push(row);
+    }
+    groups
+        .into_iter()
+        .map(|(g, mut rs)| {
+            rs.sort_by_key(|r| r.l2_block_number);
+            let last_time = rs.last().map(|r| r.block_time).unwrap();
+            let (sum, count) = rs
+                .iter()
+                .filter_map(|r| r.ms_since_prev_block)
+                .fold((0u64, 0u64), |(s, c), ms| (s + ms, c + 1));
+            let avg = if count > 0 { sum / count } else { 0 };
+            L2BlockTimeRow {
+                l2_block_number: g * 10 + 9,
+                block_time: last_time,
+                ms_since_prev_block: Some(avg),
+            }
+        })
+        .collect()
+}
+
+fn aggregate_l2_gas_used(rows: Vec<L2GasUsedRow>) -> Vec<L2GasUsedRow> {
+    use std::collections::BTreeMap;
+    let mut groups: BTreeMap<u64, u64> = BTreeMap::new();
+    for row in rows {
+        *groups.entry(row.l2_block_number / 10).or_insert(0) += row.gas_used;
+    }
+    groups
+        .into_iter()
+        .map(|(g, gas)| L2GasUsedRow { l2_block_number: g * 10 + 9, gas_used: gas })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1562,7 +1605,7 @@ mod tests {
         let body = send_request(app, "/l2-block-times?range=24h").await;
         assert_eq!(
             body,
-            json!({ "blocks": [ { "l2_block_number": 1, "block_time": "1970-01-01T00:00:02Z", "ms_since_prev_block": 2000 } ] })
+            json!({ "blocks": [ { "l2_block_number": 9, "block_time": "1970-01-01T00:00:02Z", "ms_since_prev_block": 2000 } ] })
         );
     }
 
@@ -1581,7 +1624,7 @@ mod tests {
         let body = send_request(app, "/l2-block-times?range=7d").await;
         assert_eq!(
             body,
-            json!({ "blocks": [ { "l2_block_number": 1, "block_time": "1970-01-01T00:00:02Z", "ms_since_prev_block": 2000 } ] })
+            json!({ "blocks": [ { "l2_block_number": 9, "block_time": "1970-01-01T00:00:02Z", "ms_since_prev_block": 2000 } ] })
         );
     }
 
@@ -1615,10 +1658,7 @@ mod tests {
         ]));
         let app = build_app(mock.url());
         let body = send_request(app, "/l2-gas-used?range=24h").await;
-        assert_eq!(
-            body,
-            json!({ "blocks": [ { "l2_block_number": 0, "gas_used": 0 }, { "l2_block_number": 1, "gas_used": 42 } ] })
-        );
+        assert_eq!(body, json!({ "blocks": [ { "l2_block_number": 9, "gas_used": 42 } ] }));
     }
 
     #[tokio::test]
@@ -1630,10 +1670,7 @@ mod tests {
         ]));
         let app = build_app(mock.url());
         let body = send_request(app, "/l2-gas-used?range=7d").await;
-        assert_eq!(
-            body,
-            json!({ "blocks": [ { "l2_block_number": 0, "gas_used": 0 }, { "l2_block_number": 1, "gas_used": 42 } ] })
-        );
+        assert_eq!(body, json!({ "blocks": [ { "l2_block_number": 9, "gas_used": 42 } ] }));
     }
 
     #[derive(Serialize, Row)]
