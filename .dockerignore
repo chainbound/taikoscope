@@ -4,3 +4,11 @@ testground/
 .github/
 .gitignore
 dashboard/
+docs/
+tests/
+dev.env
+docker-compose.yml
+vercel.json
+justfile
+CLAUDE.md
+AGENTS.md
