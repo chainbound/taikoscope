@@ -26,7 +26,7 @@ import {
 import { createMetrics, hasBadRequest } from '../helpers';
 import type { MetricData } from '../types';
 
-type TimeRange = '15m' | '1h' | '24h';
+type TimeRange = string;
 
 type State = {
   metrics: MetricData[];
