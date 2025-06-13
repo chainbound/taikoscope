@@ -16,6 +16,10 @@ describe('ProfitCalculator', () => {
           { title: 'Base Fee', value: '0.4 ETH' },
         ],
         timeRange: '1h',
+        cloudCost: 100,
+        proverCost: 100,
+        onCloudCostChange: () => {},
+        onProverCostChange: () => {},
       }),
     );
     expect(html.includes('1,999')).toBe(true);

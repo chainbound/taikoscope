@@ -12,7 +12,6 @@ import {
   fetchL2Fees,
   fetchL2HeadBlock,
   fetchL1HeadBlock,
-  fetchCloudCost,
 } from '../services/apiService';
 
 export interface MainDashboardData {
@@ -36,7 +35,6 @@ export interface MainDashboardData {
   blobsPerBatch: any[];
   priorityFee: number | null;
   baseFee: number | null;
-  cloudCost: number | null;
   badRequestResults: any[];
 }
 
@@ -45,7 +43,6 @@ export interface EconomicsData {
   baseFee: number | null;
   l2Block: number | null;
   l1Block: number | null;
-  cloudCost: number | null;
   badRequestResults: any[];
 }
 
@@ -111,7 +108,6 @@ export const fetchMainDashboardData = async (
     blobsPerBatch: batchBlobCountsRes.data || [],
     priorityFee: data?.priority_fee ?? null,
     baseFee: data?.base_fee ?? null,
-    cloudCost: data?.cloud_cost ?? null,
     badRequestResults: allResults,
   };
 };
@@ -120,14 +116,13 @@ export const fetchEconomicsData = async (
   timeRange: TimeRange,
   selectedSequencer: string | null,
 ): Promise<EconomicsData> => {
-  const [l2FeesRes, l2BlockRes, l1BlockRes, cloudCostRes] = await Promise.all([
+  const [l2FeesRes, l2BlockRes, l1BlockRes] = await Promise.all([
     fetchL2Fees(
       timeRange,
       selectedSequencer ? getSequencerAddress(selectedSequencer) : undefined,
     ),
     fetchL2HeadBlock(timeRange),
     fetchL1HeadBlock(timeRange),
-    fetchCloudCost(timeRange),
   ]);
 
   return {
@@ -135,7 +130,6 @@ export const fetchEconomicsData = async (
     baseFee: l2FeesRes.data?.base_fee ?? null,
     l2Block: l2BlockRes.data,
     l1Block: l1BlockRes.data,
-    cloudCost: cloudCostRes.data,
-    badRequestResults: [l2FeesRes, l2BlockRes, l1BlockRes, cloudCostRes],
+    badRequestResults: [l2FeesRes, l2BlockRes, l1BlockRes],
   };
 };

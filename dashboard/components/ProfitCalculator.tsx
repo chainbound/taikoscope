@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { MetricData, TimeRange } from '../types';
 import { findMetricValue } from '../utils';
 import { rangeToHours } from '../utils/timeRange';
@@ -7,11 +7,19 @@ import { useEthPrice } from '../services/priceService';
 interface ProfitCalculatorProps {
   metrics: MetricData[];
   timeRange: TimeRange;
+  cloudCost: number;
+  proverCost: number;
+  onCloudCostChange: (v: number) => void;
+  onProverCostChange: (v: number) => void;
 }
 
 export const ProfitCalculator: React.FC<ProfitCalculatorProps> = ({
   metrics,
   timeRange,
+  cloudCost,
+  proverCost,
+  onCloudCostChange,
+  onProverCostChange,
 }) => {
   const priorityStr = findMetricValue(metrics, 'priority fee');
   const baseStr = findMetricValue(metrics, 'base fee');
@@ -19,8 +27,6 @@ export const ProfitCalculator: React.FC<ProfitCalculatorProps> = ({
   const base = parseFloat(baseStr.replace(/[^0-9.]/g, '')) || 0;
   const totalFee = priority + base;
 
-  const [cloudCost, setCloudCost] = useState(100);
-  const [proverCost, setProverCost] = useState(100);
   const { data: ethPrice = 0, error: ethPriceError } = useEthPrice();
 
   const HOURS_IN_MONTH = 30 * 24;
@@ -51,7 +57,7 @@ export const ProfitCalculator: React.FC<ProfitCalculatorProps> = ({
             type="number"
             className="p-1 border rounded-md"
             value={cloudCost}
-            onChange={(e) => setCloudCost(Number(e.target.value))}
+            onChange={(e) => onCloudCostChange(Number(e.target.value))}
           />
         </label>
         <label className="flex flex-col text-sm">
@@ -60,7 +66,7 @@ export const ProfitCalculator: React.FC<ProfitCalculatorProps> = ({
             type="number"
             className="p-1 border rounded-md"
             value={proverCost}
-            onChange={(e) => setProverCost(Number(e.target.value))}
+            onChange={(e) => onProverCostChange(Number(e.target.value))}
           />
         </label>
       </div>

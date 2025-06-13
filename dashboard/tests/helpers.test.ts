@@ -17,7 +17,6 @@ const metrics = createMetrics({
   l1Block: 50,
   priorityFee: 41e18,
   baseFee: 1e18,
-  cloudCost: 90,
 });
 
 const results = [
@@ -41,7 +40,6 @@ const metricsAllNull = createMetrics({
   nextOperator: null,
   priorityFee: null,
   baseFee: null,
-  cloudCost: null,
 });
 
 describe('helpers', () => {
