@@ -61,6 +61,10 @@ impl Driver {
             ));
         }
 
+        if !opts.instatus.monitors_enabled {
+            info!("Instatus monitors disabled; no incidents will be reported");
+        }
+
         // init db client
         let clickhouse = ClickhouseWriter::new(
             opts.clickhouse.url.clone(),
