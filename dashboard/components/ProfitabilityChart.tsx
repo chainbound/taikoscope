@@ -71,7 +71,7 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
         <YAxis
           stroke="#666666"
           fontSize={12}
-          domain={[0, 'auto']}
+          domain={['auto', 'auto']}
           tickFormatter={(v: number) => `$${v.toLocaleString()}`}
           label={{
             value: 'Profit (USD)',
