@@ -1011,7 +1011,7 @@ impl ClickhouseReader {
             "SELECT h.l2_block_number, \
                     sum_priority_fee AS priority_fee, \
                     toUInt128(sum_base_fee * 3 / 4) AS base_fee, \
-                    dc.cost AS l1_data_cost \
+                    toNullable(dc.cost) AS l1_data_cost \
              FROM {db}.l2_head_events h \
              LEFT JOIN {db}.l1_data_costs dc \
                ON h.l2_block_number = dc.l1_block_number \
