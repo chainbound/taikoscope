@@ -13,6 +13,7 @@ clickhouse = { path = "../clickhouse" }
 extractor = { path = "../extractor" }
 primitives = { path = "../primitives" }
 incident = { path = "../incident" }
+network = { path = "../network" }
 
 chrono = { workspace = true, features = ["serde"] }
 alloy-primitives.workspace = true
@@ -22,6 +23,7 @@ eyre.workspace = true
 tokio.workspace = true
 tokio-stream.workspace = true
 tracing.workspace = true
+url.workspace = true
 
 [dev-dependencies]
 url.workspace = true
