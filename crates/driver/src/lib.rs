@@ -4,8 +4,10 @@ use std::time::Duration;
 
 use alloy_primitives::Address;
 use eyre::Result;
+use network::public_rpc_monitor;
 use tokio_stream::StreamExt;
 use tracing::info;
+use url::Url;
 
 use chainio::{
     ITaikoInbox::{BatchProposed, BatchesProved},
@@ -44,6 +46,7 @@ pub struct Driver {
     batch_proof_timeout_secs: u64,
     last_proposed_l2_block: u64,
     last_l2_header: Option<(u64, Address)>,
+    public_rpc_url: Option<Url>,
 }
 
 impl Driver {
@@ -139,6 +142,7 @@ impl Driver {
             batch_proof_timeout_secs: opts.instatus.batch_proof_timeout_secs,
             last_proposed_l2_block: 0,
             last_l2_header: None,
+            public_rpc_url: opts.rpc.public_url,
         })
     }
 
@@ -255,6 +259,10 @@ impl Driver {
     /// Each monitor runs in its own task and reports incidents via the
     /// [`IncidentClient`].
     fn spawn_monitors(&self) {
+        if let Some(url) = &self.public_rpc_url {
+            public_rpc_monitor::spawn_public_rpc_monitor(url.clone());
+        }
+
         if !self.instatus_monitors_enabled {
             return;
         }
@@ -599,7 +607,7 @@ mod tests {
                 username: "user".into(),
                 password: "pass".into(),
             },
-            rpc: RpcOpts { l1_url, l2_url },
+            rpc: RpcOpts { l1_url, l2_url, public_url: None },
             api: ApiOpts {
                 host: "127.0.0.1".into(),
                 port: 3000,

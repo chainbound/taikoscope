@@ -31,6 +31,9 @@ pub struct RpcOpts {
     /// L2 RPC URL
     #[clap(long, env = "L2_RPC_URL")]
     pub l2_url: Url,
+    /// Public RPC URL for health checks
+    #[clap(long, env = "PUBLIC_RPC")]
+    pub public_url: Option<Url>,
 }
 
 /// Taiko contract address configuration options
