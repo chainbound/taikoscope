@@ -66,18 +66,24 @@ export const ProfitCalculator: React.FC<ProfitCalculatorProps> = ({
           Monthly Cloud Cost ($)
           <input
             type="number"
+            min={0}
             className="p-1 border rounded-md"
             value={cloudCost}
-            onChange={(e) => onCloudCostChange(Number(e.target.value))}
+            onChange={(e) =>
+              onCloudCostChange(Math.max(0, Number(e.target.value)))
+            }
           />
         </label>
         <label className="flex flex-col text-sm">
           Prover Cost ($)
           <input
             type="number"
+            min={0}
             className="p-1 border rounded-md"
             value={proverCost}
-            onChange={(e) => onProverCostChange(Number(e.target.value))}
+            onChange={(e) =>
+              onProverCostChange(Math.max(0, Number(e.target.value)))
+            }
           />
         </label>
       </div>
