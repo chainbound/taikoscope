@@ -38,6 +38,7 @@ pub struct Driver {
     instatus_proof_submission_component_id: String,
     instatus_proof_verification_component_id: String,
     instatus_transaction_sequencing_component_id: String,
+    instatus_monitors_enabled: bool,
     instatus_monitor_poll_interval_secs: u64,
     instatus_monitor_threshold_secs: u64,
     batch_proof_timeout_secs: u64,
@@ -54,7 +55,7 @@ impl Driver {
     /// Build everything with option to skip database migrations (useful for tests)
     pub async fn new_with_migrations(opts: Opts, run_migrations: bool) -> Result<Self> {
         // verify monitoring configuration before doing any heavy work
-        if !opts.instatus.enabled() {
+        if opts.instatus.monitors_enabled && !opts.instatus.enabled() {
             return Err(eyre::eyre!(
                 "Instatus configuration missing; set the INSTATUS_* environment variables"
             ));
@@ -92,18 +93,31 @@ impl Driver {
         )
         .await?;
 
-        // init incident client and component IDs
+        // init incident client and component IDs if monitors are enabled
 
-        let instatus_batch_submission_component_id =
-            opts.instatus.batch_submission_component_id.clone();
-        let instatus_proof_submission_component_id =
-            opts.instatus.proof_submission_component_id.clone();
-        let instatus_proof_verification_component_id =
-            opts.instatus.proof_verification_component_id.clone();
-        let instatus_transaction_sequencing_component_id =
-            opts.instatus.transaction_sequencing_component_id.clone();
-        let incident_client =
-            IncidentClient::new(opts.instatus.api_key.clone(), opts.instatus.page_id.clone());
+        let (
+            instatus_batch_submission_component_id,
+            instatus_proof_submission_component_id,
+            instatus_proof_verification_component_id,
+            instatus_transaction_sequencing_component_id,
+            incident_client,
+        ) = if opts.instatus.monitors_enabled {
+            (
+                opts.instatus.batch_submission_component_id.clone(),
+                opts.instatus.proof_submission_component_id.clone(),
+                opts.instatus.proof_verification_component_id.clone(),
+                opts.instatus.transaction_sequencing_component_id.clone(),
+                IncidentClient::new(opts.instatus.api_key.clone(), opts.instatus.page_id.clone()),
+            )
+        } else {
+            (
+                String::new(),
+                String::new(),
+                String::new(),
+                String::new(),
+                IncidentClient::new(String::new(), String::new()),
+            )
+        };
 
         Ok(Self {
             clickhouse,
@@ -115,6 +129,7 @@ impl Driver {
             instatus_proof_submission_component_id,
             instatus_proof_verification_component_id,
             instatus_transaction_sequencing_component_id,
+            instatus_monitors_enabled: opts.instatus.monitors_enabled,
             instatus_monitor_poll_interval_secs: opts.instatus.monitor_poll_interval_secs,
             instatus_monitor_threshold_secs: opts.instatus.monitor_threshold_secs,
             batch_proof_timeout_secs: opts.instatus.batch_proof_timeout_secs,
@@ -236,6 +251,10 @@ impl Driver {
     /// Each monitor runs in its own task and reports incidents via the
     /// [`IncidentClient`].
     fn spawn_monitors(&self) {
+        if !self.instatus_monitors_enabled {
+            return;
+        }
+
         InstatusL1Monitor::new(
             self.clickhouse_reader.clone(),
             self.incident_client.clone(),
@@ -596,6 +615,7 @@ mod tests {
                 proof_submission_component_id: "proof".into(),
                 proof_verification_component_id: "verify".into(),
                 transaction_sequencing_component_id: "l2".into(),
+                monitors_enabled: true,
                 monitor_poll_interval_secs: 30,
                 monitor_threshold_secs: 96,
                 batch_proof_timeout_secs: 999,
