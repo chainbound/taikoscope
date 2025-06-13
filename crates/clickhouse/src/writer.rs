@@ -319,7 +319,7 @@ impl ClickhouseWriter {
     pub async fn insert_l1_data_cost(&self, block_number: u64, cost: u128) -> Result<()> {
         let client = self.base.clone();
         let row = L1DataCostRow { l1_block_number: block_number, cost };
-        let mut insert = client.insert("l1_data_costs")?;
+        let mut insert = client.insert(&format!("{}.l1_data_costs", self.db_name))?;
         insert.write(&row).await?;
         insert.end().await?;
         Ok(())
