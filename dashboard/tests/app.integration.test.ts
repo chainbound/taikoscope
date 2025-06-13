@@ -131,8 +131,6 @@ const responses: Record<string, Record<string, unknown>> = {
   },
   '/v1/l2-fees?range=1h': { priority_fee: 600, base_fee: 400 },
   '/v1/l2-fees?range=15m': { priority_fee: 600, base_fee: 400 },
-  '/v1/cloud-cost?range=1h': { cost_usd: 3 },
-  '/v1/cloud-cost?range=15m': { cost_usd: 3 },
   '/v1/sequencer-distribution?range=1h': {
     sequencers: [{ address: 'addr1', blocks: 10 }],
   },
@@ -142,8 +140,7 @@ const responses: Record<string, Record<string, unknown>> = {
   '/v1/l2-head-block': { l2_head_block: 123 },
   '/v1/l1-head-block': { l1_head_block: 456 },
   '/v1/l2-fees?range=24h': { priority_fee: 1200, base_fee: 800 },
-  '/v1/cloud-cost?range=24h': { cost_usd: 72 },
-};
+}; 
 
 (
   globalThis as {
