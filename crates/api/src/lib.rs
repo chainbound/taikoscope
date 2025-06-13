@@ -808,6 +808,7 @@ async fn l2_gas_used(
             ));
         }
     };
+    tracing::info!(count = blocks.len(), "Returning L2 gas used");
     Ok(Json(L2GasUsedResponse { blocks }))
 }
 
@@ -844,6 +845,7 @@ async fn l1_data_cost(
             ));
         }
     };
+    tracing::info!(count = rows.len(), "Returning L1 data cost");
     Ok(Json(L1DataCostResponse { blocks: rows }))
 }
 
@@ -890,6 +892,7 @@ async fn l2_tps(
             ));
         }
     };
+    tracing::info!(count = blocks.len(), "Returning L2 TPS");
     Ok(Json(L2TpsResponse { blocks }))
 }
 
@@ -1124,6 +1127,7 @@ async fn l2_fees(
         )
     })?;
 
+    tracing::info!(?priority_fee, ?base_fee, "Returning L2 fees");
     Ok(Json(L2FeesResponse { priority_fee, base_fee }))
 }
 
@@ -1206,6 +1210,15 @@ async fn dashboard_data(
     let hours = time_range.seconds() as f64 / 3600.0;
     let hourly_rate = TOTAL_HARDWARE_COST_USD / (30.0 * 24.0);
     let cost = hourly_rate * hours;
+
+    tracing::info!(
+        l2_block,
+        l1_block,
+        reorgs = reorgs.len(),
+        slashings = slashings.len(),
+        forced_inclusions = forced_inclusions.len(),
+        "Returning dashboard data"
+    );
 
     Ok(Json(DashboardDataResponse {
         l2_block_cadence_ms: l2_block_cadence,
