@@ -6,7 +6,6 @@ import { ProfitabilityChart } from '../ProfitabilityChart';
 import { ChartCard } from '../ChartCard';
 import { TAIKO_PINK } from '../../theme';
 import { TimeRange, MetricData } from '../../types';
-import { rangeToHours } from '../../utils/timeRange';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 const SequencerPieChart = lazy(() =>
