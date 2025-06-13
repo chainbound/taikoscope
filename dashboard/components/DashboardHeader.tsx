@@ -22,7 +22,9 @@ interface ImportMeta {
 const metaEnv = (import.meta as ImportMeta).env;
 const rawNetworkName =
   metaEnv?.VITE_NETWORK_NAME ?? metaEnv?.NETWORK_NAME ?? 'Masaya';
-const NETWORK_NAME = rawNetworkName.charAt(0).toUpperCase() + rawNetworkName.slice(1).toLowerCase();
+const NETWORK_NAME =
+  rawNetworkName.charAt(0).toUpperCase() +
+  rawNetworkName.slice(1).toLowerCase();
 const DASHBOARD_TITLE = `Taikoscope ${NETWORK_NAME}`;
 
 interface DashboardHeaderProps {
@@ -126,7 +128,9 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
   const [open, setOpen] = React.useState(false);
   const [date, setDate] = React.useState<Date | undefined>(() => {
     if (isCustom) {
-      const [s, e] = currentTimeRange.split('-').map((t) => new Date(Number(t)));
+      const [s, e] = currentTimeRange
+        .split('-')
+        .map((t) => new Date(Number(t)));
       if (s.toDateString() === e.toDateString()) return s;
     }
     return undefined;
@@ -134,9 +138,24 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
   const [fromTime, setFromTime] = React.useState('');
   const [toTime, setToTime] = React.useState('');
 
+  const customTooltip = React.useMemo(() => {
+    if (!isCustom) return undefined;
+    const [s, e] = currentTimeRange.split('-').map((t) => new Date(Number(t)));
+    const fmt = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+        d.getDate(),
+      ).padStart(2, '0')} ${d.getHours().toString().padStart(2, '0')}:${d
+        .getMinutes()
+        .toString()
+        .padStart(2, '0')}`;
+    return `From ${fmt(s)} to ${fmt(e)}`;
+  }, [currentTimeRange, isCustom]);
+
   React.useEffect(() => {
     if (isCustom) {
-      const [s, e] = currentTimeRange.split('-').map((t) => new Date(Number(t)));
+      const [s, e] = currentTimeRange
+        .split('-')
+        .map((t) => new Date(Number(t)));
       if (s.toDateString() === e.toDateString()) {
         setDate(s);
         setFromTime(
@@ -188,6 +207,7 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
         <button
           disabled={isChanging}
           className="p-1 border rounded-md text-sm bg-white dark:bg-gray-800 min-w-[3rem]"
+          title={customTooltip}
         >
           {isCustom ? 'Custom range' : currentTimeRange}
         </button>
