@@ -115,8 +115,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const skeletonGroupCounts: Record<string, number> = isEconomicsView
     ? { 'Network Economics': 1 }
     : {
-      'Network Performance': 5,
-      'Network Health': 4,
+      'Network Performance': 3,
+      'Network Health': 5,
       Sequencers: 3,
     };
 
@@ -163,33 +163,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
     const performance = [
       <ChartCard
-        key="prove"
-        title="Prove Time"
-        onMore={() => onOpenTable('prove-time', timeRange)}
-        loading={isLoadingData}
-      >
-        <BatchProcessChart
-          key={timeRange}
-          data={chartsData.secondsToProveData}
-          lineColor={TAIKO_PINK}
-        />
-      </ChartCard>,
-      <ChartCard
-        key="verify"
-        title="Verify Time"
-        onMore={() => onOpenTable('verify-time', timeRange)}
-        loading={isLoadingData}
-      >
-        <BatchProcessChart
-          key={`${timeRange}-v`}
-          data={chartsData.secondsToVerifyData}
-          lineColor="#5DA5DA"
-        />
-      </ChartCard>,
-    ];
-
-    const health = [
-      <ChartCard
         key="gas"
         title="Gas Used Per Block"
         onMore={() => onOpenTable('l2-gas-used', timeRange)}
@@ -211,6 +184,33 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           key={`${timeRange}-t`}
           data={chartsData.blockTxData}
           lineColor="#4E79A7"
+        />
+      </ChartCard>,
+    ];
+
+    const health = [
+      <ChartCard
+        key="prove"
+        title="Prove Time"
+        onMore={() => onOpenTable('prove-time', timeRange)}
+        loading={isLoadingData}
+      >
+        <BatchProcessChart
+          key={timeRange}
+          data={chartsData.secondsToProveData}
+          lineColor={TAIKO_PINK}
+        />
+      </ChartCard>,
+      <ChartCard
+        key="verify"
+        title="Verify Time"
+        onMore={() => onOpenTable('verify-time', timeRange)}
+        loading={isLoadingData}
+      >
+        <BatchProcessChart
+          key={`${timeRange}-v`}
+          data={chartsData.secondsToVerifyData}
+          lineColor="#5DA5DA"
         />
       </ChartCard>,
       <ChartCard

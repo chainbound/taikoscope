@@ -51,9 +51,9 @@ describe('helpers', () => {
     expect(metrics[2].value).toBe('N/A');
     expect(metrics[2].group).toBe('Network Performance');
     expect(metrics[3].value).toBe('1.20s');
-    expect(metrics[3].group).toBe('Network Performance');
+    expect(metrics[3].group).toBe('Network Health');
     expect(metrics[4].value).toBe('N/A');
-    expect(metrics[4].group).toBe('Network Performance');
+    expect(metrics[4].group).toBe('Network Health');
     expect(metrics[5].value).toBe('2');
     expect(metrics[5].group).toBe('Sequencers');
     expect(metrics[6].value).toBe('0xabc');
@@ -90,8 +90,8 @@ describe('helpers', () => {
     expect(metricsAllNull[0].group).toBe('Network Performance');
     expect(metricsAllNull[1].group).toBe('Network Performance');
     expect(metricsAllNull[2].group).toBe('Network Performance');
-    expect(metricsAllNull[3].group).toBe('Network Performance');
-    expect(metricsAllNull[4].group).toBe('Network Performance');
+    expect(metricsAllNull[3].group).toBe('Network Health');
+    expect(metricsAllNull[4].group).toBe('Network Health');
     expect(metricsAllNull[5].group).toBe('Sequencers');
     expect(metricsAllNull[6].group).toBe('Sequencers');
     expect(metricsAllNull[7].group).toBe('Sequencers');
