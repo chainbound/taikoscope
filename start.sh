@@ -26,5 +26,12 @@ else
   echo "⚠️  TAILSCALE_AUTHKEY not set. Skipping tailscale up."
 fi
 
-echo "✅ Tailscale connected. Starting Taikoscope..."
+
+if [ -n "${TAILSCALE_AUTHKEY}" ]; then
+  /app/tailscale up --auth-key=${TAILSCALE_AUTHKEY} --hostname=taikoscope-hekla --accept-routes
+  echo "✅ Tailscale connected. Starting Taikoscope..."
+else
+  echo "⚠️ Starting Taikoscope without Tailscale connection..."
+fi
+
 exec /app/taikoscope
