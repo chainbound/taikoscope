@@ -20,8 +20,8 @@ import {
   fetchSequencerDistribution,
   fetchL2Tps,
 } from '../services/apiService';
-import { getSequencerName } from '../sequencerConfig';
-import { bytesToHex, blockLink } from '../utils';
+import { getSequencerName, getSequencerAddress } from '../sequencerConfig';
+import { bytesToHex, blockLink, addressLink } from '../utils';
 import { TAIKO_PINK } from '../theme';
 import React from 'react';
 
@@ -271,6 +271,10 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     mapData: (data) =>
       (data as any[]).map((d) => ({
         ...d,
+        name: addressLink(
+          getSequencerAddress(d.name as string) ?? (d.name as string),
+          d.name as string,
+        ),
         tps: d.tps != null ? d.tps.toFixed(2) : 'N/A',
       })),
     supportsPagination: true,
