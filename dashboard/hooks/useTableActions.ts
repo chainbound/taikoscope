@@ -36,6 +36,8 @@ export interface TableViewState {
   allRows?: Record<string, React.ReactNode | string | number>[];
   useClientSidePagination?: boolean;
   totalRecords?: number;
+  defaultSortBy?: string;
+  defaultSortDirection?: 'asc' | 'desc';
 }
 
 export const useTableActions = (
@@ -86,6 +88,8 @@ export const useTableActions = (
       allRows?: Record<string, React.ReactNode | string | number>[],
       useClientSidePagination?: boolean,
       totalRecords?: number,
+      defaultSortBy?: string,
+      defaultSortDirection?: 'asc' | 'desc',
     ) => {
       setTableView({
         title,
@@ -102,6 +106,8 @@ export const useTableActions = (
         allRows,
         useClientSidePagination,
         totalRecords,
+        defaultSortBy,
+        defaultSortDirection,
       });
       setTableLoading(false);
     },
@@ -283,6 +289,11 @@ export const useTableActions = (
         (r) => openSequencerDistributionTable(r, 0),
         refreshSeqDist,
         undefined,
+        undefined,
+        undefined,
+        undefined,
+        'value',
+        'desc',
       );
     },
     [

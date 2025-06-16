@@ -39,6 +39,8 @@ interface DataTableProps {
   useClientSidePagination?: boolean;
   totalRecords?: number;
   timeRange?: string;
+  defaultSortBy?: string;
+  defaultSortDirection?: 'asc' | 'desc';
 }
 
 export const DataTable: React.FC<DataTableProps> = ({
@@ -57,10 +59,14 @@ export const DataTable: React.FC<DataTableProps> = ({
   useClientSidePagination = false,
   totalRecords,
   timeRange,
+  defaultSortBy,
+  defaultSortDirection,
 }) => {
   const [page, setPage] = React.useState(0);
-  const [sortBy, setSortBy] = React.useState<string>('');
-  const [sortDirection, setSortDirection] = React.useState<'asc' | 'desc'>('asc');
+  const [sortBy, setSortBy] = React.useState<string>(defaultSortBy ?? '');
+  const [sortDirection, setSortDirection] = React.useState<'asc' | 'desc'>(
+    defaultSortDirection ?? 'asc',
+  );
 
   const prevRowsLength = React.useRef(rows.length);
 
