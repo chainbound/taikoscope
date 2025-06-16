@@ -38,3 +38,28 @@ export const rangeToHours = (range: string): number => {
 
   return 1;
 };
+
+export const timeRangeToQuery = (range: string): string => {
+  const now = Date.now();
+  let start = now - 3600_000;
+  let end = now;
+
+  const trimmed = range.trim();
+  const preset = trimmed.match(/^(\d+)([mh])$/i);
+  if (preset) {
+    const value = parseInt(preset[1], 10);
+    const ms = value * (preset[2].toLowerCase() === 'h' ? 3_600_000 : 60_000);
+    start = now - ms;
+  } else {
+    const custom = trimmed.match(/^(\d+)-(\d+)$/);
+    if (custom) {
+      start = parseInt(custom[1], 10);
+      end = parseInt(custom[2], 10);
+    }
+  }
+
+  const params = new URLSearchParams();
+  params.set('created[gt]', String(start));
+  params.set('created[lte]', String(end));
+  return params.toString();
+};
