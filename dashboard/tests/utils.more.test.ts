@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import {
   blockLink,
+  addressLink,
   formatTime,
   computeIntervalFlags,
   shouldShowMinutes,
@@ -21,6 +22,17 @@ describe('utils additional', () => {
     expect(props.target).toBe('_blank');
     expect(props.rel).toBe('noopener noreferrer');
     expect(props.children).toBe('42');
+  });
+
+  it('creates an address link element', () => {
+    const el = addressLink('0xabc', 'foo');
+    const html = renderToStaticMarkup(el);
+    expect(html).toContain('href');
+    const props = (el as any).props;
+    expect(props.href.endsWith('/address/0xabc')).toBe(true);
+    expect(props.children).toBe('foo');
+    expect(props.target).toBe('_blank');
+    expect(props.rel).toBe('noopener noreferrer');
   });
 
   it('formats time in UTC', () => {
