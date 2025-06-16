@@ -76,10 +76,7 @@ export const createMetrics = (data: MetricInputData): MetricData[] => [
     title: 'Current Sequencer',
     value:
       data.currentOperator != null
-        ? (() => {
-            const name = getSequencerName(data.currentOperator);
-            return name === 'Unknown' ? data.currentOperator : name;
-          })()
+        ? getSequencerName(data.currentOperator)
         : 'N/A',
     group: 'Sequencers',
   },
@@ -87,10 +84,7 @@ export const createMetrics = (data: MetricInputData): MetricData[] => [
     title: 'Next Sequencer',
     value:
       data.nextOperator != null
-        ? (() => {
-            const name = getSequencerName(data.nextOperator);
-            return name === 'Unknown' ? data.nextOperator : name;
-          })()
+        ? getSequencerName(data.nextOperator)
         : 'N/A',
     group: 'Sequencers',
   },

@@ -12,7 +12,7 @@ export const SEQUENCER_ADDRESS_BY_NAME: Record<string, string> =
   Object.fromEntries(SEQUENCER_PAIRS.map(([addr, name]) => [name, addr]));
 
 export const getSequencerName = (address: string): string =>
-  SEQUENCER_NAME_BY_ADDRESS[address.toLowerCase()] ?? 'Unknown';
+  SEQUENCER_NAME_BY_ADDRESS[address.toLowerCase()] ?? address;
 
 export const getSequencerAddress = (name: string): string | undefined =>
   SEQUENCER_ADDRESS_BY_NAME[name];

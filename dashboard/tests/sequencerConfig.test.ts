@@ -9,7 +9,7 @@ describe('getSequencerName', () => {
     expect(getSequencerName(addressA)).toBe('Chainbound A');
   });
 
-  it('returns "Unknown" for unmapped address', () => {
-    expect(getSequencerName(unknown)).toBe('Unknown');
+  it('returns the address for unmapped address', () => {
+    expect(getSequencerName(unknown)).toBe(unknown);
   });
 });
