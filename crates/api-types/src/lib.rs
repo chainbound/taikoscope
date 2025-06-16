@@ -6,8 +6,8 @@
 
 use clickhouse_lib::{
     BatchBlobCountRow, BatchPostingTimeRow, BatchProveTimeRow, BatchVerifyTimeRow,
-    ForcedInclusionProcessedRow, L1BlockTimeRow, L2BlockTimeRow, L2GasUsedRow, L2ReorgRow,
-    L2TpsRow, SlashingEventRow,
+    BlockFeeComponentRow, ForcedInclusionProcessedRow, L1BlockTimeRow, L1DataCostRow,
+    L2BlockTimeRow, L2GasUsedRow, L2ReorgRow, L2TpsRow, SlashingEventRow,
 };
 
 use axum::{Json, http::StatusCode, response::IntoResponse};
@@ -172,6 +172,8 @@ pub struct L2FeesResponse {
     pub priority_fee: Option<u128>,
     /// 75% of the sum of base fees for the range.
     pub base_fee: Option<u128>,
+    /// Total L1 data posting cost for the range.
+    pub l1_data_cost: Option<u128>,
 }
 
 /// Estimated cloud infrastructure cost in USD.
@@ -214,6 +216,20 @@ pub struct L2BlockTimesResponse {
 pub struct L2GasUsedResponse {
     /// Gas usage for each L2 block.
     pub blocks: Vec<L2GasUsedRow>,
+}
+
+/// L1 data posting cost per block.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct L1DataCostResponse {
+    /// Cost per block.
+    pub blocks: Vec<L1DataCostRow>,
+}
+
+/// Fee components for each L2 block
+#[derive(Debug, Serialize, ToSchema)]
+pub struct FeeComponentsResponse {
+    /// Fee components per block
+    pub blocks: Vec<BlockFeeComponentRow>,
 }
 
 /// TPS values for each L2 block.

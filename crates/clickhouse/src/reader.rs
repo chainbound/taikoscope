@@ -14,9 +14,9 @@ use url::Url;
 use crate::{
     models::{
         BatchBlobCountRow, BatchPostingTimeRow, BatchProveTimeRow, BatchVerifyTimeRow,
-        BlockTransactionRow, ForcedInclusionProcessedRow, L1BlockTimeRow, L2BlockTimeRow,
-        L2GasUsedRow, L2ReorgRow, L2TpsRow, PreconfData, SequencerBlockRow,
-        SequencerDistributionRow, SlashingEventRow,
+        BlockFeeComponentRow, BlockTransactionRow, ForcedInclusionProcessedRow, L1BlockTimeRow,
+        L1DataCostRow, L2BlockTimeRow, L2GasUsedRow, L2ReorgRow, L2TpsRow, PreconfData,
+        SequencerBlockRow, SequencerDistributionRow, SlashingEventRow,
     },
     types::AddressBytes,
 };
@@ -406,7 +406,7 @@ impl ClickhouseReader {
                     toUInt64(toUnixTimestamp64Milli(inserted_at)) AS ts \
              FROM {}.l2_reorgs \
              WHERE inserted_at > toDateTime64({}, 3) \
-             ORDER BY inserted_at DESC",
+             ORDER BY inserted_at ASC",
             self.db_name,
             since.timestamp_millis() as f64 / 1000.0,
         );
@@ -484,7 +484,7 @@ impl ClickhouseReader {
              FROM {db}.l2_head_events h \
              WHERE h.block_ts > {} \
                AND {filter} \
-             ORDER BY sequencer, h.l2_block_number DESC",
+             ORDER BY sequencer, h.l2_block_number ASC",
             since.timestamp(),
             filter = self.reorg_filter("h"),
             db = self.db_name,
@@ -852,7 +852,7 @@ impl ClickhouseReader {
         if let Some(addr) = sequencer {
             query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
         }
-        query.push_str(" ORDER BY l2_block_number DESC");
+        query.push_str(" ORDER BY l2_block_number ASC");
         let rows = self.execute::<RawRow>(&query).await?;
         Ok(rows
             .into_iter()
@@ -942,6 +942,102 @@ impl ClickhouseReader {
             .collect())
     }
 
+    /// Get the L1 data posting cost for each block within the given range
+    pub async fn get_l1_data_costs(&self, range: TimeRange) -> Result<Vec<L1DataCostRow>> {
+        #[derive(Row, Deserialize)]
+        struct RawRow {
+            l1_block_number: u64,
+            cost: u128,
+        }
+
+        let query = format!(
+            "SELECT l1_block_number, cost \
+             FROM {db}.l1_data_costs \
+             WHERE l1_block_number IN (\
+                 SELECT l1_block_number FROM {db}.l1_head_events \
+                 WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})) \
+             ORDER BY l1_block_number ASC",
+            interval = range.interval(),
+            db = self.db_name,
+        );
+
+        let rows = self.execute::<RawRow>(&query).await?;
+        Ok(rows
+            .into_iter()
+            .map(|r| L1DataCostRow { l1_block_number: r.l1_block_number, cost: r.cost })
+            .collect())
+    }
+
+    /// Get the total L1 data posting cost for the given range
+    pub async fn get_l1_total_data_cost(&self, range: TimeRange) -> Result<Option<u128>> {
+        #[derive(Row, Deserialize)]
+        struct SumRow {
+            total: u128,
+        }
+
+        let query = format!(
+            "SELECT sum(c.cost) AS total \
+             FROM {db}.l1_data_costs c \
+             INNER JOIN {db}.l1_head_events l1 \
+               ON c.l1_block_number = l1.l1_block_number \
+             WHERE l1.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})",
+            interval = range.interval(),
+            db = self.db_name,
+        );
+
+        let rows = self.execute::<SumRow>(&query).await?;
+        let row = match rows.into_iter().next() {
+            Some(r) => r,
+            None => return Ok(None),
+        };
+        Ok(Some(row.total))
+    }
+
+    /// Get priority fee, base fee and L1 data cost for each L2 block
+    pub async fn get_l2_fee_components(
+        &self,
+        sequencer: Option<AddressBytes>,
+        range: TimeRange,
+    ) -> Result<Vec<BlockFeeComponentRow>> {
+        #[derive(Row, Deserialize)]
+        struct RawRow {
+            l2_block_number: u64,
+            priority_fee: u128,
+            base_fee: u128,
+            l1_data_cost: Option<u128>,
+        }
+
+        let mut query = format!(
+            "SELECT h.l2_block_number, \
+                    sum_priority_fee AS priority_fee, \
+                    toUInt128(sum_base_fee * 3 / 4) AS base_fee, \
+                    toNullable(dc.cost) AS l1_data_cost \
+             FROM {db}.l2_head_events h \
+             LEFT JOIN {db}.l1_data_costs dc \
+               ON h.l2_block_number = dc.l1_block_number \
+             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
+               AND {filter}",
+            interval = range.interval(),
+            filter = self.reorg_filter("h"),
+            db = self.db_name,
+        );
+        if let Some(addr) = sequencer {
+            query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
+        }
+        query.push_str(" ORDER BY l2_block_number ASC");
+
+        let rows = self.execute::<RawRow>(&query).await?;
+        Ok(rows
+            .into_iter()
+            .map(|r| BlockFeeComponentRow {
+                l2_block_number: r.l2_block_number,
+                priority_fee: r.priority_fee,
+                base_fee: r.base_fee,
+                l1_data_cost: r.l1_data_cost,
+            })
+            .collect())
+    }
+
     /// Get the transactions per second for each L2 block within the given range
     pub async fn get_l2_tps(
         &self,
@@ -969,7 +1065,7 @@ impl ClickhouseReader {
         if let Some(addr) = sequencer {
             query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
         }
-        query.push_str(" ORDER BY l2_block_number DESC");
+        query.push_str(" ORDER BY l2_block_number ASC");
 
         let rows = self.execute::<RawRow>(&query).await?;
         Ok(rows
@@ -1091,7 +1187,7 @@ impl ClickhouseReader {
              INNER JOIN {db}.l1_head_events l1_events \
                ON b.l1_block_number = l1_events.l1_block_number \
              WHERE l1_events.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
-             ORDER BY b.l1_block_number DESC",
+             ORDER BY b.l1_block_number ASC",
             interval = range.interval(),
             db = self.db_name,
         );

@@ -58,7 +58,7 @@ describe('apiService', () => {
 
   it('fetches active sequencer addresses from preconf', async () => {
     globalThis.fetch = mockFetch({ preconf_data: { candidates: ['a', 'b'] } });
-    const gateways = await fetchActiveSequencerAddresses();
+    const gateways = await fetchActiveSequencerAddresses('1h');
     expect(gateways.data).toStrictEqual(['a', 'b']);
   });
 

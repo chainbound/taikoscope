@@ -6,7 +6,7 @@
 FROM rust:1.87-bookworm AS base
 
 # Install build dependencies
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     git \
     libssl-dev \

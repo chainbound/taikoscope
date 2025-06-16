@@ -1,34 +1,49 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { MetricData, TimeRange } from '../types';
 import { findMetricValue } from '../utils';
+import { rangeToHours } from '../utils/timeRange';
 import { useEthPrice } from '../services/priceService';
 
 interface ProfitCalculatorProps {
   metrics: MetricData[];
   timeRange: TimeRange;
+  cloudCost: number;
+  proverCost: number;
+  onCloudCostChange: (v: number) => void;
+  onProverCostChange: (v: number) => void;
 }
+
+const formatTimeRangeLabel = (range: TimeRange): string => {
+  const match = range.trim().match(/^(\d+)([mh])$/i);
+  if (!match) return range;
+  const value = parseInt(match[1], 10);
+  const unit = match[2].toLowerCase() === 'h' ? 'hour' : 'minute';
+  const plural = value === 1 ? '' : 's';
+  return `last ${value} ${unit}${plural}`;
+};
 
 export const ProfitCalculator: React.FC<ProfitCalculatorProps> = ({
   metrics,
   timeRange,
+  cloudCost,
+  proverCost,
+  onCloudCostChange,
+  onProverCostChange,
 }) => {
   const priorityStr = findMetricValue(metrics, 'priority fee');
   const baseStr = findMetricValue(metrics, 'base fee');
+  const l1DataCostStr = findMetricValue(metrics, 'l1 data cost');
+
   const priority = parseFloat(priorityStr.replace(/[^0-9.]/g, '')) || 0;
   const base = parseFloat(baseStr.replace(/[^0-9.]/g, '')) || 0;
-  const totalFee = priority + base;
+  const l1DataCost = parseFloat(l1DataCostStr.replace(/[^0-9.]/g, '')) || 0;
 
-  const [cloudCost, setCloudCost] = useState(100);
-  const [proverCost, setProverCost] = useState(100);
+  const totalFee = priority + base - l1DataCost;
+
   const { data: ethPrice = 0, error: ethPriceError } = useEthPrice();
 
   const HOURS_IN_MONTH = 30 * 24;
-  const RANGE_HOURS: Record<TimeRange, number> = {
-    '15m': 0.25,
-    '1h': 1,
-    '24h': 24,
-  };
-  const hours = RANGE_HOURS[timeRange];
+  const hours = rangeToHours(timeRange);
 
   const scaledCloudCost = (cloudCost / HOURS_IN_MONTH) * hours;
   const scaledProverCost = (proverCost / HOURS_IN_MONTH) * hours;
@@ -53,23 +68,30 @@ export const ProfitCalculator: React.FC<ProfitCalculatorProps> = ({
           Monthly Cloud Cost ($)
           <input
             type="number"
+            min={0}
             className="p-1 border rounded-md"
             value={cloudCost}
-            onChange={(e) => setCloudCost(Number(e.target.value))}
+            onChange={(e) =>
+              onCloudCostChange(Math.max(0, Number(e.target.value)))
+            }
           />
         </label>
         <label className="flex flex-col text-sm">
           Prover Cost ($)
           <input
             type="number"
+            min={0}
             className="p-1 border rounded-md"
             value={proverCost}
-            onChange={(e) => setProverCost(Number(e.target.value))}
+            onChange={(e) =>
+              onProverCostChange(Math.max(0, Number(e.target.value)))
+            }
           />
         </label>
       </div>
       <p className="mt-3 text-sm">
-        Profit: <span className="font-semibold">${formatProfit(profit)}</span>
+        Profit ({formatTimeRangeLabel(timeRange)}):{' '}
+        <span className="font-semibold">${formatProfit(profit)}</span>
         {ethPriceError && (
           <span className="text-red-500 ml-2 text-xs">
             (ETH price unavailable)

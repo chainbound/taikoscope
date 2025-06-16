@@ -57,7 +57,9 @@ pub const MAX_BLOCK_TRANSACTIONS_LIMIT: u64 = u64::MAX;
         sequencer_blocks,
         block_transactions,
         l2_fees,
-        dashboard_data
+        l2_fee_components,
+        dashboard_data,
+        l1_data_cost
     ),
     components(
         schemas(
@@ -99,8 +101,10 @@ pub const MAX_BLOCK_TRANSACTIONS_LIMIT: u64 = u64::MAX;
             HealthResponse,
             PreconfDataResponse,
             L2FeesResponse,
+            FeeComponentsResponse,
             DashboardDataResponse,
-            api_types::ErrorResponse
+            api_types::ErrorResponse,
+            L1DataCostResponse
         )
     ),
     tags(
@@ -806,6 +810,7 @@ async fn l2_gas_used(
             ));
         }
     };
+    tracing::info!(count = blocks.len(), "Returning L2 gas used");
     Ok(Json(L2GasUsedResponse { blocks }))
 }
 
@@ -852,6 +857,7 @@ async fn l2_tps(
             ));
         }
     };
+    tracing::info!(count = blocks.len(), "Returning L2 TPS");
     Ok(Json(L2TpsResponse { blocks }))
 }
 
@@ -1072,9 +1078,10 @@ async fn l2_fees(
         }
     });
 
-    let (priority_fee, base_fee) = tokio::try_join!(
+    let (priority_fee, base_fee, l1_data_cost) = tokio::try_join!(
         state.client.get_l2_priority_fee(address, time_range),
-        state.client.get_l2_base_fee(address, time_range)
+        state.client.get_l2_base_fee(address, time_range),
+        state.client.get_l1_total_data_cost(time_range)
     )
     .map_err(|e| {
         tracing::error!(error = %e, "Failed to get L2 fees");
@@ -1086,7 +1093,51 @@ async fn l2_fees(
         )
     })?;
 
-    Ok(Json(L2FeesResponse { priority_fee, base_fee }))
+    tracing::info!(?priority_fee, ?base_fee, ?l1_data_cost, "Returning L2 fees and L1 data cost");
+    Ok(Json(L2FeesResponse { priority_fee, base_fee, l1_data_cost }))
+}
+
+#[utoipa::path(
+    get,
+    path = "/l2-fee-components",
+    params(
+        RangeQuery
+    ),
+    responses(
+        (status = 200, description = "Fee components per block", body = FeeComponentsResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
+    ),
+    tag = "taikoscope"
+)]
+async fn l2_fee_components(
+    Query(params): Query<RangeQuery>,
+    State(state): State<ApiState>,
+) -> Result<Json<FeeComponentsResponse>, ErrorResponse> {
+    validate_time_range(&params.time_range)?;
+
+    let has_time_range = has_time_range_params(&params.time_range);
+    validate_range_exclusivity(has_time_range, false)?;
+
+    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
+    let address = params.address.as_ref().and_then(|addr| match addr.parse::<Address>() {
+        Ok(a) => Some(AddressBytes::from(a)),
+        Err(e) => {
+            tracing::warn!(error = %e, "Failed to parse address");
+            None
+        }
+    });
+
+    let blocks = state.client.get_l2_fee_components(address, time_range).await.map_err(|e| {
+        tracing::error!(error = %e, "Failed to get fee components");
+        ErrorResponse::new(
+            "database-error",
+            "Database error",
+            StatusCode::INTERNAL_SERVER_ERROR,
+            e.to_string(),
+        )
+    })?;
+
+    Ok(Json(FeeComponentsResponse { blocks }))
 }
 
 #[utoipa::path(
@@ -1169,6 +1220,15 @@ async fn dashboard_data(
     let hourly_rate = TOTAL_HARDWARE_COST_USD / (30.0 * 24.0);
     let cost = hourly_rate * hours;
 
+    tracing::info!(
+        l2_block,
+        l1_block,
+        reorgs = reorgs.len(),
+        slashings = slashings.len(),
+        forced_inclusions = forced_inclusions.len(),
+        "Returning dashboard data"
+    );
+
     Ok(Json(DashboardDataResponse {
         l2_block_cadence_ms: l2_block_cadence,
         batch_posting_cadence_ms: batch_posting_cadence,
@@ -1185,6 +1245,43 @@ async fn dashboard_data(
         base_fee,
         cloud_cost: Some(cost),
     }))
+}
+
+#[utoipa::path(
+    get,
+    path = "/l1-data-cost",
+    params(
+        RangeQuery
+    ),
+    responses(
+        (status = 200, description = "L1 data posting cost", body = L1DataCostResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
+    ),
+    tag = "taikoscope"
+)]
+async fn l1_data_cost(
+    Query(params): Query<RangeQuery>,
+    State(state): State<ApiState>,
+) -> Result<Json<L1DataCostResponse>, ErrorResponse> {
+    validate_time_range(&params.time_range)?;
+    let has_time_range = has_time_range_params(&params.time_range);
+    validate_range_exclusivity(has_time_range, false)?;
+
+    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
+    let rows = match state.client.get_l1_data_costs(time_range).await {
+        Ok(r) => r,
+        Err(e) => {
+            tracing::error!("Failed to get L1 data cost: {}", e);
+            return Err(ErrorResponse::new(
+                "database-error",
+                "Database error",
+                StatusCode::INTERNAL_SERVER_ERROR,
+                e.to_string(),
+            ));
+        }
+    };
+    tracing::info!(count = rows.len(), "Returning L1 data cost");
+    Ok(Json(L1DataCostResponse { blocks: rows }))
 }
 
 /// Build the router with all API endpoints.
@@ -1212,7 +1309,9 @@ pub fn router(state: ApiState) -> Router {
         .route("/sequencer-blocks", get(sequencer_blocks))
         .route("/block-transactions", get(block_transactions))
         .route("/l2-fees", get(l2_fees))
-        .route("/dashboard-data", get(dashboard_data));
+        .route("/l2-fee-components", get(l2_fee_components))
+        .route("/dashboard-data", get(dashboard_data))
+        .route("/l1-data-cost", get(l1_data_cost));
 
     Router::new()
         .merge(SwaggerUi::new("/swagger-ui").url("/api-doc/openapi.json", ApiDoc::openapi()))
@@ -1713,7 +1812,9 @@ mod tests {
             "/sequencer-blocks",
             "/block-transactions",
             "/l2-fees",
+            "/l2-fee-components",
             "/dashboard-data",
+            "/l1-data-cost",
         ];
 
         for path in expected_paths {

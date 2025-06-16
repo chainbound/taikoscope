@@ -71,33 +71,6 @@ export const ChartsGrid: React.FC<ChartsGridProps> = ({
   const networkPerformanceCharts = (
     <>
       <ChartCard
-        title="Prove Time"
-        onMore={() => onOpenTable('prove-time', timeRange)}
-        loading={isLoading}
-      >
-        <BatchProcessChart
-          key={timeRange}
-          data={chartsData.secondsToProveData}
-          lineColor={TAIKO_PINK}
-        />
-      </ChartCard>
-      <ChartCard
-        title="Verify Time"
-        onMore={() => onOpenTable('verify-time', timeRange)}
-        loading={isLoading}
-      >
-        <BatchProcessChart
-          key={timeRange}
-          data={chartsData.secondsToVerifyData}
-          lineColor="#5DA5DA"
-        />
-      </ChartCard>
-    </>
-  );
-
-  const networkHealthCharts = (
-    <>
-      <ChartCard
         title="Gas Used Per Block"
         onMore={() => onOpenTable('l2-gas-used', timeRange)}
         loading={isLoading}
@@ -117,6 +90,33 @@ export const ChartsGrid: React.FC<ChartsGridProps> = ({
           key={timeRange}
           data={chartsData.blockTxData}
           lineColor="#4E79A7"
+        />
+      </ChartCard>
+    </>
+  );
+
+  const networkHealthCharts = (
+    <>
+      <ChartCard
+        title="Prove Time"
+        onMore={() => onOpenTable('prove-time', timeRange)}
+        loading={isLoading}
+      >
+        <BatchProcessChart
+          key={timeRange}
+          data={chartsData.secondsToProveData}
+          lineColor={TAIKO_PINK}
+        />
+      </ChartCard>
+      <ChartCard
+        title="Verify Time"
+        onMore={() => onOpenTable('verify-time', timeRange)}
+        loading={isLoading}
+      >
+        <BatchProcessChart
+          key={timeRange}
+          data={chartsData.secondsToVerifyData}
+          lineColor="#5DA5DA"
         />
       </ChartCard>
       <ChartCard

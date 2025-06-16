@@ -31,6 +31,9 @@ pub struct RpcOpts {
     /// L2 RPC URL
     #[clap(long, env = "L2_RPC_URL")]
     pub l2_url: Url,
+    /// Public RPC URL for health checks
+    #[clap(long, env = "PUBLIC_RPC")]
+    pub public_url: Option<Url>,
 }
 
 /// Taiko contract address configuration options
@@ -68,6 +71,9 @@ pub struct InstatusOpts {
     /// Instatus component ID for transaction sequencing monitor
     #[clap(long, env = "INSTATUS_TRANSACTION_SEQUENCING_COMPONENT_ID", default_value = "")]
     pub transaction_sequencing_component_id: String,
+    /// Enable all Instatus monitors
+    #[clap(long = "enable-monitors", env = "INSTATUS_MONITORS_ENABLED", default_value_t = true)]
+    pub monitors_enabled: bool,
     /// Instatus monitor poll interval in seconds
     #[clap(long, env = "INSTATUS_MONITOR_POLL_INTERVAL_SECS", default_value = "30")]
     pub monitor_poll_interval_secs: u64,
@@ -84,12 +90,17 @@ impl InstatusOpts {
     /// Returns `true` if all required values are set.
     #[allow(clippy::missing_const_for_fn)]
     pub fn enabled(&self) -> bool {
-        !(self.api_key.is_empty() ||
+        if self.api_key.is_empty() ||
             self.page_id.is_empty() ||
             self.batch_submission_component_id.is_empty() ||
             self.proof_submission_component_id.is_empty() ||
             self.proof_verification_component_id.is_empty() ||
-            self.transaction_sequencing_component_id.is_empty())
+            self.transaction_sequencing_component_id.is_empty()
+        {
+            return false;
+        }
+
+        true
     }
 }
 
@@ -213,6 +224,7 @@ mod tests {
             env::remove_var("INSTATUS_MONITOR_POLL_INTERVAL_SECS");
             env::remove_var("INSTATUS_MONITOR_THRESHOLD_SECS");
             env::remove_var("BATCH_PROOF_TIMEOUT_SECS");
+            env::remove_var("INSTATUS_MONITORS_ENABLED");
             env::remove_var("ALLOWED_ORIGINS");
             env::remove_var("RATE_LIMIT_MAX_REQUESTS");
             env::remove_var("RATE_LIMIT_PERIOD_SECS");
@@ -251,6 +263,7 @@ mod tests {
             env::remove_var("INSTATUS_MONITOR_POLL_INTERVAL_SECS");
             env::remove_var("INSTATUS_MONITOR_THRESHOLD_SECS");
             env::remove_var("BATCH_PROOF_TIMEOUT_SECS");
+            env::remove_var("INSTATUS_MONITORS_ENABLED");
             env::remove_var("ALLOWED_ORIGINS");
             env::remove_var("RATE_LIMIT_MAX_REQUESTS");
             env::remove_var("RATE_LIMIT_PERIOD_SECS");
@@ -260,6 +273,7 @@ mod tests {
             env::set_var("INSTATUS_MONITOR_POLL_INTERVAL_SECS", "42");
             env::set_var("INSTATUS_MONITOR_THRESHOLD_SECS", "33");
             env::set_var("BATCH_PROOF_TIMEOUT_SECS", "99");
+            env::set_var("INSTATUS_MONITORS_ENABLED", "false");
             env::set_var("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:5173");
             env::set_var("RATE_LIMIT_MAX_REQUESTS", "500");
             env::set_var("RATE_LIMIT_PERIOD_SECS", "120");
@@ -288,6 +302,7 @@ mod tests {
             env::remove_var("INSTATUS_MONITOR_POLL_INTERVAL_SECS");
             env::remove_var("INSTATUS_MONITOR_THRESHOLD_SECS");
             env::remove_var("BATCH_PROOF_TIMEOUT_SECS");
+            env::remove_var("INSTATUS_MONITORS_ENABLED");
             env::remove_var("ALLOWED_ORIGINS");
             env::remove_var("RATE_LIMIT_MAX_REQUESTS");
             env::remove_var("RATE_LIMIT_PERIOD_SECS");

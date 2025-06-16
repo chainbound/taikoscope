@@ -128,10 +128,10 @@ export const fetchBatchPostingCadence = async (
   };
 };
 
-export const fetchActiveSequencerAddresses = async (): Promise<
-  RequestResult<string[]>
-> => {
-  const res = await fetchPreconfData();
+export const fetchActiveSequencerAddresses = async (
+  range: TimeRange = '1h',
+): Promise<RequestResult<string[]>> => {
+  const res = await fetchPreconfData(range);
   return {
     data: res.data?.candidates ?? null,
     badRequest: res.badRequest,
@@ -249,10 +249,10 @@ export interface PreconfData {
   next_operator?: string;
 }
 
-export const fetchPreconfData = async (): Promise<
-  RequestResult<PreconfData>
-> => {
-  const res = await fetchDashboardData('1h');
+export const fetchPreconfData = async (
+  range: TimeRange = '1h',
+): Promise<RequestResult<PreconfData>> => {
+  const res = await fetchDashboardData(range);
   return {
     data: res.data?.preconf_data ?? null,
     badRequest: res.badRequest,
@@ -570,6 +570,7 @@ export const fetchAvgL2Tps = async (
 export interface L2FeesResponse {
   priority_fee: number | null;
   base_fee: number | null;
+  l1_data_cost: number | null;
 }
 
 export const fetchL2Fees = async (
@@ -582,6 +583,38 @@ export const fetchL2Fees = async (
   const res = await fetchJson<L2FeesResponse>(url);
   return {
     data: res.data ?? null,
+    badRequest: res.badRequest,
+    error: res.error,
+  };
+};
+
+
+export interface FeeComponent {
+  block: number;
+  priority: number;
+  base: number;
+  l1Cost: number | null;
+}
+
+export const fetchFeeComponents = async (
+  range: TimeRange,
+  address?: string,
+): Promise<RequestResult<FeeComponent[]>> => {
+  const url =
+    `${API_BASE}/l2-fee-components?range=${range}` +
+    (address ? `&address=${address}` : '');
+  const res = await fetchJson<{
+    blocks: { l2_block_number: number; priority_fee: number; base_fee: number; l1_data_cost: number | null }[];
+  }>(url);
+  return {
+    data: res.data
+      ? res.data.blocks.map((b) => ({
+          block: b.l2_block_number,
+          priority: b.priority_fee,
+          base: b.base_fee,
+          l1Cost: b.l1_data_cost ?? null,
+        }))
+      : null,
     badRequest: res.badRequest,
     error: res.error,
   };
@@ -610,17 +643,6 @@ export const fetchL2Tps = async (
   return { data, badRequest: res.badRequest, error: res.error };
 };
 
-export const fetchCloudCost = async (
-  range: TimeRange,
-): Promise<RequestResult<number>> => {
-  const url = `${API_BASE}/cloud-cost?range=${range}`;
-  const res = await fetchJson<{ cost_usd: number }>(url);
-  return {
-    data: res.data?.cost_usd ?? null,
-    badRequest: res.badRequest,
-    error: res.error,
-  };
-};
 
 export interface DashboardDataResponse {
   l2_block_cadence_ms: number | null;

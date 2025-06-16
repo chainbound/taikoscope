@@ -151,8 +151,8 @@ fn validate_migration_name(name: &str) -> bool {
 use crate::{
     L1Header,
     models::{
-        BatchRow, ForcedInclusionProcessedRow, L1HeadEvent, L2HeadEvent, L2ReorgInsertRow,
-        PreconfData, ProvedBatchRow, VerifiedBatchRow,
+        BatchRow, ForcedInclusionProcessedRow, L1DataCostRow, L1HeadEvent, L2HeadEvent,
+        L2ReorgInsertRow, PreconfData, ProvedBatchRow, VerifiedBatchRow,
     },
     schema::{TABLE_SCHEMAS, TABLES, TableSchema},
     types::{AddressBytes, HashBytes},
@@ -311,6 +311,16 @@ impl ClickhouseWriter {
         let client = self.base.clone();
         let mut insert = client.insert(&format!("{}.l2_head_events", self.db_name))?;
         insert.write(event).await?;
+        insert.end().await?;
+        Ok(())
+    }
+
+    /// Insert L1 data posting cost
+    pub async fn insert_l1_data_cost(&self, block_number: u64, cost: u128) -> Result<()> {
+        let client = self.base.clone();
+        let row = L1DataCostRow { l1_block_number: block_number, cost };
+        let mut insert = client.insert(&format!("{}.l1_data_costs", self.db_name))?;
+        insert.write(&row).await?;
         insert.end().await?;
         Ok(())
     }
@@ -624,6 +634,21 @@ mod tests {
             rows,
             vec![ForcedInclusionProcessedRow { blob_hash: HashBytes::from([5u8; 32]) }]
         );
+    }
+
+    #[tokio::test]
+    async fn insert_l1_data_cost_writes_expected_row() {
+        let mock = Mock::new();
+        let ctl = mock.add(handlers::record::<L1DataCostRow>());
+
+        let url = Url::parse(mock.url()).unwrap();
+        let writer =
+            ClickhouseWriter::new(url, "db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+        writer.insert_l1_data_cost(10, 42).await.unwrap();
+
+        let rows: Vec<L1DataCostRow> = ctl.collect().await;
+        assert_eq!(rows, vec![L1DataCostRow { l1_block_number: 10, cost: 42 }]);
     }
 
     #[test]

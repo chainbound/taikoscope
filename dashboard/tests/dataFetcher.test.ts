@@ -82,10 +82,9 @@ describe('dataFetcher', () => {
 
   it('fetches economics data', async () => {
     setAll({
-      fetchL2Fees: ok({ priority_fee: 1, base_fee: 2 }),
+      fetchL2Fees: ok({ priority_fee: 1, base_fee: 2, l1_data_cost: 4 }),
       fetchL2HeadBlock: ok(2),
       fetchL1HeadBlock: ok(3),
-      fetchCloudCost: ok(4),
     });
 
     const res = await fetchEconomicsData('1h', null);
@@ -93,8 +92,8 @@ describe('dataFetcher', () => {
     expect(res.baseFee).toBe(2);
     expect(res.l2Block).toBe(2);
     expect(res.l1Block).toBe(3);
-    expect(res.cloudCost).toBe(4);
-    expect(res.badRequestResults).toHaveLength(4);
+    expect(res.l1DataCost).toBe(4);
+    expect(res.badRequestResults).toHaveLength(3);
   });
 
   it('resets isTimeRangeChanging on fetch error', async () => {

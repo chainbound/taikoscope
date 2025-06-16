@@ -3,9 +3,12 @@ import { TimeRange } from '../types';
 import { RefreshCountdown } from './RefreshCountdown';
 import { TAIKO_PINK } from '../theme';
 import { isValidRefreshRate } from '../utils';
+import { isValidTimeRange } from '../utils/timeRange';
 import { useRouterNavigation } from '../hooks/useRouterNavigation';
 import { useErrorHandler } from '../hooks/useErrorHandler';
 import { showToast } from '../utils/toast';
+import { DayPicker } from 'react-day-picker';
+import * as Popover from '@radix-ui/react-popover';
 
 interface ImportMetaEnv {
   readonly VITE_NETWORK_NAME?: string;
@@ -19,7 +22,10 @@ interface ImportMeta {
 const metaEnv = (import.meta as ImportMeta).env;
 const rawNetworkName =
   metaEnv?.VITE_NETWORK_NAME ?? metaEnv?.NETWORK_NAME ?? 'Masaya';
-const NETWORK_NAME = rawNetworkName.charAt(0).toUpperCase() + rawNetworkName.slice(1).toLowerCase();
+const NETWORK_NAME =
+  rawNetworkName.charAt(0).toUpperCase() +
+  rawNetworkName.slice(1).toLowerCase();
+const SHOW_CUSTOM_TIME_PICKER = rawNetworkName.toLowerCase() !== 'hekla';
 const DASHBOARD_TITLE = `Taikoscope ${NETWORK_NAME}`;
 
 interface DashboardHeaderProps {
@@ -69,7 +75,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
           {DASHBOARD_TITLE}
         </h1>
       </div>
-      <div className="flex items-center space-x-2 mt-4 md:mt-0">
+      <div className="flex flex-wrap items-center gap-2 mt-4 md:mt-0 justify-center md:justify-end">
         {/* Economics view is still supported via URL parameters, but the
             navigation button is hidden. */}
         <a
@@ -117,28 +123,144 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
   onTimeRangeChange,
   isChanging,
 }) => {
-  const ranges: TimeRange[] = ['15m', '1h', '24h'];
+  const { updateSearchParams } = useRouterNavigation();
+  const presetRanges: TimeRange[] = ['15m', '1h', '3h', '6h', '12h', '24h'];
+  const isCustom = /^\d+-\d+$/.test(currentTimeRange);
+  const [open, setOpen] = React.useState(false);
+  const [date, setDate] = React.useState<Date | undefined>(() => {
+    if (isCustom) {
+      const [s, e] = currentTimeRange
+        .split('-')
+        .map((t) => new Date(Number(t)));
+      if (s.toDateString() === e.toDateString()) return s;
+    }
+    return undefined;
+  });
+  const [fromTime, setFromTime] = React.useState('');
+  const [toTime, setToTime] = React.useState('');
+
+  const customTooltip = React.useMemo(() => {
+    if (!isCustom) return undefined;
+    const [s, e] = currentTimeRange.split('-').map((t) => new Date(Number(t)));
+    const fmt = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+        d.getDate(),
+      ).padStart(2, '0')} ${d.getHours().toString().padStart(2, '0')}:${d
+        .getMinutes()
+        .toString()
+        .padStart(2, '0')}`;
+    return `From ${fmt(s)} to ${fmt(e)}`;
+  }, [currentTimeRange, isCustom]);
+
+  React.useEffect(() => {
+    if (isCustom) {
+      const [s, e] = currentTimeRange
+        .split('-')
+        .map((t) => new Date(Number(t)));
+      if (s.toDateString() === e.toDateString()) {
+        setDate(s);
+        setFromTime(
+          `${s.getHours().toString().padStart(2, '0')}:${s
+            .getMinutes()
+            .toString()
+            .padStart(2, '0')}`,
+        );
+        setToTime(
+          `${e.getHours().toString().padStart(2, '0')}:${e
+            .getMinutes()
+            .toString()
+            .padStart(2, '0')}`,
+        );
+      }
+    }
+  }, [currentTimeRange, isCustom]);
+
+  const handlePreset = (r: TimeRange) => {
+    updateSearchParams({ start: null, end: null, range: r });
+    onTimeRangeChange(r);
+    setOpen(false);
+  };
+
+  const applyCustom = () => {
+    if (!date || !fromTime || !toTime) return;
+    const [fh, fm] = fromTime.split(':').map(Number);
+    const [th, tm] = toTime.split(':').map(Number);
+    const start = new Date(date);
+    start.setHours(fh, fm, 0, 0);
+    const end = new Date(date);
+    end.setHours(th, tm, 0, 0);
+    if (end <= start) {
+      end.setDate(end.getDate() + 1);
+    }
+    const s = start.getTime();
+    const e = end.getTime();
+    const custom = `${s}-${e}`;
+    if (isValidTimeRange(custom)) {
+      updateSearchParams({ start: String(s), end: String(e), range: null });
+      onTimeRangeChange(custom);
+      setOpen(false);
+    }
+  };
 
   return (
-    <div className="flex space-x-1 bg-gray-200 dark:bg-gray-700 p-0.5 rounded-md">
-      {isChanging && (
-        <div className="flex items-center px-2">
-          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current opacity-50"></div>
-        </div>
-      )}
-      {ranges.map((range) => (
+    <Popover.Root open={open} onOpenChange={setOpen}>
+      <Popover.Trigger asChild>
         <button
-          key={range}
-          onClick={() => !isChanging && onTimeRangeChange(range)}
           disabled={isChanging}
-          className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors disabled:opacity-50
-            ${currentTimeRange === range ? 'bg-white dark:bg-gray-800 shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'}`}
-          style={currentTimeRange === range ? { color: TAIKO_PINK } : undefined}
+          className="p-1 border rounded-md text-sm bg-white dark:bg-gray-800 min-w-[3rem]"
+          title={customTooltip}
         >
-          {range}
+          {isCustom ? 'Custom range' : currentTimeRange}
         </button>
-      ))}
-    </div>
+      </Popover.Trigger>
+      <Popover.Content
+        side="bottom"
+        align="end"
+        className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg p-2 space-y-1 z-10"
+      >
+        {presetRanges.map((r) => (
+          <button
+            key={r}
+            onClick={() => handlePreset(r)}
+            className="block w-full text-left px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+          >
+            {r}
+          </button>
+        ))}
+        {SHOW_CUSTOM_TIME_PICKER && (
+          <div className="pt-1 border-t border-gray-200 dark:border-gray-700 mt-1 space-y-1">
+            <DayPicker
+              mode="single"
+              selected={date}
+              onSelect={(d) => setDate(d ?? undefined)}
+              defaultMonth={date}
+            />
+            <div className="flex items-center space-x-2">
+              <input
+                type="time"
+                value={fromTime}
+                onChange={(e) => setFromTime(e.target.value)}
+                className="border rounded p-1 text-sm bg-white dark:bg-gray-800"
+              />
+              <span className="text-sm">to</span>
+              <input
+                type="time"
+                value={toTime}
+                onChange={(e) => setToTime(e.target.value)}
+                className="border rounded p-1 text-sm bg-white dark:bg-gray-800"
+              />
+            </div>
+            <button
+              onClick={applyCustom}
+              disabled={isChanging}
+              className="mt-1 px-2 py-1 text-sm rounded-md bg-gray-200 dark:bg-gray-700 w-full"
+            >
+              Apply
+            </button>
+          </div>
+        )}
+      </Popover.Content>
+    </Popover.Root>
   );
 };
 

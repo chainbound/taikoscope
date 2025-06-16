@@ -22,7 +22,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
 
   return (
     <div
-      className={`bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 transition-shadow duration-200 ${isAddress ? 'min-w-0 w-full sm:col-span-2 md:col-span-2 lg:col-span-2 xl:col-span-2 2xl:col-span-2' : ''} ${className ?? ''}`.trim()}
+      className={`bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 transition-shadow duration-200 ${isAddress ? 'min-w-0 w-full col-span-2 sm:col-span-2 md:col-span-2 lg:col-span-2 xl:col-span-2 2xl:col-span-2' : ''} ${className ?? ''}`.trim()}
     >
       <div className="relative">
         <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate pr-8">
@@ -39,7 +39,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
         )}
       </div>
       <p
-        className={`mt-1 font-semibold text-gray-900 dark:text-gray-100 ${isAddress ? 'text-base sm:text-lg break-all' : `text-2xl${isShortValue ? '' : ' whitespace-nowrap overflow-hidden text-ellipsis'}`}`}
+        className={`mt-1 font-semibold text-gray-900 dark:text-gray-100 ${isAddress ? 'text-base break-all' : `text-2xl${isShortValue ? '' : ' whitespace-nowrap overflow-hidden text-ellipsis'}`}`}
       >
         {value}
       </p>

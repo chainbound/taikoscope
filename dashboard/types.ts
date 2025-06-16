@@ -1,4 +1,4 @@
-export type TimeRange = '15m' | '1h' | '24h';
+export type TimeRange = string;
 
 export interface TimeSeriesData {
   timestamp: number; // Unix timestamp (ms)
@@ -46,4 +46,11 @@ export interface ErrorResponse {
   title: string;
   status: number;
   detail: string;
+}
+
+export interface FeeComponent {
+  block: number;
+  priority: number;
+  base: number;
+  l1Cost: number | null;
 }

@@ -67,9 +67,9 @@ export const useDataFetcher = ({
         forcedInclusions: null,
         priorityFee: data.priorityFee,
         baseFee: data.baseFee,
+        l1DataCost: data.l1DataCost,
         l2Block: data.l2Block,
         l1Block: data.l1Block,
-        cloudCost: data.cloudCost,
       };
 
       const metrics = createMetrics(metricsInput);
@@ -100,7 +100,7 @@ export const useDataFetcher = ({
       forcedInclusions: data.forcedInclusions,
       priorityFee: data.priorityFee,
       baseFee: data.baseFee,
-      cloudCost: data.cloudCost,
+      l1DataCost: null,
       l2Block: data.l2Block,
       l1Block: data.l1Block,
     };

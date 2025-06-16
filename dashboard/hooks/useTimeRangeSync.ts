@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { TimeRange } from '../types';
+import { isValidTimeRange } from '../utils/timeRange';
 
 const DEFAULT_TIME_RANGE: TimeRange = '1h';
-const VALID_TIME_RANGES: TimeRange[] = ['15m', '1h', '24h'];
 
 /**
  * Hook that synchronizes time range state with URL parameters to prevent navigation loops
@@ -16,9 +16,19 @@ export const useTimeRangeSync = () => {
   // Get initial time range from URL or use default
   const getInitialTimeRange = useCallback((): TimeRange => {
     const params = new URLSearchParams(location.search);
-    const urlRange = params.get('range') as TimeRange;
-    return urlRange && VALID_TIME_RANGES.includes(urlRange)
-      ? urlRange
+    const start = params.get('start');
+    const end = params.get('end');
+    if (start && end) {
+      const s = parseInt(start, 10);
+      const e = parseInt(end, 10);
+      const custom = `${s}-${e}`;
+      if (!isNaN(s) && !isNaN(e) && isValidTimeRange(custom)) {
+        return custom;
+      }
+    }
+    const urlRange = params.get('range');
+    return urlRange && isValidTimeRange(urlRange)
+      ? (urlRange as TimeRange)
       : DEFAULT_TIME_RANGE;
   }, [location.search]);
 
@@ -28,23 +38,29 @@ export const useTimeRangeSync = () => {
   // Update time range and sync with URL
   const setTimeRange = useCallback(
     (newRange: TimeRange) => {
-      if (!VALID_TIME_RANGES.includes(newRange)) {
+      if (!isValidTimeRange(newRange)) {
         console.warn('Invalid time range:', newRange);
         return;
       }
 
       setTimeRangeState(newRange);
 
-      // Update URL parameters without affecting navigation
       const newParams = new URLSearchParams(location.search);
-      if (newRange === DEFAULT_TIME_RANGE) {
+      if (/^\d+-\d+$/.test(newRange)) {
+        const [s, e] = newRange.split('-');
+        newParams.set('start', s);
+        newParams.set('end', e);
         newParams.delete('range');
       } else {
-        newParams.set('range', newRange);
+        if (newRange === DEFAULT_TIME_RANGE) {
+          newParams.delete('range');
+        } else {
+          newParams.set('range', newRange);
+        }
+        newParams.delete('start');
+        newParams.delete('end');
       }
 
-      // Use replace to avoid adding history entries for time range changes
-      // Only update query parameters without forcing navigation to '/'
       navigate(
         { search: newParams.toString() },
         { replace: true },

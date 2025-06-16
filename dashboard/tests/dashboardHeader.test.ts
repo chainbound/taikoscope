@@ -34,9 +34,7 @@ describe('DashboardHeader', () => {
       ),
     );
     expect(html.includes('Taikoscope Masaya')).toBe(true);
-    expect(html.includes('15m')).toBe(true);
     expect(html.includes('1h')).toBe(true);
-    expect(html.includes('24h')).toBe(true);
     expect(html.includes('Refresh')).toBe(true);
     expect(html.includes('Status')).toBe(true);
     expect(html.includes('All Sequencers')).toBe(true);

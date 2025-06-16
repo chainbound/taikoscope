@@ -8,26 +8,32 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
+import useSWR from 'swr';
 import { useEthPrice } from '../services/priceService';
-import { MetricData } from '../types';
-import { findMetricValue } from '../utils';
+import { fetchFeeComponents } from '../services/apiService';
+import { TimeRange, FeeComponent } from '../types';
+import { rangeToHours } from '../utils/timeRange';
 
 interface ProfitabilityChartProps {
-  metrics: MetricData[];
-  hours: number; // hours represented by the metric values
+  timeRange: TimeRange;
+  cloudCost: number;
+  proverCost: number;
+  address?: string;
 }
 
 export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
-  metrics,
-  hours,
+  timeRange,
+  cloudCost,
+  proverCost,
+  address,
 }) => {
-  const feeStr = findMetricValue(metrics, 'transaction fee');
-  const costStr = findMetricValue(metrics, 'cloud cost');
-  const l2TxFee = parseFloat(feeStr.replace(/[^0-9.]/g, '')) || null;
-  const cloudCost = parseFloat(costStr.replace(/[^0-9.]/g, '')) || null;
+  const { data: feeRes } = useSWR(['feeComponents', timeRange, address], () =>
+    fetchFeeComponents(timeRange, address),
+  );
+  const feeData: FeeComponent[] | null = feeRes?.data ?? null;
   const { data: ethPrice = 0 } = useEthPrice();
 
-  if (l2TxFee == null || cloudCost == null || hours === 0) {
+  if (!feeData || feeData.length === 0) {
     return (
       <div className="flex items-center justify-center h-full text-gray-500">
         No data available
@@ -35,30 +41,27 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
     );
   }
 
-  const profitPerHour = (l2TxFee * ethPrice - cloudCost) / hours;
+  const hours = rangeToHours(timeRange);
+  const HOURS_IN_MONTH = 30 * 24;
+  const totalCost = ((cloudCost + proverCost) / HOURS_IN_MONTH) * hours;
+  const costPerBlock = totalCost / feeData.length;
 
-  const data = Array.from({ length: 12 }, (_, i) => {
-    const month = i + 1;
-    const hoursInMonth = 30 * 24 * month;
-    return {
-      month,
-      profit: profitPerHour * hoursInMonth,
-    };
+  const data = feeData.map((b) => {
+    const revenueEth = b.priority + b.base - (b.l1Cost ?? 0);
+    const profit = revenueEth * ethPrice - costPerBlock;
+    return { block: b.block, profit };
   });
 
   return (
     <ResponsiveContainer width="100%" height={240}>
-      <LineChart
-        data={data}
-        margin={{ top: 5, right: 40, left: 20, bottom: 40 }}
-      >
+      <LineChart data={data} margin={{ top: 5, right: 40, left: 20, bottom: 40 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
         <XAxis
-          dataKey="month"
+          dataKey="block"
           stroke="#666666"
           fontSize={12}
           label={{
-            value: 'Month',
+            value: 'L2 Block',
             position: 'insideBottom',
             offset: -10,
             fontSize: 10,
@@ -68,8 +71,8 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
         <YAxis
           stroke="#666666"
           fontSize={12}
-          domain={[0, 'auto']}
-          tickFormatter={(v: number) => `$${v.toFixed(0)}`}
+          domain={['auto', 'auto']}
+          tickFormatter={(v: number) => `$${v.toLocaleString()}`}
           label={{
             value: 'Profit (USD)',
             angle: -90,
@@ -80,7 +83,7 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
           }}
         />
         <Tooltip
-          labelFormatter={(v: number) => `Month ${v}`}
+          labelFormatter={(v: number) => `Block ${v}`}
           formatter={(value: number) => [`$${value.toFixed(2)}`, 'Profit']}
           contentStyle={{
             backgroundColor: 'rgba(255,255,255,0.8)',

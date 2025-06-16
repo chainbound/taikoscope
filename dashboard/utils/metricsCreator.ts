@@ -19,7 +19,7 @@ export interface MetricInputData {
   l1Block: number | null;
   priorityFee: number | null;
   baseFee: number | null;
-  cloudCost: number | null;
+  l1DataCost?: number | null;
 }
 
 export const createMetrics = (data: MetricInputData): MetricData[] => [
@@ -48,7 +48,7 @@ export const createMetrics = (data: MetricInputData): MetricData[] => [
       data.avgProve != null && data.avgProve > 0
         ? formatSeconds(data.avgProve / 1000)
         : 'N/A',
-    group: 'Network Performance',
+    group: 'Network Health',
   },
   {
     title: React.createElement(
@@ -65,7 +65,7 @@ export const createMetrics = (data: MetricInputData): MetricData[] => [
       data.avgVerify != null && data.avgVerify > 0
         ? formatSeconds(data.avgVerify / 1000)
         : 'N/A',
-    group: 'Network Performance',
+    group: 'Network Health',
   },
   {
     title: 'Active Sequencers',
@@ -118,6 +118,12 @@ export const createMetrics = (data: MetricInputData): MetricData[] => [
   {
     title: 'Base Fee',
     value: data.baseFee != null ? formatEth(data.baseFee) : 'N/A',
+    group: 'Network Economics',
+  },
+  {
+    title: 'L1 Data Cost',
+    value:
+      data.l1DataCost != null ? formatEth(data.l1DataCost) : 'N/A',
     group: 'Network Economics',
   },
   {

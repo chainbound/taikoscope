@@ -4,8 +4,10 @@ use std::time::Duration;
 
 use alloy_primitives::Address;
 use eyre::Result;
+use network::public_rpc_monitor;
 use tokio_stream::StreamExt;
 use tracing::info;
+use url::Url;
 
 use chainio::{
     ITaikoInbox::{BatchProposed, BatchesProved},
@@ -32,17 +34,20 @@ pub struct Driver {
     clickhouse: ClickhouseWriter,
     clickhouse_reader: ClickhouseReader,
     extractor: Extractor,
+    inbox_address: Address,
     reorg: ReorgDetector,
     incident_client: IncidentClient,
     instatus_batch_submission_component_id: String,
     instatus_proof_submission_component_id: String,
     instatus_proof_verification_component_id: String,
     instatus_transaction_sequencing_component_id: String,
+    instatus_monitors_enabled: bool,
     instatus_monitor_poll_interval_secs: u64,
     instatus_monitor_threshold_secs: u64,
     batch_proof_timeout_secs: u64,
     last_proposed_l2_block: u64,
     last_l2_header: Option<(u64, Address)>,
+    public_rpc_url: Option<Url>,
 }
 
 impl Driver {
@@ -54,10 +59,14 @@ impl Driver {
     /// Build everything with option to skip database migrations (useful for tests)
     pub async fn new_with_migrations(opts: Opts, run_migrations: bool) -> Result<Self> {
         // verify monitoring configuration before doing any heavy work
-        if !opts.instatus.enabled() {
+        if opts.instatus.monitors_enabled && !opts.instatus.enabled() {
             return Err(eyre::eyre!(
                 "Instatus configuration missing; set the INSTATUS_* environment variables"
             ));
+        }
+
+        if !opts.instatus.monitors_enabled {
+            info!("Instatus monitors disabled; no incidents will be reported");
         }
 
         // init db client
@@ -92,34 +101,50 @@ impl Driver {
         )
         .await?;
 
-        // init incident client and component IDs
+        // init incident client and component IDs if monitors are enabled
 
-        let instatus_batch_submission_component_id =
-            opts.instatus.batch_submission_component_id.clone();
-        let instatus_proof_submission_component_id =
-            opts.instatus.proof_submission_component_id.clone();
-        let instatus_proof_verification_component_id =
-            opts.instatus.proof_verification_component_id.clone();
-        let instatus_transaction_sequencing_component_id =
-            opts.instatus.transaction_sequencing_component_id.clone();
-        let incident_client =
-            IncidentClient::new(opts.instatus.api_key.clone(), opts.instatus.page_id.clone());
+        let (
+            instatus_batch_submission_component_id,
+            instatus_proof_submission_component_id,
+            instatus_proof_verification_component_id,
+            instatus_transaction_sequencing_component_id,
+            incident_client,
+        ) = if opts.instatus.monitors_enabled {
+            (
+                opts.instatus.batch_submission_component_id.clone(),
+                opts.instatus.proof_submission_component_id.clone(),
+                opts.instatus.proof_verification_component_id.clone(),
+                opts.instatus.transaction_sequencing_component_id.clone(),
+                IncidentClient::new(opts.instatus.api_key.clone(), opts.instatus.page_id.clone()),
+            )
+        } else {
+            (
+                String::new(),
+                String::new(),
+                String::new(),
+                String::new(),
+                IncidentClient::new(String::new(), String::new()),
+            )
+        };
 
         Ok(Self {
             clickhouse,
             clickhouse_reader,
             extractor,
+            inbox_address: opts.taiko_addresses.inbox_address,
             reorg: ReorgDetector::new(),
             incident_client,
             instatus_batch_submission_component_id,
             instatus_proof_submission_component_id,
             instatus_proof_verification_component_id,
             instatus_transaction_sequencing_component_id,
+            instatus_monitors_enabled: opts.instatus.monitors_enabled,
             instatus_monitor_poll_interval_secs: opts.instatus.monitor_poll_interval_secs,
             instatus_monitor_threshold_secs: opts.instatus.monitor_threshold_secs,
             batch_proof_timeout_secs: opts.instatus.batch_proof_timeout_secs,
             last_proposed_l2_block: 0,
             last_l2_header: None,
+            public_rpc_url: opts.rpc.public_url,
         })
     }
 
@@ -236,6 +261,14 @@ impl Driver {
     /// Each monitor runs in its own task and reports incidents via the
     /// [`IncidentClient`].
     fn spawn_monitors(&self) {
+        if let Some(url) = &self.public_rpc_url {
+            public_rpc_monitor::spawn_public_rpc_monitor(url.clone());
+        }
+
+        if !self.instatus_monitors_enabled {
+            return;
+        }
+
         InstatusL1Monitor::new(
             self.clickhouse_reader.clone(),
             self.incident_client.clone(),
@@ -370,6 +403,19 @@ impl Driver {
             tracing::error!(header_number = header.number, err = %e, "Failed to insert L1 header");
         } else {
             info!(header_number = header.number, "Inserted L1 header");
+        }
+
+        match self.extractor.get_l1_data_posting_cost(header.hash, self.inbox_address).await {
+            Ok(cost) => {
+                if let Err(e) = self.clickhouse.insert_l1_data_cost(header.number, cost).await {
+                    tracing::error!(block_number = header.number, err = %e, "Failed to insert L1 data cost");
+                } else {
+                    info!(block_number = header.number, cost, "Inserted L1 data cost");
+                }
+            }
+            Err(e) => {
+                tracing::error!(block_number = header.number, err = %e, "Failed to fetch L1 data cost");
+            }
         }
 
         let opt_candidates = match self.extractor.get_operator_candidates_for_current_epoch().await
@@ -576,7 +622,7 @@ mod tests {
                 username: "user".into(),
                 password: "pass".into(),
             },
-            rpc: RpcOpts { l1_url, l2_url },
+            rpc: RpcOpts { l1_url, l2_url, public_url: None },
             api: ApiOpts {
                 host: "127.0.0.1".into(),
                 port: 3000,
@@ -596,6 +642,7 @@ mod tests {
                 proof_submission_component_id: "proof".into(),
                 proof_verification_component_id: "verify".into(),
                 transaction_sequencing_component_id: "l2".into(),
+                monitors_enabled: true,
                 monitor_poll_interval_secs: 30,
                 monitor_threshold_secs: 96,
                 batch_proof_timeout_secs: 999,

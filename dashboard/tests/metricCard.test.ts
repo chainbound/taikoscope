@@ -14,10 +14,10 @@ describe('MetricCard', () => {
     );
     expect(
       htmlAddress.includes(
-        'min-w-0 w-full sm:col-span-2 md:col-span-2 lg:col-span-2 xl:col-span-2 2xl:col-span-2',
+        'min-w-0 w-full col-span-2 sm:col-span-2 md:col-span-2 lg:col-span-2 xl:col-span-2 2xl:col-span-2',
       ),
     ).toBe(true);
-    expect(htmlAddress.includes('text-base sm:text-lg break-all')).toBe(true);
+    expect(htmlAddress.includes('text-base break-all')).toBe(true);
   });
 
   it('renders normal values', () => {

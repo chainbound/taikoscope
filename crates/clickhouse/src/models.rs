@@ -217,6 +217,28 @@ pub struct L2GasUsedRow {
     pub gas_used: u64,
 }
 
+/// Row representing the total L1 data posting cost for a block
+#[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
+pub struct L1DataCostRow {
+    /// L1 block number
+    pub l1_block_number: u64,
+    /// Total cost in wei for data posting transactions
+    pub cost: u128,
+}
+
+/// Row representing the fee components for an L2 block
+#[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
+pub struct BlockFeeComponentRow {
+    /// L2 block number
+    pub l2_block_number: u64,
+    /// Total priority fee for the block
+    pub priority_fee: u128,
+    /// 75% of the total base fee for the block
+    pub base_fee: u128,
+    /// L1 data posting cost associated with the block, if available
+    pub l1_data_cost: Option<u128>,
+}
+
 /// Row representing the transactions per second for an L2 block
 #[derive(Debug, Serialize, Deserialize, PartialEq, ToSchema)]
 pub struct L2TpsRow {
