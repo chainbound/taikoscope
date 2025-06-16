@@ -32,7 +32,7 @@ pub const DEFAULT_MAX_REQUESTS: u64 = u64::MAX;
 /// Default duration for the rate limiting window.
 pub const DEFAULT_RATE_PERIOD: StdDuration = StdDuration::from_secs(1);
 /// Maximum number of records returned by the `/block-transactions` endpoint.
-pub const MAX_BLOCK_TRANSACTIONS_LIMIT: u64 = u64::MAX;
+pub const MAX_BLOCK_TRANSACTIONS_LIMIT: u64 = 10000;
 
 /// `OpenAPI` documentation structure
 #[derive(Debug, OpenApi)]
@@ -1006,7 +1006,7 @@ async fn block_transactions(
     validate_time_range(&params.common.time_range)?;
 
     // Validate pagination parameters
-    validate_pagination(
+    let limit = validate_pagination(
         params.starting_after.as_ref(),
         params.ending_before.as_ref(),
         params.limit.as_ref(),
@@ -1019,7 +1019,6 @@ async fn block_transactions(
     validate_range_exclusivity(has_time_range, has_slot_range)?;
 
     let since = resolve_time_range_since(&params.common.range, &params.common.time_range);
-    let limit = params.limit.unwrap_or(MAX_BLOCK_TRANSACTIONS_LIMIT);
 
     let address = if let Some(addr) = params.common.address.as_ref() {
         match addr.parse::<Address>() {
