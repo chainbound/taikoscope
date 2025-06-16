@@ -3,6 +3,7 @@ export type TimeRange = string;
 export interface TimeSeriesData {
   timestamp: number; // Unix timestamp (ms)
   value: number;
+  blockTime?: number;
   name?: string; // For line charts with 'name' on x-axis (like batchId)
 }
 

@@ -166,6 +166,8 @@ pub struct BlockTransactionRow {
     pub sequencer: AddressBytes,
     /// L2 block number
     pub l2_block_number: u64,
+    /// Timestamp of the L2 block
+    pub block_time: DateTime<Utc>,
     /// Number of transactions in the block
     pub sum_tx: u32,
 }
@@ -213,6 +215,8 @@ pub struct L2BlockTimeRow {
 pub struct L2GasUsedRow {
     /// L2 block number
     pub l2_block_number: u64,
+    /// Timestamp of the L2 block
+    pub block_time: DateTime<Utc>,
     /// Total gas used in the block
     pub gas_used: u64,
 }

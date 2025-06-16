@@ -504,8 +504,16 @@ impl ClickhouseReader {
         ending_before: Option<u64>,
         sequencer: Option<AddressBytes>,
     ) -> Result<Vec<BlockTransactionRow>> {
+        #[derive(Row, Deserialize)]
+        struct RawRow {
+            sequencer: AddressBytes,
+            l2_block_number: u64,
+            block_time: u64,
+            sum_tx: u32,
+        }
+
         let mut query = format!(
-            "SELECT sequencer, h.l2_block_number, sum_tx \
+            "SELECT sequencer, h.l2_block_number, h.block_ts AS block_time, sum_tx \
              FROM {db}.l2_head_events h \
              WHERE h.block_ts >= {} \
                AND {filter}",
@@ -528,8 +536,16 @@ impl ClickhouseReader {
         query.push_str(" ORDER BY l2_block_number DESC");
         query.push_str(&format!(" LIMIT {}", limit));
 
-        let rows = self.execute::<BlockTransactionRow>(&query).await?;
-        Ok(rows)
+        let rows = self.execute::<RawRow>(&query).await?;
+        Ok(rows
+            .into_iter()
+            .map(|r| BlockTransactionRow {
+                sequencer: r.sequencer,
+                l2_block_number: r.l2_block_number,
+                block_time: Utc.timestamp_opt(r.block_time as i64, 0).unwrap(),
+                sum_tx: r.sum_tx,
+            })
+            .collect())
     }
 
     /// Get the average time in milliseconds it takes for a batch to be proven
@@ -916,11 +932,12 @@ impl ClickhouseReader {
         #[derive(Row, Deserialize)]
         struct RawRow {
             l2_block_number: u64,
+            block_time: u64,
             gas_used: u64,
         }
 
         let mut query = format!(
-            "SELECT h.l2_block_number, toUInt64(sum_gas_used) AS gas_used \
+            "SELECT h.l2_block_number, h.block_ts AS block_time, toUInt64(sum_gas_used) AS gas_used \
              FROM {db}.l2_head_events h \
              WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
                AND {filter}",
@@ -936,7 +953,14 @@ impl ClickhouseReader {
         let rows = self.execute::<RawRow>(&query).await?;
         Ok(rows
             .into_iter()
-            .map(|r| L2GasUsedRow { l2_block_number: r.l2_block_number, gas_used: r.gas_used })
+            .map(|r| {
+                let dt = Utc.timestamp_opt(r.block_time as i64, 0).unwrap();
+                L2GasUsedRow {
+                    l2_block_number: r.l2_block_number,
+                    block_time: dt,
+                    gas_used: r.gas_used,
+                }
+            })
             .collect())
     }
 

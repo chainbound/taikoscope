@@ -90,14 +90,14 @@ const responses: Record<string, Record<string, unknown>> = {
   [`/v1/forced-inclusions?${q15m}`]: { events: [{ blob_hash: [3, 4] }] },
   [`/v1/l2-block-times?${q1h}`]: {
     blocks: [
-      { l2_block_number: 1, ms_since_prev_block: 1000 },
-      { l2_block_number: 2, ms_since_prev_block: 2000 },
+      { l2_block_number: 1, block_time: '1970-01-01T00:00:01Z', ms_since_prev_block: 1000 },
+      { l2_block_number: 2, block_time: '1970-01-01T00:00:02Z', ms_since_prev_block: 2000 },
     ],
   },
   [`/v1/l2-block-times?${q15m}`]: {
     blocks: [
-      { l2_block_number: 1, ms_since_prev_block: 1000 },
-      { l2_block_number: 2, ms_since_prev_block: 2000 },
+      { l2_block_number: 1, block_time: '1970-01-01T00:00:01Z', ms_since_prev_block: 1000 },
+      { l2_block_number: 2, block_time: '1970-01-01T00:00:02Z', ms_since_prev_block: 2000 },
     ],
   },
   [`/v1/l1-block-times?${q1h}`]: {
@@ -126,14 +126,14 @@ const responses: Record<string, Record<string, unknown>> = {
   },
   [`/v1/l2-gas-used?${q1h}`]: {
     blocks: [
-      { l2_block_number: 1, gas_used: 100 },
-      { l2_block_number: 2, gas_used: 150 },
+      { l2_block_number: 1, block_time: '1970-01-01T00:00:01Z', gas_used: 100 },
+      { l2_block_number: 2, block_time: '1970-01-01T00:00:02Z', gas_used: 150 },
     ],
   },
   [`/v1/l2-gas-used?${q15m}`]: {
     blocks: [
-      { l2_block_number: 1, gas_used: 100 },
-      { l2_block_number: 2, gas_used: 150 },
+      { l2_block_number: 1, block_time: '1970-01-01T00:00:01Z', gas_used: 100 },
+      { l2_block_number: 2, block_time: '1970-01-01T00:00:02Z', gas_used: 150 },
     ],
   },
   [`/v1/l2-fees?${q1h}`]: { priority_fee: 600, base_fee: 400 },

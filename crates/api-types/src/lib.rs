@@ -11,6 +11,7 @@ use clickhouse_lib::{
 };
 
 use axum::{Json, http::StatusCode, response::IntoResponse};
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
@@ -282,6 +283,8 @@ pub struct BlockTransactionsItem {
     pub txs: u32,
     /// Address of the sequencer that proposed the block.
     pub sequencer: String,
+    /// Timestamp of the block.
+    pub block_time: DateTime<Utc>,
 }
 
 /// Collection of block transaction counts.
