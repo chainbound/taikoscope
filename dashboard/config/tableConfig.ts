@@ -234,7 +234,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     mapData: (data) =>
       (data as { value: number; timestamp: number }[]).map((d) => ({
         value: blockLink(d.value),
-        timestamp: d.timestamp,
+        timestamp: d.timestamp.toLocaleString(),
       })),
     urlKey: 'l2-block-times',
     reverseOrder: true,
