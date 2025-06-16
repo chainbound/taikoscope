@@ -267,7 +267,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     mapData: (data) =>
       (data as any[]).map((d) => ({
         ...d,
-        tps: d.tps ? d.tps.toFixed(2) : 'N/A',
+        tps: d.tps != null ? d.tps.toFixed(2) : 'N/A',
       })),
     supportsPagination: true,
     urlKey: 'sequencer-dist',

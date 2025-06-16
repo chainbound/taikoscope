@@ -14,16 +14,16 @@ const MAX_TIMESTAMP_MS: u64 = 4_102_444_800_000; // Year 2100
 #[derive(Debug, Deserialize, ToSchema, IntoParams)]
 pub struct TimeRangeParams {
     /// Filter for timestamps greater than this value (exclusive)
-    #[serde(rename = "created[gt]")]
+    #[serde(rename = "created[gt]", deserialize_with = "crate::validation::de_u64_opt", default)]
     pub created_gt: Option<u64>,
     /// Filter for timestamps greater than or equal to this value (inclusive)
-    #[serde(rename = "created[gte]")]
+    #[serde(rename = "created[gte]", deserialize_with = "crate::validation::de_u64_opt", default)]
     pub created_gte: Option<u64>,
     /// Filter for timestamps less than this value (exclusive)
-    #[serde(rename = "created[lt]")]
+    #[serde(rename = "created[lt]", deserialize_with = "crate::validation::de_u64_opt", default)]
     pub created_lt: Option<u64>,
     /// Filter for timestamps less than or equal to this value (inclusive)
-    #[serde(rename = "created[lte]")]
+    #[serde(rename = "created[lte]", deserialize_with = "crate::validation::de_u64_opt", default)]
     pub created_lte: Option<u64>,
 }
 
@@ -112,9 +112,9 @@ pub fn validate_time_range(params: &TimeRangeParams) -> Result<(), ErrorResponse
 pub fn validate_pagination(
     starting_after: Option<&u64>,
     ending_before: Option<&u64>,
-    _limit: Option<&u64>,
-    _max_limit: u64,
-) -> Result<(), ErrorResponse> {
+    limit: Option<&u64>,
+    max_limit: u64,
+) -> Result<u64, ErrorResponse> {
     if starting_after.is_some() && ending_before.is_some() {
         return Err(ErrorResponse::new(
             "invalid-params",
@@ -124,9 +124,9 @@ pub fn validate_pagination(
         ));
     }
 
-    // Remove limit validation - allow any limit value or no limit
+    let effective_limit = limit.copied().unwrap_or(max_limit).min(max_limit);
 
-    Ok(())
+    Ok(effective_limit)
 }
 
 /// Validate that time range and slot range parameters are not mixed
@@ -229,6 +229,31 @@ pub fn resolve_time_range_since(
 
     // Fall back to range parameter or default - no time limit enforcement
     now - range_duration(range)
+}
+
+/// Custom deserializer that converts a URL-encoded form value into a `u64`.
+/// This accepts both bare numbers (e.g. `1750000`) and quoted numbers (e.g.
+/// `"1750000"`) to be tolerant of over-encoded clients.
+pub fn de_u64_opt<'de, D>(deserializer: D) -> Result<Option<u64>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    use serde::de::Error;
+
+    // Deserialize the value as an optional string. `serde_urlencoded` always
+    // provides strings, so this covers both quoted and unquoted numbers.
+    let opt: Option<String> = Option::deserialize(deserializer)?;
+
+    match opt {
+        None => Ok(None),
+        Some(raw) => {
+            let trimmed = raw.trim_matches('"');
+            trimmed
+                .parse::<u64>()
+                .map(Some)
+                .map_err(|e| Error::custom(format!("invalid integer '{}': {}", raw, e)))
+        }
+    }
 }
 
 #[cfg(test)]
@@ -344,7 +369,7 @@ mod tests {
 
     #[test]
     fn test_pagination_validation_mutually_exclusive() {
-        let result = validate_pagination(Some(&100), Some(&200), None, 1000);
+        let result = validate_pagination(Some(&100), Some(&200), None, 10000);
         assert!(result.is_err());
         let err = result.unwrap_err();
         assert_eq!(err.r#type, "invalid-params");
@@ -355,20 +380,20 @@ mod tests {
     }
 
     #[test]
-    fn test_pagination_validation_any_limit_allowed() {
-        // Zero limit should now be allowed
-        let result = validate_pagination(None, None, Some(&0), 1000);
-        assert!(result.is_ok());
+    fn test_pagination_validation_limit_clamped() {
+        // Zero limit should remain zero
+        let result = validate_pagination(None, None, Some(&0), 10000).unwrap();
+        assert_eq!(result, 0);
 
-        // Large limit should now be allowed
-        let result = validate_pagination(None, None, Some(&10000), 1000);
-        assert!(result.is_ok());
+        // Large limit should be clamped to the maximum
+        let result = validate_pagination(None, None, Some(&20000), 10000).unwrap();
+        assert_eq!(result, 10000);
     }
 
     #[test]
     fn test_pagination_validation_valid() {
-        let result = validate_pagination(Some(&100), None, Some(&50), 1000);
-        assert!(result.is_ok());
+        let result = validate_pagination(Some(&100), None, Some(&50), 10000).unwrap();
+        assert_eq!(result, 50);
     }
 
     #[test]

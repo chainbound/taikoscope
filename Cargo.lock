@@ -734,7 +734,6 @@ dependencies = [
  "chrono",
  "clickhouse 0.1.0",
  "clickhouse 0.13.3",
- "dashmap",
  "eyre",
  "futures",
  "hex",

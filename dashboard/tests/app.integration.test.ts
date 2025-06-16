@@ -1,4 +1,4 @@
-import { it, expect } from 'vitest';
+import { it, expect, vi, afterAll } from 'vitest';
 import {
   fetchAvgProveTime,
   fetchAvgVerifyTime,
@@ -25,6 +25,9 @@ import {
 import { createMetrics, hasBadRequest } from '../helpers';
 import type { MetricData } from '../types';
 
+vi.useFakeTimers();
+vi.setSystemTime(0);
+
 type TimeRange = string;
 
 type State = {
@@ -47,100 +50,104 @@ interface MockFetchResponse {
   json: () => Promise<unknown>;
 }
 
+const q15m = 'created%5Bgt%5D=-900000&created%5Blte%5D=0';
+const q1h = 'created%5Bgt%5D=-3600000&created%5Blte%5D=0';
+const q24h = 'created%5Bgt%5D=-86400000&created%5Blte%5D=0';
+
 const responses: Record<string, Record<string, unknown>> = {
-  '/v1/l2-block-cadence?range=15m': { l2_block_cadence_ms: 60000 },
-  '/v1/batch-posting-cadence?range=15m': { batch_posting_cadence_ms: 120000 },
-  '/v1/avg-prove-time?range=15m': { avg_prove_time_ms: 1500 },
-  '/v1/avg-verify-time?range=15m': { avg_verify_time_ms: 2500 },
-  '/v1/l2-block-cadence?range=1h': { l2_block_cadence_ms: 60000 },
-  '/v1/batch-posting-cadence?range=1h': { batch_posting_cadence_ms: 120000 },
-  '/v1/avg-prove-time?range=1h': { avg_prove_time_ms: 1500 },
-  '/v1/avg-verify-time?range=1h': { avg_verify_time_ms: 2500 },
-  '/v1/dashboard-data?range=1h': {
+  [`/v1/l2-block-cadence?${q15m}`]: { l2_block_cadence_ms: 60000 },
+  [`/v1/batch-posting-cadence?${q15m}`]: { batch_posting_cadence_ms: 120000 },
+  [`/v1/avg-prove-time?${q15m}`]: { avg_prove_time_ms: 1500 },
+  [`/v1/avg-verify-time?${q15m}`]: { avg_verify_time_ms: 2500 },
+  [`/v1/l2-block-cadence?${q1h}`]: { l2_block_cadence_ms: 60000 },
+  [`/v1/batch-posting-cadence?${q1h}`]: { batch_posting_cadence_ms: 120000 },
+  [`/v1/avg-prove-time?${q1h}`]: { avg_prove_time_ms: 1500 },
+  [`/v1/avg-verify-time?${q1h}`]: { avg_verify_time_ms: 2500 },
+  [`/v1/dashboard-data?${q1h}`]: {
     preconf_data: {
       candidates: ['gw1', 'gw2'],
       current_operator: '0xaaa',
       next_operator: '0xbbb',
     },
   },
-  '/v1/reorgs?range=1h': {
+  [`/v1/reorgs?${q1h}`]: {
     events: [
       { l2_block_number: 10, depth: 1, inserted_at: '1970-01-01T00:00:00Z' },
     ],
   },
-  '/v1/slashings?range=1h': {
+  [`/v1/slashings?${q1h}`]: {
     events: [{ l1_block_number: 5, validator_addr: [1, 2] }],
   },
-  '/v1/forced-inclusions?range=1h': { events: [{ blob_hash: [3, 4] }] },
-  '/v1/reorgs?range=15m': {
+  [`/v1/forced-inclusions?${q1h}`]: { events: [{ blob_hash: [3, 4] }] },
+  [`/v1/reorgs?${q15m}`]: {
     events: [
       { l2_block_number: 10, depth: 1, inserted_at: '1970-01-01T00:00:00Z' },
     ],
   },
-  '/v1/slashings?range=15m': {
+  [`/v1/slashings?${q15m}`]: {
     events: [{ l1_block_number: 5, validator_addr: [1, 2] }],
   },
-  '/v1/forced-inclusions?range=15m': { events: [{ blob_hash: [3, 4] }] },
-  '/v1/l2-block-times?range=1h': {
+  [`/v1/forced-inclusions?${q15m}`]: { events: [{ blob_hash: [3, 4] }] },
+  [`/v1/l2-block-times?${q1h}`]: {
     blocks: [
       { l2_block_number: 1, ms_since_prev_block: 1000 },
       { l2_block_number: 2, ms_since_prev_block: 2000 },
     ],
   },
-  '/v1/l2-block-times?range=15m': {
+  [`/v1/l2-block-times?${q15m}`]: {
     blocks: [
       { l2_block_number: 1, ms_since_prev_block: 1000 },
       { l2_block_number: 2, ms_since_prev_block: 2000 },
     ],
   },
-  '/v1/l1-block-times?range=1h': {
+  [`/v1/l1-block-times?${q1h}`]: {
     blocks: [
       { block_number: 50, minute: 1 },
       { block_number: 52, minute: 2 },
     ],
   },
-  '/v1/l1-block-times?range=15m': {
+  [`/v1/l1-block-times?${q15m}`]: {
     blocks: [
       { block_number: 50, minute: 1 },
       { block_number: 52, minute: 2 },
     ],
   },
-  '/v1/prove-times?range=1h': {
+  [`/v1/prove-times?${q1h}`]: {
     batches: [{ batch_id: 1, seconds_to_prove: 3 }],
   },
-  '/v1/prove-times?range=15m': {
+  [`/v1/prove-times?${q15m}`]: {
     batches: [{ batch_id: 1, seconds_to_prove: 3 }],
   },
-  '/v1/verify-times?range=1h': {
+  [`/v1/verify-times?${q1h}`]: {
     batches: [{ batch_id: 1, seconds_to_verify: 4 }],
   },
-  '/v1/verify-times?range=15m': {
+  [`/v1/verify-times?${q15m}`]: {
     batches: [{ batch_id: 1, seconds_to_verify: 4 }],
   },
-  '/v1/l2-gas-used?range=1h': {
+  [`/v1/l2-gas-used?${q1h}`]: {
     blocks: [
       { l2_block_number: 1, gas_used: 100 },
       { l2_block_number: 2, gas_used: 150 },
     ],
   },
-  '/v1/l2-gas-used?range=15m': {
+  [`/v1/l2-gas-used?${q15m}`]: {
     blocks: [
       { l2_block_number: 1, gas_used: 100 },
       { l2_block_number: 2, gas_used: 150 },
     ],
   },
-  '/v1/l2-fees?range=1h': { priority_fee: 600, base_fee: 400 },
-  '/v1/l2-fees?range=15m': { priority_fee: 600, base_fee: 400 },
-  '/v1/sequencer-distribution?range=1h': {
+  [`/v1/l2-fees?${q1h}`]: { priority_fee: 600, base_fee: 400 },
+  [`/v1/l2-fees?${q15m}`]: { priority_fee: 600, base_fee: 400 },
+  [`/v1/sequencer-distribution?${q1h}`]: {
     sequencers: [{ address: 'addr1', blocks: 10 }],
   },
-  '/v1/sequencer-distribution?range=15m': {
+  [`/v1/sequencer-distribution?${q15m}`]: {
     sequencers: [{ address: 'addr1', blocks: 10 }],
   },
   '/v1/l2-head-block': { l2_head_block: 123 },
   '/v1/l1-head-block': { l1_head_block: 456 },
-  '/v1/l2-fees?range=24h': { priority_fee: 1200, base_fee: 800 },
-}; 
+  [`/v1/l2-fees?${q24h}`]: { priority_fee: 1200, base_fee: 800 },
+};
 
 (
   globalThis as {
@@ -429,4 +436,8 @@ it('app integration', async () => {
   expect(visible).toStrictEqual(expected);
 
   console.log('App integration tests passed.');
+});
+
+afterAll(() => {
+  vi.useRealTimers();
 });

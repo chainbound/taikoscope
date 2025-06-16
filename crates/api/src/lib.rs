@@ -14,7 +14,7 @@ use axum::{
 };
 use chrono::{Duration as ChronoDuration, TimeZone, Utc};
 
-use clickhouse_lib::{AddressBytes, ClickhouseReader};
+use clickhouse_lib::{AddressBytes, ClickhouseReader, L2BlockTimeRow, L2GasUsedRow};
 use futures::stream::Stream;
 use hex::encode;
 use primitives::hardware::TOTAL_HARDWARE_COST_USD;
@@ -32,7 +32,7 @@ pub const DEFAULT_MAX_REQUESTS: u64 = u64::MAX;
 /// Default duration for the rate limiting window.
 pub const DEFAULT_RATE_PERIOD: StdDuration = StdDuration::from_secs(1);
 /// Maximum number of records returned by the `/block-transactions` endpoint.
-pub const MAX_BLOCK_TRANSACTIONS_LIMIT: u64 = u64::MAX;
+pub const MAX_BLOCK_TRANSACTIONS_LIMIT: u64 = 10000;
 
 /// `OpenAPI` documentation structure
 #[derive(Debug, OpenApi)]
@@ -744,14 +744,23 @@ async fn l2_block_times(
     validate_range_exclusivity(has_time_range, false)?;
 
     let time_range = resolve_time_range_enum(&params.range, &params.time_range);
-    let address = params.address.as_ref().and_then(|addr| match addr.parse::<Address>() {
-        Ok(a) => Some(AddressBytes::from(a)),
-        Err(e) => {
-            tracing::warn!(error = %e, "Failed to parse address");
-            None
+    let address = if let Some(addr) = params.address.as_ref() {
+        match addr.parse::<Address>() {
+            Ok(a) => Some(AddressBytes::from(a)),
+            Err(e) => {
+                tracing::warn!(error = %e, "Failed to parse address");
+                return Err(ErrorResponse::new(
+                    "invalid-params",
+                    "Bad Request",
+                    StatusCode::BAD_REQUEST,
+                    e.to_string(),
+                ));
+            }
         }
-    });
-    let blocks = match state.client.get_l2_block_times(address, time_range).await {
+    } else {
+        None
+    };
+    let mut blocks = match state.client.get_l2_block_times(address, time_range).await {
         Ok(rows) => rows,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get L2 block times");
@@ -763,6 +772,9 @@ async fn l2_block_times(
             ));
         }
     };
+    if time_range.seconds() > 3600 {
+        blocks = aggregate_l2_block_times(blocks);
+    }
     tracing::info!(count = blocks.len(), "Returning L2 block times");
     Ok(Json(L2BlockTimesResponse { blocks }))
 }
@@ -798,7 +810,7 @@ async fn l2_gas_used(
             None
         }
     });
-    let blocks = match state.client.get_l2_gas_used(address, time_range).await {
+    let mut blocks = match state.client.get_l2_gas_used(address, time_range).await {
         Ok(rows) => rows,
         Err(e) => {
             tracing::error!("Failed to get L2 gas used: {}", e);
@@ -810,6 +822,9 @@ async fn l2_gas_used(
             ));
         }
     };
+    if time_range.seconds() > 3600 {
+        blocks = aggregate_l2_gas_used(blocks);
+    }
     tracing::info!(count = blocks.len(), "Returning L2 gas used");
     Ok(Json(L2GasUsedResponse { blocks }))
 }
@@ -991,7 +1006,7 @@ async fn block_transactions(
     validate_time_range(&params.common.time_range)?;
 
     // Validate pagination parameters
-    validate_pagination(
+    let limit = validate_pagination(
         params.starting_after.as_ref(),
         params.ending_before.as_ref(),
         params.limit.as_ref(),
@@ -1004,7 +1019,23 @@ async fn block_transactions(
     validate_range_exclusivity(has_time_range, has_slot_range)?;
 
     let since = resolve_time_range_since(&params.common.range, &params.common.time_range);
-    let limit = params.limit.unwrap_or(MAX_BLOCK_TRANSACTIONS_LIMIT);
+
+    let address = if let Some(addr) = params.common.address.as_ref() {
+        match addr.parse::<Address>() {
+            Ok(a) => Some(AddressBytes::from(a)),
+            Err(e) => {
+                tracing::warn!(error = %e, "Failed to parse address");
+                return Err(ErrorResponse::new(
+                    "invalid-params",
+                    "Bad Request",
+                    StatusCode::BAD_REQUEST,
+                    e.to_string(),
+                ));
+            }
+        }
+    } else {
+        None
+    };
 
     let rows = match state
         .client
@@ -1013,13 +1044,7 @@ async fn block_transactions(
             limit,
             params.starting_after,
             params.ending_before,
-            params.common.address.as_ref().and_then(|addr| match addr.parse::<Address>() {
-                Ok(a) => Some(AddressBytes::from(a)),
-                Err(e) => {
-                    tracing::warn!(error = %e, "Failed to parse address");
-                    None
-                }
-            }),
+            address,
         )
         .await
     {
@@ -1319,6 +1344,48 @@ pub fn router(state: ApiState) -> Router {
         .with_state(state)
 }
 
+fn aggregate_l2_block_times(rows: Vec<L2BlockTimeRow>) -> Vec<L2BlockTimeRow> {
+    use std::collections::BTreeMap;
+    let mut groups: BTreeMap<u64, Vec<L2BlockTimeRow>> = BTreeMap::new();
+    for row in rows {
+        groups.entry(row.l2_block_number / 10).or_default().push(row);
+    }
+    groups
+        .into_iter()
+        .map(|(g, mut rs)| {
+            rs.sort_by_key(|r| r.l2_block_number);
+            let last_time = rs.last().map(|r| r.block_time).unwrap_or_default();
+            let (sum, count) = rs
+                .iter()
+                .filter_map(|r| r.ms_since_prev_block)
+                .fold((0u64, 0u64), |(s, c), ms| (s + ms, c + 1));
+            let avg = if count > 0 { sum / count } else { 0 };
+            L2BlockTimeRow {
+                l2_block_number: g * 10,
+                block_time: last_time,
+                ms_since_prev_block: Some(avg),
+            }
+        })
+        .collect()
+}
+
+fn aggregate_l2_gas_used(rows: Vec<L2GasUsedRow>) -> Vec<L2GasUsedRow> {
+    use std::collections::BTreeMap;
+    let mut groups: BTreeMap<u64, (u64, u64)> = BTreeMap::new();
+    for row in rows {
+        let entry = groups.entry(row.l2_block_number / 10).or_insert((0, 0));
+        entry.0 += row.gas_used;
+        entry.1 += 1;
+    }
+    groups
+        .into_iter()
+        .map(|(g, (sum, count))| {
+            let avg = if count > 0 { sum / count } else { 0 };
+            L2GasUsedRow { l2_block_number: g * 10, gas_used: avg }
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1367,6 +1434,14 @@ mod tests {
         assert!(response.status().is_success());
         let bytes = body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
         serde_json::from_slice(&bytes).unwrap()
+    }
+
+    async fn send_error_request(app: Router, uri: &str) -> (StatusCode, Value) {
+        let response =
+            app.oneshot(Request::builder().uri(uri).body(Body::empty()).unwrap()).await.unwrap();
+        let status = response.status();
+        let bytes = body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        (status, serde_json::from_slice(&bytes).unwrap())
     }
 
     #[tokio::test]
@@ -1562,7 +1637,7 @@ mod tests {
         let body = send_request(app, "/l2-block-times?range=24h").await;
         assert_eq!(
             body,
-            json!({ "blocks": [ { "l2_block_number": 1, "block_time": "1970-01-01T00:00:02Z", "ms_since_prev_block": 2000 } ] })
+            json!({ "blocks": [ { "l2_block_number": 0, "block_time": "1970-01-01T00:00:02Z", "ms_since_prev_block": 2000 } ] })
         );
     }
 
@@ -1581,8 +1656,17 @@ mod tests {
         let body = send_request(app, "/l2-block-times?range=7d").await;
         assert_eq!(
             body,
-            json!({ "blocks": [ { "l2_block_number": 1, "block_time": "1970-01-01T00:00:02Z", "ms_since_prev_block": 2000 } ] })
+            json!({ "blocks": [ { "l2_block_number": 0, "block_time": "1970-01-01T00:00:02Z", "ms_since_prev_block": 2000 } ] })
         );
+    }
+
+    #[tokio::test]
+    async fn l2_block_times_invalid_address() {
+        let mock = Mock::new();
+        let app = build_app(mock.url());
+        let (status, body) = send_error_request(app, "/l2-block-times?range=1h&address=zzz").await;
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(body["type"], "invalid-params");
     }
 
     #[derive(Serialize, Row)]
@@ -1615,10 +1699,7 @@ mod tests {
         ]));
         let app = build_app(mock.url());
         let body = send_request(app, "/l2-gas-used?range=24h").await;
-        assert_eq!(
-            body,
-            json!({ "blocks": [ { "l2_block_number": 0, "gas_used": 0 }, { "l2_block_number": 1, "gas_used": 42 } ] })
-        );
+        assert_eq!(body, json!({ "blocks": [ { "l2_block_number": 0, "gas_used": 21 } ] }));
     }
 
     #[tokio::test]
@@ -1630,10 +1711,7 @@ mod tests {
         ]));
         let app = build_app(mock.url());
         let body = send_request(app, "/l2-gas-used?range=7d").await;
-        assert_eq!(
-            body,
-            json!({ "blocks": [ { "l2_block_number": 0, "gas_used": 0 }, { "l2_block_number": 1, "gas_used": 42 } ] })
-        );
+        assert_eq!(body, json!({ "blocks": [ { "l2_block_number": 0, "gas_used": 21 } ] }));
     }
 
     #[derive(Serialize, Row)]
@@ -2049,27 +2127,12 @@ mod tests {
     #[tokio::test]
     async fn block_transactions_invalid_address() {
         let mock = Mock::new();
-        #[derive(Serialize, Row)]
-        struct TxRowTest {
-            sequencer: AddressBytes,
-            l2_block_number: u64,
-            sum_tx: u32,
-        }
-        mock.add(handlers::provide(vec![TxRowTest {
-            sequencer: AddressBytes([1u8; 20]),
-            l2_block_number: 42,
-            sum_tx: 7,
-        }]));
+        // No ClickHouse queries should be made when the address is invalid
         let app = build_app(mock.url());
-        let body = send_request(app, "/block-transactions?range=1h&address=zzz").await;
-        assert_eq!(
-            body,
-            json!({
-                "blocks": [
-                    { "block": 42, "txs": 7, "sequencer": "0x0101010101010101010101010101010101010101" }
-                ]
-            })
-        );
+        let (status, body) =
+            send_error_request(app, "/block-transactions?range=1h&address=zzz").await;
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(body["type"], "invalid-params");
     }
 
     #[tokio::test]
@@ -2101,28 +2164,76 @@ mod tests {
     #[tokio::test]
     async fn block_transactions_sql_injection() {
         let mock = Mock::new();
-        #[derive(Serialize, Row)]
-        struct TxRowTest {
-            sequencer: AddressBytes,
-            l2_block_number: u64,
-            sum_tx: u32,
-        }
-        mock.add(handlers::provide(vec![TxRowTest {
-            sequencer: AddressBytes([1u8; 20]),
-            l2_block_number: 42,
-            sum_tx: 7,
-        }]));
+        // No ClickHouse queries should be made when the address is invalid
         let app = build_app(mock.url());
         let addr = "0x123%27;%20--";
         let uri = format!("/block-transactions?range=1h&address={addr}");
-        let body = send_request(app, &uri).await;
+        let (status, body) = send_error_request(app, &uri).await;
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(body["type"], "invalid-params");
+    }
+
+    #[test]
+    fn aggregate_l2_block_times_groups_correctly() {
+        let rows = vec![
+            L2BlockTimeRow {
+                l2_block_number: 0,
+                block_time: Utc.timestamp_opt(0, 0).unwrap(),
+                ms_since_prev_block: Some(1000),
+            },
+            L2BlockTimeRow {
+                l2_block_number: 5,
+                block_time: Utc.timestamp_opt(5, 0).unwrap(),
+                ms_since_prev_block: Some(1500),
+            },
+            L2BlockTimeRow {
+                l2_block_number: 10,
+                block_time: Utc.timestamp_opt(10, 0).unwrap(),
+                ms_since_prev_block: Some(2000),
+            },
+            L2BlockTimeRow {
+                l2_block_number: 11,
+                block_time: Utc.timestamp_opt(11, 0).unwrap(),
+                ms_since_prev_block: Some(3000),
+            },
+        ];
+
+        let agg = aggregate_l2_block_times(rows);
+
         assert_eq!(
-            body,
-            json!({
-                "blocks": [
-                    { "block": 42, "txs": 7, "sequencer": "0x0101010101010101010101010101010101010101" }
-                ]
-            })
+            agg,
+            vec![
+                L2BlockTimeRow {
+                    l2_block_number: 0,
+                    block_time: Utc.timestamp_opt(5, 0).unwrap(),
+                    ms_since_prev_block: Some(1250),
+                },
+                L2BlockTimeRow {
+                    l2_block_number: 10,
+                    block_time: Utc.timestamp_opt(11, 0).unwrap(),
+                    ms_since_prev_block: Some(2500),
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn aggregate_l2_gas_used_avg_per_ten_blocks() {
+        let rows = vec![
+            L2GasUsedRow { l2_block_number: 0, gas_used: 10 },
+            L2GasUsedRow { l2_block_number: 1, gas_used: 20 },
+            L2GasUsedRow { l2_block_number: 10, gas_used: 30 },
+            L2GasUsedRow { l2_block_number: 19, gas_used: 40 },
+        ];
+
+        let agg = aggregate_l2_gas_used(rows);
+
+        assert_eq!(
+            agg,
+            vec![
+                L2GasUsedRow { l2_block_number: 0, gas_used: 15 },
+                L2GasUsedRow { l2_block_number: 10, gas_used: 35 },
+            ]
         );
     }
 }
