@@ -161,10 +161,10 @@ export const fetchL2ReorgEvents = async (
   return {
     data: res.data
       ? res.data.events.map((e) => ({
-        l2_block_number: e.l2_block_number,
-        depth: e.depth,
-        timestamp: Date.parse(e.inserted_at),
-      }))
+          l2_block_number: e.l2_block_number,
+          depth: e.depth,
+          timestamp: Date.parse(e.inserted_at),
+        }))
       : null,
     badRequest: res.badRequest,
     error: res.error,
@@ -290,10 +290,10 @@ export const fetchProveTimes = async (
   return {
     data: res.data
       ? res.data.batches.map((b) => ({
-        name: b.batch_id.toString(),
-        value: b.seconds_to_prove,
-        timestamp: 0,
-      }))
+          name: b.batch_id.toString(),
+          value: b.seconds_to_prove,
+          timestamp: 0,
+        }))
       : null,
     badRequest: res.badRequest,
     error: res.error,
@@ -310,10 +310,10 @@ export const fetchVerifyTimes = async (
   return {
     data: res.data
       ? res.data.batches.map((b) => ({
-        name: b.batch_id.toString(),
-        value: b.seconds_to_verify,
-        timestamp: 0,
-      }))
+          name: b.batch_id.toString(),
+          value: b.seconds_to_verify,
+          timestamp: 0,
+        }))
       : null,
     badRequest: res.badRequest,
     error: res.error,
@@ -405,9 +405,9 @@ export const fetchL2GasUsed = async (
   return {
     data: res.data
       ? res.data.blocks.map((b) => ({
-        value: b.l2_block_number,
-        timestamp: b.gas_used,
-      }))
+          value: b.l2_block_number,
+          timestamp: b.gas_used,
+        }))
       : null,
     badRequest: res.badRequest,
     error: res.error,
@@ -416,18 +416,23 @@ export const fetchL2GasUsed = async (
 
 export const fetchSequencerDistribution = async (
   range: TimeRange,
-): Promise<RequestResult<{ name: string; value: number; tps: number | null }[]>> => {
+): Promise<
+  RequestResult<{ name: string; value: number; tps: number | null }[]>
+> => {
   const url = `${API_BASE}/sequencer-distribution?range=${range}`;
   const res = await fetchJson<{
     sequencers: { address: string; blocks: number; tps: number | null }[];
   }>(url);
   return {
     data: res.data
-      ? res.data.sequencers.map((s) => ({
-        name: getSequencerName(s.address),
-        value: s.blocks,
-        tps: s.tps,
-      }))
+      ? res.data.sequencers.map((s) => {
+          const name = getSequencerName(s.address);
+          return {
+            name: name === 'Unknown' ? s.address : name,
+            value: s.blocks,
+            tps: s.tps,
+          };
+        })
       : null,
     badRequest: res.badRequest,
     error: res.error,
@@ -485,9 +490,9 @@ export const fetchBlockTransactions = async (
   return {
     data: res.data?.blocks
       ? res.data.blocks.map((b) => ({
-        ...b,
-        sequencer: getSequencerName(b.sequencer),
-      }))
+          ...b,
+          sequencer: getSequencerName(b.sequencer),
+        }))
       : null,
     badRequest: res.badRequest,
     error: res.error,
@@ -530,10 +535,10 @@ export const fetchBatchBlobCounts = async (
   return {
     data: res.data
       ? res.data.batches.map((b) => ({
-        block: b.l1_block_number ?? b.batch_id, // Fallback to batch_id for backward compatibility
-        batch: b.batch_id,
-        blobs: b.blob_count,
-      }))
+          block: b.l1_block_number ?? b.batch_id, // Fallback to batch_id for backward compatibility
+          batch: b.batch_id,
+          blobs: b.blob_count,
+        }))
       : null,
     badRequest: res.badRequest,
     error: res.error,
@@ -588,7 +593,6 @@ export const fetchL2Fees = async (
   };
 };
 
-
 export interface FeeComponent {
   block: number;
   priority: number;
@@ -604,7 +608,12 @@ export const fetchFeeComponents = async (
     `${API_BASE}/l2-fee-components?range=${range}` +
     (address ? `&address=${address}` : '');
   const res = await fetchJson<{
-    blocks: { l2_block_number: number; priority_fee: number; base_fee: number; l1_data_cost: number | null }[];
+    blocks: {
+      l2_block_number: number;
+      priority_fee: number;
+      base_fee: number;
+      l1_data_cost: number | null;
+    }[];
   }>(url);
   return {
     data: res.data
@@ -642,7 +651,6 @@ export const fetchL2Tps = async (
 
   return { data, badRequest: res.badRequest, error: res.error };
 };
-
 
 export interface DashboardDataResponse {
   l2_block_cadence_ms: number | null;
