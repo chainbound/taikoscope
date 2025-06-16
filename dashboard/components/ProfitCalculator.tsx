@@ -41,6 +41,7 @@ export const ProfitCalculator: React.FC<ProfitCalculatorProps> = ({
   const totalFee = priority + base - l1DataCost;
 
   const { data: ethPrice = 0, error: ethPriceError } = useEthPrice();
+  const priceUnavailable = ethPriceError || !ethPrice;
 
   const HOURS_IN_MONTH = 30 * 24;
   const hours = rangeToHours(timeRange);
@@ -92,7 +93,7 @@ export const ProfitCalculator: React.FC<ProfitCalculatorProps> = ({
       <p className="mt-3 text-sm">
         Profit ({formatTimeRangeLabel(timeRange)}):{' '}
         <span className="font-semibold">${formatProfit(profit)}</span>
-        {ethPriceError && (
+        {priceUnavailable && (
           <span className="text-red-500 ml-2 text-xs">
             (ETH price unavailable)
           </span>
