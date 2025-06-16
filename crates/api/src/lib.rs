@@ -1060,7 +1060,7 @@ async fn block_transactions(
         }
     };
 
-    let blocks: Vec<BlockTransactionsItem> = rows
+    let mut blocks: Vec<BlockTransactionsItem> = rows
         .into_iter()
         .map(|r| BlockTransactionsItem {
             block: r.l2_block_number,
@@ -1068,6 +1068,11 @@ async fn block_transactions(
             sequencer: format!("0x{}", encode(r.sequencer)),
         })
         .collect();
+
+    let time_range = resolve_time_range_enum(&params.common.range, &params.common.time_range);
+    if time_range.seconds() > 3600 {
+        blocks = aggregate_block_transactions(blocks);
+    }
 
     tracing::info!(count = blocks.len(), "Returning block transactions");
     Ok(Json(BlockTransactionsResponse { blocks }))
@@ -1382,6 +1387,24 @@ fn aggregate_l2_gas_used(rows: Vec<L2GasUsedRow>) -> Vec<L2GasUsedRow> {
         .map(|(g, (sum, count))| {
             let avg = if count > 0 { sum / count } else { 0 };
             L2GasUsedRow { l2_block_number: g * 10, gas_used: avg }
+        })
+        .collect()
+}
+
+fn aggregate_block_transactions(rows: Vec<BlockTransactionsItem>) -> Vec<BlockTransactionsItem> {
+    use std::collections::BTreeMap;
+    let mut groups: BTreeMap<u64, Vec<BlockTransactionsItem>> = BTreeMap::new();
+    for row in rows {
+        groups.entry(row.block / 10).or_default().push(row);
+    }
+    groups
+        .into_iter()
+        .map(|(g, mut rs)| {
+            rs.sort_by_key(|r| r.block);
+            let last_seq = rs.last().map(|r| r.sequencer.clone()).unwrap_or_default();
+            let (sum, count) = rs.iter().fold((0u64, 0u64), |(s, c), r| (s + r.txs as u64, c + 1));
+            let avg = if count > 0 { (sum / count) as u32 } else { 0 };
+            BlockTransactionsItem { block: g * 10, txs: avg, sequencer: last_seq }
         })
         .collect()
 }
@@ -2235,5 +2258,22 @@ mod tests {
                 L2GasUsedRow { l2_block_number: 10, gas_used: 35 },
             ]
         );
+    }
+
+    #[test]
+    fn aggregate_block_transactions_avg_per_ten_blocks() {
+        let rows = vec![
+            BlockTransactionsItem { block: 0, txs: 10, sequencer: "0x0".into() },
+            BlockTransactionsItem { block: 1, txs: 20, sequencer: "0x0".into() },
+            BlockTransactionsItem { block: 10, txs: 30, sequencer: "0x0".into() },
+            BlockTransactionsItem { block: 19, txs: 40, sequencer: "0x0".into() },
+        ];
+
+        let agg = aggregate_block_transactions(rows);
+        assert_eq!(agg.len(), 2);
+        assert_eq!(agg[0].block, 0);
+        assert_eq!(agg[0].txs, 15);
+        assert_eq!(agg[1].block, 10);
+        assert_eq!(agg[1].txs, 35);
     }
 }
