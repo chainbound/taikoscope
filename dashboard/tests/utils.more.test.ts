@@ -24,6 +24,12 @@ describe('utils additional', () => {
     expect(props.children).toBe('42');
   });
 
+  it('formats large block numbers with commas', () => {
+    const el = blockLink(1234567);
+    const props = (el as any).props;
+    expect(props.children).toBe('1,234,567');
+  });
+
   it('creates an address link element', () => {
     const el = addressLink('0xabc', 'foo');
     const html = renderToStaticMarkup(el);

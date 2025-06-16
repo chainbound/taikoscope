@@ -151,7 +151,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     ],
     mapData: (data) =>
       (data as Record<string, any>[]).map((d) => ({
-        value: d.value,
+        value: Number(d.value).toLocaleString(),
         timestamp: d.timestamp,
       })),
     urlKey: 'batch-posting-cadence',
@@ -169,6 +169,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     mapData: (data) =>
       (data as Record<string, string | number>[]).map((d) => ({
         ...d,
+        name: Number(d.name).toLocaleString(),
         value: typeof d.value === 'number' ? d.value.toLocaleString() : d.value,
       })),
     chart: (data) => {
@@ -197,6 +198,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     mapData: (data) =>
       (data as Record<string, string | number>[]).map((d) => ({
         ...d,
+        name: Number(d.name).toLocaleString(),
         value: typeof d.value === 'number' ? d.value.toLocaleString() : d.value,
       })),
     chart: (data) => {
