@@ -408,7 +408,11 @@ impl Driver {
 
         match self.extractor.get_l1_data_posting_cost(header.hash, self.inbox_address).await {
             Ok(cost) => {
-                if let Err(e) = self.clickhouse.insert_l1_data_cost(header.number, cost).await {
+                if let Err(e) = self
+                    .clickhouse
+                    .insert_l1_data_cost(header.number, self.last_proposed_l2_block, cost)
+                    .await
+                {
                     tracing::error!(block_number = header.number, err = %e, "Failed to insert L1 data cost");
                 } else {
                     info!(block_number = header.number, cost, "Inserted L1 data cost");
