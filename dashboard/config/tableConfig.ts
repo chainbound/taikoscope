@@ -233,7 +233,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
         (d) => ({
           block: blockLink(d.block),
           txs: d.txs.toLocaleString(),
-          sequencer: d.sequencer,
+          sequencer: addressLink(d.sequencer),
         }),
       ),
     urlKey: 'block-tx',
