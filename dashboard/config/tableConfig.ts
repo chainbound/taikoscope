@@ -120,7 +120,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
         const name = getSequencerName(g);
         return {
           sequencer: name === g ? 'Unknown' : name,
-          address: g,
+          address: addressLink(g),
         };
       }),
     urlKey: 'gateways',
