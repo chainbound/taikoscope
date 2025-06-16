@@ -45,6 +45,7 @@ const BatchProcessChartComponent: React.FC<BatchProcessChartProps> = ({
         <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
         <XAxis
           dataKey="name"
+          tickFormatter={(v) => Number(v).toLocaleString()}
           stroke="#666666"
           fontSize={12}
           label={{
@@ -77,7 +78,7 @@ const BatchProcessChartComponent: React.FC<BatchProcessChartProps> = ({
         />
         <Tooltip
           formatter={(value: number) => [formatValue(value)]}
-          labelFormatter={(label) => `Batch ${label}`}
+          labelFormatter={(label) => `Batch ${Number(label).toLocaleString()}`}
           contentStyle={{
             backgroundColor: 'rgba(255, 255, 255, 0.9)',
             borderColor: lineColor,
