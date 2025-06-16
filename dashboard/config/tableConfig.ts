@@ -239,7 +239,11 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
       { key: 'value', label: 'Block Number' },
       { key: 'timestamp', label: 'Gas Used' },
     ],
-    mapData: (data) => data as Record<string, string | number>[],
+    mapData: (data) =>
+      (data as { value: number; timestamp: number }[]).map((d) => ({
+        value: d.value.toLocaleString(),
+        timestamp: d.timestamp.toLocaleString(),
+      })),
     chart: (data) => {
       const GasUsedChart = React.lazy(() =>
         import('../components/GasUsedChart').then((m) => ({
