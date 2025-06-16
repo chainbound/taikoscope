@@ -3,7 +3,7 @@ import { TimeRange } from '../types';
 import { RefreshCountdown } from './RefreshCountdown';
 import { TAIKO_PINK } from '../theme';
 import { isValidRefreshRate } from '../utils';
-import { isValidTimeRange } from '../utils/timeRange';
+import { isValidTimeRange, formatTimeRangeDisplay } from '../utils/timeRange';
 import { useRouterNavigation } from '../hooks/useRouterNavigation';
 import { useErrorHandler } from '../hooks/useErrorHandler';
 import { showToast } from '../utils/toast';
@@ -139,6 +139,12 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
   const [fromTime, setFromTime] = React.useState('');
   const [toTime, setToTime] = React.useState('');
 
+  const buttonLabel = React.useMemo(
+    () =>
+      isCustom ? formatTimeRangeDisplay(currentTimeRange) : currentTimeRange,
+    [currentTimeRange, isCustom],
+  );
+
   const customTooltip = React.useMemo(() => {
     if (!isCustom) return undefined;
     const [s, e] = currentTimeRange.split('-').map((t) => new Date(Number(t)));
@@ -210,7 +216,7 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
           className="p-1 border rounded-md text-sm bg-white dark:bg-gray-800 min-w-[3rem]"
           title={customTooltip}
         >
-          {isCustom ? 'Custom range' : currentTimeRange}
+          {buttonLabel}
         </button>
       </Popover.Trigger>
       <Popover.Content
@@ -252,7 +258,7 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
             </div>
             <button
               onClick={applyCustom}
-              disabled={isChanging}
+              disabled={isChanging || !date || !fromTime || !toTime}
               className="mt-1 px-2 py-1 text-sm rounded-md bg-gray-200 dark:bg-gray-700 w-full"
             >
               Apply
