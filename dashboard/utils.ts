@@ -1,10 +1,16 @@
 import React from 'react';
 import { TAIKO_PINK } from './theme';
 
+const rawNetworkName =
+  ((import.meta as any).env.VITE_NETWORK_NAME as string | undefined) ??
+  ((import.meta as any).env.NETWORK_NAME as string | undefined);
+
 export const TAIKOSCAN_BASE =
   ((import.meta as any).env.VITE_TAIKOSCAN_BASE as string | undefined) ??
   ((import.meta as any).env.TAIKOSCAN_BASE as string | undefined) ??
-  'https://cb-blockscout-masaya.vercel.app/blocks';
+  (rawNetworkName?.toLowerCase() === 'hekla'
+    ? 'https://hekla.taikoscan.io'
+    : 'https://cb-blockscout-masaya.vercel.app/blocks');
 
 export const blockLink = (block: number): React.ReactElement =>
   React.createElement(
