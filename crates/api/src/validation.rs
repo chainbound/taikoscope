@@ -14,16 +14,16 @@ const MAX_TIMESTAMP_MS: u64 = 4_102_444_800_000; // Year 2100
 #[derive(Debug, Deserialize, ToSchema, IntoParams)]
 pub struct TimeRangeParams {
     /// Filter for timestamps greater than this value (exclusive)
-    #[serde(rename = "created[gt]")]
+    #[serde(rename = "created[gt]", deserialize_with = "crate::validation::de_u64_opt", default)]
     pub created_gt: Option<u64>,
     /// Filter for timestamps greater than or equal to this value (inclusive)
-    #[serde(rename = "created[gte]")]
+    #[serde(rename = "created[gte]", deserialize_with = "crate::validation::de_u64_opt", default)]
     pub created_gte: Option<u64>,
     /// Filter for timestamps less than this value (exclusive)
-    #[serde(rename = "created[lt]")]
+    #[serde(rename = "created[lt]", deserialize_with = "crate::validation::de_u64_opt", default)]
     pub created_lt: Option<u64>,
     /// Filter for timestamps less than or equal to this value (inclusive)
-    #[serde(rename = "created[lte]")]
+    #[serde(rename = "created[lte]", deserialize_with = "crate::validation::de_u64_opt", default)]
     pub created_lte: Option<u64>,
 }
 
@@ -229,6 +229,31 @@ pub fn resolve_time_range_since(
 
     // Fall back to range parameter or default - no time limit enforcement
     now - range_duration(range)
+}
+
+/// Custom deserializer that converts a URL-encoded form value into a `u64`.
+/// This accepts both bare numbers (e.g. `1750000`) and quoted numbers (e.g.
+/// `"1750000"`) to be tolerant of over-encoded clients.
+pub fn de_u64_opt<'de, D>(deserializer: D) -> Result<Option<u64>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    use serde::de::Error;
+
+    // Deserialize the value as an optional string. `serde_urlencoded` always
+    // provides strings, so this covers both quoted and unquoted numbers.
+    let opt: Option<String> = Option::deserialize(deserializer)?;
+
+    match opt {
+        None => Ok(None),
+        Some(raw) => {
+            let trimmed = raw.trim_matches('"');
+            trimmed
+                .parse::<u64>()
+                .map(Some)
+                .map_err(|e| Error::custom(format!("invalid integer '{}': {}", raw, e)))
+        }
+    }
 }
 
 #[cfg(test)]
