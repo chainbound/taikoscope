@@ -215,7 +215,6 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
       { key: 'sequencer', label: 'Sequencer' },
     ],
     mapData: (data) => data as Record<string, string | number>[],
-    useUnlimitedData: true,
     urlKey: 'block-tx',
   },
 
@@ -228,7 +227,6 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
       { key: 'timestamp', label: 'Interval (s)' },
     ],
     mapData: (data) => data as Record<string, string | number>[],
-    useUnlimitedData: true,
     urlKey: 'l2-block-times',
     reverseOrder: true,
   },
@@ -253,7 +251,6 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
         lineColor: '#E573B5',
       });
     },
-    useUnlimitedData: true,
     urlKey: 'l2-gas-used',
     reverseOrder: true,
   },
@@ -289,7 +286,6 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
         block: blockLink(d.block),
         tps: d.tps.toFixed(2),
       })),
-    useUnlimitedData: true,
     urlKey: 'l2-tps',
     reverseOrder: true,
   },
