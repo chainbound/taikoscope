@@ -1342,7 +1342,7 @@ fn aggregate_l2_block_times(rows: Vec<L2BlockTimeRow>) -> Vec<L2BlockTimeRow> {
                 .fold((0u64, 0u64), |(s, c), ms| (s + ms, c + 1));
             let avg = if count > 0 { sum / count } else { 0 };
             L2BlockTimeRow {
-                l2_block_number: g * 10 + 9,
+                l2_block_number: (g + 1) * 10,
                 block_time: last_time,
                 ms_since_prev_block: Some(avg),
             }
@@ -1352,13 +1352,18 @@ fn aggregate_l2_block_times(rows: Vec<L2BlockTimeRow>) -> Vec<L2BlockTimeRow> {
 
 fn aggregate_l2_gas_used(rows: Vec<L2GasUsedRow>) -> Vec<L2GasUsedRow> {
     use std::collections::BTreeMap;
-    let mut groups: BTreeMap<u64, u64> = BTreeMap::new();
+    let mut groups: BTreeMap<u64, (u64, u64)> = BTreeMap::new();
     for row in rows {
-        *groups.entry(row.l2_block_number / 10).or_insert(0) += row.gas_used;
+        let entry = groups.entry(row.l2_block_number / 10).or_insert((0, 0));
+        entry.0 += row.gas_used;
+        entry.1 += 1;
     }
     groups
         .into_iter()
-        .map(|(g, gas)| L2GasUsedRow { l2_block_number: g * 10 + 9, gas_used: gas })
+        .map(|(g, (sum, count))| {
+            let avg = if count > 0 { sum / count } else { 0 };
+            L2GasUsedRow { l2_block_number: (g + 1) * 10, gas_used: avg }
+        })
         .collect()
 }
 
@@ -1605,7 +1610,7 @@ mod tests {
         let body = send_request(app, "/l2-block-times?range=24h").await;
         assert_eq!(
             body,
-            json!({ "blocks": [ { "l2_block_number": 9, "block_time": "1970-01-01T00:00:02Z", "ms_since_prev_block": 2000 } ] })
+            json!({ "blocks": [ { "l2_block_number": 10, "block_time": "1970-01-01T00:00:02Z", "ms_since_prev_block": 2000 } ] })
         );
     }
 
@@ -1624,7 +1629,7 @@ mod tests {
         let body = send_request(app, "/l2-block-times?range=7d").await;
         assert_eq!(
             body,
-            json!({ "blocks": [ { "l2_block_number": 9, "block_time": "1970-01-01T00:00:02Z", "ms_since_prev_block": 2000 } ] })
+            json!({ "blocks": [ { "l2_block_number": 10, "block_time": "1970-01-01T00:00:02Z", "ms_since_prev_block": 2000 } ] })
         );
     }
 
@@ -1658,7 +1663,7 @@ mod tests {
         ]));
         let app = build_app(mock.url());
         let body = send_request(app, "/l2-gas-used?range=24h").await;
-        assert_eq!(body, json!({ "blocks": [ { "l2_block_number": 9, "gas_used": 42 } ] }));
+        assert_eq!(body, json!({ "blocks": [ { "l2_block_number": 10, "gas_used": 21 } ] }));
     }
 
     #[tokio::test]
@@ -1670,7 +1675,7 @@ mod tests {
         ]));
         let app = build_app(mock.url());
         let body = send_request(app, "/l2-gas-used?range=7d").await;
-        assert_eq!(body, json!({ "blocks": [ { "l2_block_number": 9, "gas_used": 42 } ] }));
+        assert_eq!(body, json!({ "blocks": [ { "l2_block_number": 10, "gas_used": 21 } ] }));
     }
 
     #[derive(Serialize, Row)]
@@ -2194,12 +2199,12 @@ mod tests {
             agg,
             vec![
                 L2BlockTimeRow {
-                    l2_block_number: 9,
+                    l2_block_number: 10,
                     block_time: Utc.timestamp_opt(5, 0).unwrap(),
                     ms_since_prev_block: Some(1250),
                 },
                 L2BlockTimeRow {
-                    l2_block_number: 19,
+                    l2_block_number: 20,
                     block_time: Utc.timestamp_opt(11, 0).unwrap(),
                     ms_since_prev_block: Some(2500),
                 },
@@ -2208,7 +2213,7 @@ mod tests {
     }
 
     #[test]
-    fn aggregate_l2_gas_used_sums_per_ten_blocks() {
+    fn aggregate_l2_gas_used_avg_per_ten_blocks() {
         let rows = vec![
             L2GasUsedRow { l2_block_number: 0, gas_used: 10 },
             L2GasUsedRow { l2_block_number: 1, gas_used: 20 },
@@ -2221,8 +2226,8 @@ mod tests {
         assert_eq!(
             agg,
             vec![
-                L2GasUsedRow { l2_block_number: 9, gas_used: 30 },
-                L2GasUsedRow { l2_block_number: 19, gas_used: 70 },
+                L2GasUsedRow { l2_block_number: 10, gas_used: 15 },
+                L2GasUsedRow { l2_block_number: 20, gas_used: 35 },
             ]
         );
     }
