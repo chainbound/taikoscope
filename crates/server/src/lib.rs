@@ -5,12 +5,15 @@ use std::{net::SocketAddr, sync::Arc, time::Duration};
 use api::{self, ApiState};
 use axum::{
     Router,
-    http::{HeaderValue, Method},
+    http::{HeaderValue, Method, StatusCode},
+    middleware::{self, Next},
+    response::IntoResponse,
     routing::get,
 };
 use clickhouse_lib::ClickhouseReader;
 use eyre::Result;
 use runtime::health;
+use tokio::sync::Mutex;
 use tower_http::{
     cors::{AllowOrigin, Any, CorsLayer},
     trace::{DefaultMakeSpan, DefaultOnRequest, DefaultOnResponse, TraceLayer},
@@ -41,11 +44,33 @@ pub fn router(state: ApiState, allowed_origins: Vec<String>) -> Router {
         .on_request(DefaultOnRequest::new().level(Level::INFO))
         .on_response(DefaultOnResponse::new().level(Level::INFO));
 
+    let limiter = Arc::new(Mutex::new((std::time::Instant::now(), 0u64)));
+    let max = state.max_requests;
+    let period = state.rate_period;
+    let middleware = middleware::from_fn(move |req, next: Next| {
+        let limiter = Arc::clone(&limiter);
+        async move {
+            let mut guard = limiter.lock().await;
+            let now = std::time::Instant::now();
+            if now.duration_since(guard.0) > period {
+                guard.0 = now;
+                guard.1 = 0;
+            }
+            if guard.1 >= max {
+                return StatusCode::TOO_MANY_REQUESTS.into_response();
+            }
+            guard.1 += 1;
+            drop(guard);
+            next.run(req).await
+        }
+    });
+
     Router::new()
         .route("/health", get(health::handler))
         .nest(&format!("/{API_VERSION}"), api::router(state))
         .layer(cors)
         .layer(trace)
+        .layer(middleware)
 }
 
 /// Run the API server on the given address.

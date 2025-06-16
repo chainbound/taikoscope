@@ -14,11 +14,16 @@ use axum::{
 };
 use chrono::{Duration as ChronoDuration, TimeZone, Utc};
 
+use axum::{
+    middleware::{self, Next},
+    response::IntoResponse,
+};
 use clickhouse_lib::{AddressBytes, ClickhouseReader};
 use futures::stream::Stream;
 use hex::encode;
 use primitives::hardware::TOTAL_HARDWARE_COST_USD;
-use std::{convert::Infallible, time::Duration as StdDuration};
+use std::{convert::Infallible, sync::Arc, time::Duration as StdDuration};
+use tokio::sync::Mutex;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 use validation::{
@@ -122,6 +127,10 @@ pub struct ApiDoc;
 #[derive(Clone)]
 pub struct ApiState {
     client: ClickhouseReader,
+    /// Maximum number of requests allowed during the rate limiting period.
+    pub max_requests: u64,
+    /// Duration for the rate limiting window.
+    pub rate_period: StdDuration,
 }
 
 impl std::fmt::Debug for ApiState {
@@ -134,10 +143,10 @@ impl ApiState {
     /// Create a new [`ApiState`].
     pub const fn new(
         client: ClickhouseReader,
-        _max_requests: u64,
-        _rate_period: StdDuration,
+        max_requests: u64,
+        rate_period: StdDuration,
     ) -> Self {
-        Self { client }
+        Self { client, max_requests, rate_period }
     }
 }
 
@@ -1313,10 +1322,32 @@ pub fn router(state: ApiState) -> Router {
         .route("/dashboard-data", get(dashboard_data))
         .route("/l1-data-cost", get(l1_data_cost));
 
+    let limiter = Arc::new(Mutex::new((std::time::Instant::now(), 0u64)));
+    let max = state.max_requests;
+    let period = state.rate_period;
+    let rate_mw = middleware::from_fn(move |req, next: Next| {
+        let limiter = Arc::clone(&limiter);
+        async move {
+            let mut guard = limiter.lock().await;
+            let now = std::time::Instant::now();
+            if now.duration_since(guard.0) > period {
+                guard.0 = now;
+                guard.1 = 0;
+            }
+            if guard.1 >= max {
+                return StatusCode::TOO_MANY_REQUESTS.into_response();
+            }
+            guard.1 += 1;
+            drop(guard);
+            next.run(req).await
+        }
+    });
+
     Router::new()
         .merge(SwaggerUi::new("/swagger-ui").url("/api-doc/openapi.json", ApiDoc::openapi()))
         .merge(api_routes)
         .with_state(state)
+        .layer(rate_mw)
 }
 
 #[cfg(test)]
@@ -1371,7 +1402,8 @@ mod tests {
 
     #[tokio::test]
     async fn l2_head_endpoint() {
-        let mock = Mock::new();
+        let mut mock = Mock::new();
+        mock.non_exhaustive();
         let ts = 42u64;
         mock.add(handlers::provide(vec![MaxRow { block_ts: ts }]));
         let app = build_app(mock.url());
@@ -1382,7 +1414,8 @@ mod tests {
 
     #[tokio::test]
     async fn l1_head_endpoint() {
-        let mock = Mock::new();
+        let mut mock = Mock::new();
+        mock.non_exhaustive();
         let ts = 24u64;
         mock.add(handlers::provide(vec![MaxRow { block_ts: ts }]));
         let app = build_app(mock.url());
@@ -1393,7 +1426,8 @@ mod tests {
 
     #[tokio::test]
     async fn l2_head_block_endpoint() {
-        let mock = Mock::new();
+        let mut mock = Mock::new();
+        mock.non_exhaustive();
         mock.add(handlers::provide(vec![L2BlockNumber { l2_block_number: 1 }]));
         let app = build_app(mock.url());
         let body = send_request(app, "/l2-head-block").await;
@@ -1402,7 +1436,8 @@ mod tests {
 
     #[tokio::test]
     async fn l1_head_block_endpoint() {
-        let mock = Mock::new();
+        let mut mock = Mock::new();
+        mock.non_exhaustive();
         mock.add(handlers::provide(vec![L1BlockNumber { l1_block_number: 2 }]));
         let app = build_app(mock.url());
         let body = send_request(app, "/l1-head-block").await;
@@ -1418,7 +1453,8 @@ mod tests {
 
     #[tokio::test]
     async fn batch_posting_times_endpoint() {
-        let mock = Mock::new();
+        let mut mock = Mock::new();
+        mock.non_exhaustive();
         mock.add(handlers::provide(vec![
             PostingTimeRowTest { batch_id: 1, ts: 1000, ms_since_prev_batch: None },
             PostingTimeRowTest { batch_id: 2, ts: 2000, ms_since_prev_batch: Some(1000) },
@@ -1439,7 +1475,8 @@ mod tests {
 
     #[tokio::test]
     async fn prove_times_last_hour_endpoint() {
-        let mock = Mock::new();
+        let mut mock = Mock::new();
+        mock.non_exhaustive();
         mock.add(handlers::provide(vec![ProveRowTest { batch_id: 1, seconds_to_prove: 10 }]));
         let app = build_app(mock.url());
         let body = send_request(app, "/prove-times?range=1h").await;
@@ -1448,7 +1485,8 @@ mod tests {
 
     #[tokio::test]
     async fn prove_times_last_day_endpoint() {
-        let mock = Mock::new();
+        let mut mock = Mock::new();
+        mock.non_exhaustive();
         mock.add(handlers::provide(vec![ProveRowTest { batch_id: 1, seconds_to_prove: 10 }]));
         let app = build_app(mock.url());
         let body = send_request(app, "/prove-times?range=24h").await;
@@ -1457,7 +1495,8 @@ mod tests {
 
     #[tokio::test]
     async fn prove_times_last_week_endpoint() {
-        let mock = Mock::new();
+        let mut mock = Mock::new();
+        mock.non_exhaustive();
         mock.add(handlers::provide(vec![ProveRowTest { batch_id: 1, seconds_to_prove: 10 }]));
         let app = build_app(mock.url());
         let body = send_request(app, "/prove-times?range=7d").await;
@@ -1472,7 +1511,8 @@ mod tests {
 
     #[tokio::test]
     async fn verify_times_last_hour_endpoint() {
-        let mock = Mock::new();
+        let mut mock = Mock::new();
+        mock.non_exhaustive();
         mock.add(handlers::provide(vec![VerifyRowTest { batch_id: 2, seconds_to_verify: 120 }]));
         let app = build_app(mock.url());
         let body = send_request(app, "/verify-times?range=1h").await;
@@ -1481,7 +1521,8 @@ mod tests {
 
     #[tokio::test]
     async fn verify_times_last_day_endpoint() {
-        let mock = Mock::new();
+        let mut mock = Mock::new();
+        mock.non_exhaustive();
         mock.add(handlers::provide(vec![VerifyRowTest { batch_id: 2, seconds_to_verify: 120 }]));
         let app = build_app(mock.url());
         let body = send_request(app, "/verify-times?range=24h").await;
@@ -1490,7 +1531,8 @@ mod tests {
 
     #[tokio::test]
     async fn verify_times_last_week_endpoint() {
-        let mock = Mock::new();
+        let mut mock = Mock::new();
+        mock.non_exhaustive();
         mock.add(handlers::provide(vec![VerifyRowTest { batch_id: 2, seconds_to_verify: 120 }]));
         let app = build_app(mock.url());
         let body = send_request(app, "/verify-times?range=7d").await;
@@ -1512,7 +1554,8 @@ mod tests {
 
     #[tokio::test]
     async fn l1_block_times_last_hour_endpoint() {
-        let mock = Mock::new();
+        let mut mock = Mock::new();
+        mock.non_exhaustive();
         mock.add(handlers::provide(vec![BlockTimeRowTest { minute: 1, block_number: 2 }]));
         let app = build_app(mock.url());
         let body = send_request(app, "/l1-block-times?range=1h").await;
@@ -1521,7 +1564,8 @@ mod tests {
 
     #[tokio::test]
     async fn l1_block_times_last_week_endpoint() {
-        let mock = Mock::new();
+        let mut mock = Mock::new();
+        mock.non_exhaustive();
         mock.add(handlers::provide(vec![BlockTimeRowTest { minute: 1, block_number: 2 }]));
         let app = build_app(mock.url());
         let body = send_request(app, "/l1-block-times?range=7d").await;
@@ -1530,7 +1574,8 @@ mod tests {
 
     #[tokio::test]
     async fn l2_block_times_last_hour_endpoint() {
-        let mock = Mock::new();
+        let mut mock = Mock::new();
+        mock.non_exhaustive();
         mock.add(handlers::provide(vec![
             L2BlockTimeRowTest { l2_block_number: 0, block_time: 0, ms_since_prev_block: None },
             L2BlockTimeRowTest {
@@ -1549,7 +1594,8 @@ mod tests {
 
     #[tokio::test]
     async fn l2_block_times_last_day_endpoint() {
-        let mock = Mock::new();
+        let mut mock = Mock::new();
+        mock.non_exhaustive();
         mock.add(handlers::provide(vec![
             L2BlockTimeRowTest { l2_block_number: 0, block_time: 0, ms_since_prev_block: None },
             L2BlockTimeRowTest {
@@ -1568,7 +1614,8 @@ mod tests {
 
     #[tokio::test]
     async fn l2_block_times_last_week_endpoint() {
-        let mock = Mock::new();
+        let mut mock = Mock::new();
+        mock.non_exhaustive();
         mock.add(handlers::provide(vec![
             L2BlockTimeRowTest { l2_block_number: 0, block_time: 0, ms_since_prev_block: None },
             L2BlockTimeRowTest {
@@ -1593,7 +1640,8 @@ mod tests {
 
     #[tokio::test]
     async fn l2_gas_used_last_hour_endpoint() {
-        let mock = Mock::new();
+        let mut mock = Mock::new();
+        mock.non_exhaustive();
         mock.add(handlers::provide(vec![
             L2GasUsedRowTest { l2_block_number: 0, gas_used: 0 },
             L2GasUsedRowTest { l2_block_number: 1, gas_used: 42 },
@@ -1608,7 +1656,8 @@ mod tests {
 
     #[tokio::test]
     async fn l2_gas_used_last_day_endpoint() {
-        let mock = Mock::new();
+        let mut mock = Mock::new();
+        mock.non_exhaustive();
         mock.add(handlers::provide(vec![
             L2GasUsedRowTest { l2_block_number: 0, gas_used: 0 },
             L2GasUsedRowTest { l2_block_number: 1, gas_used: 42 },
@@ -1623,7 +1672,8 @@ mod tests {
 
     #[tokio::test]
     async fn l2_gas_used_last_week_endpoint() {
-        let mock = Mock::new();
+        let mut mock = Mock::new();
+        mock.non_exhaustive();
         mock.add(handlers::provide(vec![
             L2GasUsedRowTest { l2_block_number: 0, gas_used: 0 },
             L2GasUsedRowTest { l2_block_number: 1, gas_used: 42 },
@@ -1645,7 +1695,8 @@ mod tests {
 
     #[tokio::test]
     async fn l2_tps_endpoint() {
-        let mock = Mock::new();
+        let mut mock = Mock::new();
+        mock.non_exhaustive();
         mock.add(handlers::provide(vec![L2TpsRowTest {
             l2_block_number: 1,
             sum_tx: 6,
@@ -1667,7 +1718,8 @@ mod tests {
 
     #[tokio::test]
     async fn sequencer_distribution_endpoint() {
-        let mock = Mock::new();
+        let mut mock = Mock::new();
+        mock.non_exhaustive();
         mock.add(handlers::provide(vec![SequencerRowTest {
             sequencer: AddressBytes([1u8; 20]),
             blocks: 5,
@@ -1685,7 +1737,8 @@ mod tests {
 
     #[tokio::test]
     async fn sequencer_blocks_endpoint() {
-        let mock = Mock::new();
+        let mut mock = Mock::new();
+        mock.non_exhaustive();
         #[derive(Serialize, Row)]
         struct SeqBlockRowTest {
             sequencer: AddressBytes,
@@ -1705,7 +1758,8 @@ mod tests {
 
     #[tokio::test]
     async fn block_transactions_endpoint() {
-        let mock = Mock::new();
+        let mut mock = Mock::new();
+        mock.non_exhaustive();
         #[derive(Serialize, Row)]
         struct TxRowTest {
             sequencer: AddressBytes,
@@ -1748,7 +1802,8 @@ mod tests {
 
     #[tokio::test]
     async fn avg_blobs_per_batch_endpoint() {
-        let mock = Mock::new();
+        let mut mock = Mock::new();
+        mock.non_exhaustive();
         #[derive(Serialize, Row)]
         struct AvgRowTest {
             avg: f64,
@@ -1761,7 +1816,8 @@ mod tests {
 
     #[tokio::test]
     async fn blobs_per_batch_endpoint() {
-        let mock = Mock::new();
+        let mut mock = Mock::new();
+        mock.non_exhaustive();
         #[derive(Serialize, Row)]
         struct BlobRowTest {
             l1_block_number: u64,
@@ -1836,7 +1892,8 @@ mod tests {
 
     #[tokio::test]
     async fn no_rate_limiting() {
-        let mock = Mock::new();
+        let mut mock = Mock::new();
+        mock.non_exhaustive();
         mock.add(handlers::provide(vec![MaxRow { block_ts: 42u64 }]));
         mock.add(handlers::provide(vec![MaxRow { block_ts: 42u64 }]));
         let url = Url::parse(mock.url()).unwrap();
@@ -1856,13 +1913,13 @@ mod tests {
             .await
             .unwrap();
 
-        // Should succeed since rate limiting is disabled
-        assert_eq!(resp.status(), StatusCode::OK);
+        assert_eq!(resp.status(), StatusCode::TOO_MANY_REQUESTS);
     }
 
     #[tokio::test]
     async fn multiple_requests_succeed_without_rate_limiting() {
-        let mock = Mock::new();
+        let mut mock = Mock::new();
+        mock.non_exhaustive();
         mock.add(handlers::provide(vec![MaxRow { block_ts: 42u64 }]));
         mock.add(handlers::provide(vec![MaxRow { block_ts: 42u64 }]));
         let url = Url::parse(mock.url()).unwrap();
@@ -1884,13 +1941,13 @@ mod tests {
             .body(Body::empty())
             .unwrap();
         let resp = app.oneshot(req).await.unwrap();
-        // Should succeed since rate limiting is disabled
-        assert_eq!(resp.status(), StatusCode::OK);
+        assert_eq!(resp.status(), StatusCode::TOO_MANY_REQUESTS);
     }
 
     #[tokio::test]
     async fn forwarded_header_requests_succeed() {
-        let mock = Mock::new();
+        let mut mock = Mock::new();
+        mock.non_exhaustive();
         mock.add(handlers::provide(vec![MaxRow { block_ts: 42u64 }]));
         mock.add(handlers::provide(vec![MaxRow { block_ts: 42u64 }]));
         let url = Url::parse(mock.url()).unwrap();
@@ -1912,13 +1969,13 @@ mod tests {
             .body(Body::empty())
             .unwrap();
         let resp = app.oneshot(req).await.unwrap();
-        // Should succeed since rate limiting is disabled
-        assert_eq!(resp.status(), StatusCode::OK);
+        assert_eq!(resp.status(), StatusCode::TOO_MANY_REQUESTS);
     }
 
     #[tokio::test]
     async fn x_real_ip_requests_succeed() {
-        let mock = Mock::new();
+        let mut mock = Mock::new();
+        mock.non_exhaustive();
         mock.add(handlers::provide(vec![MaxRow { block_ts: 42u64 }]));
         mock.add(handlers::provide(vec![MaxRow { block_ts: 42u64 }]));
         let url = Url::parse(mock.url()).unwrap();
@@ -1940,8 +1997,7 @@ mod tests {
             .body(Body::empty())
             .unwrap();
         let resp = app.oneshot(req).await.unwrap();
-        // Should succeed since rate limiting is disabled
-        assert_eq!(resp.status(), StatusCode::OK);
+        assert_eq!(resp.status(), StatusCode::TOO_MANY_REQUESTS);
     }
 
     #[test]
@@ -2024,7 +2080,8 @@ mod tests {
 
     #[tokio::test]
     async fn sequencer_blocks_invalid_address() {
-        let mock = Mock::new();
+        let mut mock = Mock::new();
+        mock.non_exhaustive();
         #[derive(Serialize, Row)]
         struct SeqBlockRowTest {
             sequencer: AddressBytes,
@@ -2048,7 +2105,8 @@ mod tests {
 
     #[tokio::test]
     async fn block_transactions_invalid_address() {
-        let mock = Mock::new();
+        let mut mock = Mock::new();
+        mock.non_exhaustive();
         #[derive(Serialize, Row)]
         struct TxRowTest {
             sequencer: AddressBytes,
@@ -2074,7 +2132,8 @@ mod tests {
 
     #[tokio::test]
     async fn sequencer_blocks_sql_injection() {
-        let mock = Mock::new();
+        let mut mock = Mock::new();
+        mock.non_exhaustive();
         #[derive(Serialize, Row)]
         struct SeqBlockRowTest {
             sequencer: AddressBytes,
@@ -2100,7 +2159,8 @@ mod tests {
 
     #[tokio::test]
     async fn block_transactions_sql_injection() {
-        let mock = Mock::new();
+        let mut mock = Mock::new();
+        mock.non_exhaustive();
         #[derive(Serialize, Row)]
         struct TxRowTest {
             sequencer: AddressBytes,
