@@ -1361,7 +1361,7 @@ fn aggregate_l2_block_times(rows: Vec<L2BlockTimeRow>) -> Vec<L2BlockTimeRow> {
                 .fold((0u64, 0u64), |(s, c), ms| (s + ms, c + 1));
             let avg = if count > 0 { sum / count } else { 0 };
             L2BlockTimeRow {
-                l2_block_number: (g + 1) * 10,
+                l2_block_number: g * 10,
                 block_time: last_time,
                 ms_since_prev_block: Some(avg),
             }
@@ -1381,7 +1381,7 @@ fn aggregate_l2_gas_used(rows: Vec<L2GasUsedRow>) -> Vec<L2GasUsedRow> {
         .into_iter()
         .map(|(g, (sum, count))| {
             let avg = if count > 0 { sum / count } else { 0 };
-            L2GasUsedRow { l2_block_number: (g + 1) * 10, gas_used: avg }
+            L2GasUsedRow { l2_block_number: g * 10, gas_used: avg }
         })
         .collect()
 }
@@ -1637,7 +1637,7 @@ mod tests {
         let body = send_request(app, "/l2-block-times?range=24h").await;
         assert_eq!(
             body,
-            json!({ "blocks": [ { "l2_block_number": 10, "block_time": "1970-01-01T00:00:02Z", "ms_since_prev_block": 2000 } ] })
+            json!({ "blocks": [ { "l2_block_number": 0, "block_time": "1970-01-01T00:00:02Z", "ms_since_prev_block": 2000 } ] })
         );
     }
 
@@ -1656,7 +1656,7 @@ mod tests {
         let body = send_request(app, "/l2-block-times?range=7d").await;
         assert_eq!(
             body,
-            json!({ "blocks": [ { "l2_block_number": 10, "block_time": "1970-01-01T00:00:02Z", "ms_since_prev_block": 2000 } ] })
+            json!({ "blocks": [ { "l2_block_number": 0, "block_time": "1970-01-01T00:00:02Z", "ms_since_prev_block": 2000 } ] })
         );
     }
 
@@ -1699,7 +1699,7 @@ mod tests {
         ]));
         let app = build_app(mock.url());
         let body = send_request(app, "/l2-gas-used?range=24h").await;
-        assert_eq!(body, json!({ "blocks": [ { "l2_block_number": 10, "gas_used": 21 } ] }));
+        assert_eq!(body, json!({ "blocks": [ { "l2_block_number": 0, "gas_used": 21 } ] }));
     }
 
     #[tokio::test]
@@ -1711,7 +1711,7 @@ mod tests {
         ]));
         let app = build_app(mock.url());
         let body = send_request(app, "/l2-gas-used?range=7d").await;
-        assert_eq!(body, json!({ "blocks": [ { "l2_block_number": 10, "gas_used": 21 } ] }));
+        assert_eq!(body, json!({ "blocks": [ { "l2_block_number": 0, "gas_used": 21 } ] }));
     }
 
     #[derive(Serialize, Row)]
@@ -2204,12 +2204,12 @@ mod tests {
             agg,
             vec![
                 L2BlockTimeRow {
-                    l2_block_number: 10,
+                    l2_block_number: 0,
                     block_time: Utc.timestamp_opt(5, 0).unwrap(),
                     ms_since_prev_block: Some(1250),
                 },
                 L2BlockTimeRow {
-                    l2_block_number: 20,
+                    l2_block_number: 10,
                     block_time: Utc.timestamp_opt(11, 0).unwrap(),
                     ms_since_prev_block: Some(2500),
                 },
@@ -2231,8 +2231,8 @@ mod tests {
         assert_eq!(
             agg,
             vec![
-                L2GasUsedRow { l2_block_number: 10, gas_used: 15 },
-                L2GasUsedRow { l2_block_number: 20, gas_used: 35 },
+                L2GasUsedRow { l2_block_number: 0, gas_used: 15 },
+                L2GasUsedRow { l2_block_number: 10, gas_used: 35 },
             ]
         );
     }
