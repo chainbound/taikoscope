@@ -1,6 +1,11 @@
 import React from 'react';
 import { type MetricData } from '../types';
-import { formatSeconds, formatDecimal, formatEth } from '../utils';
+import {
+  formatSeconds,
+  formatDecimal,
+  formatEth,
+  formatWithCommas,
+} from '../utils';
 import { getSequencerName } from '../sequencerConfig';
 
 export interface MetricInputData {
@@ -69,7 +74,10 @@ export const createMetrics = (data: MetricInputData): MetricData[] => [
   },
   {
     title: 'Active Sequencers',
-    value: data.activeGateways != null ? data.activeGateways.toString() : 'N/A',
+    value:
+      data.activeGateways != null
+        ? formatWithCommas(data.activeGateways)
+        : 'N/A',
     group: 'Sequencers',
   },
   {
@@ -83,25 +91,25 @@ export const createMetrics = (data: MetricInputData): MetricData[] => [
   {
     title: 'Next Sequencer',
     value:
-      data.nextOperator != null
-        ? getSequencerName(data.nextOperator)
-        : 'N/A',
+      data.nextOperator != null ? getSequencerName(data.nextOperator) : 'N/A',
     group: 'Sequencers',
   },
   {
     title: 'L2 Reorgs',
-    value: data.l2Reorgs != null ? data.l2Reorgs.toString() : 'N/A',
+    value: data.l2Reorgs != null ? formatWithCommas(data.l2Reorgs) : 'N/A',
     group: 'Network Health',
   },
   {
     title: 'Slashing Events',
-    value: data.slashings != null ? data.slashings.toString() : 'N/A',
+    value: data.slashings != null ? formatWithCommas(data.slashings) : 'N/A',
     group: 'Network Health',
   },
   {
     title: 'Forced Inclusions',
     value:
-      data.forcedInclusions != null ? data.forcedInclusions.toString() : 'N/A',
+      data.forcedInclusions != null
+        ? formatWithCommas(data.forcedInclusions)
+        : 'N/A',
     group: 'Network Health',
   },
   {
@@ -116,8 +124,7 @@ export const createMetrics = (data: MetricInputData): MetricData[] => [
   },
   {
     title: 'L1 Data Cost',
-    value:
-      data.l1DataCost != null ? formatEth(data.l1DataCost) : 'N/A',
+    value: data.l1DataCost != null ? formatEth(data.l1DataCost) : 'N/A',
     group: 'Network Economics',
   },
   {

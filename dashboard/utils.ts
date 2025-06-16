@@ -66,6 +66,9 @@ export const formatLargeNumber = (value: number): string => {
   return value.toLocaleString();
 };
 
+export const formatWithCommas = (value: number): string =>
+  value.toLocaleString();
+
 export const formatEth = (wei: number): string =>
   `${formatDecimal(wei / 1e18)} ETH`;
 
