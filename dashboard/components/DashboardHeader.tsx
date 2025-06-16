@@ -25,6 +25,7 @@ const rawNetworkName =
 const NETWORK_NAME =
   rawNetworkName.charAt(0).toUpperCase() +
   rawNetworkName.slice(1).toLowerCase();
+const SHOW_CUSTOM_TIME_PICKER = rawNetworkName.toLowerCase() !== 'hekla';
 const DASHBOARD_TITLE = `Taikoscope ${NETWORK_NAME}`;
 
 interface DashboardHeaderProps {
@@ -226,36 +227,38 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
             {r}
           </button>
         ))}
-        <div className="pt-1 border-t border-gray-200 dark:border-gray-700 mt-1 space-y-1">
-          <DayPicker
-            mode="single"
-            selected={date}
-            onSelect={(d) => setDate(d ?? undefined)}
-            defaultMonth={date}
-          />
-          <div className="flex items-center space-x-2">
-            <input
-              type="time"
-              value={fromTime}
-              onChange={(e) => setFromTime(e.target.value)}
-              className="border rounded p-1 text-sm bg-white dark:bg-gray-800"
+        {SHOW_CUSTOM_TIME_PICKER && (
+          <div className="pt-1 border-t border-gray-200 dark:border-gray-700 mt-1 space-y-1">
+            <DayPicker
+              mode="single"
+              selected={date}
+              onSelect={(d) => setDate(d ?? undefined)}
+              defaultMonth={date}
             />
-            <span className="text-sm">to</span>
-            <input
-              type="time"
-              value={toTime}
-              onChange={(e) => setToTime(e.target.value)}
-              className="border rounded p-1 text-sm bg-white dark:bg-gray-800"
-            />
+            <div className="flex items-center space-x-2">
+              <input
+                type="time"
+                value={fromTime}
+                onChange={(e) => setFromTime(e.target.value)}
+                className="border rounded p-1 text-sm bg-white dark:bg-gray-800"
+              />
+              <span className="text-sm">to</span>
+              <input
+                type="time"
+                value={toTime}
+                onChange={(e) => setToTime(e.target.value)}
+                className="border rounded p-1 text-sm bg-white dark:bg-gray-800"
+              />
+            </div>
+            <button
+              onClick={applyCustom}
+              disabled={isChanging}
+              className="mt-1 px-2 py-1 text-sm rounded-md bg-gray-200 dark:bg-gray-700 w-full"
+            >
+              Apply
+            </button>
           </div>
-          <button
-            onClick={applyCustom}
-            disabled={isChanging}
-            className="mt-1 px-2 py-1 text-sm rounded-md bg-gray-200 dark:bg-gray-700 w-full"
-          >
-            Apply
-          </button>
-        </div>
+        )}
       </Popover.Content>
     </Popover.Root>
   );
