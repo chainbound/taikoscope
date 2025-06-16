@@ -22,7 +22,8 @@ import {
   fetchSequencerDistribution,
   fetchL2Fees,
 } from '../services/apiService.ts';
-import { createMetrics, hasBadRequest } from '../helpers';
+import { createMetrics } from '../utils/metricsCreator';
+import { hasBadRequest } from '../utils/errorHandler';
 import type { MetricData } from '../types';
 
 vi.useFakeTimers();
