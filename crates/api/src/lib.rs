@@ -1354,7 +1354,7 @@ fn aggregate_l2_block_times(rows: Vec<L2BlockTimeRow>) -> Vec<L2BlockTimeRow> {
         .into_iter()
         .map(|(g, mut rs)| {
             rs.sort_by_key(|r| r.l2_block_number);
-            let last_time = rs.last().map(|r| r.block_time).unwrap();
+            let last_time = rs.last().map(|r| r.block_time).unwrap_or_default();
             let (sum, count) = rs
                 .iter()
                 .filter_map(|r| r.ms_since_prev_block)
