@@ -93,7 +93,7 @@ describe('apiService', () => {
     const txs = await fetchBlockTransactions('1h');
     expect(txs.error).toBeNull();
     expect(txs.data).toStrictEqual([
-      { block: 1, txs: 3, sequencer: 'Unknown' },
+      { block: 1, txs: 3, sequencer: '0xabc' },
     ]);
   });
 
@@ -104,7 +104,7 @@ describe('apiService', () => {
     const txs = await fetchBlockTransactions('15m');
     expect(txs.error).toBeNull();
     expect(txs.data).toStrictEqual([
-      { block: 1, txs: 3, sequencer: 'Unknown' },
+      { block: 1, txs: 3, sequencer: '0xabc' },
     ]);
   });
 
