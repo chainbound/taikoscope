@@ -71,7 +71,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
       (data as L2ReorgEvent[]).map((e) => ({
         timestamp: new Date(e.timestamp).toLocaleString(),
         l2_block_number: blockLink(e.l2_block_number),
-        depth: e.depth,
+        depth: e.depth.toLocaleString(),
       })),
     urlKey: 'reorgs',
     reverseOrder: true,
@@ -135,8 +135,8 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     mapData: (data) =>
       (data as Record<string, any>[]).map((d) => ({
         block: blockLink(d.block as number),
-        batch: d.batch,
-        blobs: d.blobs,
+        batch: d.batch.toLocaleString(),
+        blobs: d.blobs.toLocaleString(),
       })),
     urlKey: 'blobs-per-batch',
   },
@@ -166,7 +166,11 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
       { key: 'name', label: 'Batch' },
       { key: 'value', label: 'Seconds' },
     ],
-    mapData: (data) => data as Record<string, string | number>[],
+    mapData: (data) =>
+      (data as Record<string, string | number>[]).map((d) => ({
+        ...d,
+        value: typeof d.value === 'number' ? d.value.toLocaleString() : d.value,
+      })),
     chart: (data) => {
       const BatchProcessChart = React.lazy(() =>
         import('../components/BatchProcessChart').then((m) => ({
@@ -190,7 +194,11 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
       { key: 'name', label: 'Batch' },
       { key: 'value', label: 'Seconds' },
     ],
-    mapData: (data) => data as Record<string, string | number>[],
+    mapData: (data) =>
+      (data as Record<string, string | number>[]).map((d) => ({
+        ...d,
+        value: typeof d.value === 'number' ? d.value.toLocaleString() : d.value,
+      })),
     chart: (data) => {
       const BatchProcessChart = React.lazy(() =>
         import('../components/BatchProcessChart').then((m) => ({
@@ -216,11 +224,13 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
       { key: 'sequencer', label: 'Sequencer' },
     ],
     mapData: (data) =>
-      (data as { block: number; txs: number; sequencer: string }[]).map((d) => ({
-        block: blockLink(d.block),
-        txs: d.txs,
-        sequencer: d.sequencer,
-      })),
+      (data as { block: number; txs: number; sequencer: string }[]).map(
+        (d) => ({
+          block: blockLink(d.block),
+          txs: d.txs.toLocaleString(),
+          sequencer: d.sequencer,
+        }),
+      ),
     urlKey: 'block-tx',
   },
 

@@ -10,6 +10,7 @@ import {
   findMetricValue,
   formatSequencerTooltip,
   formatLargeNumber,
+  formatWithCommas,
   formatEth,
   bytesToHex,
   loadRefreshRate,
@@ -118,6 +119,11 @@ describe('utils', () => {
     expect(formatLargeNumber(1500)).toBe('1.5K');
     expect(formatLargeNumber(15_000_000)).toBe('15M');
     expect(formatLargeNumber(50)).toBe('50');
+  });
+
+  it('formats numbers with commas', () => {
+    expect(formatWithCommas(1234567)).toBe('1,234,567');
+    expect(formatWithCommas(50)).toBe('50');
   });
 
   it('formats ETH amounts', () => {
