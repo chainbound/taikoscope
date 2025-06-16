@@ -116,10 +116,13 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
       { key: 'address', label: 'Address' },
     ],
     mapData: (data) =>
-      data.map((g) => ({
-        sequencer: getSequencerName(g),
-        address: g,
-      })),
+      data.map((g) => {
+        const name = getSequencerName(g);
+        return {
+          sequencer: name === g ? 'Unknown' : name,
+          address: g,
+        };
+      }),
     urlKey: 'gateways',
   },
 
