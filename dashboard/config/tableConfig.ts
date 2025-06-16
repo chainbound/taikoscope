@@ -215,7 +215,12 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
       { key: 'txs', label: 'Tx Count' },
       { key: 'sequencer', label: 'Sequencer' },
     ],
-    mapData: (data) => data as Record<string, string | number>[],
+    mapData: (data) =>
+      (data as { block: number; txs: number; sequencer: string }[]).map((d) => ({
+        block: blockLink(d.block),
+        txs: d.txs,
+        sequencer: d.sequencer,
+      })),
     urlKey: 'block-tx',
   },
 
@@ -227,7 +232,11 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
       { key: 'value', label: 'L2 Block Number' },
       { key: 'timestamp', label: 'Interval (s)' },
     ],
-    mapData: (data) => data as Record<string, string | number>[],
+    mapData: (data) =>
+      (data as { value: number; timestamp: number }[]).map((d) => ({
+        value: blockLink(d.value),
+        timestamp: d.timestamp.toLocaleString(),
+      })),
     urlKey: 'l2-block-times',
     reverseOrder: true,
   },
@@ -242,7 +251,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     ],
     mapData: (data) =>
       (data as { value: number; timestamp: number }[]).map((d) => ({
-        value: d.value.toLocaleString(),
+        value: blockLink(d.value),
         timestamp: d.timestamp.toLocaleString(),
       })),
     chart: (data) => {
