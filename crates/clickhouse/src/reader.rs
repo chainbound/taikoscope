@@ -526,9 +526,7 @@ impl ClickhouseReader {
         }
 
         query.push_str(" ORDER BY l2_block_number DESC");
-        // Cap the limit to a reasonable default if not specified
-        let actual_limit = if limit == u64::MAX { 1000 } else { limit };
-        query.push_str(&format!(" LIMIT {}", actual_limit));
+        query.push_str(&format!(" LIMIT {}", limit));
 
         let rows = self.execute::<BlockTransactionRow>(&query).await?;
         Ok(rows)
