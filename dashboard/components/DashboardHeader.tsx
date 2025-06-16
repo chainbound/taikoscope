@@ -27,6 +27,8 @@ const NETWORK_NAME =
   rawNetworkName.slice(1).toLowerCase();
 const SHOW_CUSTOM_TIME_PICKER = rawNetworkName.toLowerCase() !== 'hekla';
 const DASHBOARD_TITLE = `Taikoscope ${NETWORK_NAME}`;
+const DASHBOARD_DESCRIPTION =
+  'Key metrics and charts for the Taiko network.';
 
 interface DashboardHeaderProps {
   timeRange: TimeRange;
@@ -74,6 +76,9 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
           {/* Updated Taiko Pink */}
           {DASHBOARD_TITLE}
         </h1>
+        <p className="text-sm text-gray-600 dark:text-gray-300">
+          {DASHBOARD_DESCRIPTION}
+        </p>
       </div>
       <div className="flex flex-wrap items-center gap-2 mt-4 md:mt-0 justify-center md:justify-end">
         {/* Economics view is still supported via URL parameters, but the
