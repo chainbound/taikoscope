@@ -30,6 +30,7 @@ utoipa-swagger-ui.workspace = true
 tower = "0.5"
 url.workspace = true
 clickhouse = { package = "clickhouse", version = "0.13.3", features = ["native-tls", "test-util"] }
+serde_urlencoded = "0.7"
 
 [lints]
 workspace = true
