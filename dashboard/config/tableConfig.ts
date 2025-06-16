@@ -28,6 +28,7 @@ import React from 'react';
 export interface TableColumn {
   key: string;
   label: string;
+  sortable?: boolean;
 }
 
 export interface TableConfig {
@@ -261,8 +262,8 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     fetcher: fetchSequencerDistribution,
     columns: [
       { key: 'name', label: 'Sequencer' },
-      { key: 'value', label: 'Blocks' },
-      { key: 'tps', label: 'TPS' },
+      { key: 'value', label: 'Blocks', sortable: true },
+      { key: 'tps', label: 'TPS', sortable: true },
     ],
     mapData: (data) =>
       (data as any[]).map((d) => ({

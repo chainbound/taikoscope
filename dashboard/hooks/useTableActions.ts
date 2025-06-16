@@ -10,13 +10,13 @@ import { fetchBlockTransactions } from '../services/apiService';
 export interface TableViewState {
   title: string;
   description?: React.ReactNode;
-  columns: { key: string; label: string }[];
+  columns: { key: string; label: string; sortable?: boolean }[];
   rows: Record<string, React.ReactNode | string | number>[];
   onRowClick?: (row: Record<string, React.ReactNode | string | number>) => void;
   extraAction?: { label: string; onClick: () => void };
   extraTable?: {
     title: string;
-    columns: { key: string; label: string }[];
+    columns: { key: string; label: string; sortable?: boolean }[];
     rows: Record<string, React.ReactNode | string | number>[];
     onRowClick?: (
       row: Record<string, React.ReactNode | string | number>,
@@ -233,11 +233,10 @@ export const useTableActions = (
       openTable(
         'Sequencer Distribution',
         'Breakdown of blocks proposed by each sequencer.',
-        [
-          { key: 'name', label: 'Sequencer' },
-          { key: 'value', label: 'Blocks' },
-        ],
-        (distRes.data || []) as unknown as Record<
+        TABLE_CONFIGS['sequencer-dist'].columns,
+        (TABLE_CONFIGS['sequencer-dist'].mapData
+          ? TABLE_CONFIGS['sequencer-dist'].mapData!(distRes.data)
+          : (distRes.data || [])) as unknown as Record<
           string,
           React.ReactNode | string | number
         >[],
