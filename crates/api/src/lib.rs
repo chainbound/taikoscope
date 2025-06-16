@@ -744,13 +744,22 @@ async fn l2_block_times(
     validate_range_exclusivity(has_time_range, false)?;
 
     let time_range = resolve_time_range_enum(&params.range, &params.time_range);
-    let address = params.address.as_ref().and_then(|addr| match addr.parse::<Address>() {
-        Ok(a) => Some(AddressBytes::from(a)),
-        Err(e) => {
-            tracing::warn!(error = %e, "Failed to parse address");
-            None
+    let address = if let Some(addr) = params.address.as_ref() {
+        match addr.parse::<Address>() {
+            Ok(a) => Some(AddressBytes::from(a)),
+            Err(e) => {
+                tracing::warn!(error = %e, "Failed to parse address");
+                return Err(ErrorResponse::new(
+                    "invalid-params",
+                    "Bad Request",
+                    StatusCode::BAD_REQUEST,
+                    e.to_string(),
+                ));
+            }
         }
-    });
+    } else {
+        None
+    };
     let mut blocks = match state.client.get_l2_block_times(address, time_range).await {
         Ok(rows) => rows,
         Err(e) => {
@@ -1012,6 +1021,23 @@ async fn block_transactions(
     let since = resolve_time_range_since(&params.common.range, &params.common.time_range);
     let limit = params.limit.unwrap_or(MAX_BLOCK_TRANSACTIONS_LIMIT);
 
+    let address = if let Some(addr) = params.common.address.as_ref() {
+        match addr.parse::<Address>() {
+            Ok(a) => Some(AddressBytes::from(a)),
+            Err(e) => {
+                tracing::warn!(error = %e, "Failed to parse address");
+                return Err(ErrorResponse::new(
+                    "invalid-params",
+                    "Bad Request",
+                    StatusCode::BAD_REQUEST,
+                    e.to_string(),
+                ));
+            }
+        }
+    } else {
+        None
+    };
+
     let rows = match state
         .client
         .get_block_transactions_paginated(
@@ -1019,13 +1045,7 @@ async fn block_transactions(
             limit,
             params.starting_after,
             params.ending_before,
-            params.common.address.as_ref().and_then(|addr| match addr.parse::<Address>() {
-                Ok(a) => Some(AddressBytes::from(a)),
-                Err(e) => {
-                    tracing::warn!(error = %e, "Failed to parse address");
-                    None
-                }
-            }),
+            address,
         )
         .await
     {
@@ -1417,6 +1437,14 @@ mod tests {
         serde_json::from_slice(&bytes).unwrap()
     }
 
+    async fn send_error_request(app: Router, uri: &str) -> (StatusCode, Value) {
+        let response =
+            app.oneshot(Request::builder().uri(uri).body(Body::empty()).unwrap()).await.unwrap();
+        let status = response.status();
+        let bytes = body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        (status, serde_json::from_slice(&bytes).unwrap())
+    }
+
     #[tokio::test]
     async fn l2_head_endpoint() {
         let mock = Mock::new();
@@ -1631,6 +1659,15 @@ mod tests {
             body,
             json!({ "blocks": [ { "l2_block_number": 10, "block_time": "1970-01-01T00:00:02Z", "ms_since_prev_block": 2000 } ] })
         );
+    }
+
+    #[tokio::test]
+    async fn l2_block_times_invalid_address() {
+        let mock = Mock::new();
+        let app = build_app(mock.url());
+        let (status, body) = send_error_request(app, "/l2-block-times?range=1h&address=zzz").await;
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(body["type"], "invalid-params");
     }
 
     #[derive(Serialize, Row)]
@@ -2091,27 +2128,12 @@ mod tests {
     #[tokio::test]
     async fn block_transactions_invalid_address() {
         let mock = Mock::new();
-        #[derive(Serialize, Row)]
-        struct TxRowTest {
-            sequencer: AddressBytes,
-            l2_block_number: u64,
-            sum_tx: u32,
-        }
-        mock.add(handlers::provide(vec![TxRowTest {
-            sequencer: AddressBytes([1u8; 20]),
-            l2_block_number: 42,
-            sum_tx: 7,
-        }]));
+        // No ClickHouse queries should be made when the address is invalid
         let app = build_app(mock.url());
-        let body = send_request(app, "/block-transactions?range=1h&address=zzz").await;
-        assert_eq!(
-            body,
-            json!({
-                "blocks": [
-                    { "block": 42, "txs": 7, "sequencer": "0x0101010101010101010101010101010101010101" }
-                ]
-            })
-        );
+        let (status, body) =
+            send_error_request(app, "/block-transactions?range=1h&address=zzz").await;
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(body["type"], "invalid-params");
     }
 
     #[tokio::test]
@@ -2143,29 +2165,13 @@ mod tests {
     #[tokio::test]
     async fn block_transactions_sql_injection() {
         let mock = Mock::new();
-        #[derive(Serialize, Row)]
-        struct TxRowTest {
-            sequencer: AddressBytes,
-            l2_block_number: u64,
-            sum_tx: u32,
-        }
-        mock.add(handlers::provide(vec![TxRowTest {
-            sequencer: AddressBytes([1u8; 20]),
-            l2_block_number: 42,
-            sum_tx: 7,
-        }]));
+        // No ClickHouse queries should be made when the address is invalid
         let app = build_app(mock.url());
         let addr = "0x123%27;%20--";
         let uri = format!("/block-transactions?range=1h&address={addr}");
-        let body = send_request(app, &uri).await;
-        assert_eq!(
-            body,
-            json!({
-                "blocks": [
-                    { "block": 42, "txs": 7, "sequencer": "0x0101010101010101010101010101010101010101" }
-                ]
-            })
-        );
+        let (status, body) = send_error_request(app, &uri).await;
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(body["type"], "invalid-params");
     }
 
     #[test]
