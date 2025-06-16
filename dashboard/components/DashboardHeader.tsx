@@ -182,9 +182,11 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
   };
 
   const applyCustom = () => {
-    if (!date || !fromTime || !toTime) return;
-    const [fh, fm] = fromTime.split(':').map(Number);
-    const [th, tm] = toTime.split(':').map(Number);
+    if (!date) return;
+    const from = fromTime || '00:00';
+    const to = toTime || '23:59';
+    const [fh, fm] = from.split(':').map(Number);
+    const [th, tm] = to.split(':').map(Number);
     const start = new Date(date);
     start.setHours(fh, fm, 0, 0);
     const end = new Date(date);
@@ -232,12 +234,21 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
             <DayPicker
               mode="single"
               selected={date}
-              onSelect={(d) => setDate(d ?? undefined)}
+              onSelect={(d) => {
+                const newDate = d ?? undefined;
+                setDate(newDate);
+                if (d && !fromTime && !toTime) {
+                  setFromTime('00:00');
+                  setToTime('23:59');
+                }
+              }}
               defaultMonth={date}
             />
             <div className="flex items-center space-x-2">
               <input
                 type="time"
+                step="900"
+                placeholder="hh:mm"
                 value={fromTime}
                 onChange={(e) => setFromTime(e.target.value)}
                 className="border rounded p-1 text-sm bg-white dark:bg-gray-800"
@@ -245,6 +256,8 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
               <span className="text-sm">to</span>
               <input
                 type="time"
+                step="900"
+                placeholder="hh:mm"
                 value={toTime}
                 onChange={(e) => setToTime(e.target.value)}
                 className="border rounded p-1 text-sm bg-white dark:bg-gray-800"
