@@ -745,7 +745,7 @@ impl ClickhouseReader {
         }
 
         let fallback_query = format!(
-            "SELECT b.batch_id AS batch_id, \
+            "SELECT toUInt64(b.batch_id) AS batch_id, \
                     (l1_proved.block_ts - l1_proposed.block_ts) AS seconds_to_prove \
              FROM {db}.batches b \
              JOIN {db}.proved_batches pb ON b.batch_id = pb.batch_id \
@@ -781,7 +781,7 @@ impl ClickhouseReader {
         }
 
         let fallback_query = format!(
-            "SELECT pb.batch_id AS batch_id, \
+            "SELECT toUInt64(pb.batch_id) AS batch_id, \
                     (l1_verified.block_ts - l1_proved.block_ts) AS seconds_to_verify \
              FROM {db}.proved_batches pb \
              INNER JOIN {db}.verified_batches vb \
