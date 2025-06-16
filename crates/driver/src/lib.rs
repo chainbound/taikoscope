@@ -262,6 +262,7 @@ impl Driver {
     /// [`IncidentClient`].
     fn spawn_monitors(&self) {
         if let Some(url) = &self.public_rpc_url {
+            tracing::info!(url = url.as_str(), "public rpc monitor enabled");
             public_rpc_monitor::spawn_public_rpc_monitor(url.clone());
         }
 
