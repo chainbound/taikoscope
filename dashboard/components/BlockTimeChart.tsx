@@ -77,7 +77,11 @@ const BlockTimeChartComponent: React.FC<BlockTimeChartProps> = ({
           }}
         />
         <Tooltip
-          labelFormatter={(label: number) => `Block ${label.toLocaleString()}`}
+          labelFormatter={(label: number, payload) => {
+            const ts = payload?.[0]?.payload?.blockTime;
+            const timeStr = ts ? new Date(ts).toLocaleString() : '';
+            return `Block ${label.toLocaleString()} (${timeStr})`;
+          }}
           formatter={(value: number) => [
             formatInterval(
               seconds ? value : value / 1000,

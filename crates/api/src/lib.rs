@@ -1066,6 +1066,7 @@ async fn block_transactions(
             block: r.l2_block_number,
             txs: r.sum_tx,
             sequencer: format!("0x{}", encode(r.sequencer)),
+            block_time: r.block_time,
         })
         .collect();
 
@@ -1376,17 +1377,18 @@ fn aggregate_l2_block_times(rows: Vec<L2BlockTimeRow>) -> Vec<L2BlockTimeRow> {
 
 fn aggregate_l2_gas_used(rows: Vec<L2GasUsedRow>) -> Vec<L2GasUsedRow> {
     use std::collections::BTreeMap;
-    let mut groups: BTreeMap<u64, (u64, u64)> = BTreeMap::new();
+    let mut groups: BTreeMap<u64, Vec<L2GasUsedRow>> = BTreeMap::new();
     for row in rows {
-        let entry = groups.entry(row.l2_block_number / 10).or_insert((0, 0));
-        entry.0 += row.gas_used;
-        entry.1 += 1;
+        groups.entry(row.l2_block_number / 10).or_default().push(row);
     }
     groups
         .into_iter()
-        .map(|(g, (sum, count))| {
+        .map(|(g, mut rs)| {
+            rs.sort_by_key(|r| r.l2_block_number);
+            let last_time = rs.last().map(|r| r.block_time).unwrap_or_default();
+            let (sum, count) = rs.iter().fold((0u64, 0u64), |(s, c), r| (s + r.gas_used, c + 1));
             let avg = if count > 0 { sum / count } else { 0 };
-            L2GasUsedRow { l2_block_number: g * 10, gas_used: avg }
+            L2GasUsedRow { l2_block_number: g * 10, block_time: last_time, gas_used: avg }
         })
         .collect()
 }
@@ -1402,9 +1404,15 @@ fn aggregate_block_transactions(rows: Vec<BlockTransactionsItem>) -> Vec<BlockTr
         .map(|(g, mut rs)| {
             rs.sort_by_key(|r| r.block);
             let last_seq = rs.last().map(|r| r.sequencer.clone()).unwrap_or_default();
+            let last_time = rs.last().map(|r| r.block_time).unwrap_or_default();
             let (sum, count) = rs.iter().fold((0u64, 0u64), |(s, c), r| (s + r.txs as u64, c + 1));
             let avg = if count > 0 { (sum / count) as u32 } else { 0 };
-            BlockTransactionsItem { block: g * 10, txs: avg, sequencer: last_seq }
+            BlockTransactionsItem {
+                block: g * 10,
+                txs: avg,
+                sequencer: last_seq,
+                block_time: last_time,
+            }
         })
         .collect()
 }
@@ -1695,6 +1703,7 @@ mod tests {
     #[derive(Serialize, Row)]
     struct L2GasUsedRowTest {
         l2_block_number: u64,
+        block_time: u64,
         gas_used: u64,
     }
 
@@ -1702,14 +1711,17 @@ mod tests {
     async fn l2_gas_used_last_hour_endpoint() {
         let mock = Mock::new();
         mock.add(handlers::provide(vec![
-            L2GasUsedRowTest { l2_block_number: 0, gas_used: 0 },
-            L2GasUsedRowTest { l2_block_number: 1, gas_used: 42 },
+            L2GasUsedRowTest { l2_block_number: 0, block_time: 0, gas_used: 0 },
+            L2GasUsedRowTest { l2_block_number: 1, block_time: 1, gas_used: 42 },
         ]));
         let app = build_app(mock.url());
         let body = send_request(app, "/l2-gas-used?range=1h").await;
         assert_eq!(
             body,
-            json!({ "blocks": [ { "l2_block_number": 0, "gas_used": 0 }, { "l2_block_number": 1, "gas_used": 42 } ] })
+            json!({ "blocks": [
+                { "l2_block_number": 0, "block_time": "1970-01-01T00:00:00Z", "gas_used": 0 },
+                { "l2_block_number": 1, "block_time": "1970-01-01T00:00:01Z", "gas_used": 42 }
+            ] })
         );
     }
 
@@ -1717,24 +1729,30 @@ mod tests {
     async fn l2_gas_used_last_day_endpoint() {
         let mock = Mock::new();
         mock.add(handlers::provide(vec![
-            L2GasUsedRowTest { l2_block_number: 0, gas_used: 0 },
-            L2GasUsedRowTest { l2_block_number: 1, gas_used: 42 },
+            L2GasUsedRowTest { l2_block_number: 0, block_time: 0, gas_used: 0 },
+            L2GasUsedRowTest { l2_block_number: 1, block_time: 1, gas_used: 42 },
         ]));
         let app = build_app(mock.url());
         let body = send_request(app, "/l2-gas-used?range=24h").await;
-        assert_eq!(body, json!({ "blocks": [ { "l2_block_number": 0, "gas_used": 21 } ] }));
+        assert_eq!(
+            body,
+            json!({ "blocks": [ { "l2_block_number": 0, "block_time": "1970-01-01T00:00:01Z", "gas_used": 21 } ] })
+        );
     }
 
     #[tokio::test]
     async fn l2_gas_used_last_week_endpoint() {
         let mock = Mock::new();
         mock.add(handlers::provide(vec![
-            L2GasUsedRowTest { l2_block_number: 0, gas_used: 0 },
-            L2GasUsedRowTest { l2_block_number: 1, gas_used: 42 },
+            L2GasUsedRowTest { l2_block_number: 0, block_time: 0, gas_used: 0 },
+            L2GasUsedRowTest { l2_block_number: 1, block_time: 1, gas_used: 42 },
         ]));
         let app = build_app(mock.url());
         let body = send_request(app, "/l2-gas-used?range=7d").await;
-        assert_eq!(body, json!({ "blocks": [ { "l2_block_number": 0, "gas_used": 21 } ] }));
+        assert_eq!(
+            body,
+            json!({ "blocks": [ { "l2_block_number": 0, "block_time": "1970-01-01T00:00:01Z", "gas_used": 21 } ] })
+        );
     }
 
     #[derive(Serialize, Row)]
@@ -1811,18 +1829,20 @@ mod tests {
         struct TxRowTest {
             sequencer: AddressBytes,
             l2_block_number: u64,
+            block_time: u64,
             sum_tx: u32,
         }
         mock.add(handlers::provide(vec![TxRowTest {
             sequencer: AddressBytes([1u8; 20]),
             l2_block_number: 42,
+            block_time: 10,
             sum_tx: 7,
         }]));
         let app = build_app(mock.url());
         let body = send_request(app, "/block-transactions?range=1h").await;
         assert_eq!(
             body,
-            json!({ "blocks": [ { "block": 42, "txs": 7, "sequencer": "0x0101010101010101010101010101010101010101" } ] })
+            json!({ "blocks": [ { "block": 42, "txs": 7, "sequencer": "0x0101010101010101010101010101010101010101", "block_time": "1970-01-01T00:00:10Z" } ] })
         );
     }
 
@@ -2243,10 +2263,26 @@ mod tests {
     #[test]
     fn aggregate_l2_gas_used_avg_per_ten_blocks() {
         let rows = vec![
-            L2GasUsedRow { l2_block_number: 0, gas_used: 10 },
-            L2GasUsedRow { l2_block_number: 1, gas_used: 20 },
-            L2GasUsedRow { l2_block_number: 10, gas_used: 30 },
-            L2GasUsedRow { l2_block_number: 19, gas_used: 40 },
+            L2GasUsedRow {
+                l2_block_number: 0,
+                block_time: Utc.timestamp_opt(0, 0).unwrap(),
+                gas_used: 10,
+            },
+            L2GasUsedRow {
+                l2_block_number: 1,
+                block_time: Utc.timestamp_opt(1, 0).unwrap(),
+                gas_used: 20,
+            },
+            L2GasUsedRow {
+                l2_block_number: 10,
+                block_time: Utc.timestamp_opt(10, 0).unwrap(),
+                gas_used: 30,
+            },
+            L2GasUsedRow {
+                l2_block_number: 19,
+                block_time: Utc.timestamp_opt(19, 0).unwrap(),
+                gas_used: 40,
+            },
         ];
 
         let agg = aggregate_l2_gas_used(rows);
@@ -2254,8 +2290,16 @@ mod tests {
         assert_eq!(
             agg,
             vec![
-                L2GasUsedRow { l2_block_number: 0, gas_used: 15 },
-                L2GasUsedRow { l2_block_number: 10, gas_used: 35 },
+                L2GasUsedRow {
+                    l2_block_number: 0,
+                    block_time: Utc.timestamp_opt(1, 0).unwrap(),
+                    gas_used: 15
+                },
+                L2GasUsedRow {
+                    l2_block_number: 10,
+                    block_time: Utc.timestamp_opt(19, 0).unwrap(),
+                    gas_used: 35
+                },
             ]
         );
     }
@@ -2263,17 +2307,39 @@ mod tests {
     #[test]
     fn aggregate_block_transactions_avg_per_ten_blocks() {
         let rows = vec![
-            BlockTransactionsItem { block: 0, txs: 10, sequencer: "0x0".into() },
-            BlockTransactionsItem { block: 1, txs: 20, sequencer: "0x0".into() },
-            BlockTransactionsItem { block: 10, txs: 30, sequencer: "0x0".into() },
-            BlockTransactionsItem { block: 19, txs: 40, sequencer: "0x0".into() },
+            BlockTransactionsItem {
+                block: 0,
+                txs: 10,
+                sequencer: "0x0".into(),
+                block_time: Utc.timestamp_opt(0, 0).unwrap(),
+            },
+            BlockTransactionsItem {
+                block: 1,
+                txs: 20,
+                sequencer: "0x0".into(),
+                block_time: Utc.timestamp_opt(1, 0).unwrap(),
+            },
+            BlockTransactionsItem {
+                block: 10,
+                txs: 30,
+                sequencer: "0x0".into(),
+                block_time: Utc.timestamp_opt(10, 0).unwrap(),
+            },
+            BlockTransactionsItem {
+                block: 19,
+                txs: 40,
+                sequencer: "0x0".into(),
+                block_time: Utc.timestamp_opt(19, 0).unwrap(),
+            },
         ];
 
         let agg = aggregate_block_transactions(rows);
         assert_eq!(agg.len(), 2);
         assert_eq!(agg[0].block, 0);
         assert_eq!(agg[0].txs, 15);
+        assert_eq!(agg[0].block_time, Utc.timestamp_opt(1, 0).unwrap());
         assert_eq!(agg[1].block, 10);
         assert_eq!(agg[1].txs, 35);
+        assert_eq!(agg[1].block_time, Utc.timestamp_opt(19, 0).unwrap());
     }
 }

@@ -364,7 +364,7 @@ export const fetchL2BlockTimes = async (
     `${API_BASE}/l2-block-times?${timeRangeToQuery(range)}` +
     (address ? `&address=${address}` : '');
   const res = await fetchJson<{
-    blocks: { l2_block_number: number; ms_since_prev_block: number }[];
+    blocks: { l2_block_number: number; block_time: string; ms_since_prev_block: number }[];
   }>(url);
   if (!res.data) {
     return { data: null, badRequest: res.badRequest, error: res.error };
@@ -374,6 +374,7 @@ export const fetchL2BlockTimes = async (
     (b): TimeSeriesData => ({
       value: b.l2_block_number,
       timestamp: b.ms_since_prev_block / 1000,
+      blockTime: new Date(b.block_time).getTime(),
     }),
   );
 
@@ -407,13 +408,14 @@ export const fetchL2GasUsed = async (
     `${API_BASE}/l2-gas-used?${timeRangeToQuery(range)}` +
     (address ? `&address=${address}` : '');
   const res = await fetchJson<{
-    blocks: { l2_block_number: number; gas_used: number }[];
+    blocks: { l2_block_number: number; block_time: string; gas_used: number }[];
   }>(url);
   return {
     data: res.data
       ? res.data.blocks.map((b) => ({
         value: b.l2_block_number,
         timestamp: b.gas_used,
+        blockTime: new Date(b.block_time).getTime(),
       }))
       : null,
     badRequest: res.badRequest,
@@ -459,6 +461,7 @@ export interface BlockTransaction {
   block: number;
   txs: number;
   sequencer: string;
+  blockTime: number;
 }
 
 export const fetchBlockTransactions = async (
@@ -488,12 +491,14 @@ export const fetchBlockTransactions = async (
   if (address) {
     url += `&address=${address}`;
   }
-  const res = await fetchJson<{ blocks: BlockTransaction[] }>(url);
+  const res = await fetchJson<{ blocks: { block: number; txs: number; sequencer: string; block_time: string }[] }>(url);
   return {
     data: res.data?.blocks
       ? res.data.blocks.map((b) => ({
-        ...b,
+        block: b.block,
+        txs: b.txs,
         sequencer: getSequencerName(b.sequencer),
+        blockTime: new Date(b.block_time).getTime(),
       }))
       : null,
     badRequest: res.badRequest,
