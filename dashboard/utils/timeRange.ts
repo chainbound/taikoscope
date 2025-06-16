@@ -93,3 +93,27 @@ export const formatTimeRangeDisplay = (range: string): string => {
 
   return trimmed;
 };
+
+export const normalizeTimeRange = (
+  range: string,
+  now: number = Date.now(),
+): string => {
+  let start = now - 3600_000;
+  let end = now;
+
+  const trimmed = range.trim();
+  const preset = trimmed.match(/^(\d+)([mh])$/i);
+  if (preset) {
+    const value = parseInt(preset[1], 10);
+    const ms = value * (preset[2].toLowerCase() === 'h' ? 3_600_000 : 60_000);
+    start = now - ms;
+  } else {
+    const custom = trimmed.match(/^(\d+)-(\d+)$/);
+    if (custom) {
+      start = parseInt(custom[1], 10);
+      end = parseInt(custom[2], 10);
+    }
+  }
+
+  return `${start}-${end}`;
+};
