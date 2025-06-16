@@ -172,6 +172,54 @@ async fn sse_l1_head_integration() {
 }
 
 #[tokio::test]
+async fn sse_l2_head_initial_query_error() {
+    let mock = Mock::new();
+    mock.add(handlers::failure(clickhouse::test::status::INTERNAL_SERVER_ERROR));
+
+    let url = Url::parse(mock.url()).unwrap();
+    let client =
+        ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+    let (addr, server) = spawn_server(client).await;
+    wait_for_server(addr).await;
+
+    let resp = reqwest::Client::new()
+        .get(format!("http://{addr}/{API_VERSION}/sse/l2-head"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::INTERNAL_SERVER_ERROR);
+    let body: serde_json::Value = resp.json().await.unwrap();
+    assert_eq!(body["type"], "database-error");
+
+    server.abort();
+}
+
+#[tokio::test]
+async fn sse_l1_head_initial_query_error() {
+    let mock = Mock::new();
+    mock.add(handlers::failure(clickhouse::test::status::INTERNAL_SERVER_ERROR));
+
+    let url = Url::parse(mock.url()).unwrap();
+    let client =
+        ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+    let (addr, server) = spawn_server(client).await;
+    wait_for_server(addr).await;
+
+    let resp = reqwest::Client::new()
+        .get(format!("http://{addr}/{API_VERSION}/sse/l1-head"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::INTERNAL_SERVER_ERROR);
+    let body: serde_json::Value = resp.json().await.unwrap();
+    assert_eq!(body["type"], "database-error");
+
+    server.abort();
+}
+
+#[tokio::test]
 async fn health_endpoint_unversioned() {
     let mock = Mock::new();
     let url = Url::parse(mock.url()).unwrap();

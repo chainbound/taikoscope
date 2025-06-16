@@ -269,8 +269,21 @@ async fn l1_head_block(
 
 async fn sse_l2_head(
     State(state): State<ApiState>,
-) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
-    let mut last = state.client.get_last_l2_block_number().await.ok().flatten().unwrap_or(0);
+) -> Result<Sse<impl Stream<Item = Result<Event, Infallible>>>, ErrorResponse> {
+    let mut last = state
+        .client
+        .get_last_l2_block_number()
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to get L2 head block number: {}", e);
+            ErrorResponse::new(
+                "database-error",
+                "Database error",
+                StatusCode::INTERNAL_SERVER_ERROR,
+                e.to_string(),
+            )
+        })?
+        .unwrap_or(0);
     let mut error_count = 0;
     let mut last_successful_fetch = std::time::Instant::now();
 
@@ -333,13 +346,26 @@ async fn sse_l2_head(
     // More aggressive keep-alive settings to prevent proxy timeouts
     let keep_alive = KeepAlive::new().interval(StdDuration::from_secs(15)).text("keepalive");
 
-    Sse::new(stream).keep_alive(keep_alive)
+    Ok(Sse::new(stream).keep_alive(keep_alive))
 }
 
 async fn sse_l1_head(
     State(state): State<ApiState>,
-) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
-    let mut last = state.client.get_last_l1_block_number().await.ok().flatten().unwrap_or(0);
+) -> Result<Sse<impl Stream<Item = Result<Event, Infallible>>>, ErrorResponse> {
+    let mut last = state
+        .client
+        .get_last_l1_block_number()
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to get L1 head block number: {}", e);
+            ErrorResponse::new(
+                "database-error",
+                "Database error",
+                StatusCode::INTERNAL_SERVER_ERROR,
+                e.to_string(),
+            )
+        })?
+        .unwrap_or(0);
     let mut error_count = 0;
     let mut last_successful_fetch = std::time::Instant::now();
 
@@ -402,7 +428,7 @@ async fn sse_l1_head(
     // More aggressive keep-alive settings to prevent proxy timeouts
     let keep_alive = KeepAlive::new().interval(StdDuration::from_secs(15)).text("keepalive");
 
-    Sse::new(stream).keep_alive(keep_alive)
+    Ok(Sse::new(stream).keep_alive(keep_alive))
 }
 
 #[utoipa::path(
