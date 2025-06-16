@@ -2162,4 +2162,68 @@ mod tests {
             })
         );
     }
+
+    #[test]
+    fn aggregate_l2_block_times_groups_correctly() {
+        let rows = vec![
+            L2BlockTimeRow {
+                l2_block_number: 0,
+                block_time: Utc.timestamp_opt(0, 0).unwrap(),
+                ms_since_prev_block: Some(1000),
+            },
+            L2BlockTimeRow {
+                l2_block_number: 5,
+                block_time: Utc.timestamp_opt(5, 0).unwrap(),
+                ms_since_prev_block: Some(1500),
+            },
+            L2BlockTimeRow {
+                l2_block_number: 10,
+                block_time: Utc.timestamp_opt(10, 0).unwrap(),
+                ms_since_prev_block: Some(2000),
+            },
+            L2BlockTimeRow {
+                l2_block_number: 11,
+                block_time: Utc.timestamp_opt(11, 0).unwrap(),
+                ms_since_prev_block: Some(3000),
+            },
+        ];
+
+        let agg = aggregate_l2_block_times(rows);
+
+        assert_eq!(
+            agg,
+            vec![
+                L2BlockTimeRow {
+                    l2_block_number: 9,
+                    block_time: Utc.timestamp_opt(5, 0).unwrap(),
+                    ms_since_prev_block: Some(1250),
+                },
+                L2BlockTimeRow {
+                    l2_block_number: 19,
+                    block_time: Utc.timestamp_opt(11, 0).unwrap(),
+                    ms_since_prev_block: Some(2500),
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn aggregate_l2_gas_used_sums_per_ten_blocks() {
+        let rows = vec![
+            L2GasUsedRow { l2_block_number: 0, gas_used: 10 },
+            L2GasUsedRow { l2_block_number: 1, gas_used: 20 },
+            L2GasUsedRow { l2_block_number: 10, gas_used: 30 },
+            L2GasUsedRow { l2_block_number: 19, gas_used: 40 },
+        ];
+
+        let agg = aggregate_l2_gas_used(rows);
+
+        assert_eq!(
+            agg,
+            vec![
+                L2GasUsedRow { l2_block_number: 9, gas_used: 30 },
+                L2GasUsedRow { l2_block_number: 19, gas_used: 70 },
+            ]
+        );
+    }
 }
