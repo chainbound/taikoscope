@@ -222,11 +222,17 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
           <button
             key={r}
             onClick={() => handlePreset(r)}
-            className="block w-full text-left px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+            className={`block w-full text-left px-2 py-1 rounded ${r === currentTimeRange ? 'bg-gray-200 dark:bg-gray-700 font-semibold' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
           >
             {r}
           </button>
         ))}
+        <button
+          onClick={() => handlePreset('1h')}
+          className="block w-full text-left px-2 py-1 mt-1 border-t border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+        >
+          Reset to 1h
+        </button>
         {SHOW_CUSTOM_TIME_PICKER && (
           <div className="pt-1 border-t border-gray-200 dark:border-gray-700 mt-1 space-y-1">
             <DayPicker
