@@ -146,12 +146,12 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     description: 'Time between batches posted on L1.',
     fetcher: fetchBatchPostingTimes,
     columns: [
-      { key: 'value', label: 'Batch' },
+      { key: 'value', label: 'Batch ID' },
       { key: 'timestamp', label: 'Interval (s)' },
     ],
     mapData: (data) =>
       (data as Record<string, any>[]).map((d) => ({
-        value: blockLink(d.value as number),
+        value: d.value,
         timestamp: d.timestamp,
       })),
     urlKey: 'batch-posting-cadence',
