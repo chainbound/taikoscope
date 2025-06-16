@@ -240,25 +240,18 @@ where
 {
     use serde::de::Error;
 
-    // Deserialize the value as an optional string. `serde_urlencoded` always
-    // provides strings, so this covers both quoted and unquoted numbers.
-    let opt: Option<String> = Option::deserialize(deserializer)?;
-
-    match opt {
-        None => Ok(None),
-        Some(raw) => {
+    // `serde_urlencoded` always yields strings, so deserialize as `Option<String>`
+    // and trim any stray quotes before parsing.
+    Option::<String>::deserialize(deserializer)?
+        .map(|raw| {
             let trimmed = raw.trim_matches('"');
             let value: i64 = trimmed
                 .parse()
                 .map_err(|e| Error::custom(format!("invalid integer '{}': {}", raw, e)))?;
-
-            if value < 0 {
-                return Err(Error::custom(format!("negative value '{}' not allowed", raw)));
-            }
-
-            Ok(Some(value as u64))
-        }
-    }
+            u64::try_from(value)
+                .map_err(|_| Error::custom(format!("negative value '{}' not allowed", raw)))
+        })
+        .transpose()
 }
 
 #[cfg(test)]
