@@ -1014,7 +1014,7 @@ impl ClickhouseReader {
                     toNullable(dc.cost) AS l1_data_cost \
              FROM {db}.l2_head_events h \
              LEFT JOIN {db}.l1_data_costs dc \
-               ON h.l2_block_number = dc.l1_block_number \
+               ON h.l2_block_number = dc.l2_block_number \
              WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
                AND {filter}",
             interval = range.interval(),
@@ -1220,5 +1220,46 @@ impl ClickhouseReader {
         };
 
         if row.avg.is_nan() { Ok(None) } else { Ok(Some(row.avg)) }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use clickhouse::test::{Mock, handlers};
+
+    #[derive(Row, serde::Serialize)]
+    struct FeeRow {
+        l2_block_number: u64,
+        priority_fee: u128,
+        base_fee: u128,
+        l1_data_cost: Option<u128>,
+    }
+
+    #[tokio::test]
+    async fn fee_components_returns_expected_rows() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(vec![FeeRow {
+            l2_block_number: 1,
+            priority_fee: 10,
+            base_fee: 20,
+            l1_data_cost: Some(5),
+        }]));
+
+        let url = url::Url::parse(mock.url()).unwrap();
+        let reader =
+            ClickhouseReader::new(url, "db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+        let rows = reader.get_l2_fee_components(None, TimeRange::LastHour).await.unwrap();
+
+        assert_eq!(
+            rows,
+            vec![BlockFeeComponentRow {
+                l2_block_number: 1,
+                priority_fee: 10,
+                base_fee: 20,
+                l1_data_cost: Some(5),
+            }]
+        );
     }
 }
