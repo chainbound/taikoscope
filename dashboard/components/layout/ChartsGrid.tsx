@@ -2,6 +2,7 @@ import React, { lazy } from 'react';
 import { ChartCard } from '../ChartCard';
 import { TAIKO_PINK } from '../../theme';
 import { TimeRange, TimeSeriesData, PieChartDataItem } from '../../types';
+import { formatTimeRangeDisplay } from '../../utils/timeRange';
 import type {
   BlockTransaction,
   BatchBlobCount,
@@ -164,7 +165,7 @@ export const ChartsGrid: React.FC<ChartsGridProps> = ({
           <div className="flex items-center space-x-2">
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 dark:border-blue-400"></div>
             <span className="text-sm text-blue-800 dark:text-blue-200">
-              Updating data for {timeRange} time range...
+              Updating data for {formatTimeRangeDisplay(timeRange)} time range...
             </span>
           </div>
         </div>

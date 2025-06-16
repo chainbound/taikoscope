@@ -20,14 +20,15 @@ import {
   fetchSequencerDistribution,
   fetchL2Tps,
 } from '../services/apiService';
-import { getSequencerName } from '../sequencerConfig';
-import { bytesToHex, blockLink } from '../utils';
+import { getSequencerName, getSequencerAddress } from '../sequencerConfig';
+import { bytesToHex, blockLink, addressLink } from '../utils';
 import { TAIKO_PINK } from '../theme';
 import React from 'react';
 
 export interface TableColumn {
   key: string;
   label: string;
+  sortable?: boolean;
 }
 
 export interface TableConfig {
@@ -70,7 +71,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
       (data as L2ReorgEvent[]).map((e) => ({
         timestamp: new Date(e.timestamp).toLocaleString(),
         l2_block_number: blockLink(e.l2_block_number),
-        depth: e.depth,
+        depth: e.depth.toLocaleString(),
       })),
     urlKey: 'reorgs',
     reverseOrder: true,
@@ -134,8 +135,8 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     mapData: (data) =>
       (data as Record<string, any>[]).map((d) => ({
         block: blockLink(d.block as number),
-        batch: d.batch,
-        blobs: d.blobs,
+        batch: d.batch.toLocaleString(),
+        blobs: d.blobs.toLocaleString(),
       })),
     urlKey: 'blobs-per-batch',
   },
@@ -145,12 +146,12 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     description: 'Time between batches posted on L1.',
     fetcher: fetchBatchPostingTimes,
     columns: [
-      { key: 'value', label: 'Batch' },
+      { key: 'value', label: 'Batch ID' },
       { key: 'timestamp', label: 'Interval (s)' },
     ],
     mapData: (data) =>
       (data as Record<string, any>[]).map((d) => ({
-        value: blockLink(d.value as number),
+        value: d.value,
         timestamp: d.timestamp,
       })),
     urlKey: 'batch-posting-cadence',
@@ -165,7 +166,11 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
       { key: 'name', label: 'Batch' },
       { key: 'value', label: 'Seconds' },
     ],
-    mapData: (data) => data as Record<string, string | number>[],
+    mapData: (data) =>
+      (data as Record<string, string | number>[]).map((d) => ({
+        ...d,
+        value: typeof d.value === 'number' ? d.value.toLocaleString() : d.value,
+      })),
     chart: (data) => {
       const BatchProcessChart = React.lazy(() =>
         import('../components/BatchProcessChart').then((m) => ({
@@ -189,7 +194,11 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
       { key: 'name', label: 'Batch' },
       { key: 'value', label: 'Seconds' },
     ],
-    mapData: (data) => data as Record<string, string | number>[],
+    mapData: (data) =>
+      (data as Record<string, string | number>[]).map((d) => ({
+        ...d,
+        value: typeof d.value === 'number' ? d.value.toLocaleString() : d.value,
+      })),
     chart: (data) => {
       const BatchProcessChart = React.lazy(() =>
         import('../components/BatchProcessChart').then((m) => ({
@@ -214,7 +223,14 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
       { key: 'txs', label: 'Tx Count' },
       { key: 'sequencer', label: 'Sequencer' },
     ],
-    mapData: (data) => data as Record<string, string | number>[],
+    mapData: (data) =>
+      (data as { block: number; txs: number; sequencer: string }[]).map(
+        (d) => ({
+          block: blockLink(d.block),
+          txs: d.txs.toLocaleString(),
+          sequencer: d.sequencer,
+        }),
+      ),
     urlKey: 'block-tx',
   },
 
@@ -226,7 +242,11 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
       { key: 'value', label: 'L2 Block Number' },
       { key: 'timestamp', label: 'Interval (s)' },
     ],
-    mapData: (data) => data as Record<string, string | number>[],
+    mapData: (data) =>
+      (data as { value: number; timestamp: number }[]).map((d) => ({
+        value: blockLink(d.value),
+        timestamp: d.timestamp.toLocaleString(),
+      })),
     urlKey: 'l2-block-times',
     reverseOrder: true,
   },
@@ -239,7 +259,11 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
       { key: 'value', label: 'Block Number' },
       { key: 'timestamp', label: 'Gas Used' },
     ],
-    mapData: (data) => data as Record<string, string | number>[],
+    mapData: (data) =>
+      (data as { value: number; timestamp: number }[]).map((d) => ({
+        value: blockLink(d.value),
+        timestamp: d.timestamp.toLocaleString(),
+      })),
     chart: (data) => {
       const GasUsedChart = React.lazy(() =>
         import('../components/GasUsedChart').then((m) => ({
@@ -261,12 +285,16 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     fetcher: fetchSequencerDistribution,
     columns: [
       { key: 'name', label: 'Sequencer' },
-      { key: 'value', label: 'Blocks' },
-      { key: 'tps', label: 'TPS' },
+      { key: 'value', label: 'Blocks', sortable: true },
+      { key: 'tps', label: 'TPS', sortable: true },
     ],
     mapData: (data) =>
       (data as any[]).map((d) => ({
         ...d,
+        name: addressLink(
+          getSequencerAddress(d.name as string) ?? (d.name as string),
+          d.name as string,
+        ),
         tps: d.tps != null ? d.tps.toFixed(2) : 'N/A',
       })),
     supportsPagination: true,

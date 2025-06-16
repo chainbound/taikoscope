@@ -1,5 +1,6 @@
 import { TimeRange } from '../types';
 import { getSequencerAddress } from '../sequencerConfig';
+import { normalizeTimeRange } from './timeRange';
 import {
   fetchDashboardData,
   fetchProveTimes,
@@ -51,6 +52,7 @@ export const fetchMainDashboardData = async (
   timeRange: TimeRange,
   selectedSequencer: string | null,
 ): Promise<MainDashboardData> => {
+  const normalizedRange = normalizeTimeRange(timeRange);
   const address = selectedSequencer
     ? getSequencerAddress(selectedSequencer)
     : undefined;
@@ -65,14 +67,14 @@ export const fetchMainDashboardData = async (
     blockTxRes,
     batchBlobCountsRes,
   ] = await Promise.all([
-    fetchDashboardData(timeRange, address),
-    fetchProveTimes(timeRange),
-    fetchVerifyTimes(timeRange),
-    fetchL2BlockTimes(timeRange, address),
-    fetchL2GasUsed(timeRange, address),
-    fetchSequencerDistribution(timeRange),
-    fetchAllBlockTransactions(timeRange, address),
-    fetchBatchBlobCounts(timeRange),
+    fetchDashboardData(normalizedRange, address),
+    fetchProveTimes(normalizedRange),
+    fetchVerifyTimes(normalizedRange),
+    fetchL2BlockTimes(normalizedRange, address),
+    fetchL2GasUsed(normalizedRange, address),
+    fetchSequencerDistribution(normalizedRange),
+    fetchAllBlockTransactions(normalizedRange, address),
+    fetchBatchBlobCounts(normalizedRange),
   ]);
 
   const data = dashboardRes.data;
@@ -117,13 +119,14 @@ export const fetchEconomicsData = async (
   timeRange: TimeRange,
   selectedSequencer: string | null,
 ): Promise<EconomicsData> => {
+  const normalizedRange = normalizeTimeRange(timeRange);
   const [l2FeesRes, l2BlockRes, l1BlockRes] = await Promise.all([
     fetchL2Fees(
-      timeRange,
+      normalizedRange,
       selectedSequencer ? getSequencerAddress(selectedSequencer) : undefined,
     ),
-    fetchL2HeadBlock(timeRange),
-    fetchL1HeadBlock(timeRange),
+    fetchL2HeadBlock(normalizedRange),
+    fetchL1HeadBlock(normalizedRange),
   ]);
 
   return {

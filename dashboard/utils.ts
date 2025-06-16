@@ -25,6 +25,22 @@ export const blockLink = (block: number): React.ReactElement =>
     String(block),
   );
 
+export const addressLink = (
+  address: string,
+  text?: string,
+): React.ReactElement =>
+  React.createElement(
+    'a',
+    {
+      href: `${TAIKOSCAN_BASE}/address/${address}`,
+      target: '_blank',
+      rel: 'noopener noreferrer',
+      className: 'font-semibold hover:underline',
+      style: { color: TAIKO_PINK },
+    },
+    text ?? address,
+  );
+
 export const formatDecimal = (value: number): string => {
   const decimals = Math.abs(value) >= 10 ? 1 : 2;
   return value.toFixed(decimals);
@@ -49,6 +65,9 @@ export const formatLargeNumber = (value: number): string => {
   }
   return value.toLocaleString();
 };
+
+export const formatWithCommas = (value: number): string =>
+  value.toLocaleString();
 
 export const formatEth = (wei: number): string =>
   `${formatDecimal(wei / 1e18)} ETH`;

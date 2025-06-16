@@ -6,6 +6,7 @@ const DEFAULT_ROWS_PER_PAGE = 50;
 interface Column {
   key: string;
   label: string;
+  sortable?: boolean;
 }
 
 interface ExtraTable {
@@ -58,6 +59,8 @@ export const DataTable: React.FC<DataTableProps> = ({
   timeRange,
 }) => {
   const [page, setPage] = React.useState(0);
+  const [sortBy, setSortBy] = React.useState<string>('');
+  const [sortDirection, setSortDirection] = React.useState<'asc' | 'desc'>('asc');
 
   const prevRowsLength = React.useRef(rows.length);
 
@@ -93,14 +96,23 @@ export const DataTable: React.FC<DataTableProps> = ({
   const currentTotalRecords =
     useClientSidePagination && totalRecords ? totalRecords : dataSource.length;
 
+  const sortedData = React.useMemo(() => {
+    if (!sortBy) return dataSource;
+    return [...dataSource].sort((a, b) => {
+      const aVal = String(a[sortBy]);
+      const bVal = String(b[sortBy]);
+      const comparison = aVal.localeCompare(bVal, undefined, { numeric: true });
+      return sortDirection === 'desc' ? -comparison : comparison;
+    });
+  }, [dataSource, sortBy, sortDirection]);
+
   const pageRows = React.useMemo(() => {
+    const data = sortedData;
     if (useClientSidePagination && allRows) {
-      // Client-side pagination: slice from full dataset
-      return allRows.slice(page * rowsPerPage, (page + 1) * rowsPerPage);
+      return data.slice(page * rowsPerPage, (page + 1) * rowsPerPage);
     }
-    // Server-side pagination: use provided rows directly
-    return rows.slice(page * rowsPerPage, (page + 1) * rowsPerPage);
-  }, [allRows, rows, page, rowsPerPage, useClientSidePagination]);
+    return data.slice(page * rowsPerPage, (page + 1) * rowsPerPage);
+  }, [sortedData, page, rowsPerPage, useClientSidePagination, allRows]);
 
   const disablePrev = page === 0;
   const disableNext = (page + 1) * rowsPerPage >= currentTotalRecords;
@@ -169,9 +181,26 @@ export const DataTable: React.FC<DataTableProps> = ({
               {columns.map((col) => (
                 <th
                   key={col.key}
-                  className="px-2 py-1 text-left text-gray-900 dark:text-gray-100"
+                  className={`px-2 py-1 text-left text-gray-900 dark:text-gray-100 ${
+                    col.sortable ? 'cursor-pointer select-none' : ''
+                  }`}
+                  onClick={
+                    col.sortable
+                      ? () => {
+                          if (sortBy === col.key) {
+                            setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'));
+                          } else {
+                            setSortBy(col.key);
+                            setSortDirection('desc');
+                          }
+                        }
+                      : undefined
+                  }
                 >
-                  {col.label}
+                  <span>{col.label}</span>
+                  {col.sortable && sortBy === col.key && (
+                    <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                  )}
                 </th>
               ))}
             </tr>

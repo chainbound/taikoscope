@@ -9,6 +9,12 @@ describe('sequencer-dist mapData', () => {
     expect(rows[0].tps).toBe('0.00');
   });
 
+  it('wraps the sequencer name in a link', () => {
+    const rows = mapData([{ name: 'foo', value: 1, tps: 1 }]);
+    const el = rows[0].name as any;
+    expect(el.type).toBe('a');
+  });
+
   it('handles missing TPS as N/A', () => {
     const rows = mapData([{ name: 'foo', value: 1, tps: null }]);
     expect(rows[0].tps).toBe('N/A');

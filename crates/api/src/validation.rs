@@ -240,20 +240,18 @@ where
 {
     use serde::de::Error;
 
-    // Deserialize the value as an optional string. `serde_urlencoded` always
-    // provides strings, so this covers both quoted and unquoted numbers.
-    let opt: Option<String> = Option::deserialize(deserializer)?;
-
-    match opt {
-        None => Ok(None),
-        Some(raw) => {
+    // `serde_urlencoded` always yields strings, so deserialize as `Option<String>`
+    // and trim any stray quotes before parsing.
+    Option::<String>::deserialize(deserializer)?
+        .map(|raw| {
             let trimmed = raw.trim_matches('"');
-            trimmed
-                .parse::<u64>()
-                .map(Some)
-                .map_err(|e| Error::custom(format!("invalid integer '{}': {}", raw, e)))
-        }
-    }
+            let value: i64 = trimmed
+                .parse()
+                .map_err(|e| Error::custom(format!("invalid integer '{}': {}", raw, e)))?;
+            u64::try_from(value)
+                .map_err(|_| Error::custom(format!("negative value '{}' not allowed", raw)))
+        })
+        .transpose()
 }
 
 #[cfg(test)]
@@ -422,5 +420,33 @@ mod tests {
             created_lte: None,
         };
         assert!(has_time_range_params(&with_gt));
+    }
+
+    #[test]
+    fn test_de_u64_opt_rejects_negative() {
+        #[derive(Debug, Deserialize)]
+        #[allow(dead_code)]
+        struct Wrapper {
+            #[serde(deserialize_with = "crate::validation::de_u64_opt")]
+            value: Option<u64>,
+        }
+
+        let res: Result<Wrapper, _> = serde_urlencoded::from_str("value=-5");
+        assert!(res.is_err());
+        let err = res.unwrap_err().to_string();
+        assert!(err.contains("negative value"));
+    }
+
+    #[test]
+    fn test_de_u64_opt_accepts_positive() {
+        #[derive(Debug, Deserialize)]
+        #[allow(dead_code)]
+        struct Wrapper {
+            #[serde(deserialize_with = "crate::validation::de_u64_opt")]
+            value: Option<u64>,
+        }
+
+        let res: Wrapper = serde_urlencoded::from_str("value=42").unwrap();
+        assert_eq!(res.value, Some(42));
     }
 }

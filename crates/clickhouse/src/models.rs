@@ -226,6 +226,17 @@ pub struct L1DataCostRow {
     pub cost: u128,
 }
 
+/// Row used for inserting L1 data cost with mapping to an L2 block
+#[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq)]
+pub struct L1DataCostInsertRow {
+    /// L1 block number
+    pub l1_block_number: u64,
+    /// L2 block number this cost corresponds to
+    pub l2_block_number: u64,
+    /// Total cost in wei for data posting transactions
+    pub cost: u128,
+}
+
 /// Row representing the fee components for an L2 block
 #[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
 pub struct BlockFeeComponentRow {

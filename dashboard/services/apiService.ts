@@ -430,14 +430,11 @@ export const fetchSequencerDistribution = async (
   }>(url);
   return {
     data: res.data
-      ? res.data.sequencers.map((s) => {
-        const name = getSequencerName(s.address);
-        return {
-          name: name === 'Unknown' ? s.address : name,
+      ? res.data.sequencers.map((s) => ({
+          name: getSequencerName(s.address),
           value: s.blocks,
           tps: s.tps,
-        };
-      })
+        }))
       : null,
     badRequest: res.badRequest,
     error: res.error,

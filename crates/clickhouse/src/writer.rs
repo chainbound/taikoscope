@@ -151,7 +151,7 @@ fn validate_migration_name(name: &str) -> bool {
 use crate::{
     L1Header,
     models::{
-        BatchRow, ForcedInclusionProcessedRow, L1DataCostRow, L1HeadEvent, L2HeadEvent,
+        BatchRow, ForcedInclusionProcessedRow, L1DataCostInsertRow, L1HeadEvent, L2HeadEvent,
         L2ReorgInsertRow, PreconfData, ProvedBatchRow, VerifiedBatchRow,
     },
     schema::{TABLE_SCHEMAS, TABLES, TableSchema, VIEWS},
@@ -328,9 +328,14 @@ impl ClickhouseWriter {
     }
 
     /// Insert L1 data posting cost
-    pub async fn insert_l1_data_cost(&self, block_number: u64, cost: u128) -> Result<()> {
+    pub async fn insert_l1_data_cost(
+        &self,
+        l1_block_number: u64,
+        l2_block_number: u64,
+        cost: u128,
+    ) -> Result<()> {
         let client = self.base.clone();
-        let row = L1DataCostRow { l1_block_number: block_number, cost };
+        let row = L1DataCostInsertRow { l1_block_number, l2_block_number, cost };
         let mut insert = client.insert(&format!("{}.l1_data_costs", self.db_name))?;
         insert.write(&row).await?;
         insert.end().await?;
@@ -651,16 +656,19 @@ mod tests {
     #[tokio::test]
     async fn insert_l1_data_cost_writes_expected_row() {
         let mock = Mock::new();
-        let ctl = mock.add(handlers::record::<L1DataCostRow>());
+        let ctl = mock.add(handlers::record::<L1DataCostInsertRow>());
 
         let url = Url::parse(mock.url()).unwrap();
         let writer =
             ClickhouseWriter::new(url, "db".to_owned(), "user".into(), "pass".into()).unwrap();
 
-        writer.insert_l1_data_cost(10, 42).await.unwrap();
+        writer.insert_l1_data_cost(10, 11, 42).await.unwrap();
 
-        let rows: Vec<L1DataCostRow> = ctl.collect().await;
-        assert_eq!(rows, vec![L1DataCostRow { l1_block_number: 10, cost: 42 }]);
+        let rows: Vec<L1DataCostInsertRow> = ctl.collect().await;
+        assert_eq!(
+            rows,
+            vec![L1DataCostInsertRow { l1_block_number: 10, l2_block_number: 11, cost: 42 }]
+        );
     }
 
     #[test]
