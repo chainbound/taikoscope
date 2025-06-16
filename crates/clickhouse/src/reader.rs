@@ -781,11 +781,12 @@ impl ClickhouseReader {
         }
 
         let fallback_query = format!(
-            "SELECT pb.batch_id AS batch_id, \
+            "SELECT b.batch_id AS batch_id, \
                     (l1_verified.block_ts - l1_proved.block_ts) AS seconds_to_verify \
              FROM {db}.proved_batches pb \
              INNER JOIN {db}.verified_batches vb \
                 ON pb.batch_id = vb.batch_id AND pb.block_hash = vb.block_hash \
+             INNER JOIN {db}.batches b ON pb.batch_id = b.batch_id \
              INNER JOIN {db}.l1_head_events l1_proved \
                 ON pb.l1_block_number = l1_proved.l1_block_number \
              INNER JOIN {db}.l1_head_events l1_verified \
@@ -793,7 +794,7 @@ impl ClickhouseReader {
              WHERE l1_verified.block_ts >= (toUInt64(now()) - {secs}) \
                AND l1_verified.block_ts > l1_proved.block_ts \
                AND (l1_verified.block_ts - l1_proved.block_ts) > 60 \
-             ORDER BY pb.batch_id ASC",
+             ORDER BY b.batch_id ASC",
             secs = range.seconds(),
             db = self.db_name,
         );
