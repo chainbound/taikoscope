@@ -32,7 +32,7 @@ pub const DEFAULT_MAX_REQUESTS: u64 = u64::MAX;
 /// Default duration for the rate limiting window.
 pub const DEFAULT_RATE_PERIOD: StdDuration = StdDuration::from_secs(1);
 /// Maximum number of records returned by the `/block-transactions` endpoint.
-pub const MAX_BLOCK_TRANSACTIONS_LIMIT: u64 = 10000;
+pub const MAX_BLOCK_TRANSACTIONS_LIMIT: u64 = 50000;
 
 /// `OpenAPI` documentation structure
 #[derive(Debug, OpenApi)]
