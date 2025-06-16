@@ -25,6 +25,16 @@ pub const TABLES: &[&str] = &[
     "l1_data_costs",
 ];
 
+/// Names of all materialized views
+pub const VIEWS: &[&str] = &[
+    "batch_prove_times_mv",
+    "batch_verify_times_mv",
+    "hourly_avg_prove_times_mv",
+    "hourly_avg_verify_times_mv",
+    "daily_avg_prove_times_mv",
+    "daily_avg_verify_times_mv",
+];
+
 /// Schema definitions for tables
 pub const TABLE_SCHEMAS: &[TableSchema] = &[
     TableSchema {

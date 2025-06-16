@@ -154,7 +154,7 @@ use crate::{
         BatchRow, ForcedInclusionProcessedRow, L1DataCostRow, L1HeadEvent, L2HeadEvent,
         L2ReorgInsertRow, PreconfData, ProvedBatchRow, VerifiedBatchRow,
     },
-    schema::{TABLE_SCHEMAS, TABLES, TableSchema},
+    schema::{TABLE_SCHEMAS, TABLES, TableSchema, VIEWS},
     types::{AddressBytes, HashBytes},
 };
 
@@ -202,6 +202,15 @@ impl ClickhouseWriter {
             .wrap_err_with(|| format!("Failed to drop {} table", table_name))
     }
 
+    /// Drop a view if it exists
+    async fn drop_view(&self, view_name: &str) -> Result<()> {
+        self.base
+            .query(&format!("DROP TABLE IF EXISTS {}.{}", self.db_name, view_name))
+            .execute()
+            .await
+            .wrap_err_with(|| format!("Failed to drop {} view", view_name))
+    }
+
     /// Initialize database and optionally reset
     pub async fn init_db(&self, reset: bool) -> Result<()> {
         self.init_db_with_migrations(reset, true).await
@@ -216,6 +225,9 @@ impl ClickhouseWriter {
             .await?;
 
         if reset {
+            for view in VIEWS {
+                self.drop_view(view).await?;
+            }
             for table in TABLES {
                 self.drop_table(table).await?;
             }
@@ -687,6 +699,33 @@ mod tests {
         // verify that at least one table and one view were created
         assert!(queries.iter().any(|q| q.contains("db.l1_head_events")));
         assert!(queries.iter().any(|q| q.contains("db.batch_prove_times_mv")));
+    }
+
+    #[tokio::test]
+    async fn init_db_removes_views_when_reset() {
+        let mock = Mock::new();
+        let migration_count: usize = MIGRATIONS_DIR
+            .files()
+            .filter(|f| f.path().extension().and_then(|s| s.to_str()) == Some("sql"))
+            .map(|f| parse_sql_statements(f.contents_utf8().unwrap()).len())
+            .sum();
+        let total = 1 + TABLES.len() + VIEWS.len() + TABLE_SCHEMAS.len() + migration_count;
+
+        let ctrls: Vec<_> =
+            std::iter::repeat_with(|| mock.add(handlers::record_ddl())).take(total).collect();
+
+        let url = Url::parse(mock.url()).unwrap();
+        let writer =
+            ClickhouseWriter::new(url, "db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+        writer.init_db(true).await.unwrap();
+
+        let mut queries = Vec::new();
+        for c in ctrls {
+            queries.push(c.query().await);
+        }
+
+        assert!(queries.iter().any(|q| q.contains("DROP TABLE IF EXISTS db.batch_prove_times_mv")));
     }
 
     #[tokio::test]

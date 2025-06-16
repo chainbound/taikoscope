@@ -31,7 +31,7 @@ pub use writer::ClickhouseWriter;
 pub use models::*;
 
 // Re-export schema constants
-pub use schema::{TABLE_SCHEMAS, TABLES};
+pub use schema::{TABLE_SCHEMAS, TABLES, VIEWS};
 
 // Re-export byte wrappers
 pub use types::{AddressBytes, HashBytes};
