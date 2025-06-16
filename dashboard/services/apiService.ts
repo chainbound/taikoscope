@@ -4,6 +4,7 @@ export const API_BASE: string =
 
 import { getSequencerName } from '../sequencerConfig';
 import { showToast } from '../utils/toast';
+import { timeRangeToQuery } from '../utils/timeRange';
 
 import type {
   TimeSeriesData,
@@ -82,7 +83,7 @@ export interface AvgTimeResponse {
 export const fetchAvgProveTime = async (
   range: TimeRange,
 ): Promise<RequestResult<number>> => {
-  const url = `${API_BASE}/avg-prove-time?range=${range}`;
+  const url = `${API_BASE}/avg-prove-time?${timeRangeToQuery(range)}`;
   const res = await fetchJson<{ avg_prove_time_ms?: number }>(url);
   return {
     data: res.data?.avg_prove_time_ms ?? null,
@@ -94,7 +95,7 @@ export const fetchAvgProveTime = async (
 export const fetchAvgVerifyTime = async (
   range: TimeRange,
 ): Promise<RequestResult<number>> => {
-  const url = `${API_BASE}/avg-verify-time?range=${range}`;
+  const url = `${API_BASE}/avg-verify-time?${timeRangeToQuery(range)}`;
   const res = await fetchJson<{ avg_verify_time_ms?: number }>(url);
   return {
     data: res.data?.avg_verify_time_ms ?? null,
@@ -107,7 +108,9 @@ export const fetchL2BlockCadence = async (
   range: TimeRange,
   address?: string,
 ): Promise<RequestResult<number>> => {
-  const url = `${API_BASE}/l2-block-cadence?range=${range}${address ? `&address=${address}` : ''}`;
+  const url =
+    `${API_BASE}/l2-block-cadence?${timeRangeToQuery(range)}` +
+    (address ? `&address=${address}` : '');
   const res = await fetchJson<{ l2_block_cadence_ms?: number }>(url);
   return {
     data: res.data?.l2_block_cadence_ms ?? null,
@@ -119,7 +122,7 @@ export const fetchL2BlockCadence = async (
 export const fetchBatchPostingCadence = async (
   range: TimeRange,
 ): Promise<RequestResult<number>> => {
-  const url = `${API_BASE}/batch-posting-cadence?range=${range}`;
+  const url = `${API_BASE}/batch-posting-cadence?${timeRangeToQuery(range)}`;
   const res = await fetchJson<{ batch_posting_cadence_ms?: number }>(url);
   return {
     data: res.data?.batch_posting_cadence_ms ?? null,
@@ -142,7 +145,7 @@ export const fetchActiveSequencerAddresses = async (
 export const fetchL2Reorgs = async (
   range: TimeRange,
 ): Promise<RequestResult<number>> => {
-  const url = `${API_BASE}/reorgs?range=${range}`;
+  const url = `${API_BASE}/reorgs?${timeRangeToQuery(range)}`;
   const res = await fetchJson<{ events: unknown[] }>(url);
   return {
     data: res.data ? res.data.events.length : null,
@@ -154,17 +157,17 @@ export const fetchL2Reorgs = async (
 export const fetchL2ReorgEvents = async (
   range: TimeRange,
 ): Promise<RequestResult<L2ReorgEvent[]>> => {
-  const url = `${API_BASE}/reorgs?range=${range}`;
+  const url = `${API_BASE}/reorgs?${timeRangeToQuery(range)}`;
   const res = await fetchJson<{
     events: { l2_block_number: number; depth: number; inserted_at: string }[];
   }>(url);
   return {
     data: res.data
       ? res.data.events.map((e) => ({
-          l2_block_number: e.l2_block_number,
-          depth: e.depth,
-          timestamp: Date.parse(e.inserted_at),
-        }))
+        l2_block_number: e.l2_block_number,
+        depth: e.depth,
+        timestamp: Date.parse(e.inserted_at),
+      }))
       : null,
     badRequest: res.badRequest,
     error: res.error,
@@ -174,7 +177,7 @@ export const fetchL2ReorgEvents = async (
 export const fetchSlashingEventCount = async (
   range: TimeRange,
 ): Promise<RequestResult<number>> => {
-  const url = `${API_BASE}/slashings?range=${range}`;
+  const url = `${API_BASE}/slashings?${timeRangeToQuery(range)}`;
   const res = await fetchJson<{ events: unknown[] }>(url);
   return {
     data: res.data ? res.data.events.length : null,
@@ -186,7 +189,7 @@ export const fetchSlashingEventCount = async (
 export const fetchForcedInclusionCount = async (
   range: TimeRange,
 ): Promise<RequestResult<number>> => {
-  const url = `${API_BASE}/forced-inclusions?range=${range}`;
+  const url = `${API_BASE}/forced-inclusions?${timeRangeToQuery(range)}`;
   const res = await fetchJson<{ events: unknown[] }>(url);
   return {
     data: res.data ? res.data.events.length : null,
@@ -198,7 +201,7 @@ export const fetchForcedInclusionCount = async (
 export const fetchSlashingEvents = async (
   range: TimeRange,
 ): Promise<RequestResult<SlashingEvent[]>> => {
-  const url = `${API_BASE}/slashings?range=${range}`;
+  const url = `${API_BASE}/slashings?${timeRangeToQuery(range)}`;
   const res = await fetchJson<{ events: SlashingEvent[] }>(url);
   return {
     data: res.data ? res.data.events : null,
@@ -210,7 +213,7 @@ export const fetchSlashingEvents = async (
 export const fetchForcedInclusionEvents = async (
   range: TimeRange,
 ): Promise<RequestResult<ForcedInclusionEvent[]>> => {
-  const url = `${API_BASE}/forced-inclusions?range=${range}`;
+  const url = `${API_BASE}/forced-inclusions?${timeRangeToQuery(range)}`;
   const res = await fetchJson<{ events: ForcedInclusionEvent[] }>(url);
   return {
     data: res.data ? res.data.events : null,
@@ -222,7 +225,7 @@ export const fetchForcedInclusionEvents = async (
 export const fetchL2HeadBlock = async (
   range: TimeRange,
 ): Promise<RequestResult<number>> => {
-  const url = `${API_BASE}/l2-block-times?range=${range}`;
+  const url = `${API_BASE}/l2-block-times?${timeRangeToQuery(range)}`;
   const res = await fetchJson<{ blocks: { l2_block_number: number }[] }>(url);
   const value =
     res.data && res.data.blocks.length > 0
@@ -234,7 +237,7 @@ export const fetchL2HeadBlock = async (
 export const fetchL1HeadBlock = async (
   range: TimeRange,
 ): Promise<RequestResult<number>> => {
-  const url = `${API_BASE}/l1-block-times?range=${range}`;
+  const url = `${API_BASE}/l1-block-times?${timeRangeToQuery(range)}`;
   const res = await fetchJson<{ blocks: { block_number: number }[] }>(url);
   const value =
     res.data && res.data.blocks.length > 0
@@ -283,17 +286,17 @@ export const fetchL1HeadNumber = async (): Promise<RequestResult<number>> => {
 export const fetchProveTimes = async (
   range: TimeRange,
 ): Promise<RequestResult<TimeSeriesData[]>> => {
-  const url = `${API_BASE}/prove-times?range=${range}`;
+  const url = `${API_BASE}/prove-times?${timeRangeToQuery(range)}`;
   const res = await fetchJson<{
     batches: { batch_id: number; seconds_to_prove: number }[];
   }>(url);
   return {
     data: res.data
       ? res.data.batches.map((b) => ({
-          name: b.batch_id.toString(),
-          value: b.seconds_to_prove,
-          timestamp: 0,
-        }))
+        name: b.batch_id.toString(),
+        value: b.seconds_to_prove,
+        timestamp: 0,
+      }))
       : null,
     badRequest: res.badRequest,
     error: res.error,
@@ -303,17 +306,17 @@ export const fetchProveTimes = async (
 export const fetchVerifyTimes = async (
   range: TimeRange,
 ): Promise<RequestResult<TimeSeriesData[]>> => {
-  const url = `${API_BASE}/verify-times?range=${range}`;
+  const url = `${API_BASE}/verify-times?${timeRangeToQuery(range)}`;
   const res = await fetchJson<{
     batches: { batch_id: number; seconds_to_verify: number }[];
   }>(url);
   return {
     data: res.data
       ? res.data.batches.map((b) => ({
-          name: b.batch_id.toString(),
-          value: b.seconds_to_verify,
-          timestamp: 0,
-        }))
+        name: b.batch_id.toString(),
+        value: b.seconds_to_verify,
+        timestamp: 0,
+      }))
       : null,
     badRequest: res.badRequest,
     error: res.error,
@@ -323,7 +326,7 @@ export const fetchVerifyTimes = async (
 export const fetchL1BlockTimes = async (
   range: TimeRange,
 ): Promise<RequestResult<TimeSeriesData[]>> => {
-  const url = `${API_BASE}/l1-block-times?range=${range}`;
+  const url = `${API_BASE}/l1-block-times?${timeRangeToQuery(range)}`;
   const res = await fetchJson<{
     blocks: { minute: number; block_number: number }[];
   }>(url);
@@ -357,7 +360,9 @@ export const fetchL2BlockTimes = async (
   range: TimeRange,
   address?: string,
 ): Promise<RequestResult<TimeSeriesData[]>> => {
-  const url = `${API_BASE}/l2-block-times?range=${range}${address ? `&address=${address}` : ''}`;
+  const url =
+    `${API_BASE}/l2-block-times?${timeRangeToQuery(range)}` +
+    (address ? `&address=${address}` : '');
   const res = await fetchJson<{
     blocks: { l2_block_number: number; ms_since_prev_block: number }[];
   }>(url);
@@ -378,7 +383,7 @@ export const fetchL2BlockTimes = async (
 export const fetchBatchPostingTimes = async (
   range: TimeRange,
 ): Promise<RequestResult<TimeSeriesData[]>> => {
-  const url = `${API_BASE}/batch-posting-times?range=${range}`;
+  const url = `${API_BASE}/batch-posting-times?${timeRangeToQuery(range)}`;
   const res = await fetchJson<{
     batches: { batch_id: number; ms_since_prev_batch: number }[];
   }>(url);
@@ -398,16 +403,18 @@ export const fetchL2GasUsed = async (
   range: TimeRange,
   address?: string,
 ): Promise<RequestResult<TimeSeriesData[]>> => {
-  const url = `${API_BASE}/l2-gas-used?range=${range}${address ? `&address=${address}` : ''}`;
+  const url =
+    `${API_BASE}/l2-gas-used?${timeRangeToQuery(range)}` +
+    (address ? `&address=${address}` : '');
   const res = await fetchJson<{
     blocks: { l2_block_number: number; gas_used: number }[];
   }>(url);
   return {
     data: res.data
       ? res.data.blocks.map((b) => ({
-          value: b.l2_block_number,
-          timestamp: b.gas_used,
-        }))
+        value: b.l2_block_number,
+        timestamp: b.gas_used,
+      }))
       : null,
     badRequest: res.badRequest,
     error: res.error,
@@ -416,23 +423,21 @@ export const fetchL2GasUsed = async (
 
 export const fetchSequencerDistribution = async (
   range: TimeRange,
-): Promise<
-  RequestResult<{ name: string; value: number; tps: number | null }[]>
-> => {
-  const url = `${API_BASE}/sequencer-distribution?range=${range}`;
+): Promise<RequestResult<{ name: string; value: number; tps: number | null }[]>> => {
+  const url = `${API_BASE}/sequencer-distribution?${timeRangeToQuery(range)}`;
   const res = await fetchJson<{
     sequencers: { address: string; blocks: number; tps: number | null }[];
   }>(url);
   return {
     data: res.data
       ? res.data.sequencers.map((s) => {
-          const name = getSequencerName(s.address);
-          return {
-            name: name === 'Unknown' ? s.address : name,
-            value: s.blocks,
-            tps: s.tps,
-          };
-        })
+        const name = getSequencerName(s.address);
+        return {
+          name: name === 'Unknown' ? s.address : name,
+          value: s.blocks,
+          tps: s.tps,
+        };
+      })
       : null,
     badRequest: res.badRequest,
     error: res.error,
@@ -443,7 +448,7 @@ export const fetchSequencerBlocks = async (
   range: TimeRange,
   address: string,
 ): Promise<RequestResult<number[]>> => {
-  const url = `${API_BASE}/sequencer-blocks?range=${range}&address=${address}`;
+  const url = `${API_BASE}/sequencer-blocks?${timeRangeToQuery(range)}&address=${address}`;
   const res = await fetchJson<{
     sequencers: { address: string; blocks: number[] }[];
   }>(url);
@@ -467,7 +472,7 @@ export const fetchBlockTransactions = async (
   address?: string,
   unlimited = false,
 ): Promise<RequestResult<BlockTransaction[]>> => {
-  let url = `${API_BASE}/block-transactions?range=${range}`;
+  let url = `${API_BASE}/block-transactions?${timeRangeToQuery(range)}`;
 
   // Only add limit parameter if not unlimited
   if (!unlimited) {
@@ -490,9 +495,9 @@ export const fetchBlockTransactions = async (
   return {
     data: res.data?.blocks
       ? res.data.blocks.map((b) => ({
-          ...b,
-          sequencer: getSequencerName(b.sequencer),
-        }))
+        ...b,
+        sequencer: getSequencerName(b.sequencer),
+      }))
       : null,
     badRequest: res.badRequest,
     error: res.error,
@@ -524,7 +529,7 @@ export interface BatchBlobCount {
 export const fetchBatchBlobCounts = async (
   range: TimeRange,
 ): Promise<RequestResult<BatchBlobCount[]>> => {
-  const url = `${API_BASE}/blobs-per-batch?range=${range}`;
+  const url = `${API_BASE}/blobs-per-batch?${timeRangeToQuery(range)}`;
   const res = await fetchJson<{
     batches: {
       l1_block_number?: number;
@@ -535,10 +540,10 @@ export const fetchBatchBlobCounts = async (
   return {
     data: res.data
       ? res.data.batches.map((b) => ({
-          block: b.l1_block_number ?? b.batch_id, // Fallback to batch_id for backward compatibility
-          batch: b.batch_id,
-          blobs: b.blob_count,
-        }))
+        block: b.l1_block_number ?? b.batch_id, // Fallback to batch_id for backward compatibility
+        batch: b.batch_id,
+        blobs: b.blob_count,
+      }))
       : null,
     badRequest: res.badRequest,
     error: res.error,
@@ -548,7 +553,7 @@ export const fetchBatchBlobCounts = async (
 export const fetchAvgBlobsPerBatch = async (
   range: TimeRange,
 ): Promise<RequestResult<number>> => {
-  const url = `${API_BASE}/avg-blobs-per-batch?range=${range}`;
+  const url = `${API_BASE}/avg-blobs-per-batch?${timeRangeToQuery(range)}`;
   const res = await fetchJson<{ avg_blobs?: number }>(url);
   return {
     data: res.data?.avg_blobs ?? null,
@@ -562,7 +567,7 @@ export const fetchAvgL2Tps = async (
   address?: string,
 ): Promise<RequestResult<number>> => {
   const url =
-    `${API_BASE}/avg-l2-tps?range=${range}` +
+    `${API_BASE}/avg-l2-tps?${timeRangeToQuery(range)}` +
     (address ? `&address=${address}` : '');
   const res = await fetchJson<{ avg_tps?: number }>(url);
   return {
@@ -583,7 +588,7 @@ export const fetchL2Fees = async (
   address?: string,
 ): Promise<RequestResult<L2FeesResponse>> => {
   const url =
-    `${API_BASE}/l2-fees?range=${range}` +
+    `${API_BASE}/l2-fees?${timeRangeToQuery(range)}` +
     (address ? `&address=${address}` : '');
   const res = await fetchJson<L2FeesResponse>(url);
   return {
@@ -605,7 +610,7 @@ export const fetchFeeComponents = async (
   address?: string,
 ): Promise<RequestResult<FeeComponent[]>> => {
   const url =
-    `${API_BASE}/l2-fee-components?range=${range}` +
+    `${API_BASE}/l2-fee-components?${timeRangeToQuery(range)}` +
     (address ? `&address=${address}` : '');
   const res = await fetchJson<{
     blocks: {
@@ -618,11 +623,11 @@ export const fetchFeeComponents = async (
   return {
     data: res.data
       ? res.data.blocks.map((b) => ({
-          block: b.l2_block_number,
-          priority: b.priority_fee,
-          base: b.base_fee,
-          l1Cost: b.l1_data_cost ?? null,
-        }))
+        block: b.l2_block_number,
+        priority: b.priority_fee,
+        base: b.base_fee,
+        l1Cost: b.l1_data_cost ?? null,
+      }))
       : null,
     badRequest: res.badRequest,
     error: res.error,
@@ -634,7 +639,7 @@ export const fetchL2Tps = async (
   address?: string,
 ): Promise<RequestResult<{ block: number; tps: number }[]>> => {
   const url =
-    `${API_BASE}/l2-tps?range=${range}` +
+    `${API_BASE}/l2-tps?${timeRangeToQuery(range)}` +
     (address ? `&address=${address}` : '');
   const res = await fetchJson<{
     blocks: { l2_block_number: number; tps: number }[];
@@ -674,7 +679,7 @@ export const fetchDashboardData = async (
   address?: string,
 ): Promise<RequestResult<DashboardDataResponse>> => {
   const url =
-    `${API_BASE}/dashboard-data?range=${range}` +
+    `${API_BASE}/dashboard-data?${timeRangeToQuery(range)}` +
     (address ? `&address=${address}` : '');
   return fetchJson<DashboardDataResponse>(url);
 };
