@@ -14,7 +14,6 @@ import {
   fetchBatchPostingTimes,
   fetchProveTimes,
   fetchVerifyTimes,
-  fetchAllBlockTransactions,
   fetchL2BlockTimes,
   fetchL2GasUsed,
   fetchL2GasUsedAggregated,
@@ -45,7 +44,6 @@ export interface TableConfig {
   chart?: (data: any[]) => React.ReactNode;
   supportsPagination?: boolean;
   urlKey: string;
-  useUnlimitedData?: boolean;
   reverseOrder?: boolean;
 }
 
@@ -224,7 +222,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
   'block-tx': {
     title: 'Tx Count Per L2 Block',
     description: 'Transactions included in each L2 block.',
-    fetcher: fetchAllBlockTransactions,
+    fetcher: fetchBlockTransactions,
     columns: [
       { key: 'block', label: 'L2 Block Number' },
       { key: 'txs', label: 'Tx Count' },
