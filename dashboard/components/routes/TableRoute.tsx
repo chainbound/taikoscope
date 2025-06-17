@@ -137,14 +137,20 @@ export const TableRoute: React.FC = () => {
         } else {
           [res, aggRes] = await (config.aggregatedFetcher
             ? Promise.all([
-                config.fetcher(range, ...fetcherArgs),
-                config.aggregatedFetcher(range, ...fetcherArgs),
-              ])
+              config.fetcher(range, ...fetcherArgs),
+              config.aggregatedFetcher(range, ...fetcherArgs),
+            ])
             : Promise.all([config.fetcher(range, ...fetcherArgs)]));
         }
         if (currentFetchId !== fetchIdRef.current) return;
         let data = res.data || [];
         const chartData = aggRes?.data || data;
+
+        // Calculate pagination cursors from original data before reversing
+        const originalData = data;
+        const nextCursor = originalData.length > 0 ? originalData[originalData.length - 1].value : undefined;
+        const prevCursor = originalData.length > 0 ? originalData[0].value : undefined;
+
         if (config.reverseOrder) {
           data = [...data].reverse();
         }
@@ -169,9 +175,7 @@ export const TableRoute: React.FC = () => {
           };
           if (tableType === 'l2-gas-used') {
             const disablePrev = page === 0;
-            const disableNext = data.length < PAGE_LIMIT;
-            const nextCursor = data.length > 0 ? data[data.length - 1].value : undefined;
-            const prevCursor = data.length > 0 ? data[0].value : undefined;
+            const disableNext = originalData.length < PAGE_LIMIT;
             view.serverPagination = {
               page,
               onNext: () => {
