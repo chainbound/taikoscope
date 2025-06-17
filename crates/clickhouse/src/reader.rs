@@ -536,16 +536,30 @@ impl ClickhouseReader {
             ts: u64,
         }
 
-        let query = format!(
-            "SELECT l2_block_number, depth, \
+        let client = self.base.clone();
+        let sql = "SELECT l2_block_number, depth, \
                     toUInt64(toUnixTimestamp64Milli(inserted_at)) AS ts \
-             FROM {}.l2_reorgs \
-             WHERE inserted_at > toDateTime64({}, 3) \
-             ORDER BY inserted_at ASC",
-            self.db_name,
-            since.timestamp_millis() as f64 / 1000.0,
-        );
-        let rows = self.execute::<RawRow>(&query).await.context("fetching reorg events failed")?;
+             FROM ?.l2_reorgs \
+             WHERE inserted_at > toDateTime64(?, 3) \
+             ORDER BY inserted_at ASC";
+
+        let start = Instant::now();
+        let result = client
+            .query(sql)
+            .bind(Identifier(&self.db_name))
+            .bind(since.timestamp_millis() as f64 / 1000.0)
+            .fetch_all::<RawRow>()
+            .await;
+
+        let duration_ms = start.elapsed().as_millis();
+        match &result {
+            Ok(rows) => {
+                debug!(query = sql, duration_ms, rows = rows.len(), "ClickHouse query executed")
+            }
+            Err(e) => error!(query = sql, duration_ms, error = %e, "ClickHouse query failed"),
+        }
+
+        let rows = result.context("fetching reorg events failed")?;
         Ok(rows
             .into_iter()
             .filter_map(|r| {
@@ -661,31 +675,53 @@ impl ClickhouseReader {
             sum_tx: u32,
         }
 
-        let mut query = format!(
+        let filter = self.reorg_filter("h");
+        let mut sql = format!(
             "SELECT sequencer, h.l2_block_number, h.block_ts AS block_time, sum_tx \
-             FROM {db}.l2_head_events h \
-             WHERE h.block_ts >= {} \
+             FROM ?.l2_head_events h \
+             WHERE h.block_ts >= ? \
                AND {filter}",
-            since.timestamp(),
-            filter = self.reorg_filter("h"),
-            db = self.db_name,
+            filter = filter,
         );
+        if sequencer.is_some() {
+            sql.push_str(" AND sequencer = unhex(?)");
+        }
+        if starting_after.is_some() {
+            sql.push_str(" AND l2_block_number < ?");
+        }
+        if ending_before.is_some() {
+            sql.push_str(" AND l2_block_number > ?");
+        }
+        sql.push_str(" ORDER BY l2_block_number DESC");
+        sql.push_str(" LIMIT ?");
+
+        let client = self.base.clone();
+        let mut query = client.query(&sql);
+        query = query.bind(Identifier(&self.db_name));
+        query = query.bind(since.timestamp());
         if let Some(addr) = sequencer {
-            query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
+            query = query.bind(encode(addr));
         }
-
         if let Some(start) = starting_after {
-            query.push_str(&format!(" AND l2_block_number < {}", start));
+            query = query.bind(start);
         }
-
         if let Some(end) = ending_before {
-            query.push_str(&format!(" AND l2_block_number > {}", end));
+            query = query.bind(end);
+        }
+        query = query.bind(limit);
+
+        let start = Instant::now();
+        let result = query.fetch_all::<RawRow>().await;
+
+        let duration_ms = start.elapsed().as_millis();
+        match &result {
+            Ok(rows) => {
+                debug!(query = sql, duration_ms, rows = rows.len(), "ClickHouse query executed")
+            }
+            Err(e) => error!(query = sql, duration_ms, error = %e, "ClickHouse query failed"),
         }
 
-        query.push_str(" ORDER BY l2_block_number DESC");
-        query.push_str(&format!(" LIMIT {}", limit));
-
-        let rows = self.execute::<RawRow>(&query).await?;
+        let rows = result?;
         Ok(rows
             .into_iter()
             .map(|r| BlockTransactionRow {
