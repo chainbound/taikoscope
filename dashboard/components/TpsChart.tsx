@@ -54,7 +54,7 @@ const TpsChartComponent: React.FC<TpsChartProps> = ({ data, lineColor }) => {
           domain={[0, 'auto']}
           allowDecimals={false}
           label={{
-            value: 'TPS',
+            value: 'Avg TPS',
             angle: -90,
             position: 'insideLeft',
             offset: -16,
@@ -64,7 +64,7 @@ const TpsChartComponent: React.FC<TpsChartProps> = ({ data, lineColor }) => {
         />
         <Tooltip
           labelFormatter={(label: number) => `Block ${label.toLocaleString()}`}
-          formatter={(value: number) => [value.toFixed(2), 'tps']}
+          formatter={(value: number) => [value.toFixed(2), 'avg tps']}
           contentStyle={{
             backgroundColor: 'rgba(255, 255, 255, 0.8)',
             borderColor: lineColor,
@@ -77,7 +77,7 @@ const TpsChartComponent: React.FC<TpsChartProps> = ({ data, lineColor }) => {
           stroke={lineColor}
           strokeWidth={2}
           dot={false}
-          name="TPS"
+          name="Avg TPS"
         />
       </LineChart>
     </ResponsiveContainer>

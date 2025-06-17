@@ -68,7 +68,11 @@ const BatchProcessChartComponent: React.FC<BatchProcessChartProps> = ({
                 : v.toString()
           }
           label={{
-            value: showHours ? 'Hours' : showMinutes ? 'Minutes' : 'Seconds',
+            value: showHours
+              ? 'Avg Hours'
+              : showMinutes
+                ? 'Avg Minutes'
+                : 'Avg Seconds',
             angle: -90,
             position: 'insideLeft',
             offset: -5,
@@ -93,7 +97,7 @@ const BatchProcessChartComponent: React.FC<BatchProcessChartProps> = ({
           strokeWidth={2}
           dot={false}
           activeDot={data.length <= 100 ? { r: 6 } : false}
-          name="Time"
+          name="Avg Time"
         />
       </LineChart>
     </ResponsiveContainer>

@@ -55,7 +55,7 @@ const BlobsPerBatchChartComponent: React.FC<BlobsPerBatchChartProps> = ({
           allowDecimals={false}
           tickFormatter={(v: number) => v.toLocaleString()}
           label={{
-            value: 'Blobs',
+            value: 'Avg Blobs',
             angle: -90,
             position: 'insideLeft',
             offset: -16,
@@ -78,7 +78,7 @@ const BlobsPerBatchChartComponent: React.FC<BlobsPerBatchChartProps> = ({
           }}
           labelStyle={{ color: '#333' }}
         />
-        <Bar dataKey="blobs" fill={barColor} name="Blobs" />
+        <Bar dataKey="blobs" fill={barColor} name="Avg Blobs" />
       </BarChart>
     </ResponsiveContainer>
   );

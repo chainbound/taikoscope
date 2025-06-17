@@ -58,7 +58,7 @@ const BlockTxChartComponent: React.FC<BlockTxChartProps> = ({
           allowDecimals={false}
           tickFormatter={(v: number) => v.toLocaleString()}
           label={{
-            value: 'Tx Count',
+            value: 'Avg Tx Count',
             angle: -90,
             position: 'insideLeft',
             offset: -16,
@@ -72,7 +72,7 @@ const BlockTxChartComponent: React.FC<BlockTxChartProps> = ({
             const timeStr = ts ? new Date(ts).toLocaleString() : '';
             return `Block ${label.toLocaleString()} (${timeStr})`;
           }}
-          formatter={(value: number) => [value.toLocaleString(), 'txs']}
+          formatter={(value: number) => [value.toLocaleString(), 'avg txs']}
           contentStyle={{
             backgroundColor: 'rgba(255, 255, 255, 0.8)',
             borderColor: lineColor,
@@ -86,7 +86,7 @@ const BlockTxChartComponent: React.FC<BlockTxChartProps> = ({
           strokeWidth={2}
           dot={false}
           activeDot={sortedData.length <= 100 ? { r: 6 } : false}
-          name="Txs"
+          name="Avg Txs"
         />
       </LineChart>
     </ResponsiveContainer>
