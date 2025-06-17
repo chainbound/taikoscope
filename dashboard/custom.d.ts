@@ -9,6 +9,8 @@ interface ImportMetaEnv {
   readonly NETWORK_NAME?: string;
   readonly VITE_TAIKOSCAN_BASE?: string;
   readonly TAIKOSCAN_BASE?: string;
+  readonly VITE_ETHERSCAN_BASE?: string;
+  readonly ETHERSCAN_BASE?: string;
 }
 
 interface ImportMeta {

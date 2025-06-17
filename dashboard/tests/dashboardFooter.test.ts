@@ -4,7 +4,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { DashboardFooter } from '../components/DashboardFooter';
 
 describe('DashboardFooter', () => {
-  it('renders block numbers', () => {
+  it('renders block numbers with links', () => {
     const html = renderToStaticMarkup(
       React.createElement(DashboardFooter, {
         l2HeadBlock: '409,253',
@@ -12,8 +12,10 @@ describe('DashboardFooter', () => {
       }),
     );
     expect(html.includes('L2 Head Block')).toBe(true);
-    expect(html.includes('409,253')).toBe(true);
     expect(html.includes('L1 Head Block')).toBe(true);
+    expect(html.includes('409,253')).toBe(true);
     expect(html.includes('3,951,872')).toBe(true);
+    expect(html.includes('/block/409253')).toBe(true);
+    expect(html.includes('/block/3951872')).toBe(true);
   });
 });
