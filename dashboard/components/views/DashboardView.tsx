@@ -2,6 +2,8 @@ import React, { useCallback, lazy, useState } from 'react';
 import { ErrorDisplay } from '../layout/ErrorDisplay';
 import { MetricsGrid } from '../layout/MetricsGrid';
 import { ProfitCalculator } from '../ProfitCalculator';
+import { IncomeChart } from '../IncomeChart';
+import { CostChart } from '../CostChart';
 import { ProfitabilityChart } from '../ProfitabilityChart';
 import { ChartCard } from '../ChartCard';
 import { TAIKO_PINK } from '../../theme';
@@ -302,12 +304,26 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               onProverCostChange={setProverCost}
             />
             <div className="mt-6">
-            <ProfitabilityChart
-              timeRange={timeRange}
-              cloudCost={cloudCost}
-              proverCost={proverCost}
-              address={selectedSequencer || undefined}
-            />
+              <IncomeChart
+                timeRange={timeRange}
+                address={selectedSequencer || undefined}
+              />
+            </div>
+            <div className="mt-6">
+              <CostChart
+                timeRange={timeRange}
+                cloudCost={cloudCost}
+                proverCost={proverCost}
+                address={selectedSequencer || undefined}
+              />
+            </div>
+            <div className="mt-6">
+              <ProfitabilityChart
+                timeRange={timeRange}
+                cloudCost={cloudCost}
+                proverCost={proverCost}
+                address={selectedSequencer || undefined}
+              />
             </div>
           </>
         )}
