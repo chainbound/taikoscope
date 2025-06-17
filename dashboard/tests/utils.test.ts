@@ -128,6 +128,8 @@ describe('utils', () => {
 
   it('formats ETH amounts', () => {
     expect(formatEth(42e18)).toBe('42.0 ETH');
+    expect(formatEth(0)).toBe('0.00 ETH');
+    expect(formatEth(1e8)).toBe('0.10 Gwei');
   });
 
   it('converts bytes to hex', () => {
