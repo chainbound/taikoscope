@@ -1603,8 +1603,10 @@ const fn bucket_size_from_range(range: &TimeRange) -> u64 {
         25
     } else if hours <= 48 {
         50
-    } else {
+    } else if hours <= 72 {
         100
+    } else {
+        250
     }
 }
 

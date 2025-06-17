@@ -1,12 +1,13 @@
 export const isValidTimeRange = (range: string): boolean => {
   const trimmed = range.trim();
-  const match = trimmed.match(/^(\d+)([mh])$/i);
+  const match = trimmed.match(/^(\d+)([mhd])$/i);
   if (match) {
     const value = parseInt(match[1], 10);
     if (value <= 0) return false;
     const unit = match[2].toLowerCase();
-    const minutes = unit === 'h' ? value * 60 : value;
-    return minutes <= 24 * 60;
+    const minutes =
+      unit === 'h' ? value * 60 : unit === 'd' ? value * 24 * 60 : value;
+    return minutes <= 7 * 24 * 60;
   }
 
   const custom = trimmed.match(/^(\d+)-(\d+)$/);
@@ -14,7 +15,7 @@ export const isValidTimeRange = (range: string): boolean => {
     const start = parseInt(custom[1], 10);
     const end = parseInt(custom[2], 10);
     if (isNaN(start) || isNaN(end) || end <= start) return false;
-    return end - start <= 24 * 60 * 60 * 1000;
+    return end - start <= 7 * 24 * 60 * 60 * 1000;
   }
 
   return false;
@@ -22,10 +23,13 @@ export const isValidTimeRange = (range: string): boolean => {
 
 export const rangeToHours = (range: string): number => {
   const trimmed = range.trim();
-  const match = trimmed.match(/^(\d+)([mh])$/i);
+  const match = trimmed.match(/^(\d+)([mhd])$/i);
   if (match) {
     const value = parseInt(match[1], 10);
-    return match[2].toLowerCase() === 'h' ? value : value / 60;
+    const unit = match[2].toLowerCase();
+    if (unit === 'h') return value;
+    if (unit === 'd') return value * 24;
+    return value / 60;
   }
 
   const custom = trimmed.match(/^(\d+)-(\d+)$/);
@@ -45,10 +49,16 @@ export const timeRangeToQuery = (range: string): string => {
   let end = now;
 
   const trimmed = range.trim();
-  const preset = trimmed.match(/^(\d+)([mh])$/i);
+  const preset = trimmed.match(/^(\d+)([mhd])$/i);
   if (preset) {
     const value = parseInt(preset[1], 10);
-    const ms = value * (preset[2].toLowerCase() === 'h' ? 3_600_000 : 60_000);
+    const ms =
+      value *
+      (preset[2].toLowerCase() === 'h'
+        ? 3_600_000
+        : preset[2].toLowerCase() === 'd'
+        ? 86_400_000
+        : 60_000);
     start = now - ms;
   } else {
     const custom = trimmed.match(/^(\d+)-(\d+)$/);
@@ -66,10 +76,15 @@ export const timeRangeToQuery = (range: string): string => {
 
 export const formatTimeRangeDisplay = (range: string): string => {
   const trimmed = range.trim();
-  const preset = trimmed.match(/^(\d+)([mh])$/i);
+  const preset = trimmed.match(/^(\d+)([mhd])$/i);
   if (preset) {
     const value = parseInt(preset[1], 10);
-    const unit = preset[2].toLowerCase() === 'h' ? 'hour' : 'minute';
+    const unit =
+      preset[2].toLowerCase() === 'h'
+        ? 'hour'
+        : preset[2].toLowerCase() === 'd'
+        ? 'day'
+        : 'minute';
     const plural = value === 1 ? '' : 's';
     return `last ${value} ${unit}${plural}`;
   }
@@ -102,10 +117,16 @@ export const normalizeTimeRange = (
   let end = now;
 
   const trimmed = range.trim();
-  const preset = trimmed.match(/^(\d+)([mh])$/i);
+  const preset = trimmed.match(/^(\d+)([mhd])$/i);
   if (preset) {
     const value = parseInt(preset[1], 10);
-    const ms = value * (preset[2].toLowerCase() === 'h' ? 3_600_000 : 60_000);
+    const ms =
+      value *
+      (preset[2].toLowerCase() === 'h'
+        ? 3_600_000
+        : preset[2].toLowerCase() === 'd'
+        ? 86_400_000
+        : 60_000);
     start = now - ms;
   } else {
     const custom = trimmed.match(/^(\d+)-(\d+)$/);
