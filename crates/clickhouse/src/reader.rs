@@ -42,8 +42,8 @@ pub enum TimeRange {
 }
 
 impl TimeRange {
-    /// Maximum allowed range in seconds (7 days).
-    const MAX_SECONDS: u64 = 7 * 24 * 3600;
+    /// Maximum allowed range in seconds (30 days).
+    const MAX_SECONDS: u64 = 30 * 24 * 3600;
 
     /// Create a [`TimeRange`] from a [`chrono::Duration`], clamping to the
     /// allowed maximum of seven days.

@@ -31,8 +31,12 @@ pub const VIEWS: &[&str] = &[
     "batch_verify_times_mv",
     "hourly_avg_prove_times_mv",
     "hourly_avg_verify_times_mv",
+    "hourly_l2_metrics_mv",
+    "hourly_batch_metrics_mv",
     "daily_avg_prove_times_mv",
     "daily_avg_verify_times_mv",
+    "daily_l2_metrics_mv",
+    "daily_batch_metrics_mv",
 ];
 
 /// Schema definitions for tables
