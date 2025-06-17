@@ -432,7 +432,12 @@ export const fetchL2GasUsed = async (
   startingAfter?: number,
   endingBefore?: number,
 ): Promise<RequestResult<TimeSeriesData[]>> => {
-  let url = `${API_BASE}/l2-gas-used?${timeRangeToQuery(range)}&limit=${limit}`;
+  let url = `${API_BASE}/l2-gas-used?`;
+  if (startingAfter === undefined && endingBefore === undefined) {
+    url += `${timeRangeToQuery(range)}&limit=${limit}`;
+  } else {
+    url += `limit=${limit}`;
+  }
   if (startingAfter !== undefined) {
     url += `&starting_after=${startingAfter}`;
   } else if (endingBefore !== undefined) {
@@ -529,11 +534,12 @@ export const fetchBlockTransactions = async (
   address?: string,
   unlimited = false,
 ): Promise<RequestResult<BlockTransaction[]>> => {
-  let url = `${API_BASE}/block-transactions?${timeRangeToQuery(range)}`;
+  let url = `${API_BASE}/block-transactions?`;
 
-  // Only add limit parameter if not unlimited
-  if (!unlimited) {
-    url += `&limit=${limit}`;
+  if (startingAfter === undefined && endingBefore === undefined) {
+    url += `${timeRangeToQuery(range)}&limit=${limit}`;
+  } else {
+    url += `limit=${limit}`;
   }
 
   // For unlimited fetching, we ignore pagination parameters to get all data
