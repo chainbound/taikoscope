@@ -268,18 +268,29 @@ impl ClickhouseReader {
 
     /// Get timestamp of the latest `BatchProposed` event based on L1 block timestamp in UTC
     pub async fn get_last_batch_time(&self) -> Result<Option<DateTime<Utc>>> {
-        let query = format!(
-            "SELECT max(l1_events.block_ts) AS block_ts
-             FROM {db}.batches b
-             INNER JOIN {db}.l1_head_events l1_events
-               ON b.l1_block_number = l1_events.l1_block_number",
-            db = &self.db_name
-        );
+        let client = self.base.clone();
+        let sql = "SELECT max(l1_events.block_ts) AS block_ts \
+             FROM ?.batches b \
+             INNER JOIN ?.l1_head_events l1_events \
+               ON b.l1_block_number = l1_events.l1_block_number";
 
-        let rows = self
-            .execute::<MaxTs>(&query)
-            .await
-            .context("fetching max batch L1 block timestamp failed")?;
+        let start = Instant::now();
+        let result = client
+            .query(sql)
+            .bind(Identifier(&self.db_name))
+            .bind(Identifier(&self.db_name))
+            .fetch_all::<MaxTs>()
+            .await;
+
+        let duration_ms = start.elapsed().as_millis();
+        match &result {
+            Ok(rows) => {
+                debug!(query = sql, duration_ms, rows = rows.len(), "ClickHouse query executed")
+            }
+            Err(e) => error!(query = sql, duration_ms, error = %e, "ClickHouse query failed"),
+        }
+
+        let rows = result.context("fetching max batch L1 block timestamp failed")?;
 
         let row = match rows.into_iter().next() {
             Some(r) => r,
@@ -300,11 +311,22 @@ impl ClickhouseReader {
 
     /// Get the most recent preconfiguration data
     pub async fn get_last_preconf_data(&self) -> Result<Option<PreconfData>> {
-        let query = format!(
-            "SELECT slot, candidates, current_operator, next_operator FROM {}.preconf_data ORDER BY inserted_at DESC LIMIT 1",
-            self.db_name
-        );
-        let rows = self.execute::<PreconfData>(&query).await?;
+        let client = self.base.clone();
+        let sql = "SELECT slot, candidates, current_operator, next_operator FROM ?.preconf_data ORDER BY inserted_at DESC LIMIT 1";
+
+        let start = Instant::now();
+        let result =
+            client.query(sql).bind(Identifier(&self.db_name)).fetch_all::<PreconfData>().await;
+
+        let duration_ms = start.elapsed().as_millis();
+        match &result {
+            Ok(rows) => {
+                debug!(query = sql, duration_ms, rows = rows.len(), "ClickHouse query executed")
+            }
+            Err(e) => error!(query = sql, duration_ms, error = %e, "ClickHouse query failed"),
+        }
+
+        let rows = result?;
         Ok(rows.into_iter().next())
     }
 
@@ -357,8 +379,22 @@ impl ClickhouseReader {
         struct ProvedBatchIdRow {
             batch_id: u64,
         }
-        let query = format!("SELECT batch_id FROM {}.proved_batches", self.db_name);
-        let rows = self.execute::<ProvedBatchIdRow>(&query).await?;
+        let client = self.base.clone();
+        let sql = "SELECT batch_id FROM ?.proved_batches";
+
+        let start = Instant::now();
+        let result =
+            client.query(sql).bind(Identifier(&self.db_name)).fetch_all::<ProvedBatchIdRow>().await;
+
+        let duration_ms = start.elapsed().as_millis();
+        match &result {
+            Ok(rows) => {
+                debug!(query = sql, duration_ms, rows = rows.len(), "ClickHouse query executed")
+            }
+            Err(e) => error!(query = sql, duration_ms, error = %e, "ClickHouse query failed"),
+        }
+
+        let rows = result?;
         Ok(rows.into_iter().map(|r| r.batch_id).collect())
     }
 
@@ -411,8 +447,25 @@ impl ClickhouseReader {
         struct VerifiedBatchIdRow {
             batch_id: u64,
         }
-        let query = format!("SELECT batch_id FROM {}.verified_batches", self.db_name);
-        let rows = self.execute::<VerifiedBatchIdRow>(&query).await?;
+        let client = self.base.clone();
+        let sql = "SELECT batch_id FROM ?.verified_batches";
+
+        let start = Instant::now();
+        let result = client
+            .query(sql)
+            .bind(Identifier(&self.db_name))
+            .fetch_all::<VerifiedBatchIdRow>()
+            .await;
+
+        let duration_ms = start.elapsed().as_millis();
+        match &result {
+            Ok(rows) => {
+                debug!(query = sql, duration_ms, rows = rows.len(), "ClickHouse query executed")
+            }
+            Err(e) => error!(query = sql, duration_ms, error = %e, "ClickHouse query failed"),
+        }
+
+        let rows = result?;
         Ok(rows.into_iter().map(|r| r.batch_id).collect())
     }
 
@@ -518,13 +571,27 @@ impl ClickhouseReader {
             next_operator: Option<AddressBytes>,
         }
 
-        let query = format!(
-            "SELECT candidates, current_operator, next_operator FROM {}.preconf_data \
-             WHERE inserted_at > toDateTime64({}, 3)",
-            self.db_name,
-            since.timestamp_millis() as f64 / 1000.0,
-        );
-        let rows = self.execute::<GatewayRow>(&query).await?;
+        let client = self.base.clone();
+        let sql = "SELECT candidates, current_operator, next_operator FROM ?.preconf_data \
+             WHERE inserted_at > toDateTime64(?, 3)";
+
+        let start = Instant::now();
+        let result = client
+            .query(sql)
+            .bind(Identifier(&self.db_name))
+            .bind(since.timestamp_millis() as f64 / 1000.0)
+            .fetch_all::<GatewayRow>()
+            .await;
+
+        let duration_ms = start.elapsed().as_millis();
+        match &result {
+            Ok(rows) => {
+                debug!(query = sql, duration_ms, rows = rows.len(), "ClickHouse query executed")
+            }
+            Err(e) => error!(query = sql, duration_ms, error = %e, "ClickHouse query failed"),
+        }
+
+        let rows = result?;
         let mut set = std::collections::HashSet::new();
         for row in rows {
             for cand in row.candidates {
