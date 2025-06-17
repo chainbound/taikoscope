@@ -41,6 +41,11 @@ describe('metricsCreator', () => {
     const next = metrics.find((m) => m.title === 'Next Sequencer');
     expect(current?.value).toBe('Chainbound A');
     expect(next?.value).toBe('Chainbound B');
+
+    const l2BlockMetric = metrics.find((m) => m.title === 'L2 Block');
+    expect(l2BlockMetric?.link).toContain('/block/100');
+    const l1BlockMetric = metrics.find((m) => m.title === 'L1 Block');
+    expect(l1BlockMetric?.link).toContain('/block/50');
   });
 
   it('falls back to N/A for missing values', () => {

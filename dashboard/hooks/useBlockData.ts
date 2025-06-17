@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { fetchL1HeadNumber, fetchL2HeadNumber } from '../services/apiService';
 import { MetricData } from '../types';
+import { TAIKOSCAN_BASE } from '../utils';
 
 export const useBlockData = () => {
   const [l2HeadBlock, setL2HeadBlock] = useState<string>('0');
@@ -32,10 +33,24 @@ export const useBlockData = () => {
     (metrics: MetricData[]): MetricData[] => {
       return metrics.map((metric) => {
         if (metric.title === 'L1 Block') {
-          return { ...metric, value: l1HeadBlock };
+          const num = Number(l1HeadBlock.replace(/,/g, ''));
+          return {
+            ...metric,
+            value: l1HeadBlock,
+            link: Number.isFinite(num)
+              ? `${TAIKOSCAN_BASE}/block/${num}`
+              : metric.link,
+          };
         }
         if (metric.title === 'L2 Block') {
-          return { ...metric, value: l2HeadBlock };
+          const num = Number(l2HeadBlock.replace(/,/g, ''));
+          return {
+            ...metric,
+            value: l2HeadBlock,
+            link: Number.isFinite(num)
+              ? `${TAIKOSCAN_BASE}/block/${num}`
+              : metric.link,
+          };
         }
         return metric;
       });

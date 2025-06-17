@@ -5,6 +5,7 @@ import {
   formatDecimal,
   formatEth,
   formatWithCommas,
+  TAIKOSCAN_BASE,
 } from '../utils';
 import { getSequencerName } from '../sequencerConfig';
 
@@ -130,11 +131,15 @@ export const createMetrics = (data: MetricInputData): MetricData[] => [
   {
     title: 'L2 Block',
     value: data.l2Block != null ? data.l2Block.toLocaleString() : 'N/A',
+    link:
+      data.l2Block != null ? `${TAIKOSCAN_BASE}/block/${data.l2Block}` : undefined,
     group: 'Block Information',
   },
   {
     title: 'L1 Block',
     value: data.l1Block != null ? data.l1Block.toLocaleString() : 'N/A',
+    link:
+      data.l1Block != null ? `${TAIKOSCAN_BASE}/block/${data.l1Block}` : undefined,
     group: 'Block Information',
   },
 ];
