@@ -693,7 +693,7 @@ export const fetchFeeComponents = async (
   address?: string,
 ): Promise<RequestResult<FeeComponent[]>> => {
   const url =
-    `${API_BASE}/l2-fee-components?${timeRangeToQuery(range)}` +
+    `${API_BASE}/l2-fee-components/aggregated?${timeRangeToQuery(range)}` +
     (address ? `&address=${address}` : '');
   const res = await fetchJson<{
     blocks: {
