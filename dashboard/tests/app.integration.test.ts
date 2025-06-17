@@ -124,13 +124,13 @@ const responses: Record<string, Record<string, unknown>> = {
   [`/v1/verify-times?${q15m}`]: {
     batches: [{ batch_id: 1, seconds_to_verify: 4 }],
   },
-  [`/v1/l2-gas-used?${q1h}`]: {
+  [`/v1/l2-gas-used?${q1h}&limit=50`]: {
     blocks: [
       { l2_block_number: 1, block_time: '1970-01-01T00:00:01Z', gas_used: 100 },
       { l2_block_number: 2, block_time: '1970-01-01T00:00:02Z', gas_used: 150 },
     ],
   },
-  [`/v1/l2-gas-used?${q15m}`]: {
+  [`/v1/l2-gas-used?${q15m}&limit=50`]: {
     blocks: [
       { l2_block_number: 1, block_time: '1970-01-01T00:00:01Z', gas_used: 100 },
       { l2_block_number: 2, block_time: '1970-01-01T00:00:02Z', gas_used: 150 },

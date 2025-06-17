@@ -25,6 +25,8 @@ export const TableRoute: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { navigateToDashboard } = useRouterNavigation();
 
+  const PAGE_LIMIT = 50;
+
   const {
     timeRange,
     setTimeRange,
@@ -95,6 +97,13 @@ export const TableRoute: React.FC = () => {
         const fetcherArgs: any[] = [];
         const extraParams: Record<string, any> = {};
 
+        const pageStr = searchParams.get('page') ?? '0';
+        const page = parseInt(pageStr, 10);
+        const start = searchParams.get('start');
+        const end = searchParams.get('end');
+        const startingAfter = start ? Number(start) : undefined;
+        const endingBefore = end ? Number(end) : undefined;
+
         if (tableType === 'sequencer-blocks') {
           const address = searchParams.get('address');
           if (address) {
@@ -111,12 +120,28 @@ export const TableRoute: React.FC = () => {
           );
         }
 
-        const [res, aggRes] = await (config.aggregatedFetcher
-          ? Promise.all([
-              config.fetcher(range, ...fetcherArgs),
-              config.aggregatedFetcher(range, ...fetcherArgs),
-            ])
-          : Promise.all([config.fetcher(range, ...fetcherArgs)]));
+        let res;
+        let aggRes;
+        if (tableType === 'l2-gas-used') {
+          const address = fetcherArgs.pop();
+          if (config.aggregatedFetcher) {
+            [res, aggRes] = await Promise.all([
+              config.fetcher(range, PAGE_LIMIT, startingAfter, endingBefore, address),
+              config.aggregatedFetcher(range, address),
+            ]);
+          } else {
+            [res] = await Promise.all([
+              config.fetcher(range, PAGE_LIMIT, startingAfter, endingBefore, address),
+            ]);
+          }
+        } else {
+          [res, aggRes] = await (config.aggregatedFetcher
+            ? Promise.all([
+                config.fetcher(range, ...fetcherArgs),
+                config.aggregatedFetcher(range, ...fetcherArgs),
+              ])
+            : Promise.all([config.fetcher(range, ...fetcherArgs)]));
+        }
         if (currentFetchId !== fetchIdRef.current) return;
         let data = res.data || [];
         const chartData = aggRes?.data || data;
@@ -135,13 +160,39 @@ export const TableRoute: React.FC = () => {
         const chart = config.chart ? config.chart(chartData) : undefined;
 
         if (currentFetchId === fetchIdRef.current) {
-          setTableView({
+          const view: TableViewState = {
             title,
             description: config.description,
             columns: config.columns,
             rows: mappedData,
             chart,
-          });
+          };
+          if (tableType === 'l2-gas-used') {
+            const disablePrev = page === 0;
+            const disableNext = data.length < PAGE_LIMIT;
+            const nextCursor = data.length > 0 ? data[data.length - 1].value : undefined;
+            const prevCursor = data.length > 0 ? data[0].value : undefined;
+            view.serverPagination = {
+              page,
+              onNext: () => {
+                const params = new URLSearchParams(searchParams);
+                params.set('page', String(page + 1));
+                if (nextCursor !== undefined) params.set('start', String(nextCursor));
+                params.delete('end');
+                setSearchParams(params);
+              },
+              onPrev: () => {
+                const params = new URLSearchParams(searchParams);
+                params.set('page', String(page - 1));
+                if (prevCursor !== undefined) params.set('end', String(prevCursor));
+                params.delete('start');
+                setSearchParams(params);
+              },
+              disableNext,
+              disablePrev,
+            };
+          }
+          setTableView(view);
         }
       } catch (error) {
         console.error('Failed to load table:', error);

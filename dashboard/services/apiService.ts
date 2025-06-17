@@ -427,11 +427,20 @@ export const fetchBatchPostingTimes = async (
 
 export const fetchL2GasUsed = async (
   range: TimeRange,
+  limit = 50,
+  startingAfter?: number,
+  endingBefore?: number,
   address?: string,
 ): Promise<RequestResult<TimeSeriesData[]>> => {
-  const url =
-    `${API_BASE}/l2-gas-used?${timeRangeToQuery(range)}` +
-    (address ? `&address=${address}` : '');
+  let url = `${API_BASE}/l2-gas-used?${timeRangeToQuery(range)}&limit=${limit}`;
+  if (startingAfter !== undefined) {
+    url += `&starting_after=${startingAfter}`;
+  } else if (endingBefore !== undefined) {
+    url += `&ending_before=${endingBefore}`;
+  }
+  if (address) {
+    url += `&address=${address}`;
+  }
   const res = await fetchJson<{
     blocks: { l2_block_number: number; block_time: string; gas_used: number }[];
   }>(url);
