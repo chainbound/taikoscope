@@ -14,7 +14,7 @@ use axum::{
 };
 use chrono::{Duration as ChronoDuration, TimeZone, Utc};
 
-use clickhouse_lib::{AddressBytes, ClickhouseReader, L2BlockTimeRow, L2GasUsedRow};
+use clickhouse_lib::{AddressBytes, ClickhouseReader, L2BlockTimeRow, L2GasUsedRow, TimeRange};
 use futures::stream::Stream;
 use hex::encode;
 use primitives::hardware::TOTAL_HARDWARE_COST_USD;
@@ -774,7 +774,8 @@ async fn l2_block_times_aggregated(
             ));
         }
     };
-    let blocks = aggregate_l2_block_times(blocks);
+    let bucket = bucket_size_from_range(&time_range);
+    let blocks = aggregate_l2_block_times(blocks, bucket);
     tracing::info!(count = blocks.len(), "Returning aggregated L2 block times");
     Ok(Json(L2BlockTimesResponse { blocks }))
 }
@@ -828,7 +829,8 @@ async fn l2_gas_used_aggregated(
             ));
         }
     };
-    let blocks = aggregate_l2_gas_used(blocks);
+    let bucket = bucket_size_from_range(&time_range);
+    let blocks = aggregate_l2_gas_used(blocks, bucket);
     tracing::info!(count = blocks.len(), "Returning aggregated L2 gas used");
     Ok(Json(L2GasUsedResponse { blocks }))
 }
@@ -1064,7 +1066,9 @@ async fn block_transactions_aggregated(
         })
         .collect();
 
-    let blocks = aggregate_block_transactions(blocks);
+    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
+    let bucket = bucket_size_from_range(&time_range);
+    let blocks = aggregate_block_transactions(blocks, bucket);
     tracing::info!(count = blocks.len(), "Returning aggregated block transactions");
     Ok(Json(BlockTransactionsResponse { blocks }))
 }
@@ -1587,11 +1591,29 @@ pub fn router(state: ApiState) -> Router {
         .with_state(state)
 }
 
-fn aggregate_l2_block_times(rows: Vec<L2BlockTimeRow>) -> Vec<L2BlockTimeRow> {
+const fn bucket_size_from_range(range: &TimeRange) -> u64 {
+    let hours = range.seconds() / 3600;
+    if hours <= 1 {
+        1
+    } else if hours <= 6 {
+        5
+    } else if hours <= 12 {
+        10
+    } else if hours <= 24 {
+        25
+    } else if hours <= 48 {
+        50
+    } else {
+        100
+    }
+}
+
+fn aggregate_l2_block_times(rows: Vec<L2BlockTimeRow>, bucket: u64) -> Vec<L2BlockTimeRow> {
     use std::collections::BTreeMap;
+    let bucket = bucket.max(1);
     let mut groups: BTreeMap<u64, Vec<L2BlockTimeRow>> = BTreeMap::new();
     for row in rows {
-        groups.entry(row.l2_block_number / 10).or_default().push(row);
+        groups.entry(row.l2_block_number / bucket).or_default().push(row);
     }
     groups
         .into_iter()
@@ -1604,7 +1626,7 @@ fn aggregate_l2_block_times(rows: Vec<L2BlockTimeRow>) -> Vec<L2BlockTimeRow> {
                 .fold((0u64, 0u64), |(s, c), ms| (s + ms, c + 1));
             let avg = if count > 0 { sum / count } else { 0 };
             L2BlockTimeRow {
-                l2_block_number: g * 10,
+                l2_block_number: g * bucket,
                 block_time: last_time,
                 ms_since_prev_block: Some(avg),
             }
@@ -1612,11 +1634,12 @@ fn aggregate_l2_block_times(rows: Vec<L2BlockTimeRow>) -> Vec<L2BlockTimeRow> {
         .collect()
 }
 
-fn aggregate_l2_gas_used(rows: Vec<L2GasUsedRow>) -> Vec<L2GasUsedRow> {
+fn aggregate_l2_gas_used(rows: Vec<L2GasUsedRow>, bucket: u64) -> Vec<L2GasUsedRow> {
     use std::collections::BTreeMap;
+    let bucket = bucket.max(1);
     let mut groups: BTreeMap<u64, Vec<L2GasUsedRow>> = BTreeMap::new();
     for row in rows {
-        groups.entry(row.l2_block_number / 10).or_default().push(row);
+        groups.entry(row.l2_block_number / bucket).or_default().push(row);
     }
     groups
         .into_iter()
@@ -1625,16 +1648,20 @@ fn aggregate_l2_gas_used(rows: Vec<L2GasUsedRow>) -> Vec<L2GasUsedRow> {
             let last_time = rs.last().map(|r| r.block_time).unwrap_or_default();
             let (sum, count) = rs.iter().fold((0u64, 0u64), |(s, c), r| (s + r.gas_used, c + 1));
             let avg = if count > 0 { sum / count } else { 0 };
-            L2GasUsedRow { l2_block_number: g * 10, block_time: last_time, gas_used: avg }
+            L2GasUsedRow { l2_block_number: g * bucket, block_time: last_time, gas_used: avg }
         })
         .collect()
 }
 
-fn aggregate_block_transactions(rows: Vec<BlockTransactionsItem>) -> Vec<BlockTransactionsItem> {
+fn aggregate_block_transactions(
+    rows: Vec<BlockTransactionsItem>,
+    bucket: u64,
+) -> Vec<BlockTransactionsItem> {
     use std::collections::BTreeMap;
+    let bucket = bucket.max(1);
     let mut groups: BTreeMap<u64, Vec<BlockTransactionsItem>> = BTreeMap::new();
     for row in rows {
-        groups.entry(row.block / 10).or_default().push(row);
+        groups.entry(row.block / bucket).or_default().push(row);
     }
     groups
         .into_iter()
@@ -1645,7 +1672,7 @@ fn aggregate_block_transactions(rows: Vec<BlockTransactionsItem>) -> Vec<BlockTr
             let (sum, count) = rs.iter().fold((0u64, 0u64), |(s, c), r| (s + r.txs as u64, c + 1));
             let avg = if count > 0 { (sum / count) as u32 } else { 0 };
             BlockTransactionsItem {
-                block: g * 10,
+                block: g * bucket,
                 txs: avg,
                 sequencer: last_seq,
                 block_time: last_time,
@@ -2511,7 +2538,7 @@ mod tests {
             },
         ];
 
-        let agg = aggregate_l2_block_times(rows);
+        let agg = aggregate_l2_block_times(rows, 10);
 
         assert_eq!(
             agg,
@@ -2555,7 +2582,7 @@ mod tests {
             },
         ];
 
-        let agg = aggregate_l2_gas_used(rows);
+        let agg = aggregate_l2_gas_used(rows, 10);
 
         assert_eq!(
             agg,
@@ -2603,7 +2630,7 @@ mod tests {
             },
         ];
 
-        let agg = aggregate_block_transactions(rows);
+        let agg = aggregate_block_transactions(rows, 10);
         assert_eq!(agg.len(), 2);
         assert_eq!(agg[0].block, 0);
         assert_eq!(agg[0].txs, 15);
