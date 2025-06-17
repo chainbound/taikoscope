@@ -1,13 +1,12 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { getSequencerName } from '../sequencerConfig';
 import { useSearchParams } from 'react-router-dom';
 
 interface UseSequencerHandlerProps {
-  chartsData: {
-    sequencerDistribution: Array<{ name: string }>;
-  };
   blockData: {
     l1HeadBlock: string;
     l2HeadBlock: string;
+    candidates: string[];
     updateMetricsWithBlockHeads: (metrics: any[]) => any[];
   };
   metricsData: {
@@ -16,19 +15,15 @@ interface UseSequencerHandlerProps {
   };
 }
 
-export const useSequencerHandler = ({
-  chartsData,
-  blockData,
-  metricsData,
-}: UseSequencerHandlerProps) => {
+export const useSequencerHandler = ({ blockData, metricsData }: UseSequencerHandlerProps) => {
   const [searchParams] = useSearchParams();
   const [selectedSequencer, setSelectedSequencer] = useState<string | null>(
     searchParams.get('sequencer'),
   );
 
   const sequencerList = useMemo(
-    () => chartsData.sequencerDistribution.map((s) => s.name),
-    [chartsData.sequencerDistribution],
+    () => blockData.candidates.map((a) => getSequencerName(a)),
+    [blockData.candidates],
   );
 
   // Sync with URL params - extract specific value to avoid object dependency
