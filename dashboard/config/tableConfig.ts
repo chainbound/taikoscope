@@ -17,6 +17,7 @@ import {
   fetchAllBlockTransactions,
   fetchL2BlockTimes,
   fetchL2GasUsed,
+  fetchL2GasUsedAggregated,
   fetchSequencerDistribution,
   fetchL2Tps,
 } from '../services/apiService';
@@ -35,6 +36,7 @@ export interface TableConfig {
   title: string | ((params: Record<string, any>) => string);
   description?: string | React.ReactNode;
   fetcher: (range: TimeRange, ...args: any[]) => Promise<any>;
+  aggregatedFetcher?: (range: TimeRange, ...args: any[]) => Promise<any>;
   columns: TableColumn[];
   mapData?: (
     data: any[],
@@ -260,6 +262,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     title: 'Gas Used Per Block',
     description: 'Gas used by each block.',
     fetcher: fetchL2GasUsed,
+    aggregatedFetcher: fetchL2GasUsedAggregated,
     columns: [
       { key: 'value', label: 'Block Number' },
       { key: 'timestamp', label: 'Gas Used' },
