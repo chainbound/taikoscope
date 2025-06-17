@@ -74,7 +74,11 @@ export const useDataFetcher = ({
 
       const metrics = createMetrics(metricsInput);
 
-      return { metrics, chartData: null, anyBadRequest };
+      return {
+        metrics,
+        chartData: { sequencerDist: data.sequencerDist },
+        anyBadRequest,
+      };
     }
 
     const data = await fetchMainDashboardData(timeRange, selectedSequencer);
