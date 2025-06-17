@@ -16,7 +16,7 @@ const MIN_BIN_COUNT = 5;
 const MAX_BIN_COUNT = 20;
 const MIN_REASONABLE_BLOCK_TIME_MS = 0;
 const MAX_REASONABLE_BLOCK_TIME_MS = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
-const CHART_MARGINS = { top: 5, right: 70, left: 80, bottom: 40 };
+const CHART_MARGINS = { top: 5, right: 20, left: 20, bottom: 40 };
 
 interface BlockTimeDistributionChartProps {
   data: TimeSeriesData[];
