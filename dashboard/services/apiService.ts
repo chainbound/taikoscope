@@ -427,10 +427,10 @@ export const fetchBatchPostingTimes = async (
 
 export const fetchL2GasUsed = async (
   range: TimeRange,
+  address?: string,
   limit = 50,
   startingAfter?: number,
   endingBefore?: number,
-  address?: string,
 ): Promise<RequestResult<TimeSeriesData[]>> => {
   let url = `${API_BASE}/l2-gas-used?${timeRangeToQuery(range)}&limit=${limit}`;
   if (startingAfter !== undefined) {
@@ -447,10 +447,10 @@ export const fetchL2GasUsed = async (
   return {
     data: res.data
       ? res.data.blocks.map((b) => ({
-          value: b.l2_block_number,
-          timestamp: b.gas_used,
-          blockTime: new Date(b.block_time).getTime(),
-        }))
+        value: b.l2_block_number,
+        timestamp: b.gas_used,
+        blockTime: new Date(b.block_time).getTime(),
+      }))
       : null,
     badRequest: res.badRequest,
     error: res.error,
@@ -470,10 +470,10 @@ export const fetchL2GasUsedAggregated = async (
   return {
     data: res.data
       ? res.data.blocks.map((b) => ({
-          value: b.l2_block_number,
-          timestamp: b.gas_used,
-          blockTime: new Date(b.block_time).getTime(),
-        }))
+        value: b.l2_block_number,
+        timestamp: b.gas_used,
+        blockTime: new Date(b.block_time).getTime(),
+      }))
       : null,
     badRequest: res.badRequest,
     error: res.error,
@@ -490,10 +490,10 @@ export const fetchSequencerDistribution = async (
   return {
     data: res.data
       ? res.data.sequencers.map((s) => ({
-          name: getSequencerName(s.address),
-          value: s.blocks,
-          tps: s.tps,
-        }))
+        name: getSequencerName(s.address),
+        value: s.blocks,
+        tps: s.tps,
+      }))
       : null,
     badRequest: res.badRequest,
     error: res.error,
@@ -592,11 +592,11 @@ export const fetchBlockTransactionsAggregated = async (
   return {
     data: res.data?.blocks
       ? res.data.blocks.map((b) => ({
-          block: b.block,
-          txs: b.txs,
-          sequencer: getSequencerName(b.sequencer),
-          blockTime: new Date(b.block_time).getTime(),
-        }))
+        block: b.block,
+        txs: b.txs,
+        sequencer: getSequencerName(b.sequencer),
+        blockTime: new Date(b.block_time).getTime(),
+      }))
       : null,
     badRequest: res.badRequest,
     error: res.error,
