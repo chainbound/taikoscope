@@ -11,6 +11,8 @@ use axum::{
 use clickhouse_lib::ClickhouseReader;
 use eyre::Result;
 use runtime::health;
+mod rate_limit;
+use rate_limit::RateLimitLayer;
 use tower_http::{
     cors::{AllowOrigin, Any, CorsLayer},
     trace::{DefaultMakeSpan, DefaultOnRequest, DefaultOnResponse, TraceLayer},
@@ -41,9 +43,15 @@ pub fn router(state: ApiState, allowed_origins: Vec<String>) -> Router {
         .on_request(DefaultOnRequest::new().level(Level::INFO))
         .on_response(DefaultOnResponse::new().level(Level::INFO));
 
+    let max_requests = state.max_requests();
+    let rate_period = state.rate_period();
+    let api_service = tower::ServiceBuilder::new()
+        .layer(RateLimitLayer::new(max_requests, rate_period))
+        .service(api::router(state));
+
     Router::new()
         .route("/health", get(health::handler))
-        .nest(&format!("/{API_VERSION}"), api::router(state))
+        .nest_service(&format!("/{API_VERSION}"), api_service)
         .layer(cors)
         .layer(trace)
 }

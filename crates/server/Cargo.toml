@@ -11,6 +11,7 @@ clickhouse_lib = { path = "../clickhouse", package = "clickhouse" }
 runtime = { path = "../runtime" }
 axum.workspace = true
 tower-http.workspace = true
+tower.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 eyre.workspace = true
