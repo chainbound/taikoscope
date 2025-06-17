@@ -44,6 +44,7 @@ export const TableView: React.FC<TableViewProps> = ({
       timeRange={tableView.timeRange}
       defaultSortBy={tableView.defaultSortBy}
       defaultSortDirection={tableView.defaultSortDirection}
+      serverPagination={tableView.serverPagination}
     />
   );
 };

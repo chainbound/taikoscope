@@ -38,6 +38,13 @@ export interface TableViewState {
   totalRecords?: number;
   defaultSortBy?: string;
   defaultSortDirection?: 'asc' | 'desc';
+  serverPagination?: {
+    page: number;
+    onNext: () => void;
+    onPrev: () => void;
+    disableNext?: boolean;
+    disablePrev?: boolean;
+  };
 }
 
 export const useTableActions = (
