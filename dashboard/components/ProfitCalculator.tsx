@@ -1,6 +1,6 @@
 import React from 'react';
 import { MetricData, TimeRange } from '../types';
-import { findMetricValue } from '../utils';
+import { findMetricValue, parseEthValue } from '../utils';
 import { rangeToHours } from '../utils/timeRange';
 import { useEthPrice } from '../services/priceService';
 
@@ -34,9 +34,9 @@ export const ProfitCalculator: React.FC<ProfitCalculatorProps> = ({
   const baseStr = findMetricValue(metrics, 'base fee');
   const l1DataCostStr = findMetricValue(metrics, 'l1 data cost');
 
-  const priority = parseFloat(priorityStr.replace(/[^0-9.]/g, '')) || 0;
-  const base = parseFloat(baseStr.replace(/[^0-9.]/g, '')) || 0;
-  const l1DataCost = parseFloat(l1DataCostStr.replace(/[^0-9.]/g, '')) || 0;
+  const priority = parseEthValue(priorityStr);
+  const base = parseEthValue(baseStr);
+  const l1DataCost = parseEthValue(l1DataCostStr);
 
   const totalFee = priority + base - l1DataCost;
 

@@ -74,9 +74,18 @@ export const formatEth = (wei: number): string => {
   const ethFormatted = formatDecimal(eth);
   if (wei !== 0 && ethFormatted === '0.00') {
     const gwei = wei / 1e9;
-    return `${formatDecimal(gwei)} Gwei`;
+    const gweiFormatted = Number.isInteger(gwei)
+      ? gwei.toLocaleString()
+      : formatDecimal(gwei);
+    return `${gweiFormatted} Gwei`;
   }
   return `${ethFormatted} ETH`;
+};
+
+export const parseEthValue = (value: string): number => {
+  const amount = parseFloat(value.replace(/[^0-9.]/g, ''));
+  if (!Number.isFinite(amount)) return 0;
+  return /gwei/i.test(value) ? amount / 1e9 : amount;
 };
 
 export const formatTime = (ms: number): string =>

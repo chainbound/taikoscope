@@ -46,4 +46,24 @@ describe('ProfitCalculator', () => {
     const matches = html.match(/min="0"/g) ?? [];
     expect(matches.length).toBe(2);
   });
+
+  it('handles base fee in gwei', () => {
+    vi.spyOn(priceService, 'useEthPrice').mockReturnValue({
+      data: 2000,
+    } as any);
+    const html = renderToStaticMarkup(
+      React.createElement(ProfitCalculator, {
+        metrics: [
+          { title: 'Priority Fee', value: '0.6 ETH' },
+          { title: 'Base Fee', value: '1334501 Gwei' },
+        ],
+        timeRange: '1h',
+        cloudCost: 0,
+        proverCost: 0,
+        onCloudCostChange: () => {},
+        onProverCostChange: () => {},
+      }),
+    );
+    expect(html.includes('1,202')).toBe(true);
+  });
 });
