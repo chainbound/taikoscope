@@ -23,6 +23,14 @@ interface ExtraTable {
   };
 }
 
+interface ServerPagination {
+  page: number;
+  onNext: () => void;
+  onPrev: () => void;
+  disableNext?: boolean;
+  disablePrev?: boolean;
+}
+
 interface DataTableProps {
   title: string;
   description?: React.ReactNode;
@@ -41,6 +49,7 @@ interface DataTableProps {
   timeRange?: string;
   defaultSortBy?: string;
   defaultSortDirection?: 'asc' | 'desc';
+  serverPagination?: ServerPagination;
 }
 
 export const DataTable: React.FC<DataTableProps> = ({
@@ -61,8 +70,9 @@ export const DataTable: React.FC<DataTableProps> = ({
   timeRange,
   defaultSortBy,
   defaultSortDirection,
+  serverPagination,
 }) => {
-  const [page, setPage] = React.useState(0);
+  const [page, setPage] = React.useState(serverPagination?.page ?? 0);
   const [sortBy, setSortBy] = React.useState<string>(defaultSortBy ?? '');
   const [sortDirection, setSortDirection] = React.useState<'asc' | 'desc'>(
     defaultSortDirection ?? 'asc',
@@ -71,11 +81,18 @@ export const DataTable: React.FC<DataTableProps> = ({
   const prevRowsLength = React.useRef(rows.length);
 
   React.useEffect(() => {
+    if (serverPagination) return;
     if (rows.length !== prevRowsLength.current) {
       setPage(0);
     }
     prevRowsLength.current = rows.length;
-  }, [rows]);
+  }, [rows, serverPagination]);
+
+  React.useEffect(() => {
+    if (serverPagination) {
+      setPage(serverPagination.page);
+    }
+  }, [serverPagination]);
 
   React.useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -114,14 +131,21 @@ export const DataTable: React.FC<DataTableProps> = ({
 
   const pageRows = React.useMemo(() => {
     const data = sortedData;
+    if (serverPagination) {
+      return data;
+    }
     if (useClientSidePagination && allRows) {
       return data.slice(page * rowsPerPage, (page + 1) * rowsPerPage);
     }
     return data.slice(page * rowsPerPage, (page + 1) * rowsPerPage);
-  }, [sortedData, page, rowsPerPage, useClientSidePagination, allRows]);
+  }, [sortedData, page, rowsPerPage, useClientSidePagination, allRows, serverPagination]);
 
-  const disablePrev = page === 0;
-  const disableNext = (page + 1) * rowsPerPage >= currentTotalRecords;
+  const disablePrev = serverPagination
+    ? serverPagination.disablePrev || false
+    : page === 0;
+  const disableNext = serverPagination
+    ? serverPagination.disableNext || false
+    : (page + 1) * rowsPerPage >= currentTotalRecords;
 
   return (
     <div className="p-4">
@@ -252,32 +276,64 @@ export const DataTable: React.FC<DataTableProps> = ({
           </tbody>
         </table>
       </div>
-      {currentTotalRecords > 0 && (
+      {serverPagination ? (
         <div className="flex items-center justify-between mt-2">
           <button
-            onClick={() => setPage((p) => p - 1)}
-            disabled={disablePrev || isNavigating}
+            onClick={serverPagination.onPrev}
+            disabled={serverPagination.disablePrev || isNavigating}
             className={`disabled:text-gray-400 dark:disabled:text-gray-500 ${isNavigating ? 'opacity-50' : ''}`}
             style={
-              disablePrev || isNavigating ? undefined : { color: TAIKO_PINK }
+              serverPagination.disablePrev || isNavigating
+                ? undefined
+                : { color: TAIKO_PINK }
             }
           >
             Prev
           </button>
           <span className="text-gray-900 dark:text-gray-100">
-            Page {page + 1} of {Math.ceil(currentTotalRecords / rowsPerPage)}
+            Page {serverPagination.page + 1}
           </span>
           <button
-            onClick={() => setPage((p) => p + 1)}
-            disabled={disableNext || isNavigating}
+            onClick={serverPagination.onNext}
+            disabled={serverPagination.disableNext || isNavigating}
             className={`disabled:text-gray-400 dark:disabled:text-gray-500 ${isNavigating ? 'opacity-50' : ''}`}
             style={
-              disableNext || isNavigating ? undefined : { color: TAIKO_PINK }
+              serverPagination.disableNext || isNavigating
+                ? undefined
+                : { color: TAIKO_PINK }
             }
           >
             Next
           </button>
         </div>
+      ) : (
+        currentTotalRecords > 0 && (
+          <div className="flex items-center justify-between mt-2">
+            <button
+              onClick={() => setPage((p) => p - 1)}
+              disabled={disablePrev || isNavigating}
+              className={`disabled:text-gray-400 dark:disabled:text-gray-500 ${isNavigating ? 'opacity-50' : ''}`}
+              style={
+                disablePrev || isNavigating ? undefined : { color: TAIKO_PINK }
+              }
+            >
+              Prev
+            </button>
+            <span className="text-gray-900 dark:text-gray-100">
+              Page {page + 1} of {Math.ceil(currentTotalRecords / rowsPerPage)}
+            </span>
+            <button
+              onClick={() => setPage((p) => p + 1)}
+              disabled={disableNext || isNavigating}
+              className={`disabled:text-gray-400 dark:disabled:text-gray-500 ${isNavigating ? 'opacity-50' : ''}`}
+              style={
+                disableNext || isNavigating ? undefined : { color: TAIKO_PINK }
+              }
+            >
+              Next
+            </button>
+          </div>
+        )
       )}
 
       {extraTable ? (
