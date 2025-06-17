@@ -12,11 +12,29 @@ export const TAIKOSCAN_BASE =
     ? 'https://hekla.taikoscan.io'
     : 'https://cb-blockscout-masaya.vercel.app/blocks');
 
+export const ETHERSCAN_BASE =
+  ((import.meta as any).env.VITE_ETHERSCAN_BASE as string | undefined) ??
+  ((import.meta as any).env.ETHERSCAN_BASE as string | undefined) ??
+  'https://etherscan.io';
+
 export const blockLink = (block: number): React.ReactElement =>
   React.createElement(
     'a',
     {
       href: `${TAIKOSCAN_BASE}/block/${block}`,
+      target: '_blank',
+      rel: 'noopener noreferrer',
+      className: 'font-semibold hover:underline',
+      style: { color: TAIKO_PINK },
+    },
+    block.toLocaleString(),
+  );
+
+export const l1BlockLink = (block: number): React.ReactElement =>
+  React.createElement(
+    'a',
+    {
+      href: `${ETHERSCAN_BASE}/block/${block}`,
       target: '_blank',
       rel: 'noopener noreferrer',
       className: 'font-semibold hover:underline',
