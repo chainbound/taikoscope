@@ -103,7 +103,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
           nodePadding={10}
           node={{ stroke: '#888' }}
           link={renderLink}
-          sort={false}
+          sort={true}
         >
           <Tooltip
             formatter={(v: number) => `$${v.toFixed(2)}`}
