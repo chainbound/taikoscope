@@ -45,10 +45,10 @@ describe('dataFetcher', () => {
       }),
       fetchProveTimes: ok([{ name: '1', value: 1, timestamp: 0 }]),
       fetchVerifyTimes: ok([{ name: '2', value: 2, timestamp: 0 }]),
-      fetchL2BlockTimes: ok([{ value: 2, timestamp: 0 }]),
-      fetchL2GasUsed: ok([{ value: 3, timestamp: 0 }]),
+      fetchL2BlockTimesAggregated: ok([{ value: 2, timestamp: 0 }]),
+      fetchL2GasUsedAggregated: ok([{ value: 3, timestamp: 0 }]),
       fetchSequencerDistribution: ok([{ name: 'foo', value: 1 }]),
-      fetchAllBlockTransactions: ok([{ block: 1, txs: 2, sequencer: 'bar' }]),
+      fetchBlockTransactionsAggregated: ok([{ block: 1, txs: 2, sequencer: 'bar' }]),
       fetchBatchBlobCounts: ok([{ block: 10, batch: 1, blobs: 2 }]),
     });
 
@@ -65,10 +65,10 @@ describe('dataFetcher', () => {
       fetchDashboardData: ok(null),
       fetchProveTimes: ok(null),
       fetchVerifyTimes: ok(null),
-      fetchL2BlockTimes: ok(null),
-      fetchL2GasUsed: ok(null),
+      fetchL2BlockTimesAggregated: ok(null),
+      fetchL2GasUsedAggregated: ok(null),
       fetchSequencerDistribution: ok(null),
-      fetchAllBlockTransactions: ok(null),
+      fetchBlockTransactionsAggregated: ok(null),
       fetchBatchBlobCounts: ok(null),
     });
 
