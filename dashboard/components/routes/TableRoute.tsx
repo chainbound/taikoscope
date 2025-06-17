@@ -126,12 +126,12 @@ export const TableRoute: React.FC = () => {
           const address = fetcherArgs.pop();
           if (config.aggregatedFetcher) {
             [res, aggRes] = await Promise.all([
-              config.fetcher(range, PAGE_LIMIT, startingAfter, endingBefore, address),
+              config.fetcher(range, address, PAGE_LIMIT, startingAfter, endingBefore),
               config.aggregatedFetcher(range, address),
             ]);
           } else {
             [res] = await Promise.all([
-              config.fetcher(range, PAGE_LIMIT, startingAfter, endingBefore, address),
+              config.fetcher(range, address, PAGE_LIMIT, startingAfter, endingBefore),
             ]);
           }
         } else {
