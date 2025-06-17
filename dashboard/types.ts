@@ -18,6 +18,7 @@ import type { ReactNode } from 'react';
 export interface MetricData {
   title: ReactNode;
   value: string;
+  link?: string;
   unit?: string; // e.g., '1h', '24h', or specific units like 'ms'
   description?: ReactNode;
   group?: string;
