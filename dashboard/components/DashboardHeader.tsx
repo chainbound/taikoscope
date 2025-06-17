@@ -124,7 +124,7 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
   isChanging,
 }) => {
   const { updateSearchParams } = useRouterNavigation();
-  const presetRanges: TimeRange[] = ['15m', '1h', '3h', '6h', '12h', '24h'];
+  const presetRanges: TimeRange[] = ['15m', '1h', '3h', '6h', '12h', '24h', '7d'];
   const isCustom = /^\d+-\d+$/.test(currentTimeRange);
   const [open, setOpen] = React.useState(false);
   const [date, setDate] = React.useState<Date | undefined>(() => {
