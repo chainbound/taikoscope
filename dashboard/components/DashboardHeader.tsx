@@ -6,6 +6,7 @@ import { isValidRefreshRate } from '../utils';
 import { isValidTimeRange, formatTimeRangeDisplay } from '../utils/timeRange';
 import { useRouterNavigation } from '../hooks/useRouterNavigation';
 import { useErrorHandler } from '../hooks/useErrorHandler';
+import { useSearchParams } from 'react-router-dom';
 import { showToast } from '../utils/toast';
 import { DayPicker } from 'react-day-picker';
 import * as Popover from '@radix-ui/react-popover';
@@ -55,6 +56,8 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
 }) => {
   const { navigateToDashboard } = useRouterNavigation();
   const { errorMessage } = useErrorHandler();
+  const [searchParams] = useSearchParams();
+  const isEconomicsView = searchParams.get('view') === 'economics';
   React.useEffect(() => {
     if (errorMessage) {
       showToast(errorMessage);
@@ -101,11 +104,13 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
           lastRefresh={lastRefresh}
           onRefresh={onManualRefresh}
         />
-        <SequencerSelector
-          sequencers={sequencers}
-          value={selectedSequencer}
-          onChange={onSequencerChange}
-        />
+        {!isEconomicsView && (
+          <SequencerSelector
+            sequencers={sequencers}
+            value={selectedSequencer}
+            onChange={onSequencerChange}
+          />
+        )}
         {/* Export button removed as per request */}
       </div>
     </header>
