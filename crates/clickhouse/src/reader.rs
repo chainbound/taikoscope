@@ -132,9 +132,21 @@ impl ClickhouseReader {
 
     /// Get last L2 head time
     pub async fn get_last_l2_head_time(&self) -> Result<Option<DateTime<Utc>>> {
-        let query =
-            format!("SELECT max(block_ts) AS block_ts FROM {}.l2_head_events", self.db_name);
-        let rows = self.execute::<MaxTs>(&query).await.context("fetching max(block_ts) failed")?;
+        let client = self.base.clone();
+        let sql = "SELECT max(block_ts) AS block_ts FROM ?.l2_head_events";
+
+        let start = Instant::now();
+        let result = client.query(sql).bind(Identifier(&self.db_name)).fetch_all::<MaxTs>().await;
+
+        let duration_ms = start.elapsed().as_millis();
+        match &result {
+            Ok(rows) => {
+                debug!(query = sql, duration_ms, rows = rows.len(), "ClickHouse query executed")
+            }
+            Err(e) => error!(query = sql, duration_ms, error = %e, "ClickHouse query failed"),
+        }
+
+        let rows = result.context("fetching max(block_ts) failed")?;
         let row = match rows.into_iter().next() {
             Some(r) => r,
             None => return Ok(None),
@@ -151,10 +163,21 @@ impl ClickhouseReader {
 
     /// Get timestamp of the latest L1 head event in UTC
     pub async fn get_last_l1_head_time(&self) -> Result<Option<DateTime<Utc>>> {
-        let query =
-            format!("SELECT max(block_ts) AS block_ts FROM {}.l1_head_events", self.db_name);
+        let client = self.base.clone();
+        let sql = "SELECT max(block_ts) AS block_ts FROM ?.l1_head_events";
 
-        let rows = self.execute::<MaxTs>(&query).await.context("fetching max(block_ts) failed")?;
+        let start = Instant::now();
+        let result = client.query(sql).bind(Identifier(&self.db_name)).fetch_all::<MaxTs>().await;
+
+        let duration_ms = start.elapsed().as_millis();
+        match &result {
+            Ok(rows) => {
+                debug!(query = sql, duration_ms, rows = rows.len(), "ClickHouse query executed")
+            }
+            Err(e) => error!(query = sql, duration_ms, error = %e, "ClickHouse query failed"),
+        }
+
+        let rows = result.context("fetching max(block_ts) failed")?;
 
         let row = match rows.into_iter().next() {
             Some(r) => r,
@@ -181,15 +204,23 @@ impl ClickhouseReader {
             l2_block_number: u64,
         }
 
-        // Use ORDER BY + LIMIT 1 instead of max() for better performance on large tables
-        // This approach can utilize indexes more efficiently
-        let query = format!(
-            "SELECT l2_block_number FROM {}.l2_head_events \
-             ORDER BY l2_block_number DESC LIMIT 1",
-            &self.db_name
-        );
+        let client = self.base.clone();
+        let sql =
+            "SELECT l2_block_number FROM ?.l2_head_events ORDER BY l2_block_number DESC LIMIT 1";
 
-        let rows = self.execute::<BlockNumber>(&query).await?;
+        let start = Instant::now();
+        let result =
+            client.query(sql).bind(Identifier(&self.db_name)).fetch_all::<BlockNumber>().await;
+
+        let duration_ms = start.elapsed().as_millis();
+        match &result {
+            Ok(rows) => {
+                debug!(query = sql, duration_ms, rows = rows.len(), "ClickHouse query executed")
+            }
+            Err(e) => error!(query = sql, duration_ms, error = %e, "ClickHouse query failed"),
+        }
+
+        let rows = result?;
         let row = match rows.into_iter().next() {
             Some(r) => r,
             None => return Ok(None),
@@ -208,14 +239,23 @@ impl ClickhouseReader {
             l1_block_number: u64,
         }
 
-        // Use ORDER BY + LIMIT 1 instead of max() for better performance on large tables
-        let query = format!(
-            "SELECT l1_block_number FROM {}.l1_head_events \
-             ORDER BY l1_block_number DESC LIMIT 1",
-            &self.db_name
-        );
+        let client = self.base.clone();
+        let sql =
+            "SELECT l1_block_number FROM ?.l1_head_events ORDER BY l1_block_number DESC LIMIT 1";
 
-        let rows = self.execute::<BlockNumber>(&query).await?;
+        let start = Instant::now();
+        let result =
+            client.query(sql).bind(Identifier(&self.db_name)).fetch_all::<BlockNumber>().await;
+
+        let duration_ms = start.elapsed().as_millis();
+        match &result {
+            Ok(rows) => {
+                debug!(query = sql, duration_ms, rows = rows.len(), "ClickHouse query executed")
+            }
+            Err(e) => error!(query = sql, duration_ms, error = %e, "ClickHouse query failed"),
+        }
+
+        let rows = result?;
         let row = match rows.into_iter().next() {
             Some(r) => r,
             None => return Ok(None),
