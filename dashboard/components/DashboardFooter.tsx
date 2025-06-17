@@ -1,5 +1,6 @@
 import React from 'react';
 import { TAIKO_PINK } from '../theme';
+import { TAIKOSCAN_BASE, ETHERSCAN_BASE } from '../utils';
 
 interface DashboardFooterProps {
   l2HeadBlock: string;
@@ -17,7 +18,21 @@ export const DashboardFooter: React.FC<DashboardFooterProps> = ({
           L2 Head Block
         </span>
         <p className="text-2xl font-semibold" style={{ color: TAIKO_PINK }}>
-          {l2HeadBlock}
+          {Number.isFinite(Number(l2HeadBlock.replace(/,/g, ''))) ? (
+            <a
+              href={`${TAIKOSCAN_BASE}/block/${Number(
+                l2HeadBlock.replace(/,/g, ''),
+              )}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:underline"
+              style={{ color: TAIKO_PINK }}
+            >
+              {l2HeadBlock}
+            </a>
+          ) : (
+            l2HeadBlock
+          )}
         </p>
       </div>
       <div>
@@ -25,7 +40,21 @@ export const DashboardFooter: React.FC<DashboardFooterProps> = ({
           L1 Head Block
         </span>
         <p className="text-2xl font-semibold" style={{ color: TAIKO_PINK }}>
-          {l1HeadBlock}
+          {Number.isFinite(Number(l1HeadBlock.replace(/,/g, ''))) ? (
+            <a
+              href={`${ETHERSCAN_BASE}/block/${Number(
+                l1HeadBlock.replace(/,/g, ''),
+              )}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:underline"
+              style={{ color: TAIKO_PINK }}
+            >
+              {l1HeadBlock}
+            </a>
+          ) : (
+            l1HeadBlock
+          )}
         </p>
       </div>
     </div>

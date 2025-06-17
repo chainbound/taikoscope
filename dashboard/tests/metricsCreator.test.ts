@@ -1,5 +1,4 @@
 import { describe, it, expect } from 'vitest';
-import React from 'react';
 import { createMetrics } from '../utils/metricsCreator';
 
 const addressA = '0x00a00800c28f2616360dcfadee02d761d14ad94e';
@@ -29,18 +28,17 @@ describe('metricsCreator', () => {
     expect(metrics).toHaveLength(16);
     expect(metrics[0].value).toBe('1.23');
 
-    const verifyMetric = metrics.find((m) => React.isValidElement(m.title));
-    expect(verifyMetric).toBeDefined();
-    const link = verifyMetric!.title as React.ReactElement;
-    expect(link.type).toBe('a');
-    expect((link as any).props.href).toContain('block-states');
-    expect((link as any).props.children).toBe('Avg. Verify Time');
-    expect(verifyMetric!.value).toBe('3.00s');
+    const proveMetric = metrics.find((m) => m.title === 'Avg. Prove Time');
+    const verifyMetric = metrics.find((m) => m.title === 'Avg. Verify Time');
+    expect(proveMetric?.value).toBe('2.00s');
+    expect(verifyMetric?.value).toBe('3.00s');
 
     const current = metrics.find((m) => m.title === 'Current Sequencer');
     const next = metrics.find((m) => m.title === 'Next Sequencer');
     expect(current?.value).toBe('Chainbound A');
+    expect(current?.link).toContain('/address/');
     expect(next?.value).toBe('Chainbound B');
+    expect(next?.link).toContain('/address/');
 
     const l2BlockMetric = metrics.find((m) => m.title === 'L2 Block');
     expect(l2BlockMetric?.link).toContain('/block/100');

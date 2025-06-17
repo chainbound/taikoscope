@@ -1,4 +1,3 @@
-import React from 'react';
 import { type MetricData } from '../types';
 import {
   formatSeconds,
@@ -57,16 +56,7 @@ export const createMetrics = (data: MetricInputData): MetricData[] => [
     group: 'Network Health',
   },
   {
-    title: React.createElement(
-      'a',
-      {
-        href: 'https://docs.taiko.xyz/taiko-alethia-protocol/protocol-architecture/block-states',
-        target: '_blank',
-        rel: 'noopener noreferrer',
-        className: 'hover:underline',
-      },
-      'Avg. Verify Time',
-    ),
+    title: 'Avg. Verify Time',
     value:
       data.avgVerify != null && data.avgVerify > 0
         ? formatSeconds(data.avgVerify / 1000)
@@ -87,12 +77,20 @@ export const createMetrics = (data: MetricInputData): MetricData[] => [
       data.currentOperator != null
         ? getSequencerName(data.currentOperator)
         : 'N/A',
+    link:
+      data.currentOperator != null
+        ? `${TAIKOSCAN_BASE}/address/${data.currentOperator}`
+        : undefined,
     group: 'Sequencers',
   },
   {
     title: 'Next Sequencer',
     value:
       data.nextOperator != null ? getSequencerName(data.nextOperator) : 'N/A',
+    link:
+      data.nextOperator != null
+        ? `${TAIKOSCAN_BASE}/address/${data.nextOperator}`
+        : undefined,
     group: 'Sequencers',
   },
   {

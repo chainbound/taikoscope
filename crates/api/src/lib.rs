@@ -14,7 +14,9 @@ use axum::{
 };
 use chrono::{Duration as ChronoDuration, TimeZone, Utc};
 
-use clickhouse_lib::{AddressBytes, ClickhouseReader, L2BlockTimeRow, L2GasUsedRow, TimeRange};
+use clickhouse_lib::{
+    AddressBytes, BlockFeeComponentRow, ClickhouseReader, L2BlockTimeRow, L2GasUsedRow, TimeRange,
+};
 use futures::stream::Stream;
 use hex::encode;
 use primitives::hardware::TOTAL_HARDWARE_COST_USD;
@@ -1353,7 +1355,7 @@ async fn l2_fees(
     let (priority_fee, base_fee, l1_data_cost) = tokio::try_join!(
         state.client.get_l2_priority_fee(address, time_range),
         state.client.get_l2_base_fee(address, time_range),
-        state.client.get_l1_total_data_cost(time_range)
+        state.client.get_l1_total_data_cost(address, time_range)
     )
     .map_err(|e| {
         tracing::error!(error = %e, "Failed to get L2 fees");
@@ -1417,6 +1419,61 @@ async fn l2_fee_components(
             e.to_string(),
         )
     })?;
+
+    Ok(Json(FeeComponentsResponse { blocks }))
+}
+
+#[utoipa::path(
+    get,
+    path = "/l2-fee-components/aggregated",
+    params(
+        RangeQuery
+    ),
+    responses(
+        (status = 200, description = "Aggregated fee components", body = FeeComponentsResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
+    ),
+    tag = "taikoscope"
+)]
+async fn l2_fee_components_aggregated(
+    Query(params): Query<RangeQuery>,
+    State(state): State<ApiState>,
+) -> Result<Json<FeeComponentsResponse>, ErrorResponse> {
+    validate_time_range(&params.time_range)?;
+
+    let has_time_range = has_time_range_params(&params.time_range);
+    validate_range_exclusivity(has_time_range, false)?;
+
+    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
+    let address = if let Some(addr) = params.address.as_ref() {
+        match addr.parse::<Address>() {
+            Ok(a) => Some(AddressBytes::from(a)),
+            Err(e) => {
+                tracing::warn!(error = %e, "Failed to parse address");
+                return Err(ErrorResponse::new(
+                    "invalid-params",
+                    "Bad Request",
+                    StatusCode::BAD_REQUEST,
+                    e.to_string(),
+                ));
+            }
+        }
+    } else {
+        None
+    };
+
+    let blocks = state.client.get_l2_fee_components(address, time_range).await.map_err(|e| {
+        tracing::error!(error = %e, "Failed to get fee components");
+        ErrorResponse::new(
+            "database-error",
+            "Database error",
+            StatusCode::INTERNAL_SERVER_ERROR,
+            e.to_string(),
+        )
+    })?;
+
+    let bucket = bucket_size_from_range(&time_range);
+    let blocks = aggregate_l2_fee_components(blocks, bucket);
 
     Ok(Json(FeeComponentsResponse { blocks }))
 }
@@ -1594,6 +1651,7 @@ pub fn router(state: ApiState) -> Router {
         .route("/block-transactions/aggregated", get(block_transactions_aggregated))
         .route("/l2-fees", get(l2_fees))
         .route("/l2-fee-components", get(l2_fee_components))
+        .route("/l2-fee-components/aggregated", get(l2_fee_components_aggregated))
         .route("/dashboard-data", get(dashboard_data))
         .route("/l1-data-cost", get(l1_data_cost));
 
@@ -1663,6 +1721,34 @@ fn aggregate_l2_gas_used(rows: Vec<L2GasUsedRow>, bucket: u64) -> Vec<L2GasUsedR
             let (sum, count) = rs.iter().fold((0u64, 0u64), |(s, c), r| (s + r.gas_used, c + 1));
             let avg = if count > 0 { sum / count } else { 0 };
             L2GasUsedRow { l2_block_number: g * bucket, block_time: last_time, gas_used: avg }
+        })
+        .collect()
+}
+
+fn aggregate_l2_fee_components(
+    rows: Vec<BlockFeeComponentRow>,
+    bucket: u64,
+) -> Vec<BlockFeeComponentRow> {
+    use std::collections::BTreeMap;
+    let bucket = bucket.max(1);
+    let mut groups: BTreeMap<u64, Vec<BlockFeeComponentRow>> = BTreeMap::new();
+    for row in rows {
+        groups.entry(row.l2_block_number / bucket).or_default().push(row);
+    }
+    groups
+        .into_iter()
+        .map(|(g, rs)| {
+            let sum_priority: u128 = rs.iter().map(|r| r.priority_fee).sum();
+            let sum_base: u128 = rs.iter().map(|r| r.base_fee).sum();
+            let (sum_l1, any): (u128, bool) = rs.iter().fold((0, false), |(s, a), r| {
+                (s + r.l1_data_cost.unwrap_or(0), a || r.l1_data_cost.is_some())
+            });
+            BlockFeeComponentRow {
+                l2_block_number: g * bucket,
+                priority_fee: sum_priority,
+                base_fee: sum_base,
+                l1_data_cost: any.then_some(sum_l1),
+            }
         })
         .collect()
 }
@@ -2132,6 +2218,44 @@ mod tests {
         let (status, body) = send_error_request(
             app,
             "/l2-gas-used/aggregated?created[gte]=0&created[lte]=3600000&address=zzz",
+        )
+        .await;
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(body["type"], "invalid-params");
+    }
+
+    #[derive(Serialize, Row)]
+    struct FeeRowTest {
+        l2_block_number: u64,
+        priority_fee: u128,
+        base_fee: u128,
+        l1_data_cost: Option<u128>,
+    }
+
+    #[tokio::test]
+    async fn l2_fee_components_aggregated_endpoint() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(vec![
+            FeeRowTest { l2_block_number: 0, priority_fee: 1, base_fee: 2, l1_data_cost: Some(3) },
+            FeeRowTest { l2_block_number: 1, priority_fee: 4, base_fee: 6, l1_data_cost: None },
+        ]));
+        let app = build_app(mock.url());
+        let body =
+            send_request(app, "/l2-fee-components/aggregated?created[gte]=0&created[lte]=86400000")
+                .await;
+        assert_eq!(
+            body,
+            json!({ "blocks": [ { "l2_block_number": 0, "priority_fee": 5, "base_fee": 8, "l1_data_cost": 3 } ] })
+        );
+    }
+
+    #[tokio::test]
+    async fn l2_fee_components_aggregated_invalid_address() {
+        let mock = Mock::new();
+        let app = build_app(mock.url());
+        let (status, body) = send_error_request(
+            app,
+            "/l2-fee-components/aggregated?created[gte]=0&created[lte]=3600000&address=zzz",
         )
         .await;
         assert_eq!(status, StatusCode::BAD_REQUEST);
@@ -2681,6 +2805,50 @@ mod tests {
                     l2_block_number: 10,
                     block_time: Utc.timestamp_opt(19, 0).unwrap(),
                     gas_used: 35
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn aggregate_l2_fee_components_sum_per_ten_blocks() {
+        let rows = vec![
+            BlockFeeComponentRow {
+                l2_block_number: 0,
+                priority_fee: 1,
+                base_fee: 2,
+                l1_data_cost: Some(3),
+            },
+            BlockFeeComponentRow {
+                l2_block_number: 5,
+                priority_fee: 4,
+                base_fee: 6,
+                l1_data_cost: None,
+            },
+            BlockFeeComponentRow {
+                l2_block_number: 10,
+                priority_fee: 7,
+                base_fee: 8,
+                l1_data_cost: Some(1),
+            },
+        ];
+
+        let agg = aggregate_l2_fee_components(rows, 10);
+
+        assert_eq!(
+            agg,
+            vec![
+                BlockFeeComponentRow {
+                    l2_block_number: 0,
+                    priority_fee: 5,
+                    base_fee: 8,
+                    l1_data_cost: Some(3),
+                },
+                BlockFeeComponentRow {
+                    l2_block_number: 10,
+                    priority_fee: 7,
+                    base_fee: 8,
+                    l1_data_cost: Some(1),
                 },
             ]
         );

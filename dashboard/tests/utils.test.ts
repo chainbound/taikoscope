@@ -12,6 +12,7 @@ import {
   formatLargeNumber,
   formatWithCommas,
   formatEth,
+  parseEthValue,
   bytesToHex,
   loadRefreshRate,
   saveRefreshRate,
@@ -130,6 +131,13 @@ describe('utils', () => {
     expect(formatEth(42e18)).toBe('42.0 ETH');
     expect(formatEth(0)).toBe('0.00 ETH');
     expect(formatEth(1e8)).toBe('0.10 Gwei');
+    expect(formatEth(1334501e9)).toBe('1,334,501 Gwei');
+  });
+
+  it('parses ETH and Gwei values', () => {
+    expect(parseEthValue('0.6 ETH')).toBe(0.6);
+    expect(parseEthValue('1334501 Gwei')).toBeCloseTo(0.001334501);
+    expect(parseEthValue('N/A')).toBe(0);
   });
 
   it('converts bytes to hex', () => {

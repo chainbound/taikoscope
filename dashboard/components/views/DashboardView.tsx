@@ -151,10 +151,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         'Forced Inclusions': () => onOpenTable('forced-inclusions'),
         'Active Sequencers': () => onOpenTable('gateways'),
         'Batch Posting Cadence': () => onOpenTable('batch-posting-cadence'),
+        'Avg. Prove Time': () => onOpenTable('prove-time', timeRange),
+        'Avg. Verify Time': () => onOpenTable('verify-time', timeRange),
       };
       return actions[title];
     },
-    [onOpenTable, onOpenTpsTable],
+    [onOpenTable, onOpenTpsTable, timeRange],
   );
 
   const groupedCharts = React.useMemo(() => {
@@ -305,7 +307,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               onCloudCostChange={setCloudCost}
               onProverCostChange={setProverCost}
             />
-            <div className="mt-6 grid grid-cols-2 gap-4 md:gap-6">
+            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
               <div>
                 <IncomeChart
                   timeRange={timeRange}
@@ -336,6 +338,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             />
             <FeeFlowChart
               timeRange={timeRange}
+              cloudCost={cloudCost}
+              proverCost={proverCost}
               address={selectedSequencer || undefined}
             />
           </>
