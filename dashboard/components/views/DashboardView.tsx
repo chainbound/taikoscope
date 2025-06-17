@@ -336,6 +336,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             />
             <FeeFlowChart
               timeRange={timeRange}
+              cloudCost={cloudCost}
+              proverCost={proverCost}
               address={selectedSequencer || undefined}
             />
           </>
