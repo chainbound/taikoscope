@@ -40,4 +40,33 @@ describe('DashboardHeader', () => {
     expect(html.includes('All Sequencers')).toBe(true);
     expect(html.includes('Economics')).toBe(false);
   });
+
+  it('hides sequencer selector in economics view', () => {
+    const html = renderToStaticMarkup(
+      React.createElement(
+        ThemeProvider,
+        null,
+        React.createElement(
+          ErrorProvider,
+          null,
+          React.createElement(
+            MemoryRouter,
+            { initialEntries: ['/?view=economics'] },
+            React.createElement(DashboardHeader, {
+              timeRange: '1h',
+              onTimeRangeChange: () => {},
+              refreshRate: 60000,
+              onRefreshRateChange: () => {},
+              lastRefresh: Date.now(),
+              onManualRefresh: () => {},
+              sequencers: ['seq1', 'seq2'],
+              selectedSequencer: null,
+              onSequencerChange: () => {},
+            }),
+          ),
+        ),
+      ),
+    );
+    expect(html.includes('All Sequencers')).toBe(false);
+  });
 });

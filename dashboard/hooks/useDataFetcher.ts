@@ -46,13 +46,15 @@ export const useDataFetcher = ({
     [tableView, viewParam, isTableRoute],
   );
 
+  const selectedSequencerForFetch = isEconomicsView ? null : selectedSequencer;
+
   const fetchKey = isTableView
     ? null
-    : ['metrics', timeRange, selectedSequencer, isEconomicsView];
+    : ['metrics', timeRange, selectedSequencerForFetch, isEconomicsView];
 
   const fetcher = async () => {
     if (isEconomicsView) {
-      const data = await fetchEconomicsData(timeRange, selectedSequencer);
+      const data = await fetchEconomicsData(timeRange, selectedSequencerForFetch);
       const anyBadRequest = hasBadRequest(data.badRequestResults);
 
       const metricsInput: MetricInputData = {
@@ -83,7 +85,7 @@ export const useDataFetcher = ({
       };
     }
 
-    const data = await fetchMainDashboardData(timeRange, selectedSequencer);
+    const data = await fetchMainDashboardData(timeRange, selectedSequencerForFetch);
 
     const anyBadRequest = hasBadRequest(data.badRequestResults);
     const activeGateways = data.preconfData
