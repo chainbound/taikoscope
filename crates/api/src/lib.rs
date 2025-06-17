@@ -746,13 +746,22 @@ async fn l2_block_times_aggregated(
     validate_range_exclusivity(has_time_range, false)?;
 
     let time_range = resolve_time_range_enum(&params.range, &params.time_range);
-    let address = params.address.as_ref().and_then(|addr| match addr.parse::<Address>() {
-        Ok(a) => Some(AddressBytes::from(a)),
-        Err(e) => {
-            tracing::warn!(error = %e, "Failed to parse address");
-            None
+    let address = if let Some(addr) = params.address.as_ref() {
+        match addr.parse::<Address>() {
+            Ok(a) => Some(AddressBytes::from(a)),
+            Err(e) => {
+                tracing::warn!(error = %e, "Failed to parse address");
+                return Err(ErrorResponse::new(
+                    "invalid-params",
+                    "Bad Request",
+                    StatusCode::BAD_REQUEST,
+                    e.to_string(),
+                ));
+            }
         }
-    });
+    } else {
+        None
+    };
     let blocks = match state.client.get_l2_block_times(address, time_range).await {
         Ok(rows) => rows,
         Err(e) => {
@@ -791,13 +800,22 @@ async fn l2_gas_used_aggregated(
     validate_range_exclusivity(has_time_range, false)?;
 
     let time_range = resolve_time_range_enum(&params.range, &params.time_range);
-    let address = params.address.as_ref().and_then(|addr| match addr.parse::<Address>() {
-        Ok(a) => Some(AddressBytes::from(a)),
-        Err(e) => {
-            tracing::warn!(error = %e, "Failed to parse address");
-            None
+    let address = if let Some(addr) = params.address.as_ref() {
+        match addr.parse::<Address>() {
+            Ok(a) => Some(AddressBytes::from(a)),
+            Err(e) => {
+                tracing::warn!(error = %e, "Failed to parse address");
+                return Err(ErrorResponse::new(
+                    "invalid-params",
+                    "Bad Request",
+                    StatusCode::BAD_REQUEST,
+                    e.to_string(),
+                ));
+            }
         }
-    });
+    } else {
+        None
+    };
     let blocks = match state.client.get_l2_gas_used(address, time_range).await {
         Ok(rows) => rows,
         Err(e) => {
@@ -839,13 +857,22 @@ async fn l2_tps(
     validate_range_exclusivity(has_time_range, false)?;
 
     let time_range = resolve_time_range_enum(&params.range, &params.time_range);
-    let address = params.address.as_ref().and_then(|addr| match addr.parse::<Address>() {
-        Ok(a) => Some(AddressBytes::from(a)),
-        Err(e) => {
-            tracing::warn!(error = %e, "Failed to parse address");
-            None
+    let address = if let Some(addr) = params.address.as_ref() {
+        match addr.parse::<Address>() {
+            Ok(a) => Some(AddressBytes::from(a)),
+            Err(e) => {
+                tracing::warn!(error = %e, "Failed to parse address");
+                return Err(ErrorResponse::new(
+                    "invalid-params",
+                    "Bad Request",
+                    StatusCode::BAD_REQUEST,
+                    e.to_string(),
+                ));
+            }
         }
-    });
+    } else {
+        None
+    };
     let blocks = match state.client.get_l2_tps(address, time_range).await {
         Ok(rows) => rows,
         Err(e) => {
@@ -993,13 +1020,22 @@ async fn block_transactions_aggregated(
     validate_range_exclusivity(has_time_range, false)?;
 
     let since = resolve_time_range_since(&params.range, &params.time_range);
-    let address = params.address.as_ref().and_then(|addr| match addr.parse::<Address>() {
-        Ok(a) => Some(AddressBytes::from(a)),
-        Err(e) => {
-            tracing::warn!(error = %e, "Failed to parse address");
-            None
+    let address = if let Some(addr) = params.address.as_ref() {
+        match addr.parse::<Address>() {
+            Ok(a) => Some(AddressBytes::from(a)),
+            Err(e) => {
+                tracing::warn!(error = %e, "Failed to parse address");
+                return Err(ErrorResponse::new(
+                    "invalid-params",
+                    "Bad Request",
+                    StatusCode::BAD_REQUEST,
+                    e.to_string(),
+                ));
+            }
         }
-    });
+    } else {
+        None
+    };
 
     let rows = match state
         .client
@@ -1281,13 +1317,22 @@ async fn l2_fees(
     validate_range_exclusivity(has_time_range, false)?;
 
     let time_range = resolve_time_range_enum(&params.range, &params.time_range);
-    let address = params.address.as_ref().and_then(|addr| match addr.parse::<Address>() {
-        Ok(a) => Some(AddressBytes::from(a)),
-        Err(e) => {
-            tracing::warn!(error = %e, "Failed to parse address");
-            None
+    let address = if let Some(addr) = params.address.as_ref() {
+        match addr.parse::<Address>() {
+            Ok(a) => Some(AddressBytes::from(a)),
+            Err(e) => {
+                tracing::warn!(error = %e, "Failed to parse address");
+                return Err(ErrorResponse::new(
+                    "invalid-params",
+                    "Bad Request",
+                    StatusCode::BAD_REQUEST,
+                    e.to_string(),
+                ));
+            }
         }
-    });
+    } else {
+        None
+    };
 
     let (priority_fee, base_fee, l1_data_cost) = tokio::try_join!(
         state.client.get_l2_priority_fee(address, time_range),
@@ -1330,13 +1375,22 @@ async fn l2_fee_components(
     validate_range_exclusivity(has_time_range, false)?;
 
     let time_range = resolve_time_range_enum(&params.range, &params.time_range);
-    let address = params.address.as_ref().and_then(|addr| match addr.parse::<Address>() {
-        Ok(a) => Some(AddressBytes::from(a)),
-        Err(e) => {
-            tracing::warn!(error = %e, "Failed to parse address");
-            None
+    let address = if let Some(addr) = params.address.as_ref() {
+        match addr.parse::<Address>() {
+            Ok(a) => Some(AddressBytes::from(a)),
+            Err(e) => {
+                tracing::warn!(error = %e, "Failed to parse address");
+                return Err(ErrorResponse::new(
+                    "invalid-params",
+                    "Bad Request",
+                    StatusCode::BAD_REQUEST,
+                    e.to_string(),
+                ));
+            }
         }
-    });
+    } else {
+        None
+    };
 
     let blocks = state.client.get_l2_fee_components(address, time_range).await.map_err(|e| {
         tracing::error!(error = %e, "Failed to get fee components");
@@ -1883,6 +1937,16 @@ mod tests {
         assert_eq!(body["type"], "invalid-params");
     }
 
+    #[tokio::test]
+    async fn l2_block_times_aggregated_invalid_address() {
+        let mock = Mock::new();
+        let app = build_app(mock.url());
+        let (status, body) =
+            send_error_request(app, "/l2-block-times/aggregated?range=1h&address=zzz").await;
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(body["type"], "invalid-params");
+    }
+
     #[derive(Serialize, Row)]
     struct L2GasUsedRowTest {
         l2_block_number: u64,
@@ -1936,6 +2000,16 @@ mod tests {
             body,
             json!({ "blocks": [ { "l2_block_number": 0, "block_time": "1970-01-01T00:00:01Z", "gas_used": 21 } ] })
         );
+    }
+
+    #[tokio::test]
+    async fn l2_gas_used_aggregated_invalid_address() {
+        let mock = Mock::new();
+        let app = build_app(mock.url());
+        let (status, body) =
+            send_error_request(app, "/l2-gas-used/aggregated?range=1h&address=zzz").await;
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(body["type"], "invalid-params");
     }
 
     #[derive(Serialize, Row)]
@@ -2360,6 +2434,16 @@ mod tests {
         let app = build_app(mock.url());
         let (status, body) =
             send_error_request(app, "/block-transactions?range=1h&address=zzz").await;
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(body["type"], "invalid-params");
+    }
+
+    #[tokio::test]
+    async fn block_transactions_aggregated_invalid_address() {
+        let mock = Mock::new();
+        let app = build_app(mock.url());
+        let (status, body) =
+            send_error_request(app, "/block-transactions/aggregated?range=1h&address=zzz").await;
         assert_eq!(status, StatusCode::BAD_REQUEST);
         assert_eq!(body["type"], "invalid-params");
     }
