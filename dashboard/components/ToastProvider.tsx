@@ -14,6 +14,7 @@ export const ToastProvider: React.FC<React.PropsWithChildren> = ({
   useEffect(() => {
     const handler = (event: Event) => {
       const message = (event as CustomEvent<string>).detail;
+      if (!message) return;
       const id = Date.now() + Math.random();
       const toast: Toast = { id, message };
       setToasts((t) => [...t, toast]);
