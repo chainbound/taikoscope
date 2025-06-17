@@ -1353,7 +1353,7 @@ async fn l2_fees(
     let (priority_fee, base_fee, l1_data_cost) = tokio::try_join!(
         state.client.get_l2_priority_fee(address, time_range),
         state.client.get_l2_base_fee(address, time_range),
-        state.client.get_l1_total_data_cost(time_range)
+        state.client.get_l1_total_data_cost(address, time_range)
     )
     .map_err(|e| {
         tracing::error!(error = %e, "Failed to get L2 fees");
