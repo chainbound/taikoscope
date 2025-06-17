@@ -1767,7 +1767,8 @@ mod tests {
             PostingTimeRowTest { batch_id: 2, ts: 2000, ms_since_prev_batch: Some(1000) },
         ]));
         let app = build_app(mock.url());
-        let body = send_request(app, "/batch-posting-times?range=1h").await;
+        let body =
+            send_request(app, "/batch-posting-times?created[gte]=0&created[lte]=3600000").await;
         assert_eq!(
             body,
             json!({ "batches": [ { "batch_id": 2, "inserted_at": "1970-01-01T00:00:02Z", "ms_since_prev_batch": 1000 } ] })
@@ -1785,7 +1786,7 @@ mod tests {
         let mock = Mock::new();
         mock.add(handlers::provide(vec![ProveRowTest { batch_id: 1, seconds_to_prove: 10 }]));
         let app = build_app(mock.url());
-        let body = send_request(app, "/prove-times?range=1h").await;
+        let body = send_request(app, "/prove-times?created[gte]=0&created[lte]=3600000").await;
         assert_eq!(body, json!({ "batches": [ { "batch_id": 1, "seconds_to_prove": 10 } ] }));
     }
 
@@ -1794,7 +1795,7 @@ mod tests {
         let mock = Mock::new();
         mock.add(handlers::provide(vec![ProveRowTest { batch_id: 1, seconds_to_prove: 10 }]));
         let app = build_app(mock.url());
-        let body = send_request(app, "/prove-times?range=24h").await;
+        let body = send_request(app, "/prove-times?created[gte]=0&created[lte]=86400000").await;
         assert_eq!(body, json!({ "batches": [ { "batch_id": 1, "seconds_to_prove": 10 } ] }));
     }
 
@@ -1803,7 +1804,7 @@ mod tests {
         let mock = Mock::new();
         mock.add(handlers::provide(vec![ProveRowTest { batch_id: 1, seconds_to_prove: 10 }]));
         let app = build_app(mock.url());
-        let body = send_request(app, "/prove-times?range=7d").await;
+        let body = send_request(app, "/prove-times?created[gte]=0&created[lte]=604800000").await;
         assert_eq!(body, json!({ "batches": [ { "batch_id": 1, "seconds_to_prove": 10 } ] }));
     }
 
@@ -1818,7 +1819,7 @@ mod tests {
         let mock = Mock::new();
         mock.add(handlers::provide(vec![VerifyRowTest { batch_id: 2, seconds_to_verify: 120 }]));
         let app = build_app(mock.url());
-        let body = send_request(app, "/verify-times?range=1h").await;
+        let body = send_request(app, "/verify-times?created[gte]=0&created[lte]=3600000").await;
         assert_eq!(body, json!({ "batches": [ { "batch_id": 2, "seconds_to_verify": 120 } ] }));
     }
 
@@ -1827,7 +1828,7 @@ mod tests {
         let mock = Mock::new();
         mock.add(handlers::provide(vec![VerifyRowTest { batch_id: 2, seconds_to_verify: 120 }]));
         let app = build_app(mock.url());
-        let body = send_request(app, "/verify-times?range=24h").await;
+        let body = send_request(app, "/verify-times?created[gte]=0&created[lte]=86400000").await;
         assert_eq!(body, json!({ "batches": [ { "batch_id": 2, "seconds_to_verify": 120 } ] }));
     }
 
@@ -1836,7 +1837,7 @@ mod tests {
         let mock = Mock::new();
         mock.add(handlers::provide(vec![VerifyRowTest { batch_id: 2, seconds_to_verify: 120 }]));
         let app = build_app(mock.url());
-        let body = send_request(app, "/verify-times?range=7d").await;
+        let body = send_request(app, "/verify-times?created[gte]=0&created[lte]=604800000").await;
         assert_eq!(body, json!({ "batches": [ { "batch_id": 2, "seconds_to_verify": 120 } ] }));
     }
 
@@ -1858,7 +1859,7 @@ mod tests {
         let mock = Mock::new();
         mock.add(handlers::provide(vec![BlockTimeRowTest { minute: 1, block_number: 2 }]));
         let app = build_app(mock.url());
-        let body = send_request(app, "/l1-block-times?range=1h").await;
+        let body = send_request(app, "/l1-block-times?created[gte]=0&created[lte]=3600000").await;
         assert_eq!(body, json!({ "blocks": [ { "minute": 1, "block_number": 2 } ] }));
     }
 
@@ -1867,7 +1868,7 @@ mod tests {
         let mock = Mock::new();
         mock.add(handlers::provide(vec![BlockTimeRowTest { minute: 1, block_number: 2 }]));
         let app = build_app(mock.url());
-        let body = send_request(app, "/l1-block-times?range=7d").await;
+        let body = send_request(app, "/l1-block-times?created[gte]=0&created[lte]=604800000").await;
         assert_eq!(body, json!({ "blocks": [ { "minute": 1, "block_number": 2 } ] }));
     }
 
@@ -1883,7 +1884,7 @@ mod tests {
             },
         ]));
         let app = build_app(mock.url());
-        let body = send_request(app, "/l2-block-times?range=1h").await;
+        let body = send_request(app, "/l2-block-times?created[gte]=0&created[lte]=3600000").await;
         assert_eq!(
             body,
             json!({ "blocks": [ { "l2_block_number": 1, "block_time": "1970-01-01T00:00:02Z", "ms_since_prev_block": 2000 } ] })
@@ -1902,7 +1903,9 @@ mod tests {
             },
         ]));
         let app = build_app(mock.url());
-        let body = send_request(app, "/l2-block-times/aggregated?range=24h").await;
+        let body =
+            send_request(app, "/l2-block-times/aggregated?created[gte]=0&created[lte]=86400000")
+                .await;
         assert_eq!(
             body,
             json!({ "blocks": [ { "l2_block_number": 0, "block_time": "1970-01-01T00:00:02Z", "ms_since_prev_block": 2000 } ] })
@@ -1921,7 +1924,9 @@ mod tests {
             },
         ]));
         let app = build_app(mock.url());
-        let body = send_request(app, "/l2-block-times/aggregated?range=7d").await;
+        let body =
+            send_request(app, "/l2-block-times/aggregated?created[gte]=0&created[lte]=604800000")
+                .await;
         assert_eq!(
             body,
             json!({ "blocks": [ { "l2_block_number": 0, "block_time": "1970-01-01T00:00:02Z", "ms_since_prev_block": 2000 } ] })
@@ -1932,7 +1937,11 @@ mod tests {
     async fn l2_block_times_invalid_address() {
         let mock = Mock::new();
         let app = build_app(mock.url());
-        let (status, body) = send_error_request(app, "/l2-block-times?range=1h&address=zzz").await;
+        let (status, body) = send_error_request(
+            app,
+            "/l2-block-times?created[gte]=0&created[lte]=3600000&address=zzz",
+        )
+        .await;
         assert_eq!(status, StatusCode::BAD_REQUEST);
         assert_eq!(body["type"], "invalid-params");
     }
@@ -1941,8 +1950,11 @@ mod tests {
     async fn l2_block_times_aggregated_invalid_address() {
         let mock = Mock::new();
         let app = build_app(mock.url());
-        let (status, body) =
-            send_error_request(app, "/l2-block-times/aggregated?range=1h&address=zzz").await;
+        let (status, body) = send_error_request(
+            app,
+            "/l2-block-times/aggregated?created[gte]=0&created[lte]=3600000&address=zzz",
+        )
+        .await;
         assert_eq!(status, StatusCode::BAD_REQUEST);
         assert_eq!(body["type"], "invalid-params");
     }
@@ -1962,7 +1974,7 @@ mod tests {
             L2GasUsedRowTest { l2_block_number: 1, block_time: 1, gas_used: 42 },
         ]));
         let app = build_app(mock.url());
-        let body = send_request(app, "/l2-gas-used?range=1h").await;
+        let body = send_request(app, "/l2-gas-used?created[gte]=0&created[lte]=3600000").await;
         assert_eq!(
             body,
             json!({ "blocks": [
@@ -1980,7 +1992,8 @@ mod tests {
             L2GasUsedRowTest { l2_block_number: 1, block_time: 1, gas_used: 42 },
         ]));
         let app = build_app(mock.url());
-        let body = send_request(app, "/l2-gas-used/aggregated?range=24h").await;
+        let body =
+            send_request(app, "/l2-gas-used/aggregated?created[gte]=0&created[lte]=86400000").await;
         assert_eq!(
             body,
             json!({ "blocks": [ { "l2_block_number": 0, "block_time": "1970-01-01T00:00:01Z", "gas_used": 21 } ] })
@@ -1995,7 +2008,9 @@ mod tests {
             L2GasUsedRowTest { l2_block_number: 1, block_time: 1, gas_used: 42 },
         ]));
         let app = build_app(mock.url());
-        let body = send_request(app, "/l2-gas-used/aggregated?range=7d").await;
+        let body =
+            send_request(app, "/l2-gas-used/aggregated?created[gte]=0&created[lte]=604800000")
+                .await;
         assert_eq!(
             body,
             json!({ "blocks": [ { "l2_block_number": 0, "block_time": "1970-01-01T00:00:01Z", "gas_used": 21 } ] })
@@ -2006,8 +2021,11 @@ mod tests {
     async fn l2_gas_used_aggregated_invalid_address() {
         let mock = Mock::new();
         let app = build_app(mock.url());
-        let (status, body) =
-            send_error_request(app, "/l2-gas-used/aggregated?range=1h&address=zzz").await;
+        let (status, body) = send_error_request(
+            app,
+            "/l2-gas-used/aggregated?created[gte]=0&created[lte]=3600000&address=zzz",
+        )
+        .await;
         assert_eq!(status, StatusCode::BAD_REQUEST);
         assert_eq!(body["type"], "invalid-params");
     }
@@ -2052,7 +2070,8 @@ mod tests {
             tx_sum: 500,
         }]));
         let app = build_app(mock.url());
-        let body = send_request(app, "/sequencer-distribution?range=1h").await;
+        let body =
+            send_request(app, "/sequencer-distribution?created[gte]=0&created[lte]=3600000").await;
         assert_eq!(
             body,
             json!({ "sequencers": [ { "address": "0x0101010101010101010101010101010101010101", "blocks": 5, "tps": 5.0 } ] })
@@ -2072,7 +2091,7 @@ mod tests {
             l2_block_number: 42,
         }]));
         let app = build_app(mock.url());
-        let body = send_request(app, "/sequencer-blocks?range=1h").await;
+        let body = send_request(app, "/sequencer-blocks?created[gte]=0&created[lte]=3600000").await;
         assert_eq!(
             body,
             json!({ "sequencers": [ { "address": "0x0101010101010101010101010101010101010101", "blocks": [42] } ] })
@@ -2096,7 +2115,8 @@ mod tests {
             sum_tx: 7,
         }]));
         let app = build_app(mock.url());
-        let body = send_request(app, "/block-transactions?range=1h").await;
+        let body =
+            send_request(app, "/block-transactions?created[gte]=0&created[lte]=3600000").await;
         assert_eq!(
             body,
             json!({ "blocks": [ { "block": 42, "txs": 7, "sequencer": "0x0101010101010101010101010101010101010101", "block_time": "1970-01-01T00:00:10Z" } ] })
@@ -2152,7 +2172,7 @@ mod tests {
             blob_count: 3,
         }]));
         let app = build_app(mock.url());
-        let body = send_request(app, "/blobs-per-batch?range=1h").await;
+        let body = send_request(app, "/blobs-per-batch?created[gte]=0&created[lte]=3600000").await;
         assert_eq!(
             body,
             json!({
@@ -2416,7 +2436,9 @@ mod tests {
             l2_block_number: 42,
         }]));
         let app = build_app(mock.url());
-        let body = send_request(app, "/sequencer-blocks?range=1h&address=zzz").await;
+        let body =
+            send_request(app, "/sequencer-blocks?created[gte]=0&created[lte]=3600000&address=zzz")
+                .await;
         assert_eq!(
             body,
             json!({
@@ -2432,8 +2454,11 @@ mod tests {
         let mock = Mock::new();
         // No ClickHouse queries should be made when the address is invalid
         let app = build_app(mock.url());
-        let (status, body) =
-            send_error_request(app, "/block-transactions?range=1h&address=zzz").await;
+        let (status, body) = send_error_request(
+            app,
+            "/block-transactions?created[gte]=0&created[lte]=3600000&address=zzz",
+        )
+        .await;
         assert_eq!(status, StatusCode::BAD_REQUEST);
         assert_eq!(body["type"], "invalid-params");
     }
@@ -2442,8 +2467,11 @@ mod tests {
     async fn block_transactions_aggregated_invalid_address() {
         let mock = Mock::new();
         let app = build_app(mock.url());
-        let (status, body) =
-            send_error_request(app, "/block-transactions/aggregated?range=1h&address=zzz").await;
+        let (status, body) = send_error_request(
+            app,
+            "/block-transactions/aggregated?created[gte]=0&created[lte]=3600000&address=zzz",
+        )
+        .await;
         assert_eq!(status, StatusCode::BAD_REQUEST);
         assert_eq!(body["type"], "invalid-params");
     }
@@ -2462,7 +2490,7 @@ mod tests {
         }]));
         let app = build_app(mock.url());
         let addr = "0x0101010101010101010101010101010101010101%27;%20DROP%20TABLE%20--";
-        let uri = format!("/sequencer-blocks?range=1h&address={addr}");
+        let uri = format!("/sequencer-blocks?created[gte]=0&created[lte]=3600000&address={addr}");
         let body = send_request(app, &uri).await;
         assert_eq!(
             body,
@@ -2480,7 +2508,7 @@ mod tests {
         // No ClickHouse queries should be made when the address is invalid
         let app = build_app(mock.url());
         let addr = "0x123%27;%20--";
-        let uri = format!("/block-transactions?range=1h&address={addr}");
+        let uri = format!("/block-transactions?created[gte]=0&created[lte]=3600000&address={addr}");
         let (status, body) = send_error_request(app, &uri).await;
         assert_eq!(status, StatusCode::BAD_REQUEST);
         assert_eq!(body["type"], "invalid-params");
