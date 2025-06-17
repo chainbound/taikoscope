@@ -304,27 +304,29 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               onCloudCostChange={setCloudCost}
               onProverCostChange={setProverCost}
             />
-            <div className="mt-6">
-              <IncomeChart
-                timeRange={timeRange}
-                address={selectedSequencer || undefined}
-              />
-            </div>
-            <div className="mt-6">
-              <CostChart
-                timeRange={timeRange}
-                cloudCost={cloudCost}
-                proverCost={proverCost}
-                address={selectedSequencer || undefined}
-              />
-            </div>
-            <div className="mt-6">
-              <ProfitabilityChart
-                timeRange={timeRange}
-                cloudCost={cloudCost}
-                proverCost={proverCost}
-                address={selectedSequencer || undefined}
-              />
+            <div className="mt-6 grid grid-cols-2 gap-4 md:gap-6">
+              <div>
+                <IncomeChart
+                  timeRange={timeRange}
+                  address={selectedSequencer || undefined}
+                />
+              </div>
+              <div>
+                <CostChart
+                  timeRange={timeRange}
+                  cloudCost={cloudCost}
+                  proverCost={proverCost}
+                  address={selectedSequencer || undefined}
+                />
+              </div>
+              <div>
+                <ProfitabilityChart
+                  timeRange={timeRange}
+                  cloudCost={cloudCost}
+                  proverCost={proverCost}
+                  address={selectedSequencer || undefined}
+                />
+              </div>
             </div>
             <ProfitRankingTable
               timeRange={timeRange}
