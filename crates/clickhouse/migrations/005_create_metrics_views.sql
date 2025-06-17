@@ -17,7 +17,7 @@ SELECT
     minState(h.block_ts) AS min_ts_state,
     maxState(h.block_ts) AS max_ts_state,
     countState() AS cnt_state,
-    sumState(sum_tx) AS tx_sum_state,
+    sumState(toUInt64(sum_tx)) AS tx_sum_state,
     sumState(sum_gas_used) AS gas_sum_state,
     sumState(sum_priority_fee) AS priority_fee_sum_state,
     sumState(sum_base_fee) AS base_fee_sum_state
@@ -63,7 +63,7 @@ SELECT
     minState(h.block_ts) AS min_ts_state,
     maxState(h.block_ts) AS max_ts_state,
     countState() AS cnt_state,
-    sumState(sum_tx) AS tx_sum_state,
+    sumState(toUInt64(sum_tx)) AS tx_sum_state,
     sumState(sum_gas_used) AS gas_sum_state,
     sumState(sum_priority_fee) AS priority_fee_sum_state,
     sumState(sum_base_fee) AS base_fee_sum_state
