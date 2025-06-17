@@ -151,10 +151,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         'Forced Inclusions': () => onOpenTable('forced-inclusions'),
         'Active Sequencers': () => onOpenTable('gateways'),
         'Batch Posting Cadence': () => onOpenTable('batch-posting-cadence'),
+        'Avg. Prove Time': () => onOpenTable('prove-time', timeRange),
+        'Avg. Verify Time': () => onOpenTable('verify-time', timeRange),
       };
       return actions[title];
     },
-    [onOpenTable, onOpenTpsTable],
+    [onOpenTable, onOpenTpsTable, timeRange],
   );
 
   const groupedCharts = React.useMemo(() => {

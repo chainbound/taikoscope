@@ -1,4 +1,3 @@
-import React from 'react';
 import { type MetricData } from '../types';
 import {
   formatSeconds,
@@ -57,16 +56,7 @@ export const createMetrics = (data: MetricInputData): MetricData[] => [
     group: 'Network Health',
   },
   {
-    title: React.createElement(
-      'a',
-      {
-        href: 'https://docs.taiko.xyz/taiko-alethia-protocol/protocol-architecture/block-states',
-        target: '_blank',
-        rel: 'noopener noreferrer',
-        className: 'hover:underline',
-      },
-      'Avg. Verify Time',
-    ),
+    title: 'Avg. Verify Time',
     value:
       data.avgVerify != null && data.avgVerify > 0
         ? formatSeconds(data.avgVerify / 1000)
