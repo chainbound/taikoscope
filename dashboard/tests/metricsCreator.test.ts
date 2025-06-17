@@ -40,7 +40,9 @@ describe('metricsCreator', () => {
     const current = metrics.find((m) => m.title === 'Current Sequencer');
     const next = metrics.find((m) => m.title === 'Next Sequencer');
     expect(current?.value).toBe('Chainbound A');
+    expect(current?.link).toContain('/address/');
     expect(next?.value).toBe('Chainbound B');
+    expect(next?.link).toContain('/address/');
 
     const l2BlockMetric = metrics.find((m) => m.title === 'L2 Block');
     expect(l2BlockMetric?.link).toContain('/block/100');

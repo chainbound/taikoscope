@@ -87,12 +87,20 @@ export const createMetrics = (data: MetricInputData): MetricData[] => [
       data.currentOperator != null
         ? getSequencerName(data.currentOperator)
         : 'N/A',
+    link:
+      data.currentOperator != null
+        ? `${TAIKOSCAN_BASE}/address/${data.currentOperator}`
+        : undefined,
     group: 'Sequencers',
   },
   {
     title: 'Next Sequencer',
     value:
       data.nextOperator != null ? getSequencerName(data.nextOperator) : 'N/A',
+    link:
+      data.nextOperator != null
+        ? `${TAIKOSCAN_BASE}/address/${data.nextOperator}`
+        : undefined,
     group: 'Sequencers',
   },
   {
