@@ -5,6 +5,7 @@ import { ProfitCalculator } from '../ProfitCalculator';
 import { IncomeChart } from '../IncomeChart';
 import { CostChart } from '../CostChart';
 import { ProfitabilityChart } from '../ProfitabilityChart';
+import { ProfitRankingTable } from '../ProfitRankingTable';
 import { ChartCard } from '../ChartCard';
 import { TAIKO_PINK } from '../../theme';
 import { TimeRange, MetricData } from '../../types';
@@ -325,6 +326,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 address={selectedSequencer || undefined}
               />
             </div>
+            <ProfitRankingTable
+              timeRange={timeRange}
+              cloudCost={cloudCost}
+              proverCost={proverCost}
+            />
           </>
         )}
 
