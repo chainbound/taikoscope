@@ -81,6 +81,9 @@ export const formatTime = (ms: number): string =>
     timeZone: 'UTC',
   });
 
+export const formatDateTime = (ms: number): string =>
+  new Date(ms).toLocaleString('en-GB');
+
 export const formatInterval = (
   seconds: number,
   showHours: boolean,

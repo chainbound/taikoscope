@@ -8,6 +8,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
+import { formatDateTime } from '../utils';
 import type { BlockTransaction } from '../services/apiService';
 
 interface BlockTxChartProps {
@@ -69,7 +70,7 @@ const BlockTxChartComponent: React.FC<BlockTxChartProps> = ({
         <Tooltip
           labelFormatter={(label: number, payload) => {
             const ts = payload?.[0]?.payload?.blockTime;
-            const timeStr = ts ? new Date(ts).toLocaleString() : '';
+            const timeStr = ts ? formatDateTime(ts) : '';
             return `Block ${label.toLocaleString()} (${timeStr})`;
           }}
           formatter={(value: number) => [value.toLocaleString(), 'avg txs']}
