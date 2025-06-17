@@ -1,28 +1,25 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { fetchL1HeadNumber, fetchL2HeadNumber } from '../services/apiService';
+import { fetchDashboardData } from '../services/apiService';
 import { MetricData } from '../types';
 import { TAIKOSCAN_BASE } from '../utils';
 
 export const useBlockData = () => {
   const [l2HeadBlock, setL2HeadBlock] = useState<string>('0');
   const [l1HeadBlock, setL1HeadBlock] = useState<string>('0');
+  const [candidates, setCandidates] = useState<string[]>([]);
   const pollId = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const updateBlockHeads = useCallback(async () => {
     try {
-      const [l1, l2] = await Promise.all([
-        fetchL1HeadNumber(),
-        fetchL2HeadNumber(),
-      ]);
-
-      if (l1.data !== null) {
-        const value = l1.data.toLocaleString();
-        setL1HeadBlock(value);
+      const res = await fetchDashboardData('1h');
+      if (res.data?.l1_block != null) {
+        setL1HeadBlock(res.data.l1_block.toLocaleString());
       }
-
-      if (l2.data !== null) {
-        const value = l2.data.toLocaleString();
-        setL2HeadBlock(value);
+      if (res.data?.l2_block != null) {
+        setL2HeadBlock(res.data.l2_block.toLocaleString());
+      }
+      if (res.data?.preconf_data?.candidates) {
+        setCandidates(res.data.preconf_data.candidates);
       }
     } catch (error) {
       console.error('Failed to update block heads:', error);
@@ -93,6 +90,7 @@ export const useBlockData = () => {
   return {
     l2HeadBlock,
     l1HeadBlock,
+    candidates,
     updateBlockHeads,
     updateMetricsWithBlockHeads,
   };

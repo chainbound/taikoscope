@@ -25,11 +25,7 @@ export const useDashboardController = () => {
 
   // Sequencer handling
   const { selectedSequencer, setSelectedSequencer, sequencerList } =
-    useSequencerHandler({
-      chartsData,
-      blockData,
-      metricsData,
-    });
+    useSequencerHandler({ blockData, metricsData });
 
   useEffect(() => {
     if (metricsData.isEconomicsView && selectedSequencer) {
