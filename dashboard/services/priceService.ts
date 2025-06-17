@@ -6,7 +6,12 @@ const API_URL =
   'https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd'
 
 export const getEthPrice = async (): Promise<number> => {
-  const res = await fetch(API_URL)
+  let res: Response
+  try {
+    res = await fetch(API_URL)
+  } catch {
+    return 0
+  }
   if (!res.ok) {
     throw new Error(`Failed to fetch ETH price: ${res.status}`)
   }
@@ -62,5 +67,7 @@ export const useEthPrice = () => {
     }
   }, [swr.data])
 
-  return swr
+  const error = swr.error ?? (swr.data === 0 ? new Error('ETH price unavailable') : undefined)
+
+  return { ...swr, error }
 }

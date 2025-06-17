@@ -67,7 +67,11 @@ const BlockTxChartComponent: React.FC<BlockTxChartProps> = ({
           }}
         />
         <Tooltip
-          labelFormatter={(label: number) => `Block ${label.toLocaleString()}`}
+          labelFormatter={(label: number, payload) => {
+            const ts = payload?.[0]?.payload?.blockTime;
+            const timeStr = ts ? new Date(ts).toLocaleString() : '';
+            return `Block ${label.toLocaleString()} (${timeStr})`;
+          }}
           formatter={(value: number) => [value.toLocaleString(), 'txs']}
           contentStyle={{
             backgroundColor: 'rgba(255, 255, 255, 0.8)',

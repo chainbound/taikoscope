@@ -504,8 +504,16 @@ impl ClickhouseReader {
         ending_before: Option<u64>,
         sequencer: Option<AddressBytes>,
     ) -> Result<Vec<BlockTransactionRow>> {
+        #[derive(Row, Deserialize)]
+        struct RawRow {
+            sequencer: AddressBytes,
+            l2_block_number: u64,
+            block_time: u64,
+            sum_tx: u32,
+        }
+
         let mut query = format!(
-            "SELECT sequencer, h.l2_block_number, sum_tx \
+            "SELECT sequencer, h.l2_block_number, h.block_ts AS block_time, sum_tx \
              FROM {db}.l2_head_events h \
              WHERE h.block_ts >= {} \
                AND {filter}",
@@ -528,8 +536,123 @@ impl ClickhouseReader {
         query.push_str(" ORDER BY l2_block_number DESC");
         query.push_str(&format!(" LIMIT {}", limit));
 
-        let rows = self.execute::<BlockTransactionRow>(&query).await?;
-        Ok(rows)
+        let rows = self.execute::<RawRow>(&query).await?;
+        Ok(rows
+            .into_iter()
+            .map(|r| BlockTransactionRow {
+                sequencer: r.sequencer,
+                l2_block_number: r.l2_block_number,
+                block_time: Utc.timestamp_opt(r.block_time as i64, 0).unwrap(),
+                sum_tx: r.sum_tx,
+            })
+            .collect())
+    }
+
+    /// Get L2 block times since the given cutoff with cursor-based pagination.
+    /// Results are returned in descending order by block number.
+    pub async fn get_l2_block_times_paginated(
+        &self,
+        since: DateTime<Utc>,
+        limit: u64,
+        starting_after: Option<u64>,
+        ending_before: Option<u64>,
+        sequencer: Option<AddressBytes>,
+    ) -> Result<Vec<L2BlockTimeRow>> {
+        #[derive(Row, Deserialize)]
+        struct RawRow {
+            l2_block_number: u64,
+            block_time: u64,
+            ms_since_prev_block: Option<u64>,
+        }
+
+        let mut query = format!(
+            "SELECT h.l2_block_number, h.block_ts AS block_time, \
+                    toUInt64OrNull(toString((toUnixTimestamp64Milli(h.inserted_at) - \
+                        lagInFrame(toUnixTimestamp64Milli(h.inserted_at)) OVER (ORDER BY h.l2_block_number)))) \
+                        AS ms_since_prev_block \
+             FROM {db}.l2_head_events h \
+             WHERE h.block_ts >= {since} \
+               AND {filter}",
+            since = since.timestamp(),
+            filter = self.reorg_filter("h"),
+            db = self.db_name,
+        );
+        if let Some(addr) = sequencer {
+            query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
+        }
+        if let Some(start) = starting_after {
+            query.push_str(&format!(" AND l2_block_number < {}", start));
+        }
+        if let Some(end) = ending_before {
+            query.push_str(&format!(" AND l2_block_number > {}", end));
+        }
+        query.push_str(" ORDER BY l2_block_number DESC");
+        query.push_str(&format!(" LIMIT {}", limit));
+
+        let rows = self.execute::<RawRow>(&query).await?;
+        Ok(rows
+            .into_iter()
+            .filter_map(|r| {
+                let dt = Utc.timestamp_opt(r.block_time as i64, 0).single()?;
+                r.ms_since_prev_block.map(|ms| L2BlockTimeRow {
+                    l2_block_number: r.l2_block_number,
+                    block_time: dt,
+                    ms_since_prev_block: Some(ms),
+                })
+            })
+            .collect())
+    }
+
+    /// Get L2 gas usage since the given cutoff with cursor-based pagination.
+    /// Results are returned in descending order by block number.
+    pub async fn get_l2_gas_used_paginated(
+        &self,
+        since: DateTime<Utc>,
+        limit: u64,
+        starting_after: Option<u64>,
+        ending_before: Option<u64>,
+        sequencer: Option<AddressBytes>,
+    ) -> Result<Vec<L2GasUsedRow>> {
+        #[derive(Row, Deserialize)]
+        struct RawRow {
+            l2_block_number: u64,
+            block_time: u64,
+            gas_used: u64,
+        }
+
+        let mut query = format!(
+            "SELECT h.l2_block_number, h.block_ts AS block_time, toUInt64(sum_gas_used) AS gas_used \
+             FROM {db}.l2_head_events h \
+             WHERE h.block_ts >= {since} \
+               AND {filter}",
+            since = since.timestamp(),
+            filter = self.reorg_filter("h"),
+            db = self.db_name,
+        );
+        if let Some(addr) = sequencer {
+            query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
+        }
+        if let Some(start) = starting_after {
+            query.push_str(&format!(" AND l2_block_number < {}", start));
+        }
+        if let Some(end) = ending_before {
+            query.push_str(&format!(" AND l2_block_number > {}", end));
+        }
+        query.push_str(" ORDER BY l2_block_number DESC");
+        query.push_str(&format!(" LIMIT {}", limit));
+
+        let rows = self.execute::<RawRow>(&query).await?;
+        Ok(rows
+            .into_iter()
+            .map(|r| {
+                let dt = Utc.timestamp_opt(r.block_time as i64, 0).unwrap();
+                L2GasUsedRow {
+                    l2_block_number: r.l2_block_number,
+                    block_time: dt,
+                    gas_used: r.gas_used,
+                }
+            })
+            .collect())
     }
 
     /// Get the average time in milliseconds it takes for a batch to be proven
@@ -745,7 +868,7 @@ impl ClickhouseReader {
         }
 
         let fallback_query = format!(
-            "SELECT b.batch_id AS batch_id, \
+            "SELECT toUInt64(b.batch_id) AS batch_id, \
                     (l1_proved.block_ts - l1_proposed.block_ts) AS seconds_to_prove \
              FROM {db}.batches b \
              JOIN {db}.proved_batches pb ON b.batch_id = pb.batch_id \
@@ -781,7 +904,7 @@ impl ClickhouseReader {
         }
 
         let fallback_query = format!(
-            "SELECT pb.batch_id AS batch_id, \
+            "SELECT toUInt64(pb.batch_id) AS batch_id, \
                     (l1_verified.block_ts - l1_proved.block_ts) AS seconds_to_verify \
              FROM {db}.proved_batches pb \
              INNER JOIN {db}.verified_batches vb \
@@ -916,11 +1039,12 @@ impl ClickhouseReader {
         #[derive(Row, Deserialize)]
         struct RawRow {
             l2_block_number: u64,
+            block_time: u64,
             gas_used: u64,
         }
 
         let mut query = format!(
-            "SELECT h.l2_block_number, toUInt64(sum_gas_used) AS gas_used \
+            "SELECT h.l2_block_number, h.block_ts AS block_time, toUInt64(sum_gas_used) AS gas_used \
              FROM {db}.l2_head_events h \
              WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
                AND {filter}",
@@ -936,7 +1060,14 @@ impl ClickhouseReader {
         let rows = self.execute::<RawRow>(&query).await?;
         Ok(rows
             .into_iter()
-            .map(|r| L2GasUsedRow { l2_block_number: r.l2_block_number, gas_used: r.gas_used })
+            .map(|r| {
+                let dt = Utc.timestamp_opt(r.block_time as i64, 0).unwrap();
+                L2GasUsedRow {
+                    l2_block_number: r.l2_block_number,
+                    block_time: dt,
+                    gas_used: r.gas_used,
+                }
+            })
             .collect())
     }
 

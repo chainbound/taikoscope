@@ -22,7 +22,7 @@ export const blockLink = (block: number): React.ReactElement =>
       className: 'font-semibold hover:underline',
       style: { color: TAIKO_PINK },
     },
-    String(block),
+    block.toLocaleString(),
   );
 
 export const addressLink = (

@@ -1,0 +1,6 @@
+# Ignore everything
+/*
+# But include dashboard and Vercel config
+!/dashboard/
+!vercel.json
+

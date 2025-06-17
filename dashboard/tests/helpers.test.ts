@@ -75,8 +75,10 @@ describe('helpers', () => {
     expect(metrics[13].value).toBe('2.00 ETH');
     expect(metrics[13].group).toBe('Network Economics');
     expect(metrics[14].value).toBe('100');
+    expect(metrics[14].link).toContain('/block/100');
     expect(metrics[14].group).toBe('Block Information');
     expect(metrics[15].value).toBe('50');
+    expect(metrics[15].link).toContain('/block/50');
     expect(metrics[15].group).toBe('Block Information');
   });
 

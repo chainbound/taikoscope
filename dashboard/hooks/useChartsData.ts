@@ -17,23 +17,26 @@ export const useChartsData = () => {
     PieChartDataItem[]
   >([]);
 
+  interface ChartsDataUpdate {
+    proveTimes?: TimeSeriesData[];
+    verifyTimes?: TimeSeriesData[];
+    l2Times?: TimeSeriesData[];
+    l2Gas?: TimeSeriesData[];
+    txPerBlock?: BlockTransaction[];
+    blobsPerBatch?: BatchBlobCount[];
+    sequencerDist?: PieChartDataItem[];
+  }
+
   const updateChartsData = useCallback(
-    (data: {
-      proveTimes: TimeSeriesData[];
-      verifyTimes: TimeSeriesData[];
-      l2Times: TimeSeriesData[];
-      l2Gas: TimeSeriesData[];
-      txPerBlock: BlockTransaction[];
-      blobsPerBatch: BatchBlobCount[];
-      sequencerDist: PieChartDataItem[];
-    }) => {
-      setSecondsToProveData([...data.proveTimes]);
-      setSecondsToVerifyData([...data.verifyTimes]);
-      setL2BlockTimeData([...data.l2Times]);
-      setL2GasUsedData([...data.l2Gas]);
-      setBlockTxData([...data.txPerBlock]);
-      setBatchBlobCounts([...data.blobsPerBatch]);
-      setSequencerDistribution([...data.sequencerDist]);
+    (data: ChartsDataUpdate) => {
+      if (data.proveTimes) setSecondsToProveData([...data.proveTimes]);
+      if (data.verifyTimes) setSecondsToVerifyData([...data.verifyTimes]);
+      if (data.l2Times) setL2BlockTimeData([...data.l2Times]);
+      if (data.l2Gas) setL2GasUsedData([...data.l2Gas]);
+      if (data.txPerBlock) setBlockTxData([...data.txPerBlock]);
+      if (data.blobsPerBatch) setBatchBlobCounts([...data.blobsPerBatch]);
+      if (data.sequencerDist)
+        setSequencerDistribution([...data.sequencerDist]);
     },
     [],
   );

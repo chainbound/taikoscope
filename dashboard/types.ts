@@ -3,6 +3,7 @@ export type TimeRange = string;
 export interface TimeSeriesData {
   timestamp: number; // Unix timestamp (ms)
   value: number;
+  blockTime?: number;
   name?: string; // For line charts with 'name' on x-axis (like batchId)
 }
 
@@ -17,6 +18,7 @@ import type { ReactNode } from 'react';
 export interface MetricData {
   title: ReactNode;
   value: string;
+  link?: string;
   unit?: string; // e.g., '1h', '24h', or specific units like 'ms'
   description?: ReactNode;
   group?: string;

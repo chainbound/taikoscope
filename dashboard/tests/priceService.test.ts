@@ -18,6 +18,12 @@ function mockFetchWithInvalidResponse() {
   })) as unknown as typeof fetch
 }
 
+function mockFetchWithNetworkError() {
+  return vi.fn(async () => {
+    throw new Error('network error')
+  }) as unknown as typeof fetch
+}
+
 afterEach(() => {
   globalThis.fetch = originalFetch
 })
@@ -32,6 +38,12 @@ describe('getEthPrice', () => {
   it('handles fetch failure', async () => {
     globalThis.fetch = mockFetch(0, false)
     await expect(getEthPrice()).rejects.toThrow('Failed to fetch ETH price: 500')
+  })
+
+  it('returns 0 on network error', async () => {
+    globalThis.fetch = mockFetchWithNetworkError()
+    const price = await getEthPrice()
+    expect(price).toBe(0)
   })
 
   it('handles invalid response format', async () => {

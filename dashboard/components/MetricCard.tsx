@@ -1,8 +1,10 @@
 import React from 'react';
+import { TAIKO_PINK } from '../theme';
 
 interface MetricCardProps {
   title: React.ReactNode;
   value: string;
+  link?: string;
   unit?: string; // Unit is passed but not displayed in the title directly as (unit)
   description?: React.ReactNode;
   className?: string;
@@ -12,6 +14,7 @@ interface MetricCardProps {
 export const MetricCard: React.FC<MetricCardProps> = ({
   title,
   value,
+  link,
   description,
   className,
   onMore,
@@ -41,7 +44,19 @@ export const MetricCard: React.FC<MetricCardProps> = ({
       <p
         className={`mt-1 font-semibold text-gray-900 dark:text-gray-100 ${isAddress ? 'text-base break-all' : `text-2xl${isShortValue ? '' : ' whitespace-nowrap overflow-hidden text-ellipsis'}`}`}
       >
-        {value}
+        {link ? (
+          <a
+            href={link}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:underline"
+            style={{ color: TAIKO_PINK }}
+          >
+            {value}
+          </a>
+        ) : (
+          value
+        )}
       </p>
       {description && (
         <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">

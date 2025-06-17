@@ -1,5 +1,6 @@
 -- Migration 002: Create materialized views for performance optimization
 -- This migration creates materialized views to pre-compute expensive average calculations
+-- Updated to include data validation guards to prevent invalid batch_ids
 
 -- 1. Materialized view for batch prove times
 -- Pre-computes the time difference between batch proposal and proof using L1 block timestamps
@@ -17,9 +18,13 @@ AS SELECT
     (l1_proved.block_ts - l1_proposed.block_ts) * 1000 AS prove_time_ms,
     fromUnixTimestamp(l1_proved.block_ts) AS proved_at
 FROM ${DB}.proved_batches p
-INNER JOIN ${DB}.batches b ON p.batch_id = b.batch_id AND p.l1_block_number = b.l1_block_number
+INNER JOIN ${DB}.batches b ON p.batch_id = b.batch_id
 INNER JOIN ${DB}.l1_head_events l1_proposed ON b.l1_block_number = l1_proposed.l1_block_number
-INNER JOIN ${DB}.l1_head_events l1_proved ON p.l1_block_number = l1_proved.l1_block_number;
+INNER JOIN ${DB}.l1_head_events l1_proved ON p.l1_block_number = l1_proved.l1_block_number
+WHERE p.batch_id != 0  -- Guard against invalid batch_ids
+  AND b.batch_id != 0  -- Double-check on batches table
+  AND l1_proved.block_ts > l1_proposed.block_ts  -- Sanity check: proved must be after proposed
+  AND (l1_proved.block_ts - l1_proposed.block_ts) BETWEEN 1 AND 604800;  -- 1 second to 7 days
 
 -- 2. Materialized view for batch verify times
 -- Pre-computes the time difference between proof and verification using L1 block timestamps
@@ -39,7 +44,11 @@ AS SELECT
 FROM ${DB}.verified_batches v
 INNER JOIN ${DB}.proved_batches p ON v.batch_id = p.batch_id AND v.block_hash = p.block_hash
 INNER JOIN ${DB}.l1_head_events l1_proved ON p.l1_block_number = l1_proved.l1_block_number
-INNER JOIN ${DB}.l1_head_events l1_verified ON v.l1_block_number = l1_verified.l1_block_number;
+INNER JOIN ${DB}.l1_head_events l1_verified ON v.l1_block_number = l1_verified.l1_block_number
+WHERE v.batch_id != 0  -- Guard against invalid batch_ids
+  AND p.batch_id != 0  -- Double-check on proved_batches
+  AND l1_verified.block_ts > l1_proved.block_ts  -- Sanity check: verified must be after proved
+  AND (l1_verified.block_ts - l1_proved.block_ts) BETWEEN 1 AND 604800;  -- 1 second to 7 days
 
 -- 3. Aggregated hourly averages for prove times
 -- Pre-computes hourly averages to speed up range queries
@@ -55,6 +64,7 @@ AS SELECT
     avg(prove_time_ms) AS avg_prove_time_ms,
     count() AS sample_count
 FROM ${DB}.batch_prove_times_mv
+WHERE batch_id != 0  -- Extra safety check
 GROUP BY proved_hour;
 
 -- 4. Aggregated hourly averages for verify times
@@ -71,6 +81,7 @@ AS SELECT
     avg(verify_time_ms) AS avg_verify_time_ms,
     count() AS sample_count
 FROM ${DB}.batch_verify_times_mv
+WHERE batch_id != 0  -- Extra safety check
 GROUP BY verified_hour;
 
 -- 5. Daily averages for prove times (for longer range queries)
@@ -86,6 +97,7 @@ AS SELECT
     avg(prove_time_ms) AS avg_prove_time_ms,
     count() AS sample_count
 FROM ${DB}.batch_prove_times_mv
+WHERE batch_id != 0  -- Extra safety check
 GROUP BY proved_day;
 
 -- 6. Daily averages for verify times (for longer range queries)
@@ -101,4 +113,5 @@ AS SELECT
     avg(verify_time_ms) AS avg_verify_time_ms,
     count() AS sample_count
 FROM ${DB}.batch_verify_times_mv
+WHERE batch_id != 0  -- Extra safety check
 GROUP BY verified_day;

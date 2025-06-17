@@ -83,6 +83,7 @@ export const MetricsGrid: React.FC<MetricsGridProps> = ({
                     key={`${group}-${idx}`}
                     title={m.title}
                     value={m.value}
+                    link={m.link}
                     onMore={
                       typeof m.title === 'string'
                         ? onMetricAction(m.title)

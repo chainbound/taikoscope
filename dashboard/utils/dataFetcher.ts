@@ -5,10 +5,10 @@ import {
   fetchDashboardData,
   fetchProveTimes,
   fetchVerifyTimes,
-  fetchL2BlockTimes,
-  fetchL2GasUsed,
+  fetchL2BlockTimesAggregated,
+  fetchL2GasUsedAggregated,
   fetchSequencerDistribution,
-  fetchAllBlockTransactions,
+  fetchBlockTransactionsAggregated,
   fetchBatchBlobCounts,
   fetchL2Fees,
   fetchL2HeadBlock,
@@ -45,6 +45,11 @@ export interface EconomicsData {
   l1DataCost: number | null;
   l2Block: number | null;
   l1Block: number | null;
+  sequencerDist: {
+    name: string;
+    value: number;
+    tps: number | null;
+  }[];
   badRequestResults: any[];
 }
 
@@ -70,10 +75,10 @@ export const fetchMainDashboardData = async (
     fetchDashboardData(normalizedRange, address),
     fetchProveTimes(normalizedRange),
     fetchVerifyTimes(normalizedRange),
-    fetchL2BlockTimes(normalizedRange, address),
-    fetchL2GasUsed(normalizedRange, address),
+    fetchL2BlockTimesAggregated(normalizedRange, address),
+    fetchL2GasUsedAggregated(normalizedRange, address),
     fetchSequencerDistribution(normalizedRange),
-    fetchAllBlockTransactions(normalizedRange, address),
+    fetchBlockTransactionsAggregated(normalizedRange, address),
     fetchBatchBlobCounts(normalizedRange),
   ]);
 
@@ -120,13 +125,14 @@ export const fetchEconomicsData = async (
   selectedSequencer: string | null,
 ): Promise<EconomicsData> => {
   const normalizedRange = normalizeTimeRange(timeRange);
-  const [l2FeesRes, l2BlockRes, l1BlockRes] = await Promise.all([
+  const [l2FeesRes, l2BlockRes, l1BlockRes, sequencerDistRes] = await Promise.all([
     fetchL2Fees(
       normalizedRange,
       selectedSequencer ? getSequencerAddress(selectedSequencer) : undefined,
     ),
     fetchL2HeadBlock(normalizedRange),
     fetchL1HeadBlock(normalizedRange),
+    fetchSequencerDistribution(normalizedRange),
   ]);
 
   return {
@@ -135,6 +141,7 @@ export const fetchEconomicsData = async (
     l1DataCost: l2FeesRes.data?.l1_data_cost ?? null,
     l2Block: l2BlockRes.data,
     l1Block: l1BlockRes.data,
-    badRequestResults: [l2FeesRes, l2BlockRes, l1BlockRes],
+    sequencerDist: sequencerDistRes.data || [],
+    badRequestResults: [l2FeesRes, l2BlockRes, l1BlockRes, sequencerDistRes],
   };
 };
