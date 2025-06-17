@@ -82,7 +82,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
         {/* Economics view is still supported via URL parameters, but the
             navigation button is hidden. */}
         <a
-          href="https://taikoscope.instatus.com/"
+          href="https://status.taiko.xyz/"
           target="_blank"
           rel="noopener noreferrer"
           className="text-sm hover:underline"
