@@ -69,8 +69,15 @@ export const formatLargeNumber = (value: number): string => {
 export const formatWithCommas = (value: number): string =>
   value.toLocaleString();
 
-export const formatEth = (wei: number): string =>
-  `${formatDecimal(wei / 1e18)} ETH`;
+export const formatEth = (wei: number): string => {
+  const eth = wei / 1e18;
+  const ethFormatted = formatDecimal(eth);
+  if (wei !== 0 && ethFormatted === '0.00') {
+    const gwei = wei / 1e9;
+    return `${formatDecimal(gwei)} Gwei`;
+  }
+  return `${ethFormatted} ETH`;
+};
 
 export const formatTime = (ms: number): string =>
   new Date(ms).toLocaleTimeString([], {
