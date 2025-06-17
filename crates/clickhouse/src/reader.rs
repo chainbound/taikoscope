@@ -2,7 +2,7 @@
 //! Handles read-only operations and analytics queries
 
 use chrono::{DateTime, LocalResult, TimeZone, Utc};
-use clickhouse::{Client, Row};
+use clickhouse::{Client, Row, sql::Identifier};
 use derive_more::Debug;
 use eyre::{Context, Result};
 use hex::encode;
@@ -316,22 +316,33 @@ impl ClickhouseReader {
         &self,
         cutoff: DateTime<Utc>,
     ) -> Result<Vec<(u64, u64, DateTime<Utc>)>> {
-        let query = format!(
-            "SELECT b.l1_block_number, b.batch_id, toUnixTimestamp64Milli(b.inserted_at) as inserted_at \
+        let client = self.base.clone();
+        let sql = "SELECT b.l1_block_number, b.batch_id, toUnixTimestamp64Milli(b.inserted_at) as inserted_at \
              FROM (SELECT l1_block_number, batch_id, inserted_at \
-                   FROM {db}.batches \
-                   WHERE inserted_at < toDateTime64({}, 3)) AS b \
-             LEFT JOIN {db}.verified_batches v \
+                   FROM ?.batches \
+                   WHERE inserted_at < toDateTime64(?, 3)) AS b \
+             LEFT JOIN ?.verified_batches v \
                ON b.l1_block_number = v.l1_block_number AND b.batch_id = v.batch_id \
              WHERE v.batch_id IS NULL \
-             ORDER BY b.inserted_at ASC",
-            cutoff.timestamp_millis() as f64 / 1000.0,
-            db = self.db_name
-        );
-        let rows = self
-            .execute::<(u64, u64, u64)>(&query)
-            .await
-            .context("fetching unverified batches failed")?;
+             ORDER BY b.inserted_at ASC";
+
+        let start = Instant::now();
+        let result = client
+            .query(sql)
+            .bind(Identifier(&self.db_name))
+            .bind(cutoff.timestamp_millis() as f64 / 1000.0)
+            .bind(Identifier(&self.db_name))
+            .fetch_all::<(u64, u64, u64)>()
+            .await;
+
+        let duration_ms = start.elapsed().as_millis();
+        match &result {
+            Ok(rows) => {
+                debug!(query = sql, duration_ms, rows = rows.len(), "ClickHouse query executed")
+            }
+            Err(e) => error!(query = sql, duration_ms, error = %e, "ClickHouse query failed"),
+        }
+        let rows = result.context("fetching unverified batches failed")?;
         Ok(rows
             .into_iter()
             .filter_map(|(l1_block_number, batch_id, inserted_at)| {
