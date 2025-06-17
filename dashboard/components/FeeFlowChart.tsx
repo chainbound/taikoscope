@@ -44,16 +44,16 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
   const data = {
     nodes: [
       { name: 'Users' },
-      { name: 'Sequencers' },
       { name: 'Taiko DAO' },
+      { name: 'Sequencers' },
       { name: 'Cloud Providers' },
       { name: 'Provers' },
     ],
     links: [
-      { source: 0, target: 1, value: priorityUsd, name: 'Priority Fee' },
-      { source: 0, target: 2, value: baseUsd, name: 'Base Fee' },
-      { source: 1, target: 3, value: cloudCostScaled, name: 'Cloud Cost' },
-      { source: 1, target: 4, value: proverCostScaled, name: 'Prover Cost' },
+      { source: 0, target: 2, value: priorityUsd, name: 'Priority Fee' },
+      { source: 0, target: 1, value: baseUsd, name: 'Base Fee' },
+      { source: 2, target: 3, value: cloudCostScaled, name: 'Cloud Cost' },
+      { source: 2, target: 4, value: proverCostScaled, name: 'Prover Cost' },
     ],
   };
 
