@@ -22,7 +22,7 @@ import {
   fetchL2Tps,
 } from '../services/apiService';
 import { getSequencerName, getSequencerAddress } from '../sequencerConfig';
-import { bytesToHex, blockLink, addressLink } from '../utils';
+import { bytesToHex, blockLink, addressLink, formatDateTime } from '../utils';
 import { TAIKO_PINK } from '../theme';
 import React from 'react';
 
@@ -71,7 +71,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     ],
     mapData: (data) =>
       (data as L2ReorgEvent[]).map((e) => ({
-        timestamp: new Date(e.timestamp).toLocaleString(),
+        timestamp: formatDateTime(e.timestamp),
         l2_block_number: blockLink(e.l2_block_number),
         depth: e.depth.toLocaleString(),
       })),

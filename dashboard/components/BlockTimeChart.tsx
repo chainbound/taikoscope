@@ -11,7 +11,12 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { TimeSeriesData } from '../types';
-import { formatDecimal, formatInterval, computeIntervalFlags } from '../utils';
+import {
+  formatDecimal,
+  formatInterval,
+  computeIntervalFlags,
+  formatDateTime,
+} from '../utils';
 
 interface BlockTimeChartProps {
   data: TimeSeriesData[];
@@ -83,7 +88,7 @@ const BlockTimeChartComponent: React.FC<BlockTimeChartProps> = ({
         <Tooltip
           labelFormatter={(label: number, payload) => {
             const ts = payload?.[0]?.payload?.blockTime;
-            const timeStr = ts ? new Date(ts).toLocaleString() : '';
+            const timeStr = ts ? formatDateTime(ts) : '';
             return `Block ${label.toLocaleString()} (${timeStr})`;
           }}
           formatter={(value: number) => [

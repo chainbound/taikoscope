@@ -10,6 +10,7 @@ import {
 } from 'recharts';
 import { L2ReorgEvent } from '../types';
 import { TAIKO_PINK } from '../theme';
+import { formatDateTime } from '../utils';
 
 interface ReorgDepthChartProps {
   data: L2ReorgEvent[];
@@ -33,7 +34,7 @@ const ReorgDepthChartComponent: React.FC<ReorgDepthChartProps> = ({ data }) => {
         <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
         <XAxis
           dataKey="timestamp"
-          tickFormatter={(v: number) => new Date(v).toLocaleString()}
+          tickFormatter={(v: number) => formatDateTime(v)}
           stroke="#666666"
           fontSize={12}
           label={{
@@ -59,7 +60,7 @@ const ReorgDepthChartComponent: React.FC<ReorgDepthChartProps> = ({ data }) => {
           }}
         />
         <Tooltip
-          labelFormatter={(label: number) => new Date(label).toLocaleString()}
+          labelFormatter={(label: number) => formatDateTime(label)}
           formatter={(value: number) => [value.toString(), 'depth']}
           contentStyle={{
             backgroundColor: 'rgba(255, 255, 255, 0.8)',
