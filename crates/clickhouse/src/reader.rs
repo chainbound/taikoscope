@@ -2,7 +2,7 @@
 //! Handles read-only operations and analytics queries
 
 use chrono::{DateTime, LocalResult, TimeZone, Utc};
-use clickhouse::{Client, Row};
+use clickhouse::{Client, Row, sql::Identifier};
 use derive_more::Debug;
 use eyre::{Context, Result};
 use hex::encode;
@@ -42,11 +42,11 @@ pub enum TimeRange {
 }
 
 impl TimeRange {
-    /// Maximum allowed range in seconds (7 days).
-    const MAX_SECONDS: u64 = 7 * 24 * 3600;
+    /// Maximum allowed range in seconds (30 days).
+    const MAX_SECONDS: u64 = 30 * 24 * 3600;
 
     /// Create a [`TimeRange`] from a [`chrono::Duration`], clamping to the
-    /// allowed maximum of seven days.
+    /// allowed maximum of thirty days.
     pub fn from_duration(duration: chrono::Duration) -> Self {
         let secs = duration.num_seconds().clamp(0, Self::MAX_SECONDS as i64) as u64;
         match secs {
@@ -132,9 +132,21 @@ impl ClickhouseReader {
 
     /// Get last L2 head time
     pub async fn get_last_l2_head_time(&self) -> Result<Option<DateTime<Utc>>> {
-        let query =
-            format!("SELECT max(block_ts) AS block_ts FROM {}.l2_head_events", self.db_name);
-        let rows = self.execute::<MaxTs>(&query).await.context("fetching max(block_ts) failed")?;
+        let client = self.base.clone();
+        let sql = "SELECT max(block_ts) AS block_ts FROM ?.l2_head_events";
+
+        let start = Instant::now();
+        let result = client.query(sql).bind(Identifier(&self.db_name)).fetch_all::<MaxTs>().await;
+
+        let duration_ms = start.elapsed().as_millis();
+        match &result {
+            Ok(rows) => {
+                debug!(query = sql, duration_ms, rows = rows.len(), "ClickHouse query executed")
+            }
+            Err(e) => error!(query = sql, duration_ms, error = %e, "ClickHouse query failed"),
+        }
+
+        let rows = result.context("fetching max(block_ts) failed")?;
         let row = match rows.into_iter().next() {
             Some(r) => r,
             None => return Ok(None),
@@ -151,10 +163,21 @@ impl ClickhouseReader {
 
     /// Get timestamp of the latest L1 head event in UTC
     pub async fn get_last_l1_head_time(&self) -> Result<Option<DateTime<Utc>>> {
-        let query =
-            format!("SELECT max(block_ts) AS block_ts FROM {}.l1_head_events", self.db_name);
+        let client = self.base.clone();
+        let sql = "SELECT max(block_ts) AS block_ts FROM ?.l1_head_events";
 
-        let rows = self.execute::<MaxTs>(&query).await.context("fetching max(block_ts) failed")?;
+        let start = Instant::now();
+        let result = client.query(sql).bind(Identifier(&self.db_name)).fetch_all::<MaxTs>().await;
+
+        let duration_ms = start.elapsed().as_millis();
+        match &result {
+            Ok(rows) => {
+                debug!(query = sql, duration_ms, rows = rows.len(), "ClickHouse query executed")
+            }
+            Err(e) => error!(query = sql, duration_ms, error = %e, "ClickHouse query failed"),
+        }
+
+        let rows = result.context("fetching max(block_ts) failed")?;
 
         let row = match rows.into_iter().next() {
             Some(r) => r,
@@ -181,15 +204,23 @@ impl ClickhouseReader {
             l2_block_number: u64,
         }
 
-        // Use ORDER BY + LIMIT 1 instead of max() for better performance on large tables
-        // This approach can utilize indexes more efficiently
-        let query = format!(
-            "SELECT l2_block_number FROM {}.l2_head_events \
-             ORDER BY l2_block_number DESC LIMIT 1",
-            &self.db_name
-        );
+        let client = self.base.clone();
+        let sql =
+            "SELECT l2_block_number FROM ?.l2_head_events ORDER BY l2_block_number DESC LIMIT 1";
 
-        let rows = self.execute::<BlockNumber>(&query).await?;
+        let start = Instant::now();
+        let result =
+            client.query(sql).bind(Identifier(&self.db_name)).fetch_all::<BlockNumber>().await;
+
+        let duration_ms = start.elapsed().as_millis();
+        match &result {
+            Ok(rows) => {
+                debug!(query = sql, duration_ms, rows = rows.len(), "ClickHouse query executed")
+            }
+            Err(e) => error!(query = sql, duration_ms, error = %e, "ClickHouse query failed"),
+        }
+
+        let rows = result?;
         let row = match rows.into_iter().next() {
             Some(r) => r,
             None => return Ok(None),
@@ -208,14 +239,23 @@ impl ClickhouseReader {
             l1_block_number: u64,
         }
 
-        // Use ORDER BY + LIMIT 1 instead of max() for better performance on large tables
-        let query = format!(
-            "SELECT l1_block_number FROM {}.l1_head_events \
-             ORDER BY l1_block_number DESC LIMIT 1",
-            &self.db_name
-        );
+        let client = self.base.clone();
+        let sql =
+            "SELECT l1_block_number FROM ?.l1_head_events ORDER BY l1_block_number DESC LIMIT 1";
 
-        let rows = self.execute::<BlockNumber>(&query).await?;
+        let start = Instant::now();
+        let result =
+            client.query(sql).bind(Identifier(&self.db_name)).fetch_all::<BlockNumber>().await;
+
+        let duration_ms = start.elapsed().as_millis();
+        match &result {
+            Ok(rows) => {
+                debug!(query = sql, duration_ms, rows = rows.len(), "ClickHouse query executed")
+            }
+            Err(e) => error!(query = sql, duration_ms, error = %e, "ClickHouse query failed"),
+        }
+
+        let rows = result?;
         let row = match rows.into_iter().next() {
             Some(r) => r,
             None => return Ok(None),
@@ -228,18 +268,29 @@ impl ClickhouseReader {
 
     /// Get timestamp of the latest `BatchProposed` event based on L1 block timestamp in UTC
     pub async fn get_last_batch_time(&self) -> Result<Option<DateTime<Utc>>> {
-        let query = format!(
-            "SELECT max(l1_events.block_ts) AS block_ts
-             FROM {db}.batches b
-             INNER JOIN {db}.l1_head_events l1_events
-               ON b.l1_block_number = l1_events.l1_block_number",
-            db = &self.db_name
-        );
+        let client = self.base.clone();
+        let sql = "SELECT max(l1_events.block_ts) AS block_ts \
+             FROM ?.batches b \
+             INNER JOIN ?.l1_head_events l1_events \
+               ON b.l1_block_number = l1_events.l1_block_number";
 
-        let rows = self
-            .execute::<MaxTs>(&query)
-            .await
-            .context("fetching max batch L1 block timestamp failed")?;
+        let start = Instant::now();
+        let result = client
+            .query(sql)
+            .bind(Identifier(&self.db_name))
+            .bind(Identifier(&self.db_name))
+            .fetch_all::<MaxTs>()
+            .await;
+
+        let duration_ms = start.elapsed().as_millis();
+        match &result {
+            Ok(rows) => {
+                debug!(query = sql, duration_ms, rows = rows.len(), "ClickHouse query executed")
+            }
+            Err(e) => error!(query = sql, duration_ms, error = %e, "ClickHouse query failed"),
+        }
+
+        let rows = result.context("fetching max batch L1 block timestamp failed")?;
 
         let row = match rows.into_iter().next() {
             Some(r) => r,
@@ -260,11 +311,22 @@ impl ClickhouseReader {
 
     /// Get the most recent preconfiguration data
     pub async fn get_last_preconf_data(&self) -> Result<Option<PreconfData>> {
-        let query = format!(
-            "SELECT slot, candidates, current_operator, next_operator FROM {}.preconf_data ORDER BY inserted_at DESC LIMIT 1",
-            self.db_name
-        );
-        let rows = self.execute::<PreconfData>(&query).await?;
+        let client = self.base.clone();
+        let sql = "SELECT slot, candidates, current_operator, next_operator FROM ?.preconf_data ORDER BY inserted_at DESC LIMIT 1";
+
+        let start = Instant::now();
+        let result =
+            client.query(sql).bind(Identifier(&self.db_name)).fetch_all::<PreconfData>().await;
+
+        let duration_ms = start.elapsed().as_millis();
+        match &result {
+            Ok(rows) => {
+                debug!(query = sql, duration_ms, rows = rows.len(), "ClickHouse query executed")
+            }
+            Err(e) => error!(query = sql, duration_ms, error = %e, "ClickHouse query failed"),
+        }
+
+        let rows = result?;
         Ok(rows.into_iter().next())
     }
 
@@ -273,22 +335,33 @@ impl ClickhouseReader {
         &self,
         cutoff: DateTime<Utc>,
     ) -> Result<Vec<(u64, u64, DateTime<Utc>)>> {
-        let query = format!(
-            "SELECT b.l1_block_number, b.batch_id, toUnixTimestamp64Milli(b.inserted_at) as inserted_at \
+        let client = self.base.clone();
+        let sql = "SELECT b.l1_block_number, b.batch_id, toUnixTimestamp64Milli(b.inserted_at) as inserted_at \
              FROM (SELECT l1_block_number, batch_id, inserted_at \
-                   FROM {db}.batches \
-                   WHERE inserted_at < toDateTime64({}, 3)) AS b \
-             LEFT JOIN {db}.proved_batches p \
+                   FROM ?.batches \
+                   WHERE inserted_at < toDateTime64(?, 3)) AS b \
+             LEFT JOIN ?.proved_batches p \
                ON b.l1_block_number = p.l1_block_number AND b.batch_id = p.batch_id \
              WHERE p.batch_id IS NULL \
-             ORDER BY b.inserted_at ASC",
-            cutoff.timestamp_millis() as f64 / 1000.0,
-            db = self.db_name
-        );
-        let rows = self
-            .execute::<(u64, u64, u64)>(&query)
-            .await
-            .context("fetching unproved batches failed")?;
+             ORDER BY b.inserted_at ASC";
+
+        let start = Instant::now();
+        let result = client
+            .query(sql)
+            .bind(Identifier(&self.db_name))
+            .bind(cutoff.timestamp_millis() as f64 / 1000.0)
+            .bind(Identifier(&self.db_name))
+            .fetch_all::<(u64, u64, u64)>()
+            .await;
+
+        let duration_ms = start.elapsed().as_millis();
+        match &result {
+            Ok(rows) => {
+                debug!(query = sql, duration_ms, rows = rows.len(), "ClickHouse query executed")
+            }
+            Err(e) => error!(query = sql, duration_ms, error = %e, "ClickHouse query failed"),
+        }
+        let rows = result.context("fetching unproved batches failed")?;
         Ok(rows
             .into_iter()
             .filter_map(|(l1_block_number, batch_id, inserted_at)| {
@@ -306,8 +379,22 @@ impl ClickhouseReader {
         struct ProvedBatchIdRow {
             batch_id: u64,
         }
-        let query = format!("SELECT batch_id FROM {}.proved_batches", self.db_name);
-        let rows = self.execute::<ProvedBatchIdRow>(&query).await?;
+        let client = self.base.clone();
+        let sql = "SELECT batch_id FROM ?.proved_batches";
+
+        let start = Instant::now();
+        let result =
+            client.query(sql).bind(Identifier(&self.db_name)).fetch_all::<ProvedBatchIdRow>().await;
+
+        let duration_ms = start.elapsed().as_millis();
+        match &result {
+            Ok(rows) => {
+                debug!(query = sql, duration_ms, rows = rows.len(), "ClickHouse query executed")
+            }
+            Err(e) => error!(query = sql, duration_ms, error = %e, "ClickHouse query failed"),
+        }
+
+        let rows = result?;
         Ok(rows.into_iter().map(|r| r.batch_id).collect())
     }
 
@@ -316,22 +403,33 @@ impl ClickhouseReader {
         &self,
         cutoff: DateTime<Utc>,
     ) -> Result<Vec<(u64, u64, DateTime<Utc>)>> {
-        let query = format!(
-            "SELECT b.l1_block_number, b.batch_id, toUnixTimestamp64Milli(b.inserted_at) as inserted_at \
+        let client = self.base.clone();
+        let sql = "SELECT b.l1_block_number, b.batch_id, toUnixTimestamp64Milli(b.inserted_at) as inserted_at \
              FROM (SELECT l1_block_number, batch_id, inserted_at \
-                   FROM {db}.batches \
-                   WHERE inserted_at < toDateTime64({}, 3)) AS b \
-             LEFT JOIN {db}.verified_batches v \
+                   FROM ?.batches \
+                   WHERE inserted_at < toDateTime64(?, 3)) AS b \
+             LEFT JOIN ?.verified_batches v \
                ON b.l1_block_number = v.l1_block_number AND b.batch_id = v.batch_id \
              WHERE v.batch_id IS NULL \
-             ORDER BY b.inserted_at ASC",
-            cutoff.timestamp_millis() as f64 / 1000.0,
-            db = self.db_name
-        );
-        let rows = self
-            .execute::<(u64, u64, u64)>(&query)
-            .await
-            .context("fetching unverified batches failed")?;
+             ORDER BY b.inserted_at ASC";
+
+        let start = Instant::now();
+        let result = client
+            .query(sql)
+            .bind(Identifier(&self.db_name))
+            .bind(cutoff.timestamp_millis() as f64 / 1000.0)
+            .bind(Identifier(&self.db_name))
+            .fetch_all::<(u64, u64, u64)>()
+            .await;
+
+        let duration_ms = start.elapsed().as_millis();
+        match &result {
+            Ok(rows) => {
+                debug!(query = sql, duration_ms, rows = rows.len(), "ClickHouse query executed")
+            }
+            Err(e) => error!(query = sql, duration_ms, error = %e, "ClickHouse query failed"),
+        }
+        let rows = result.context("fetching unverified batches failed")?;
         Ok(rows
             .into_iter()
             .filter_map(|(l1_block_number, batch_id, inserted_at)| {
@@ -349,8 +447,25 @@ impl ClickhouseReader {
         struct VerifiedBatchIdRow {
             batch_id: u64,
         }
-        let query = format!("SELECT batch_id FROM {}.verified_batches", self.db_name);
-        let rows = self.execute::<VerifiedBatchIdRow>(&query).await?;
+        let client = self.base.clone();
+        let sql = "SELECT batch_id FROM ?.verified_batches";
+
+        let start = Instant::now();
+        let result = client
+            .query(sql)
+            .bind(Identifier(&self.db_name))
+            .fetch_all::<VerifiedBatchIdRow>()
+            .await;
+
+        let duration_ms = start.elapsed().as_millis();
+        match &result {
+            Ok(rows) => {
+                debug!(query = sql, duration_ms, rows = rows.len(), "ClickHouse query executed")
+            }
+            Err(e) => error!(query = sql, duration_ms, error = %e, "ClickHouse query failed"),
+        }
+
+        let rows = result?;
         Ok(rows.into_iter().map(|r| r.batch_id).collect())
     }
 
@@ -359,17 +474,27 @@ impl ClickhouseReader {
         &self,
         since: DateTime<Utc>,
     ) -> Result<Vec<SlashingEventRow>> {
-        let query = format!(
-            "SELECT l1_block_number, validator_addr FROM {}.slashing_events \
-             WHERE inserted_at > toDateTime64({}, 3) \
-             ORDER BY inserted_at ASC",
-            self.db_name,
-            since.timestamp_millis() as f64 / 1000.0,
-        );
-        let rows = self
-            .execute::<SlashingEventRow>(&query)
-            .await
-            .context("fetching slashing events failed")?;
+        let client = self.base.clone();
+        let sql = "SELECT l1_block_number, validator_addr FROM ?.slashing_events \
+             WHERE inserted_at > toDateTime64(?, 3) \
+             ORDER BY inserted_at ASC";
+
+        let start = Instant::now();
+        let result = client
+            .query(sql)
+            .bind(Identifier(&self.db_name))
+            .bind(since.timestamp_millis() as f64 / 1000.0)
+            .fetch_all::<SlashingEventRow>()
+            .await;
+
+        let duration_ms = start.elapsed().as_millis();
+        match &result {
+            Ok(rows) => {
+                debug!(query = sql, duration_ms, rows = rows.len(), "ClickHouse query executed")
+            }
+            Err(e) => error!(query = sql, duration_ms, error = %e, "ClickHouse query failed"),
+        }
+        let rows = result.context("fetching slashing events failed")?;
         Ok(rows)
     }
 
@@ -378,17 +503,27 @@ impl ClickhouseReader {
         &self,
         since: DateTime<Utc>,
     ) -> Result<Vec<ForcedInclusionProcessedRow>> {
-        let query = format!(
-            "SELECT blob_hash FROM {}.forced_inclusion_processed \
-             WHERE inserted_at > toDateTime64({}, 3) \
-             ORDER BY inserted_at ASC",
-            self.db_name,
-            since.timestamp_millis() as f64 / 1000.0,
-        );
-        let rows = self
-            .execute::<ForcedInclusionProcessedRow>(&query)
-            .await
-            .context("fetching forced inclusion events failed")?;
+        let client = self.base.clone();
+        let sql = "SELECT blob_hash FROM ?.forced_inclusion_processed \
+             WHERE inserted_at > toDateTime64(?, 3) \
+             ORDER BY inserted_at ASC";
+
+        let start = Instant::now();
+        let result = client
+            .query(sql)
+            .bind(Identifier(&self.db_name))
+            .bind(since.timestamp_millis() as f64 / 1000.0)
+            .fetch_all::<ForcedInclusionProcessedRow>()
+            .await;
+
+        let duration_ms = start.elapsed().as_millis();
+        match &result {
+            Ok(rows) => {
+                debug!(query = sql, duration_ms, rows = rows.len(), "ClickHouse query executed")
+            }
+            Err(e) => error!(query = sql, duration_ms, error = %e, "ClickHouse query failed"),
+        }
+        let rows = result.context("fetching forced inclusion events failed")?;
         Ok(rows)
     }
 
@@ -436,13 +571,27 @@ impl ClickhouseReader {
             next_operator: Option<AddressBytes>,
         }
 
-        let query = format!(
-            "SELECT candidates, current_operator, next_operator FROM {}.preconf_data \
-             WHERE inserted_at > toDateTime64({}, 3)",
-            self.db_name,
-            since.timestamp_millis() as f64 / 1000.0,
-        );
-        let rows = self.execute::<GatewayRow>(&query).await?;
+        let client = self.base.clone();
+        let sql = "SELECT candidates, current_operator, next_operator FROM ?.preconf_data \
+             WHERE inserted_at > toDateTime64(?, 3)";
+
+        let start = Instant::now();
+        let result = client
+            .query(sql)
+            .bind(Identifier(&self.db_name))
+            .bind(since.timestamp_millis() as f64 / 1000.0)
+            .fetch_all::<GatewayRow>()
+            .await;
+
+        let duration_ms = start.elapsed().as_millis();
+        match &result {
+            Ok(rows) => {
+                debug!(query = sql, duration_ms, rows = rows.len(), "ClickHouse query executed")
+            }
+            Err(e) => error!(query = sql, duration_ms, error = %e, "ClickHouse query failed"),
+        }
+
+        let rows = result?;
         let mut set = std::collections::HashSet::new();
         for row in rows {
             for cand in row.candidates {

@@ -17,11 +17,12 @@ import {
   fetchAllBlockTransactions,
   fetchL2BlockTimes,
   fetchL2GasUsed,
+  fetchL2GasUsedAggregated,
   fetchSequencerDistribution,
   fetchL2Tps,
 } from '../services/apiService';
 import { getSequencerName, getSequencerAddress } from '../sequencerConfig';
-import { bytesToHex, blockLink, addressLink } from '../utils';
+import { bytesToHex, blockLink, addressLink, formatDateTime } from '../utils';
 import { TAIKO_PINK } from '../theme';
 import React from 'react';
 
@@ -35,6 +36,7 @@ export interface TableConfig {
   title: string | ((params: Record<string, any>) => string);
   description?: string | React.ReactNode;
   fetcher: (range: TimeRange, ...args: any[]) => Promise<any>;
+  aggregatedFetcher?: (range: TimeRange, ...args: any[]) => Promise<any>;
   columns: TableColumn[];
   mapData?: (
     data: any[],
@@ -69,7 +71,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     ],
     mapData: (data) =>
       (data as L2ReorgEvent[]).map((e) => ({
-        timestamp: new Date(e.timestamp).toLocaleString(),
+        timestamp: formatDateTime(e.timestamp),
         l2_block_number: blockLink(e.l2_block_number),
         depth: e.depth.toLocaleString(),
       })),
@@ -260,6 +262,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     title: 'Gas Used Per Block',
     description: 'Gas used by each block.',
     fetcher: fetchL2GasUsed,
+    aggregatedFetcher: fetchL2GasUsedAggregated,
     columns: [
       { key: 'value', label: 'Block Number' },
       { key: 'timestamp', label: 'Gas Used' },

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo } from 'react';
 import useSWR from 'swr';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useLocation } from 'react-router-dom';
 import { TimeRange, MetricData } from '../types';
 import { TableViewState } from './useTableActions';
 import {
@@ -36,21 +36,25 @@ export const useDataFetcher = ({
   updateLastRefresh,
 }: UseDataFetcherProps) => {
   const [searchParams] = useSearchParams();
+  const location = useLocation();
 
   // Memoize the specific value we need to prevent infinite re-renders
   const viewParam = searchParams.get('view');
+  const isTableRoute = location.pathname.startsWith('/table/');
   const isTableView = useMemo(
-    () => tableView || viewParam === 'table',
-    [tableView, viewParam],
+    () => tableView || viewParam === 'table' || isTableRoute,
+    [tableView, viewParam, isTableRoute],
   );
+
+  const selectedSequencerForFetch = isEconomicsView ? null : selectedSequencer;
 
   const fetchKey = isTableView
     ? null
-    : ['metrics', timeRange, selectedSequencer, isEconomicsView];
+    : ['metrics', timeRange, selectedSequencerForFetch, isEconomicsView];
 
   const fetcher = async () => {
     if (isEconomicsView) {
-      const data = await fetchEconomicsData(timeRange, selectedSequencer);
+      const data = await fetchEconomicsData(timeRange, selectedSequencerForFetch);
       const anyBadRequest = hasBadRequest(data.badRequestResults);
 
       const metricsInput: MetricInputData = {
@@ -81,7 +85,7 @@ export const useDataFetcher = ({
       };
     }
 
-    const data = await fetchMainDashboardData(timeRange, selectedSequencer);
+    const data = await fetchMainDashboardData(timeRange, selectedSequencerForFetch);
 
     const anyBadRequest = hasBadRequest(data.badRequestResults);
     const activeGateways = data.preconfData

@@ -11,7 +11,12 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { TimeSeriesData } from '../types';
-import { formatDecimal, formatInterval, computeIntervalFlags } from '../utils';
+import {
+  formatDecimal,
+  formatInterval,
+  computeIntervalFlags,
+  formatDateTime,
+} from '../utils';
 
 interface BlockTimeChartProps {
   data: TimeSeriesData[];
@@ -68,7 +73,11 @@ const BlockTimeChartComponent: React.FC<BlockTimeChartProps> = ({
                 : String(Number(formatDecimal(seconds ? v : v / 1000)))
           }
           label={{
-            value: showHours ? 'Hours' : showMinutes ? 'Minutes' : 'Seconds',
+            value: showHours
+              ? 'Avg Hours'
+              : showMinutes
+                ? 'Avg Minutes'
+                : 'Avg Seconds',
             angle: -90,
             position: 'insideLeft',
             offset: -16,
@@ -79,7 +88,7 @@ const BlockTimeChartComponent: React.FC<BlockTimeChartProps> = ({
         <Tooltip
           labelFormatter={(label: number, payload) => {
             const ts = payload?.[0]?.payload?.blockTime;
-            const timeStr = ts ? new Date(ts).toLocaleString() : '';
+            const timeStr = ts ? formatDateTime(ts) : '';
             return `Block ${label.toLocaleString()} (${timeStr})`;
           }}
           formatter={(value: number) => [
@@ -96,7 +105,7 @@ const BlockTimeChartComponent: React.FC<BlockTimeChartProps> = ({
           labelStyle={{ color: '#333' }}
         />
         {histogram ? (
-          <Bar dataKey="timestamp" fill={lineColor} name="Time" />
+          <Bar dataKey="timestamp" fill={lineColor} name="Avg Time" />
         ) : (
           <Line
             type="monotone"
@@ -105,7 +114,7 @@ const BlockTimeChartComponent: React.FC<BlockTimeChartProps> = ({
             strokeWidth={2}
             dot={false}
             activeDot={data.length <= 100 ? { r: 6 } : false}
-            name="Time"
+            name="Avg Time"
           />
         )}
       </ChartComponent>

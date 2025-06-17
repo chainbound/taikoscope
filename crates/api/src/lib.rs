@@ -127,6 +127,8 @@ pub struct ApiDoc;
 #[derive(Clone)]
 pub struct ApiState {
     client: ClickhouseReader,
+    max_requests: u64,
+    rate_period: StdDuration,
 }
 
 impl std::fmt::Debug for ApiState {
@@ -139,10 +141,20 @@ impl ApiState {
     /// Create a new [`ApiState`].
     pub const fn new(
         client: ClickhouseReader,
-        _max_requests: u64,
-        _rate_period: StdDuration,
+        max_requests: u64,
+        rate_period: StdDuration,
     ) -> Self {
-        Self { client }
+        Self { client, max_requests, rate_period }
+    }
+
+    /// Maximum number of requests allowed per [`rate_period`].
+    pub const fn max_requests(&self) -> u64 {
+        self.max_requests
+    }
+
+    /// Time window for rate limiting.
+    pub const fn rate_period(&self) -> StdDuration {
+        self.rate_period
     }
 }
 
@@ -1603,8 +1615,10 @@ const fn bucket_size_from_range(range: &TimeRange) -> u64 {
         25
     } else if hours <= 48 {
         50
-    } else {
+    } else if hours <= 72 {
         100
+    } else {
+        250
     }
 }
 
@@ -1687,6 +1701,7 @@ mod tests {
     use axum::{
         body::{self, Body},
         http::{Request, StatusCode},
+        response::Response,
     };
     use chrono::{TimeZone, Utc};
     use clickhouse::{
@@ -1694,10 +1709,16 @@ mod tests {
         test::{Mock, handlers},
     };
 
+    use runtime::rate_limiter::RateLimiter;
     use serde::Serialize;
     use serde_json::{Value, json};
-    use std::time::Duration as StdDuration;
-    use tower::util::ServiceExt;
+    use std::{
+        future::Future,
+        pin::Pin,
+        task::{Context, Poll},
+        time::Duration as StdDuration,
+    };
+    use tower::{Layer, Service, util::ServiceExt};
     use url::Url;
 
     #[derive(Serialize, Row)]
@@ -1715,12 +1736,72 @@ mod tests {
         l1_block_number: u64,
     }
 
+    #[derive(Clone, Debug)]
+    struct TestRateLimitLayer {
+        limiter: RateLimiter,
+    }
+
+    impl TestRateLimitLayer {
+        fn new(max: u64, period: StdDuration) -> Self {
+            Self { limiter: RateLimiter::new(max, period) }
+        }
+    }
+
+    impl<S> Layer<S> for TestRateLimitLayer {
+        type Service = TestRateLimit<S>;
+
+        fn layer(&self, inner: S) -> Self::Service {
+            TestRateLimit { inner, limiter: self.limiter.clone() }
+        }
+    }
+
+    #[derive(Clone, Debug)]
+    struct TestRateLimit<S> {
+        inner: S,
+        limiter: RateLimiter,
+    }
+
+    impl<S, B> Service<Request<B>> for TestRateLimit<S>
+    where
+        S: Service<Request<B>, Response = Response> + Clone + Send + 'static,
+        S::Future: Send + 'static,
+        S::Error: Send + 'static,
+    {
+        type Response = Response;
+        type Error = S::Error;
+        type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send>>;
+
+        fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+            self.inner.poll_ready(cx)
+        }
+
+        fn call(&mut self, req: Request<B>) -> Self::Future {
+            if self.limiter.try_acquire() {
+                Box::pin(self.inner.call(req))
+            } else {
+                let resp = Response::builder()
+                    .status(StatusCode::TOO_MANY_REQUESTS)
+                    .body(Body::empty())
+                    .unwrap();
+                Box::pin(std::future::ready(Ok(resp)))
+            }
+        }
+    }
+
     fn build_app(mock_url: &str) -> Router {
         let url = Url::parse(mock_url).unwrap();
         let client =
             ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
         let state = ApiState::new(client, DEFAULT_MAX_REQUESTS, DEFAULT_RATE_PERIOD);
         router(state)
+    }
+
+    fn build_rate_limited_app(mock_url: &str, max: u64, period: StdDuration) -> Router {
+        let url = Url::parse(mock_url).unwrap();
+        let client =
+            ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
+        let state = ApiState::new(client, max, period);
+        router(state).route_layer(TestRateLimitLayer::new(max, period))
     }
 
     async fn send_request(app: Router, uri: &str) -> Value {
@@ -2263,15 +2344,10 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn no_rate_limiting() {
+    async fn rate_limit_applies() {
         let mock = Mock::new();
         mock.add(handlers::provide(vec![MaxRow { block_ts: 42u64 }]));
-        mock.add(handlers::provide(vec![MaxRow { block_ts: 42u64 }]));
-        let url = Url::parse(mock.url()).unwrap();
-        let client =
-            ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
-        let state = ApiState::new(client, 1, StdDuration::from_secs(60));
-        let app = router(state);
+        let app = build_rate_limited_app(mock.url(), 1, StdDuration::from_secs(60));
 
         let _ = app
             .clone()
@@ -2284,20 +2360,14 @@ mod tests {
             .await
             .unwrap();
 
-        // Should succeed since rate limiting is disabled
-        assert_eq!(resp.status(), StatusCode::OK);
+        assert_eq!(resp.status(), StatusCode::TOO_MANY_REQUESTS);
     }
 
     #[tokio::test]
-    async fn multiple_requests_succeed_without_rate_limiting() {
+    async fn multiple_requests_are_limited() {
         let mock = Mock::new();
         mock.add(handlers::provide(vec![MaxRow { block_ts: 42u64 }]));
-        mock.add(handlers::provide(vec![MaxRow { block_ts: 42u64 }]));
-        let url = Url::parse(mock.url()).unwrap();
-        let client =
-            ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
-        let state = ApiState::new(client, 1, StdDuration::from_secs(60));
-        let app = router(state);
+        let app = build_rate_limited_app(mock.url(), 1, StdDuration::from_secs(60));
 
         let req = Request::builder()
             .uri("/l2-head")
@@ -2312,20 +2382,14 @@ mod tests {
             .body(Body::empty())
             .unwrap();
         let resp = app.oneshot(req).await.unwrap();
-        // Should succeed since rate limiting is disabled
-        assert_eq!(resp.status(), StatusCode::OK);
+        assert_eq!(resp.status(), StatusCode::TOO_MANY_REQUESTS);
     }
 
     #[tokio::test]
-    async fn forwarded_header_requests_succeed() {
+    async fn forwarded_header_requests_are_limited() {
         let mock = Mock::new();
         mock.add(handlers::provide(vec![MaxRow { block_ts: 42u64 }]));
-        mock.add(handlers::provide(vec![MaxRow { block_ts: 42u64 }]));
-        let url = Url::parse(mock.url()).unwrap();
-        let client =
-            ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
-        let state = ApiState::new(client, 1, StdDuration::from_secs(60));
-        let app = router(state);
+        let app = build_rate_limited_app(mock.url(), 1, StdDuration::from_secs(60));
 
         let req = Request::builder()
             .uri("/l2-head")
@@ -2340,20 +2404,14 @@ mod tests {
             .body(Body::empty())
             .unwrap();
         let resp = app.oneshot(req).await.unwrap();
-        // Should succeed since rate limiting is disabled
-        assert_eq!(resp.status(), StatusCode::OK);
+        assert_eq!(resp.status(), StatusCode::TOO_MANY_REQUESTS);
     }
 
     #[tokio::test]
-    async fn x_real_ip_requests_succeed() {
+    async fn x_real_ip_requests_are_limited() {
         let mock = Mock::new();
         mock.add(handlers::provide(vec![MaxRow { block_ts: 42u64 }]));
-        mock.add(handlers::provide(vec![MaxRow { block_ts: 42u64 }]));
-        let url = Url::parse(mock.url()).unwrap();
-        let client =
-            ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
-        let state = ApiState::new(client, 1, StdDuration::from_secs(60));
-        let app = router(state);
+        let app = build_rate_limited_app(mock.url(), 1, StdDuration::from_secs(60));
 
         let req = Request::builder()
             .uri("/l2-head")
@@ -2368,8 +2426,7 @@ mod tests {
             .body(Body::empty())
             .unwrap();
         let resp = app.oneshot(req).await.unwrap();
-        // Should succeed since rate limiting is disabled
-        assert_eq!(resp.status(), StatusCode::OK);
+        assert_eq!(resp.status(), StatusCode::TOO_MANY_REQUESTS);
     }
 
     #[test]

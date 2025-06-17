@@ -2,7 +2,10 @@ import React, { useCallback, lazy, useState } from 'react';
 import { ErrorDisplay } from '../layout/ErrorDisplay';
 import { MetricsGrid } from '../layout/MetricsGrid';
 import { ProfitCalculator } from '../ProfitCalculator';
+import { IncomeChart } from '../IncomeChart';
+import { CostChart } from '../CostChart';
 import { ProfitabilityChart } from '../ProfitabilityChart';
+import { ProfitRankingTable } from '../ProfitRankingTable';
 import { ChartCard } from '../ChartCard';
 import { TAIKO_PINK } from '../../theme';
 import { TimeRange, MetricData } from '../../types';
@@ -159,7 +162,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     const performance = [
       <ChartCard
         key="gas"
-        title="Gas Used Per Block"
+        title="Avg Gas Used Per Block"
         onMore={() => onOpenTable('l2-gas-used', timeRange)}
         loading={isLoadingData}
       >
@@ -171,7 +174,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       </ChartCard>,
       <ChartCard
         key="tx"
-        title="Tx Count Per L2 Block"
+        title="Avg Tx Count Per L2 Block"
         onMore={() => onOpenTable('block-tx', timeRange)}
         loading={isLoadingData}
       >
@@ -186,7 +189,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     const health = [
       <ChartCard
         key="prove"
-        title="Prove Time"
+        title="Avg Prove Time"
         onMore={() => onOpenTable('prove-time', timeRange)}
         loading={isLoadingData}
       >
@@ -198,7 +201,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       </ChartCard>,
       <ChartCard
         key="verify"
-        title="Verify Time"
+        title="Avg Verify Time"
         onMore={() => onOpenTable('verify-time', timeRange)}
         loading={isLoadingData}
       >
@@ -210,7 +213,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       </ChartCard>,
       <ChartCard
         key="blobs"
-        title="Blobs per Batch"
+        title="Avg Blobs per Batch"
         onMore={() => onOpenTable('blobs-per-batch', timeRange)}
         loading={isLoadingData}
       >
@@ -302,13 +305,32 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               onProverCostChange={setProverCost}
             />
             <div className="mt-6">
-            <ProfitabilityChart
+              <IncomeChart
+                timeRange={timeRange}
+                address={selectedSequencer || undefined}
+              />
+            </div>
+            <div className="mt-6">
+              <CostChart
+                timeRange={timeRange}
+                cloudCost={cloudCost}
+                proverCost={proverCost}
+                address={selectedSequencer || undefined}
+              />
+            </div>
+            <div className="mt-6">
+              <ProfitabilityChart
+                timeRange={timeRange}
+                cloudCost={cloudCost}
+                proverCost={proverCost}
+                address={selectedSequencer || undefined}
+              />
+            </div>
+            <ProfitRankingTable
               timeRange={timeRange}
               cloudCost={cloudCost}
               proverCost={proverCost}
-              address={selectedSequencer || undefined}
             />
-            </div>
           </>
         )}
 

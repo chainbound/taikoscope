@@ -111,10 +111,15 @@ export const TableRoute: React.FC = () => {
           );
         }
 
-        const res = await config.fetcher(range, ...fetcherArgs);
+        const [res, aggRes] = await (config.aggregatedFetcher
+          ? Promise.all([
+              config.fetcher(range, ...fetcherArgs),
+              config.aggregatedFetcher(range, ...fetcherArgs),
+            ])
+          : Promise.all([config.fetcher(range, ...fetcherArgs)]));
         if (currentFetchId !== fetchIdRef.current) return;
         let data = res.data || [];
-        const chartData = data;
+        const chartData = aggRes?.data || data;
         if (config.reverseOrder) {
           data = [...data].reverse();
         }
