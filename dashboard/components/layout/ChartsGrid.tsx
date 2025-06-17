@@ -72,7 +72,7 @@ export const ChartsGrid: React.FC<ChartsGridProps> = ({
   const networkPerformanceCharts = (
     <>
       <ChartCard
-        title="Gas Used Per Block"
+        title="Avg Gas Used Per Block"
         onMore={() => onOpenTable('l2-gas-used', timeRange)}
         loading={isLoading}
       >
@@ -83,7 +83,7 @@ export const ChartsGrid: React.FC<ChartsGridProps> = ({
         />
       </ChartCard>
       <ChartCard
-        title="Tx Count Per L2 Block"
+        title="Avg Tx Count Per L2 Block"
         onMore={() => onOpenTable('block-tx', timeRange)}
         loading={isLoading}
       >
@@ -99,7 +99,7 @@ export const ChartsGrid: React.FC<ChartsGridProps> = ({
   const networkHealthCharts = (
     <>
       <ChartCard
-        title="Prove Time"
+        title="Avg Prove Time"
         onMore={() => onOpenTable('prove-time', timeRange)}
         loading={isLoading}
       >
@@ -110,7 +110,7 @@ export const ChartsGrid: React.FC<ChartsGridProps> = ({
         />
       </ChartCard>
       <ChartCard
-        title="Verify Time"
+        title="Avg Verify Time"
         onMore={() => onOpenTable('verify-time', timeRange)}
         loading={isLoading}
       >
@@ -121,7 +121,7 @@ export const ChartsGrid: React.FC<ChartsGridProps> = ({
         />
       </ChartCard>
       <ChartCard
-        title="Blobs per Batch"
+        title="Avg Blobs per Batch"
         onMore={() => onOpenTable('blobs-per-batch', timeRange)}
         loading={isLoading}
       >

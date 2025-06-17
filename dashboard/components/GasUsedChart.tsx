@@ -54,7 +54,7 @@ const GasUsedChartComponent: React.FC<GasUsedChartProps> = ({
           domain={['auto', 'auto']}
           tickFormatter={(v: number) => formatLargeNumber(v)}
           label={{
-            value: 'Gas Used',
+            value: 'Avg Gas Used',
             angle: -90,
             position: 'insideLeft',
             offset: -16,
@@ -82,7 +82,7 @@ const GasUsedChartComponent: React.FC<GasUsedChartProps> = ({
           strokeWidth={2}
           dot={false}
           activeDot={data.length <= 100 ? { r: 6 } : false}
-          name="Gas Used"
+          name="Avg Gas Used"
         />
       </LineChart>
     </ResponsiveContainer>
