@@ -1247,21 +1247,30 @@ impl ClickhouseReader {
     }
 
     /// Get the total L1 data posting cost for the given range
-    pub async fn get_l1_total_data_cost(&self, range: TimeRange) -> Result<Option<u128>> {
+    pub async fn get_l1_total_data_cost(
+        &self,
+        sequencer: Option<AddressBytes>,
+        range: TimeRange,
+    ) -> Result<Option<u128>> {
         #[derive(Row, Deserialize)]
         struct SumRow {
             total: u128,
         }
 
-        let query = format!(
+        let mut query = format!(
             "SELECT sum(c.cost) AS total \
              FROM {db}.l1_data_costs c \
-             INNER JOIN {db}.l1_head_events l1 \
-               ON c.l1_block_number = l1.l1_block_number \
-             WHERE l1.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})",
+             INNER JOIN {db}.l2_head_events h \
+               ON c.l2_block_number = h.l2_block_number \
+             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
+               AND {filter}",
             interval = range.interval(),
+            filter = self.reorg_filter("h"),
             db = self.db_name,
         );
+        if let Some(addr) = sequencer {
+            query.push_str(&format!(" AND h.sequencer = unhex('{}')", encode(addr)));
+        }
 
         let rows = self.execute::<SumRow>(&query).await?;
         let row = match rows.into_iter().next() {
