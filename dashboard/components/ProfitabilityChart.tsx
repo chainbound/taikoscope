@@ -31,7 +31,7 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
     fetchFeeComponents(timeRange, address),
   );
   const feeData: FeeComponent[] | null = feeRes?.data ?? null;
-  const { data: ethPrice = 0 } = useEthPrice();
+  const { data: ethPrice = 0, error: ethPriceError } = useEthPrice();
 
   if (!feeData || feeData.length === 0) {
     return (
@@ -53,11 +53,15 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
   });
 
   return (
-    <ResponsiveContainer width="100%" height={240}>
-      <LineChart
-        data={data}
-        margin={{ top: 5, right: 40, left: 20, bottom: 40 }}
-      >
+    <>
+      {ethPriceError && (
+        <div className="text-red-500 text-xs mb-1">ETH price unavailable</div>
+      )}
+      <ResponsiveContainer width="100%" height={240}>
+        <LineChart
+          data={data}
+          margin={{ top: 5, right: 40, left: 20, bottom: 40 }}
+        >
         <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
         <XAxis
           dataKey="block"
@@ -104,5 +108,6 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
         />
       </LineChart>
     </ResponsiveContainer>
+    </>
   );
 };
