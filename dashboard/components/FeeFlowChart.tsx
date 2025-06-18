@@ -17,7 +17,7 @@ const MONTH_HOURS = 30 * 24;
 const WEI_TO_ETH = 1e18;
 
 // Simple node component that renders label with value
-const SankeyNode = ({ x, y, width, height, index, payload, value }: any) => {
+const SankeyNode = ({ x, y, width, height, payload, value }: any) => {
   const formattedValue = value ? `${value.toFixed(2)}` : '';
 
   return (
