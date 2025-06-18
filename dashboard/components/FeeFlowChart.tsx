@@ -17,7 +17,7 @@ const MONTH_HOURS = 30 * 24;
 const WEI_TO_ETH = 1e18;
 
 // Simple node component that renders label with value
-const SankeyNode = ({ x, y, width, height, payload, value }: any) => {
+const SankeyNode = ({ x, y, width, height, index, payload, value }: any) => {
   const formattedValue = value ? `${value.toFixed(2)}` : '';
 
   return (
@@ -88,12 +88,12 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
   // Build Sankey data
   const data = {
     nodes: [
-      { name: 'Priority Fee' },
-      { name: 'Base Fee' },
-      { name: 'Sequencers' },
-      { name: 'Cloud Cost' },
-      { name: 'Prover Cost' },
-      { name: 'Profit' },
+      { name: 'Priority Fee', value: priorityFeeUsd },
+      { name: 'Base Fee', value: baseFeeUsd },
+      { name: 'Sequencers', value: totalRevenue },
+      { name: 'Cloud Cost', value: cloudCostScaled },
+      { name: 'Prover Cost', value: proverCostScaled },
+      { name: 'Profit', value: sequencerProfit },
     ],
     links: [
       {
