@@ -19,6 +19,7 @@ describe('ProfitRankingTable', () => {
             priority_fee: 2e18,
             base_fee: 1e18,
             l1_data_cost: 0,
+            sequencers: [],
           },
         ],
       } as any);
@@ -28,7 +29,7 @@ describe('ProfitRankingTable', () => {
       error: null,
     } as any);
     vi.spyOn(api, 'fetchL2Fees').mockResolvedValue({
-      data: { priority_fee: 2e18, base_fee: 1e18, l1_data_cost: 0 },
+      data: { priority_fee: 2e18, base_fee: 1e18, l1_data_cost: 0, sequencers: [] },
       badRequest: false,
       error: null,
     } as any);

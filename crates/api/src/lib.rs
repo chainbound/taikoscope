@@ -64,7 +64,6 @@ pub const MAX_TABLE_LIMIT: u64 = 50000;
         sequencer_distribution,
         sequencer_blocks,
         l2_fees,
-        l2_fees_by_sequencer,
         l2_fee_components,
         dashboard_data,
         l1_data_cost
@@ -111,7 +110,6 @@ pub const MAX_TABLE_LIMIT: u64 = 50000;
             L2FeesResponse,
             FeeComponentsResponse,
             SequencerFeeRow,
-            L2FeesBySequencerResponse,
             DashboardDataResponse,
             api_types::ErrorResponse,
             L1DataCostResponse
@@ -1355,50 +1353,14 @@ async fn l2_fees(
         None
     };
 
-    let (priority_fee, base_fee, l1_data_cost) = tokio::try_join!(
+    let (priority_fee, base_fee, l1_data_cost, rows) = tokio::try_join!(
         state.client.get_l2_priority_fee(address, time_range),
         state.client.get_l2_base_fee(address, time_range),
-        state.client.get_l1_total_data_cost(address, time_range)
+        state.client.get_l1_total_data_cost(address, time_range),
+        state.client.get_l2_fees_by_sequencer(time_range)
     )
     .map_err(|e| {
         tracing::error!(error = %e, "Failed to get L2 fees");
-        ErrorResponse::new(
-            "database-error",
-            "Database error",
-            StatusCode::INTERNAL_SERVER_ERROR,
-            e.to_string(),
-        )
-    })?;
-
-    tracing::info!(?priority_fee, ?base_fee, ?l1_data_cost, "Returning L2 fees and L1 data cost");
-    Ok(Json(L2FeesResponse { priority_fee, base_fee, l1_data_cost }))
-}
-
-#[utoipa::path(
-    get,
-    path = "/l2-fees/by-sequencer",
-    params(
-        RangeQuery
-    ),
-    responses(
-        (status = 200, description = "Sequencer fee breakdown", body = L2FeesBySequencerResponse),
-        (status = 500, description = "Database error", body = ErrorResponse)
-    ),
-    tag = "taikoscope"
-)]
-async fn l2_fees_by_sequencer(
-    Query(params): Query<RangeQuery>,
-    State(state): State<ApiState>,
-) -> Result<Json<L2FeesBySequencerResponse>, ErrorResponse> {
-    validate_time_range(&params.time_range)?;
-
-    let has_time_range = has_time_range_params(&params.time_range);
-    validate_range_exclusivity(has_time_range, false)?;
-
-    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
-
-    let rows = state.client.get_l2_fees_by_sequencer(time_range).await.map_err(|e| {
-        tracing::error!(error = %e, "Failed to get fees by sequencer");
         ErrorResponse::new(
             "database-error",
             "Database error",
@@ -1415,10 +1377,17 @@ async fn l2_fees_by_sequencer(
             base_fee: r.base_fee,
             l1_data_cost: r.l1_data_cost,
         })
+        .filter(|r| {
+            if let Some(addr) = params.address.as_ref() {
+                r.address.eq_ignore_ascii_case(addr)
+            } else {
+                true
+            }
+        })
         .collect();
 
-    tracing::info!(count = sequencers.len(), "Returning fees by sequencer");
-    Ok(Json(L2FeesBySequencerResponse { sequencers }))
+    tracing::info!(count = sequencers.len(), "Returning L2 fees and breakdown");
+    Ok(Json(L2FeesResponse { priority_fee, base_fee, l1_data_cost, sequencers }))
 }
 
 #[utoipa::path(
@@ -1700,7 +1669,6 @@ pub fn router(state: ApiState) -> Router {
         .route("/block-transactions", get(block_transactions))
         .route("/block-transactions/aggregated", get(block_transactions_aggregated))
         .route("/l2-fees", get(l2_fees))
-        .route("/l2-fees/by-sequencer", get(l2_fees_by_sequencer))
         .route("/l2-fee-components", get(l2_fee_components))
         .route("/l2-fee-components/aggregated", get(l2_fee_components_aggregated))
         .route("/dashboard-data", get(dashboard_data))
@@ -2407,7 +2375,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn l2_fees_by_sequencer_endpoint() {
+    async fn l2_fees_endpoint() {
         let mock = Mock::new();
         #[derive(Serialize, Row)]
         struct FeeRowTest {
@@ -2416,6 +2384,17 @@ mod tests {
             base_fee: u128,
             l1_data_cost: Option<u128>,
         }
+        #[derive(Serialize, Row)]
+        struct SumRow {
+            total: u128,
+        }
+        // priority fee
+        mock.add(handlers::provide(vec![SumRow { total: 10 }]));
+        // base fee
+        mock.add(handlers::provide(vec![SumRow { total: 20 }]));
+        // l1 data cost
+        mock.add(handlers::provide(vec![SumRow { total: 5 }]));
+        // fees by sequencer
         mock.add(handlers::provide(vec![FeeRowTest {
             sequencer: AddressBytes([1u8; 20]),
             priority_fee: 10,
@@ -2423,11 +2402,20 @@ mod tests {
             l1_data_cost: Some(5),
         }]));
         let app = build_app(mock.url());
-        let body =
-            send_request(app, "/l2-fees/by-sequencer?created[gte]=0&created[lte]=3600000").await;
+        let body = send_request(app, "/l2-fees?created[gte]=0&created[lte]=3600000").await;
         assert_eq!(
             body,
-            json!({ "sequencers": [ { "address": "0x0101010101010101010101010101010101010101", "priority_fee": 10, "base_fee": 20, "l1_data_cost": 5 } ] })
+            json!({
+                "priority_fee": 10,
+                "base_fee": 20,
+                "l1_data_cost": 5,
+                "sequencers": [ {
+                    "address": "0x0101010101010101010101010101010101010101",
+                    "priority_fee": 10,
+                    "base_fee": 20,
+                    "l1_data_cost": 5
+                } ]
+            })
         );
     }
 
@@ -2521,7 +2509,6 @@ mod tests {
             "/block-transactions",
             "/block-transactions/aggregated",
             "/l2-fees",
-            "/l2-fees/by-sequencer",
             "/l2-fee-components",
             "/dashboard-data",
             "/l1-data-cost",

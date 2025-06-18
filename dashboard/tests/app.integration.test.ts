@@ -136,8 +136,18 @@ const responses: Record<string, Record<string, unknown>> = {
       { l2_block_number: 2, block_time: '1970-01-01T00:00:02Z', gas_used: 150 },
     ],
   },
-  [`/v1/l2-fees?${q1h}`]: { priority_fee: 600, base_fee: 400 },
-  [`/v1/l2-fees?${q15m}`]: { priority_fee: 600, base_fee: 400 },
+  [`/v1/l2-fees?${q1h}`]: {
+    priority_fee: 600,
+    base_fee: 400,
+    l1_data_cost: null,
+    sequencers: [],
+  },
+  [`/v1/l2-fees?${q15m}`]: {
+    priority_fee: 600,
+    base_fee: 400,
+    l1_data_cost: null,
+    sequencers: [],
+  },
   [`/v1/sequencer-distribution?${q1h}`]: {
     sequencers: [{ address: 'addr1', blocks: 10 }],
   },
@@ -146,7 +156,12 @@ const responses: Record<string, Record<string, unknown>> = {
   },
   '/v1/l2-head-block': { l2_head_block: 123 },
   '/v1/l1-head-block': { l1_head_block: 456 },
-  [`/v1/l2-fees?${q24h}`]: { priority_fee: 1200, base_fee: 800 },
+  [`/v1/l2-fees?${q24h}`]: {
+    priority_fee: 1200,
+    base_fee: 800,
+    l1_data_cost: null,
+    sequencers: [],
+  },
 };
 
 (
