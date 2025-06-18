@@ -161,6 +161,37 @@ impl ApiState {
     }
 }
 
+fn paginate_desc<T, F>(
+    mut rows: Vec<T>,
+    limit: u64,
+    starting_after: Option<u64>,
+    ending_before: Option<u64>,
+    key: F,
+) -> Vec<T>
+where
+    F: Fn(&T) -> u64,
+{
+    rows.sort_by_key(|r| std::cmp::Reverse(key(r)));
+    rows.sort_by_key(|r| std::cmp::Reverse(key(r)));
+    rows.into_iter()
+        .filter(|r| {
+            let v = key(r);
+            if let Some(start) = starting_after {
+                if v >= start {
+                    return false;
+                }
+            }
+            if let Some(end) = ending_before {
+                if v <= end {
+                    return false;
+                }
+            }
+            true
+        })
+        .take(limit as usize)
+        .collect()
+}
+
 // Legacy type aliases for backward compatibility
 type RangeQuery = CommonQuery;
 type SequencerBlocksQuery = CommonQuery;
@@ -429,7 +460,7 @@ async fn sse_l1_head(
     get,
     path = "/reorgs",
     params(
-        RangeQuery
+        PaginatedQuery
     ),
     responses(
         (status = 200, description = "Reorg events", body = ReorgEventsResponse),
@@ -438,18 +469,22 @@ async fn sse_l1_head(
     tag = "taikoscope"
 )]
 async fn reorgs(
-    Query(params): Query<RangeQuery>,
+    Query(params): Query<PaginatedQuery>,
     State(state): State<ApiState>,
 ) -> Result<Json<ReorgEventsResponse>, ErrorResponse> {
-    // Validate time range parameters
-    validate_time_range(&params.time_range)?;
+    validate_time_range(&params.common.time_range)?;
+    let limit = validate_pagination(
+        params.starting_after.as_ref(),
+        params.ending_before.as_ref(),
+        params.limit.as_ref(),
+        MAX_TABLE_LIMIT,
+    )?;
+    let has_time_range = has_time_range_params(&params.common.time_range);
+    let has_slot_range = params.starting_after.is_some() || params.ending_before.is_some();
+    validate_range_exclusivity(has_time_range, has_slot_range)?;
 
-    // Check for range exclusivity
-    let has_time_range = has_time_range_params(&params.time_range);
-    validate_range_exclusivity(has_time_range, false)?;
-
-    let since = resolve_time_range_since(&params.range, &params.time_range);
-    let events = state.client.get_l2_reorgs_since(since).await.map_err(|e| {
+    let since = resolve_time_range_since(&params.common.range, &params.common.time_range);
+    let mut events = state.client.get_l2_reorgs_since(since).await.map_err(|e| {
         tracing::error!(error = %e, "Failed to get reorg events");
         ErrorResponse::new(
             "database-error",
@@ -458,6 +493,9 @@ async fn reorgs(
             e.to_string(),
         )
     })?;
+    events = paginate_desc(events, limit, params.starting_after, params.ending_before, |e| {
+        e.l2_block_number
+    });
     tracing::info!(count = events.len(), "Returning reorg events");
     Ok(Json(ReorgEventsResponse { events }))
 }
