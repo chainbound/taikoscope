@@ -132,6 +132,9 @@ describe('utils', () => {
     expect(formatEth(0)).toBe('0.00 ETH');
     expect(formatEth(1e8)).toBe('0.10 Gwei');
     expect(formatEth(1334501e9)).toBe('1,334,501 Gwei');
+    expect(formatEth(1422636.1e9)).toBe('1,422,636 Gwei');
+    expect(formatEth(1422636.1e18)).toBe('1,422,636 ETH');
+    expect(formatEth(187788.9e9)).toBe('187,788 Gwei');
   });
 
   it('parses ETH and Gwei values', () => {

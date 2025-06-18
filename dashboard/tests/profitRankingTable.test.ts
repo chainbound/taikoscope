@@ -5,7 +5,6 @@ import * as swr from 'swr';
 vi.mock('swr', () => ({ default: vi.fn() }));
 import * as api from '../services/apiService';
 import * as priceService from '../services/priceService';
-import * as seqCfg from '../sequencerConfig';
 import { ProfitRankingTable } from '../components/ProfitRankingTable';
 
 describe('ProfitRankingTable', () => {
@@ -14,9 +13,9 @@ describe('ProfitRankingTable', () => {
       .mockReturnValueOnce({
         data: {
           data: [
-            { name: 'SeqA', value: 10, tps: null },
-            { name: 'SeqB', value: 5, tps: null },
-          ],
+            { name: 'SeqA', address: '0xseqA', value: 10, tps: null },
+            { name: 'SeqB', address: '0xseqB', value: 5, tps: null }
+          ]
         },
       } as any)
       .mockReturnValueOnce({
@@ -44,8 +43,8 @@ describe('ProfitRankingTable', () => {
       } as any);
     vi.spyOn(api, 'fetchSequencerDistribution').mockResolvedValue({
       data: [
-        { name: 'SeqA', value: 10, tps: null },
-        { name: 'SeqB', value: 5, tps: null },
+        { name: 'SeqA', address: '0xseqA', value: 10, tps: null },
+        { name: 'SeqB', address: '0xseqB', value: 5, tps: null }
       ],
       badRequest: false,
       error: null,
@@ -76,9 +75,6 @@ describe('ProfitRankingTable', () => {
     vi.spyOn(priceService, 'useEthPrice').mockReturnValue({
       data: 1000,
     } as any);
-    vi.spyOn(seqCfg, 'getSequencerAddress').mockImplementation(
-      (name: string) => (name === 'SeqA' ? '0xseqA' : '0xseqB'),
-    );
 
     const html = renderToStaticMarkup(
       React.createElement(ProfitRankingTable, {

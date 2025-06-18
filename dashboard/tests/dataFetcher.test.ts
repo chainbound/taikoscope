@@ -47,7 +47,7 @@ describe('dataFetcher', () => {
       fetchVerifyTimes: ok([{ name: '2', value: 2, timestamp: 0 }]),
       fetchL2BlockTimesAggregated: ok([{ value: 2, timestamp: 0 }]),
       fetchL2GasUsedAggregated: ok([{ value: 3, timestamp: 0 }]),
-      fetchSequencerDistribution: ok([{ name: 'foo', value: 1 }]),
+      fetchSequencerDistribution: ok([{ name: 'foo', address: '0xfoo', value: 1 }]),
       fetchBlockTransactionsAggregated: ok([{ block: 1, txs: 2, sequencer: 'bar' }]),
       fetchBatchBlobCounts: ok([{ block: 10, batch: 1, blobs: 2 }]),
     });
@@ -85,7 +85,7 @@ describe('dataFetcher', () => {
       fetchL2Fees: ok({ priority_fee: 1, base_fee: 2, l1_data_cost: 4, sequencers: [] }),
       fetchL2HeadBlock: ok(2),
       fetchL1HeadBlock: ok(3),
-      fetchSequencerDistribution: ok([{ name: 'foo', value: 1, tps: null }]),
+      fetchSequencerDistribution: ok([{ name: 'foo', address: '0xfoo', value: 1, tps: null }]),
     });
 
     const res = await fetchEconomicsData('1h', null);

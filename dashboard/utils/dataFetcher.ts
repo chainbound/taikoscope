@@ -47,6 +47,7 @@ export interface EconomicsData {
   l1Block: number | null;
   sequencerDist: {
     name: string;
+    address: string;
     value: number;
     tps: number | null;
   }[];
