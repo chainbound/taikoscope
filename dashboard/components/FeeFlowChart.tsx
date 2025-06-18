@@ -16,6 +16,30 @@ interface FeeFlowChartProps {
 const MONTH_HOURS = 30 * 24;
 const WEI_TO_ETH = 1e18;
 
+// Simple node component that renders label
+const SankeyNode = ({ x, y, width, height, index, payload }: any) => (
+  <g>
+    <rect
+      x={x}
+      y={y}
+      width={width}
+      height={height}
+      fill="#10b981"
+      fillOpacity={0.8}
+    />
+    <text
+      x={x + width + 6}
+      y={y + height / 2}
+      textAnchor="start"
+      dominantBaseline="middle"
+      fontSize={12}
+      fill="#374151"
+    >
+      {payload.name}
+    </text>
+  </g>
+);
+
 export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
   timeRange,
   cloudCost,
@@ -52,7 +76,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
   const totalCosts = cloudCostScaled + proverCostScaled;
   const sequencerProfit = Math.max(0, totalRevenue - totalCosts);
 
-  // Build Sankey data with proper node names
+  // Build Sankey data
   const data = {
     nodes: [
       { name: 'Priority Fee' },
@@ -115,11 +139,13 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
       <ResponsiveContainer width="100%" height="100%">
         <Sankey
           data={data}
+          node={SankeyNode}
           nodePadding={10}
           nodeWidth={10}
-          margin={{ top: 10, right: 10, bottom: 10, left: 10 }}
+          margin={{ top: 10, right: 80, bottom: 10, left: 10 }}
           sort={false}
           iterations={32}
+          link={{ stroke: '#94a3b8', strokeOpacity: 0.2 }}
         >
           <Tooltip
             content={tooltipContent}
