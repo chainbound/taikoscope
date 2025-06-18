@@ -109,6 +109,7 @@ pub const MAX_TABLE_LIMIT: u64 = 50000;
             PreconfDataResponse,
             L2FeesResponse,
             FeeComponentsResponse,
+            SequencerFeeRow,
             DashboardDataResponse,
             api_types::ErrorResponse,
             L1DataCostResponse
@@ -1352,10 +1353,11 @@ async fn l2_fees(
         None
     };
 
-    let (priority_fee, base_fee, l1_data_cost) = tokio::try_join!(
+    let (priority_fee, base_fee, l1_data_cost, rows) = tokio::try_join!(
         state.client.get_l2_priority_fee(address, time_range),
         state.client.get_l2_base_fee(address, time_range),
-        state.client.get_l1_total_data_cost(address, time_range)
+        state.client.get_l1_total_data_cost(address, time_range),
+        state.client.get_l2_fees_by_sequencer(time_range)
     )
     .map_err(|e| {
         tracing::error!(error = %e, "Failed to get L2 fees");
@@ -1367,8 +1369,23 @@ async fn l2_fees(
         )
     })?;
 
-    tracing::info!(?priority_fee, ?base_fee, ?l1_data_cost, "Returning L2 fees and L1 data cost");
-    Ok(Json(L2FeesResponse { priority_fee, base_fee, l1_data_cost }))
+    // Filter using the raw `AddressBytes` value to avoid discrepancies caused by
+    // different textual representations of the same address (e.g. case, missing
+    // "0x" prefix). Only after filtering do we convert addresses to their
+    // canonical hex string form.
+    let sequencers: Vec<SequencerFeeRow> = rows
+        .into_iter()
+        .filter(|r| if let Some(target) = address { r.sequencer == target } else { true })
+        .map(|r| SequencerFeeRow {
+            address: format!("0x{}", encode(r.sequencer)),
+            priority_fee: r.priority_fee,
+            base_fee: r.base_fee,
+            l1_data_cost: r.l1_data_cost,
+        })
+        .collect();
+
+    tracing::info!(count = sequencers.len(), "Returning L2 fees and breakdown");
+    Ok(Json(L2FeesResponse { priority_fee, base_fee, l1_data_cost, sequencers }))
 }
 
 #[utoipa::path(
@@ -2353,6 +2370,104 @@ mod tests {
             body,
             json!({ "blocks": [ { "block": 42, "txs": 7, "sequencer": "0x0101010101010101010101010101010101010101", "block_time": "1970-01-01T00:00:10Z" } ] })
         );
+    }
+
+    #[tokio::test]
+    async fn l2_fees_endpoint() {
+        let mock = Mock::new();
+        #[derive(Serialize, Row)]
+        struct FeeRowTest {
+            sequencer: AddressBytes,
+            priority_fee: u128,
+            base_fee: u128,
+            l1_data_cost: Option<u128>,
+        }
+        #[derive(Serialize, Row)]
+        struct SumRow {
+            total: u128,
+        }
+        // priority fee
+        mock.add(handlers::provide(vec![SumRow { total: 10 }]));
+        // base fee
+        mock.add(handlers::provide(vec![SumRow { total: 20 }]));
+        // l1 data cost
+        mock.add(handlers::provide(vec![SumRow { total: 5 }]));
+        // fees by sequencer
+        mock.add(handlers::provide(vec![FeeRowTest {
+            sequencer: AddressBytes([1u8; 20]),
+            priority_fee: 10,
+            base_fee: 20,
+            l1_data_cost: Some(5),
+        }]));
+        let app = build_app(mock.url());
+        let body = send_request(app, "/l2-fees?created[gte]=0&created[lte]=3600000").await;
+        assert_eq!(
+            body,
+            json!({
+                "priority_fee": 10,
+                "base_fee": 20,
+                "l1_data_cost": 5,
+                "sequencers": [ {
+                    "address": "0x0101010101010101010101010101010101010101",
+                    "priority_fee": 10,
+                    "base_fee": 20,
+                    "l1_data_cost": 5
+                } ]
+            })
+        );
+    }
+
+    #[tokio::test]
+    async fn l2_fees_address_filtering_consistency() {
+        let mock = Mock::new();
+        #[derive(Serialize, Row)]
+        struct FeeRowTest {
+            sequencer: AddressBytes,
+            priority_fee: u128,
+            base_fee: u128,
+            l1_data_cost: Option<u128>,
+        }
+        #[derive(Serialize, Row)]
+        struct SumRow {
+            total: u128,
+        }
+
+        let test_address = AddressBytes([0x01; 20]);
+
+        // priority fee
+        mock.add(handlers::provide(vec![SumRow { total: 10 }]));
+        // base fee
+        mock.add(handlers::provide(vec![SumRow { total: 20 }]));
+        // l1 data cost
+        mock.add(handlers::provide(vec![SumRow { total: 5 }]));
+        // fees by sequencer - return multiple addresses to test filtering
+        mock.add(handlers::provide(vec![
+            FeeRowTest {
+                sequencer: test_address,
+                priority_fee: 10,
+                base_fee: 20,
+                l1_data_cost: Some(5),
+            },
+            FeeRowTest {
+                sequencer: AddressBytes([0x02; 20]),
+                priority_fee: 15,
+                base_fee: 25,
+                l1_data_cost: Some(8),
+            },
+        ]));
+
+        let app = build_app(mock.url());
+
+        // Test that address format variations work correctly
+        let uri = "/l2-fees?created[gte]=0&created[lte]=3600000&address=0x0101010101010101010101010101010101010101";
+        let body = send_request(app, uri).await;
+
+        // Should return aggregate data and only the matching sequencer
+        assert_eq!(body["priority_fee"], 10);
+        assert_eq!(body["base_fee"], 20);
+        assert_eq!(body["l1_data_cost"], 5);
+        assert_eq!(body["sequencers"].as_array().unwrap().len(), 1);
+        assert_eq!(body["sequencers"][0]["address"], "0x0101010101010101010101010101010101010101");
     }
 
     #[test]

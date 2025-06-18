@@ -16,7 +16,7 @@ use crate::{
         BatchBlobCountRow, BatchPostingTimeRow, BatchProveTimeRow, BatchVerifyTimeRow,
         BlockFeeComponentRow, BlockTransactionRow, ForcedInclusionProcessedRow, L1BlockTimeRow,
         L1DataCostRow, L2BlockTimeRow, L2GasUsedRow, L2ReorgRow, L2TpsRow, PreconfData,
-        SequencerBlockRow, SequencerDistributionRow, SlashingEventRow,
+        SequencerBlockRow, SequencerDistributionRow, SequencerFeeRow, SlashingEventRow,
     },
     types::AddressBytes,
 };
@@ -1297,7 +1297,7 @@ impl ClickhouseReader {
         let mut query = format!(
             "SELECT h.l2_block_number, \
                     sum_priority_fee AS priority_fee, \
-                    toUInt128(sum_base_fee * 3 / 4) AS base_fee, \
+                    sum_base_fee AS base_fee, \
                     toNullable(dc.cost) AS l1_data_cost \
              FROM {db}.l2_head_events h \
              LEFT JOIN {db}.l1_data_costs dc \
@@ -1382,7 +1382,7 @@ impl ClickhouseReader {
         }
 
         let mut query = format!(
-            "SELECT sum(sum_priority_fee + toUInt128(sum_base_fee * 3 / 4)) AS total \
+            "SELECT sum(sum_priority_fee + sum_base_fee) AS total \
              FROM {db}.l2_head_events h \
              WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
                AND {filter}",
@@ -1434,7 +1434,7 @@ impl ClickhouseReader {
         Ok(Some(row.total))
     }
 
-    /// Get 75% of the total base fee for the given range
+    /// Get the total base fee for the given range
     pub async fn get_l2_base_fee(
         &self,
         sequencer: Option<AddressBytes>,
@@ -1446,7 +1446,7 @@ impl ClickhouseReader {
         }
 
         let mut query = format!(
-            "SELECT sum(toUInt128(sum_base_fee * 3 / 4)) AS total \
+            "SELECT sum(sum_base_fee) AS total \
              FROM {db}.l2_head_events h \
              WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
                AND {filter}",
@@ -1464,6 +1464,45 @@ impl ClickhouseReader {
             None => return Ok(None),
         };
         Ok(Some(row.total))
+    }
+
+    /// Get aggregated L2 fees grouped by sequencer for the given range
+    pub async fn get_l2_fees_by_sequencer(&self, range: TimeRange) -> Result<Vec<SequencerFeeRow>> {
+        #[derive(Row, Deserialize)]
+        struct RawRow {
+            sequencer: AddressBytes,
+            priority_fee: u128,
+            base_fee: u128,
+            l1_data_cost: Option<u128>,
+        }
+
+        let query = format!(
+            "SELECT h.sequencer,\
+                    sum(sum_priority_fee) AS priority_fee,\
+                    sum(sum_base_fee) AS base_fee,\
+                    sum(dc.cost) AS l1_data_cost\
+             FROM {db}.l2_head_events h\
+             LEFT JOIN {db}.l1_data_costs dc\
+               ON h.l2_block_number = dc.l2_block_number\
+             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})\
+               AND {filter}\
+             GROUP BY h.sequencer\
+             ORDER BY priority_fee DESC",
+            interval = range.interval(),
+            filter = self.reorg_filter("h"),
+            db = self.db_name,
+        );
+
+        let rows = self.execute::<RawRow>(&query).await?;
+        Ok(rows
+            .into_iter()
+            .map(|r| SequencerFeeRow {
+                sequencer: r.sequencer,
+                priority_fee: r.priority_fee,
+                base_fee: r.base_fee,
+                l1_data_cost: r.l1_data_cost,
+            })
+            .collect())
     }
 
     /// Get the blob count for each batch within the given range
@@ -1543,6 +1582,41 @@ mod tests {
             rows,
             vec![BlockFeeComponentRow {
                 l2_block_number: 1,
+                priority_fee: 10,
+                base_fee: 20,
+                l1_data_cost: Some(5),
+            }]
+        );
+    }
+
+    #[derive(Row, serde::Serialize)]
+    struct SeqFeeRow {
+        sequencer: AddressBytes,
+        priority_fee: u128,
+        base_fee: u128,
+        l1_data_cost: Option<u128>,
+    }
+
+    #[tokio::test]
+    async fn fees_by_sequencer_returns_expected_rows() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(vec![SeqFeeRow {
+            sequencer: AddressBytes([1u8; 20]),
+            priority_fee: 10,
+            base_fee: 20,
+            l1_data_cost: Some(5),
+        }]));
+
+        let url = url::Url::parse(mock.url()).unwrap();
+        let reader =
+            ClickhouseReader::new(url, "db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+        let rows = reader.get_l2_fees_by_sequencer(TimeRange::LastHour).await.unwrap();
+
+        assert_eq!(
+            rows,
+            vec![SequencerFeeRow {
+                sequencer: AddressBytes([1u8; 20]),
                 priority_fee: 10,
                 base_fee: 20,
                 l1_data_cost: Some(5),
