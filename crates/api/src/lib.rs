@@ -172,7 +172,6 @@ where
     F: Fn(&T) -> u64,
 {
     rows.sort_by_key(|r| std::cmp::Reverse(key(r)));
-    rows.sort_by_key(|r| std::cmp::Reverse(key(r)));
     rows.into_iter()
         .filter(|r| {
             let v = key(r);
