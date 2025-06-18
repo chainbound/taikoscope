@@ -1627,10 +1627,8 @@ mod tests {
     #[test]
     fn fees_by_sequencer_query_has_proper_spacing() {
         // Test that the generated SQL query has proper spacing between keywords
-        let reader = ClickhouseReader {
-            base: clickhouse::Client::default(),
-            db_name: "test_db".to_string(),
-        };
+        let reader =
+            ClickhouseReader { base: clickhouse::Client::default(), db_name: "test_db".to_owned() };
 
         // Simulate the query generation logic
         let range = TimeRange::LastHour;
