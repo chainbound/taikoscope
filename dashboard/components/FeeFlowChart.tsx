@@ -118,44 +118,86 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
   const hours = rangeToHours(timeRange);
   const cloudCostPerSeq = (cloudCost / MONTH_HOURS) * hours;
   const proverCostPerSeq = (proverCost / MONTH_HOURS) * hours;
-  const cloudCostScaled = cloudCostPerSeq * seqCount;
-  const proverCostScaled = proverCostPerSeq * seqCount;
+  const totalCloudCost = cloudCostPerSeq;
+  const totalProverCost = proverCostPerSeq;
 
   const seqData = sequencerFees.map((f) => {
     const priorityUsd = ((f.priority_fee ?? 0) / WEI_TO_ETH) * ethPrice;
     const baseUsd = ((f.base_fee ?? 0) / WEI_TO_ETH) * ethPrice * 0.75;
     const revenue = priorityUsd + baseUsd;
-    const profit = Math.max(0, revenue - cloudCostPerSeq - proverCostPerSeq);
-    return { address: f.address, priorityUsd, baseUsd, revenue, profit };
+    const rawProfit = revenue - cloudCostPerSeq - proverCostPerSeq;
+    const profit = Math.max(0, rawProfit);
+    // For flow conservation, calculate actual outflows
+    const actualCloudCost = rawProfit >= 0 ? cloudCostPerSeq : Math.max(0, Math.min(cloudCostPerSeq, revenue));
+    const actualProverCost = rawProfit >= 0 ? proverCostPerSeq : Math.max(0, revenue - actualCloudCost);
+    return {
+      address: f.address,
+      priorityUsd,
+      baseUsd,
+      revenue,
+      profit,
+      actualCloudCost,
+      actualProverCost
+    };
   });
 
-  const totalProfit = seqData.reduce((acc, s) => acc + s.profit, 0);
+  // Handle case when no sequencer data is available
+  let nodes, links;
 
-  // Build Sankey data with one node per sequencer
-  const baseIndex = 2; // first sequencer node index
-  const cloudIndex = baseIndex + seqData.length;
-  const proverIndex = cloudIndex + 1;
-  const profitIndex = proverIndex + 1;
-  const daoIndex = profitIndex + 1;
+  if (seqData.length === 0) {
+    // Fallback: create a single "Sequencers" node to route fees through
+    const sequencerRevenue = priorityFeeUsd + (baseFeeUsd * 0.75);
+    const sequencerProfit = Math.max(0, sequencerRevenue - totalCloudCost - totalProverCost);
 
-  const nodes = [
-    { name: 'Priority Fee', value: priorityFeeUsd },
-    { name: 'Base Fee', value: baseFeeUsd },
-    ...seqData.map((s) => ({ name: s.address, value: s.revenue })),
-    { name: 'Cloud Cost', value: cloudCostScaled },
-    { name: 'Prover Cost', value: proverCostScaled },
-    { name: 'Profit', value: totalProfit },
-    { name: 'Taiko DAO', value: baseFeeDaoUsd },
-  ];
+    nodes = [
+      { name: 'Priority Fee', value: priorityFeeUsd },
+      { name: 'Base Fee', value: baseFeeUsd },
+      { name: 'Sequencers', value: sequencerRevenue },
+      { name: 'Cloud Cost', value: totalCloudCost },
+      { name: 'Prover Cost', value: totalProverCost },
+      { name: 'Profit', value: sequencerProfit },
+      { name: 'Taiko DAO', value: baseFeeDaoUsd },
+    ];
 
-  const links = [
-    ...seqData.map((s, i) => ({ source: 0, target: baseIndex + i, value: s.priorityUsd })),
-    ...seqData.map((s, i) => ({ source: 1, target: baseIndex + i, value: s.baseUsd })),
-    { source: 1, target: daoIndex, value: baseFeeDaoUsd },
-    ...seqData.map((_, i) => ({ source: baseIndex + i, target: cloudIndex, value: cloudCostPerSeq })),
-    ...seqData.map((_, i) => ({ source: baseIndex + i, target: proverIndex, value: proverCostPerSeq })),
-    ...seqData.map((s, i) => ({ source: baseIndex + i, target: profitIndex, value: s.profit })),
-  ].filter((l) => l.value > 0);
+    links = [
+      { source: 0, target: 2, value: priorityFeeUsd }, // Priority Fee → Sequencers
+      { source: 1, target: 2, value: baseFeeUsd * 0.75 }, // 75% Base Fee → Sequencers
+      { source: 1, target: 6, value: baseFeeDaoUsd }, // 25% Base Fee → Taiko DAO
+      { source: 2, target: 3, value: Math.min(totalCloudCost, sequencerRevenue) }, // Sequencers → Cloud Cost
+      { source: 2, target: 4, value: Math.min(totalProverCost, Math.max(0, sequencerRevenue - totalCloudCost)) }, // Sequencers → Prover Cost
+      { source: 2, target: 5, value: sequencerProfit }, // Sequencers → Profit
+    ].filter((l) => l.value > 0);
+  } else {
+    const totalProfit = seqData.reduce((acc, s) => acc + s.profit, 0);
+    const totalActualCloudCost = seqData.reduce((acc, s) => acc + s.actualCloudCost, 0);
+    const totalActualProverCost = seqData.reduce((acc, s) => acc + s.actualProverCost, 0);
+
+    // Build Sankey data with one node per sequencer
+    const baseIndex = 2; // first sequencer node index
+    const cloudIndex = baseIndex + seqData.length;
+    const proverIndex = cloudIndex + 1;
+    const profitIndex = proverIndex + 1;
+    const daoIndex = profitIndex + 1;
+
+    nodes = [
+      { name: 'Priority Fee', value: priorityFeeUsd },
+      { name: 'Base Fee', value: baseFeeUsd },
+      ...seqData.map((s) => ({ name: s.address, value: s.revenue })),
+      { name: 'Cloud Cost', value: totalActualCloudCost },
+      { name: 'Prover Cost', value: totalActualProverCost },
+      { name: 'Profit', value: totalProfit },
+      { name: 'Taiko DAO', value: baseFeeDaoUsd },
+    ];
+
+    links = [
+      ...seqData.map((s, i) => ({ source: 0, target: baseIndex + i, value: s.priorityUsd })),
+      ...seqData.map((s, i) => ({ source: 1, target: baseIndex + i, value: s.baseUsd })),
+      { source: 1, target: daoIndex, value: baseFeeDaoUsd },
+      ...seqData.map((s, i) => ({ source: baseIndex + i, target: cloudIndex, value: s.actualCloudCost })),
+      ...seqData.map((s, i) => ({ source: baseIndex + i, target: proverIndex, value: s.actualProverCost })),
+      ...seqData.map((s, i) => ({ source: baseIndex + i, target: profitIndex, value: s.profit })),
+    ].filter((l) => l.value > 0);
+  }
 
   const data = { nodes, links };
 
