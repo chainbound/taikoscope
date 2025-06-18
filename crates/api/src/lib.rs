@@ -1378,8 +1378,10 @@ async fn l2_fees(
             l1_data_cost: r.l1_data_cost,
         })
         .filter(|r| {
-            if let Some(addr) = params.address.as_ref() {
-                r.address.eq_ignore_ascii_case(addr)
+            if let Some(target_address) = address {
+                // Compare against the normalized address format for consistency
+                let target_address_str = format!("0x{}", encode(target_address));
+                r.address == target_address_str
             } else {
                 true
             }
@@ -2417,6 +2419,59 @@ mod tests {
                 } ]
             })
         );
+    }
+
+    #[tokio::test]
+    async fn l2_fees_address_filtering_consistency() {
+        let mock = Mock::new();
+        #[derive(Serialize, Row)]
+        struct FeeRowTest {
+            sequencer: AddressBytes,
+            priority_fee: u128,
+            base_fee: u128,
+            l1_data_cost: Option<u128>,
+        }
+        #[derive(Serialize, Row)]
+        struct SumRow {
+            total: u128,
+        }
+
+        let test_address = AddressBytes([0x01; 20]);
+
+        // priority fee
+        mock.add(handlers::provide(vec![SumRow { total: 10 }]));
+        // base fee
+        mock.add(handlers::provide(vec![SumRow { total: 20 }]));
+        // l1 data cost
+        mock.add(handlers::provide(vec![SumRow { total: 5 }]));
+        // fees by sequencer - return multiple addresses to test filtering
+        mock.add(handlers::provide(vec![
+            FeeRowTest {
+                sequencer: test_address,
+                priority_fee: 10,
+                base_fee: 20,
+                l1_data_cost: Some(5),
+            },
+            FeeRowTest {
+                sequencer: AddressBytes([0x02; 20]),
+                priority_fee: 15,
+                base_fee: 25,
+                l1_data_cost: Some(8),
+            },
+        ]));
+
+        let app = build_app(mock.url());
+
+        // Test that address format variations work correctly
+        let uri = "/l2-fees?created[gte]=0&created[lte]=3600000&address=0x0101010101010101010101010101010101010101";
+        let body = send_request(app, uri).await;
+
+        // Should return aggregate data and only the matching sequencer
+        assert_eq!(body["priority_fee"], 10);
+        assert_eq!(body["base_fee"], 20);
+        assert_eq!(body["l1_data_cost"], 5);
+        assert_eq!(body["sequencers"].as_array().unwrap().len(), 1);
+        assert_eq!(body["sequencers"][0]["address"], "0x0101010101010101010101010101010101010101");
     }
 
     #[test]
