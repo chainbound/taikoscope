@@ -401,7 +401,7 @@ export const fetchL2BlockTimes = async (
     return { data: null, badRequest: res.badRequest, error: res.error };
   }
 
-  const data = res.data.blocks.slice(1).map((b) => ({
+  const data = res.data.blocks.map((b) => ({
     value: b.l2_block_number,
     timestamp: b.ms_since_prev_block / 1000,
     blockTime: new Date(b.block_time).getTime(),
@@ -428,7 +428,7 @@ export const fetchL2BlockTimesAggregated = async (
     return { data: null, badRequest: res.badRequest, error: res.error };
   }
 
-  const data = res.data.blocks.slice(1).map(
+  const data = res.data.blocks.map(
     (b): TimeSeriesData => ({
       value: b.l2_block_number,
       timestamp: b.ms_since_prev_block / 1000,
