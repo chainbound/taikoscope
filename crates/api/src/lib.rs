@@ -15,7 +15,8 @@ use axum::{
 use chrono::{Duration as ChronoDuration, TimeZone, Utc};
 
 use clickhouse_lib::{
-    AddressBytes, BlockFeeComponentRow, ClickhouseReader, L2BlockTimeRow, L2GasUsedRow, TimeRange,
+    AddressBytes, BlockFeeComponentRow, ClickhouseReader, L2BlockTimeRow, L2GasUsedRow,
+    TimeRange as CHTimeRange,
 };
 use futures::stream::Stream;
 use hex::encode;
@@ -24,9 +25,8 @@ use std::{convert::Infallible, time::Duration as StdDuration};
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 use validation::{
-    CommonQuery, PaginatedQuery, TimeRangeParams, has_time_range_params, range_duration,
-    resolve_time_range_enum, resolve_time_range_since, validate_pagination,
-    validate_range_exclusivity, validate_time_range,
+    CommonQuery, PaginatedQuery, TimeRange, TimeRangeParams, has_time_range_params, range_duration,
+    validate_pagination, validate_range_exclusivity, validate_time_range,
 };
 
 /// Default maximum number of requests allowed during the rate limiting period.
@@ -447,8 +447,8 @@ async fn reorgs(
     let has_time_range = has_time_range_params(&params.time_range);
     validate_range_exclusivity(has_time_range, false)?;
 
-    let since = resolve_time_range_since(&params.range, &params.time_range);
-    let events = state.client.get_l2_reorgs_since(since).await.map_err(|e| {
+    let range = TimeRange::try_from(&params).unwrap();
+    let events = state.client.get_l2_reorgs_since(range.from).await.map_err(|e| {
         tracing::error!(error = %e, "Failed to get reorg events");
         ErrorResponse::new(
             "database-error",
@@ -484,8 +484,8 @@ async fn active_gateways(
     let has_time_range = has_time_range_params(&params.time_range);
     validate_range_exclusivity(has_time_range, false)?;
 
-    let since = resolve_time_range_since(&params.range, &params.time_range);
-    let gateways = state.client.get_active_gateways_since(since).await.map_err(|e| {
+    let range = TimeRange::try_from(&params).unwrap();
+    let gateways = state.client.get_active_gateways_since(range.from).await.map_err(|e| {
         tracing::error!(error = %e, "Failed to get active gateways");
         ErrorResponse::new(
             "database-error",
@@ -522,7 +522,8 @@ async fn batch_posting_times(
     let has_time_range = has_time_range_params(&params.time_range);
     validate_range_exclusivity(has_time_range, false)?;
 
-    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
+    let range = TimeRange::try_from(&params).unwrap();
+    let time_range: CHTimeRange = range.into();
     let rows = match state.client.get_batch_posting_times(time_range).await {
         Ok(r) => r,
         Err(e) => {
@@ -562,7 +563,8 @@ async fn avg_blobs_per_batch(
     let has_time_range = has_time_range_params(&params.time_range);
     validate_range_exclusivity(has_time_range, false)?;
 
-    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
+    let range = TimeRange::try_from(&params).unwrap();
+    let time_range: CHTimeRange = range.into();
     let avg = match state.client.get_avg_blobs_per_batch(time_range).await {
         Ok(val) => val,
         Err(e) => {
@@ -602,7 +604,8 @@ async fn blobs_per_batch(
     let has_time_range = has_time_range_params(&params.time_range);
     validate_range_exclusivity(has_time_range, false)?;
 
-    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
+    let range = TimeRange::try_from(&params).unwrap();
+    let time_range: CHTimeRange = range.into();
     let batches = match state.client.get_blobs_per_batch(time_range).await {
         Ok(rows) => rows,
         Err(e) => {
@@ -642,7 +645,8 @@ async fn prove_times(
     let has_time_range = has_time_range_params(&params.time_range);
     validate_range_exclusivity(has_time_range, false)?;
 
-    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
+    let range = TimeRange::try_from(&params).unwrap();
+    let time_range: CHTimeRange = range.into();
     let batches = match state.client.get_prove_times(time_range).await {
         Ok(rows) => rows,
         Err(e) => {
@@ -682,7 +686,8 @@ async fn verify_times(
     let has_time_range = has_time_range_params(&params.time_range);
     validate_range_exclusivity(has_time_range, false)?;
 
-    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
+    let range = TimeRange::try_from(&params).unwrap();
+    let time_range: CHTimeRange = range.into();
     let batches = match state.client.get_verify_times(time_range).await {
         Ok(rows) => rows,
         Err(e) => {
@@ -722,7 +727,8 @@ async fn l1_block_times(
     let has_time_range = has_time_range_params(&params.time_range);
     validate_range_exclusivity(has_time_range, false)?;
 
-    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
+    let range = TimeRange::try_from(&params).unwrap();
+    let time_range: CHTimeRange = range.into();
     let blocks = match state.client.get_l1_block_times(time_range).await {
         Ok(rows) => rows,
         Err(e) => {
@@ -759,7 +765,8 @@ async fn l2_block_times_aggregated(
     let has_time_range = has_time_range_params(&params.time_range);
     validate_range_exclusivity(has_time_range, false)?;
 
-    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
+    let range = TimeRange::try_from(&params).unwrap();
+    let time_range: CHTimeRange = range.into();
     let address = if let Some(addr) = params.address.as_ref() {
         match addr.parse::<Address>() {
             Ok(a) => Some(AddressBytes::from(a)),
@@ -814,7 +821,8 @@ async fn l2_gas_used_aggregated(
     let has_time_range = has_time_range_params(&params.time_range);
     validate_range_exclusivity(has_time_range, false)?;
 
-    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
+    let range = TimeRange::try_from(&params).unwrap();
+    let time_range: CHTimeRange = range.into();
     let address = if let Some(addr) = params.address.as_ref() {
         match addr.parse::<Address>() {
             Ok(a) => Some(AddressBytes::from(a)),
@@ -872,7 +880,8 @@ async fn l2_tps(
     let has_time_range = has_time_range_params(&params.time_range);
     validate_range_exclusivity(has_time_range, false)?;
 
-    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
+    let range = TimeRange::try_from(&params).unwrap();
+    let time_range: CHTimeRange = range.into();
     let address = if let Some(addr) = params.address.as_ref() {
         match addr.parse::<Address>() {
             Ok(a) => Some(AddressBytes::from(a)),
@@ -928,8 +937,8 @@ async fn sequencer_distribution(
     let has_time_range = has_time_range_params(&params.time_range);
     validate_range_exclusivity(has_time_range, false)?;
 
-    let since = resolve_time_range_since(&params.range, &params.time_range);
-    let rows = state.client.get_sequencer_distribution_since(since).await.map_err(|e| {
+    let range = TimeRange::try_from(&params).unwrap();
+    let rows = state.client.get_sequencer_distribution_since(range.from).await.map_err(|e| {
         tracing::error!(error = %e, "Failed to get sequencer distribution");
         ErrorResponse::new(
             "database-error",
@@ -977,8 +986,8 @@ async fn sequencer_blocks(
     let has_time_range = has_time_range_params(&params.time_range);
     validate_range_exclusivity(has_time_range, false)?;
 
-    let since = resolve_time_range_since(&params.range, &params.time_range);
-    let rows = state.client.get_sequencer_blocks_since(since).await.map_err(|e| {
+    let range = TimeRange::try_from(&params).unwrap();
+    let rows = state.client.get_sequencer_blocks_since(range.from).await.map_err(|e| {
         tracing::error!(error = %e, "Failed to get sequencer blocks");
         ErrorResponse::new(
             "database-error",
@@ -1035,7 +1044,7 @@ async fn block_transactions_aggregated(
     let has_time_range = has_time_range_params(&params.time_range);
     validate_range_exclusivity(has_time_range, false)?;
 
-    let since = resolve_time_range_since(&params.range, &params.time_range);
+    let range = TimeRange::try_from(&params).unwrap();
     let address = if let Some(addr) = params.address.as_ref() {
         match addr.parse::<Address>() {
             Ok(a) => Some(AddressBytes::from(a)),
@@ -1055,7 +1064,13 @@ async fn block_transactions_aggregated(
 
     let rows = match state
         .client
-        .get_block_transactions_paginated(since, MAX_BLOCK_TRANSACTIONS_LIMIT, None, None, address)
+        .get_block_transactions_paginated(
+            range.from,
+            MAX_BLOCK_TRANSACTIONS_LIMIT,
+            None,
+            None,
+            address,
+        )
         .await
     {
         Ok(r) => r,
@@ -1080,7 +1095,7 @@ async fn block_transactions_aggregated(
         })
         .collect();
 
-    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
+    let time_range: CHTimeRange = range.into();
     let bucket = bucket_size_from_range(&time_range);
     let blocks = aggregate_block_transactions(blocks, bucket);
     tracing::info!(count = blocks.len(), "Returning aggregated block transactions");
@@ -1114,7 +1129,8 @@ async fn l2_block_times(
     let has_slot_range = params.starting_after.is_some() || params.ending_before.is_some();
     validate_range_exclusivity(has_time_range, has_slot_range)?;
 
-    let since = resolve_time_range_since(&params.common.range, &params.common.time_range);
+    let range = TimeRange::try_from(&params.common).unwrap();
+    let since = range.from;
     let address = if let Some(addr) = params.common.address.as_ref() {
         match addr.parse::<Address>() {
             Ok(a) => Some(AddressBytes::from(a)),
@@ -1186,7 +1202,8 @@ async fn l2_gas_used(
     let has_slot_range = params.starting_after.is_some() || params.ending_before.is_some();
     validate_range_exclusivity(has_time_range, has_slot_range)?;
 
-    let since = resolve_time_range_since(&params.common.range, &params.common.time_range);
+    let range = TimeRange::try_from(&params.common).unwrap();
+    let since = range.from;
     let address = if let Some(addr) = params.common.address.as_ref() {
         match addr.parse::<Address>() {
             Ok(a) => Some(AddressBytes::from(a)),
@@ -1258,7 +1275,8 @@ async fn block_transactions(
     let has_slot_range = params.starting_after.is_some() || params.ending_before.is_some();
     validate_range_exclusivity(has_time_range, has_slot_range)?;
 
-    let since = resolve_time_range_since(&params.common.range, &params.common.time_range);
+    let range = TimeRange::try_from(&params.common).unwrap();
+    let since = range.from;
     let address = if let Some(addr) = params.common.address.as_ref() {
         match addr.parse::<Address>() {
             Ok(a) => Some(AddressBytes::from(a)),
@@ -1334,7 +1352,8 @@ async fn l2_fees(
     let has_time_range = has_time_range_params(&params.time_range);
     validate_range_exclusivity(has_time_range, false)?;
 
-    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
+    let range = TimeRange::try_from(&params).unwrap();
+    let time_range: CHTimeRange = range.into();
     let address = if let Some(addr) = params.address.as_ref() {
         match addr.parse::<Address>() {
             Ok(a) => Some(AddressBytes::from(a)),
@@ -1392,7 +1411,8 @@ async fn l2_fee_components(
     let has_time_range = has_time_range_params(&params.time_range);
     validate_range_exclusivity(has_time_range, false)?;
 
-    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
+    let range = TimeRange::try_from(&params).unwrap();
+    let time_range: CHTimeRange = range.into();
     let address = if let Some(addr) = params.address.as_ref() {
         match addr.parse::<Address>() {
             Ok(a) => Some(AddressBytes::from(a)),
@@ -1444,7 +1464,8 @@ async fn l2_fee_components_aggregated(
     let has_time_range = has_time_range_params(&params.time_range);
     validate_range_exclusivity(has_time_range, false)?;
 
-    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
+    let range = TimeRange::try_from(&params).unwrap();
+    let time_range: CHTimeRange = range.into();
     let address = if let Some(addr) = params.address.as_ref() {
         match addr.parse::<Address>() {
             Ok(a) => Some(AddressBytes::from(a)),
@@ -1499,8 +1520,9 @@ async fn dashboard_data(
     let has_time_range = has_time_range_params(&params.time_range);
     validate_range_exclusivity(has_time_range, false)?;
 
-    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
-    let since = resolve_time_range_since(&params.range, &params.time_range);
+    let range = TimeRange::try_from(&params).unwrap();
+    let time_range: CHTimeRange = range.into();
+    let since = range.from;
     let address = params.address.as_ref().and_then(|addr| match addr.parse::<Address>() {
         Ok(a) => Some(AddressBytes::from(a)),
         Err(e) => {
@@ -1605,7 +1627,8 @@ async fn l1_data_cost(
     let has_time_range = has_time_range_params(&params.time_range);
     validate_range_exclusivity(has_time_range, false)?;
 
-    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
+    let range = TimeRange::try_from(&params).unwrap();
+    let time_range: CHTimeRange = range.into();
     let rows = match state.client.get_l1_data_costs(time_range).await {
         Ok(r) => r,
         Err(e) => {
@@ -1661,7 +1684,7 @@ pub fn router(state: ApiState) -> Router {
         .with_state(state)
 }
 
-const fn bucket_size_from_range(range: &TimeRange) -> u64 {
+const fn bucket_size_from_range(range: &CHTimeRange) -> u64 {
     let hours = range.seconds() / 3600;
     if hours <= 1 {
         1

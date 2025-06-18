@@ -3,8 +3,9 @@
 use crate::ErrorResponse;
 use axum::http::StatusCode;
 use chrono::{DateTime, Duration as ChronoDuration, TimeZone, Utc};
-use clickhouse_lib::TimeRange;
+use clickhouse_lib::TimeRange as CHTimeRange;
 use serde::Deserialize;
+use std::convert::Infallible;
 use utoipa::{IntoParams, ToSchema};
 
 /// Maximum allowed timestamp (reasonable upper bound to prevent overflow)
@@ -51,6 +52,58 @@ pub struct PaginatedQuery {
     pub starting_after: Option<u64>,
     /// Return items before this cursor (exclusive)
     pub ending_before: Option<u64>,
+}
+
+/// Effective time range derived from query parameters
+#[derive(Debug, Clone, Copy)]
+pub struct TimeRange {
+    /// Start of the range
+    pub from: DateTime<Utc>,
+    /// End of the range
+    pub to: DateTime<Utc>,
+}
+
+impl TimeRange {
+    /// Duration covered by the range
+    pub fn duration(&self) -> ChronoDuration {
+        self.to.signed_duration_since(self.from)
+    }
+
+    /// Length of the range in seconds
+    pub fn seconds(&self) -> u64 {
+        self.duration().num_seconds().max(0) as u64
+    }
+}
+
+impl TryFrom<&CommonQuery> for TimeRange {
+    type Error = Infallible;
+
+    fn try_from(query: &CommonQuery) -> Result<Self, Self::Error> {
+        let now = Utc::now();
+
+        let from = query
+            .time_range
+            .created_gt
+            .map(|v| v + 1)
+            .or(query.time_range.created_gte)
+            .and_then(|ms| Utc.timestamp_millis_opt(ms as i64).single())
+            .unwrap_or_else(|| now - range_duration(&query.range));
+
+        let to = query
+            .time_range
+            .created_lt
+            .or(query.time_range.created_lte)
+            .and_then(|ms| Utc.timestamp_millis_opt(ms as i64).single())
+            .unwrap_or(now);
+
+        Ok(Self { from, to })
+    }
+}
+
+impl From<TimeRange> for CHTimeRange {
+    fn from(range: TimeRange) -> Self {
+        Self::from_duration(range.duration())
+    }
 }
 
 /// Validate time range parameters for logical consistency
@@ -181,54 +234,6 @@ pub fn range_duration(range: &Option<String>) -> ChronoDuration {
     }
 
     ChronoDuration::hours(1)
-}
-
-/// Resolve time range to `TimeRange` enum, prioritizing explicit time range params
-pub fn resolve_time_range_enum(range: &Option<String>, time_params: &TimeRangeParams) -> TimeRange {
-    // If explicit time range parameters are provided, derive the duration from them
-    if has_time_range_params(time_params) {
-        let now = Utc::now();
-
-        let start = time_params
-            .created_gt
-            .map(|v| v + 1)
-            .or(time_params.created_gte)
-            .and_then(|ms| Utc.timestamp_millis_opt(ms as i64).single())
-            .unwrap_or_else(|| now - ChronoDuration::hours(1));
-
-        let end = time_params
-            .created_lt
-            .or(time_params.created_lte)
-            .and_then(|ms| Utc.timestamp_millis_opt(ms as i64).single())
-            .unwrap_or(now);
-
-        let duration = end.signed_duration_since(start).max(ChronoDuration::zero());
-        return TimeRange::from_duration(duration);
-    }
-
-    // Otherwise use the range parameter or default
-    TimeRange::from_duration(range_duration(range))
-}
-
-/// Resolve time range to `DateTime` for endpoints that need since timestamps
-pub fn resolve_time_range_since(
-    range: &Option<String>,
-    time_params: &TimeRangeParams,
-) -> DateTime<Utc> {
-    let now = Utc::now();
-
-    // If explicit time range parameters are provided, use them
-    let lower_bound = time_params.created_gt.map(|v| v + 1).or(time_params.created_gte);
-
-    if let Some(timestamp_ms) = lower_bound {
-        if let Some(dt) = Utc.timestamp_millis_opt(timestamp_ms as i64).single() {
-            // No time limit enforcement - return the requested time
-            return dt;
-        }
-    }
-
-    // Fall back to range parameter or default - no time limit enforcement
-    now - range_duration(range)
 }
 
 /// Custom deserializer that converts a URL-encoded form value into a `u64`.
@@ -448,5 +453,44 @@ mod tests {
 
         let res: Wrapper = serde_urlencoded::from_str("value=42").unwrap();
         assert_eq!(res.value, Some(42));
+    }
+
+    #[test]
+    fn test_time_range_from_defaults() {
+        let query = CommonQuery {
+            range: None,
+            address: None,
+            time_range: TimeRangeParams {
+                created_gt: None,
+                created_gte: None,
+                created_lt: None,
+                created_lte: None,
+            },
+        };
+
+        let range = TimeRange::try_from(&query).unwrap();
+        let diff = range.to.signed_duration_since(range.from);
+        assert_eq!(diff.num_hours(), 1);
+    }
+
+    #[test]
+    fn test_time_range_from_params() {
+        let now = Utc::now();
+        let start = now - ChronoDuration::hours(2);
+        let end = now - ChronoDuration::hours(1);
+        let query = CommonQuery {
+            range: None,
+            address: None,
+            time_range: TimeRangeParams {
+                created_gt: None,
+                created_gte: Some(start.timestamp_millis() as u64),
+                created_lt: Some(end.timestamp_millis() as u64),
+                created_lte: None,
+            },
+        };
+
+        let range = TimeRange::try_from(&query).unwrap();
+        assert_eq!(range.from.timestamp(), start.timestamp());
+        assert_eq!(range.to.timestamp(), end.timestamp());
     }
 }
