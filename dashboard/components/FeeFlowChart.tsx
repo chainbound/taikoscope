@@ -1,7 +1,7 @@
 import React from 'react';
 import { ResponsiveContainer, Sankey, Tooltip } from 'recharts';
 import useSWR from 'swr';
-import { fetchDashboardData } from '../services/apiService';
+import { fetchL2Fees } from '../services/apiService';
 import { useEthPrice } from '../services/priceService';
 import { TimeRange } from '../types';
 import { rangeToHours } from '../utils/timeRange';
@@ -19,14 +19,15 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
   proverCost,
   address,
 }) => {
-  const { data: dashRes } = useSWR(['dashboardData', timeRange, address], () =>
-    fetchDashboardData(timeRange, address),
+  const { data: feeRes } = useSWR(['l2Fees', timeRange, address], () =>
+    fetchL2Fees(timeRange, address),
   );
   const { data: ethPrice = 0 } = useEthPrice();
 
-  const priority = dashRes?.data?.priority_fee ?? null;
-  const base = dashRes?.data?.base_fee ?? null;
-  if (priority == null && base == null) {
+  const priority = feeRes?.data?.priority_fee ?? null;
+  const base = feeRes?.data?.base_fee ?? null;
+  const l1DataCost = feeRes?.data?.l1_data_cost ?? null;
+  if (priority == null && base == null && l1DataCost == null) {
     return (
       <div className="flex items-center justify-center h-full text-gray-500">
         No data available
@@ -36,10 +37,15 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
 
   const priorityUsd = ((priority ?? 0) / 1e18) * ethPrice;
   const baseUsd = ((base ?? 0) / 1e18) * ethPrice;
+  const l1DataCostUsd = ((l1DataCost ?? 0) / 1e18) * ethPrice;
   const hours = rangeToHours(timeRange);
   const MONTH_HOURS = 30 * 24;
   const cloudCostScaled = (cloudCost / MONTH_HOURS) * hours;
   const proverCostScaled = (proverCost / MONTH_HOURS) * hours;
+  const profitUsd = Math.max(
+    priorityUsd - cloudCostScaled - proverCostScaled - l1DataCostUsd,
+    0,
+  );
 
   const data = {
     nodes: [
@@ -48,12 +54,16 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
       { name: 'Taiko DAO' },
       { name: 'Cloud Providers' },
       { name: 'Provers' },
+      { name: 'L1 Data' },
+      { name: 'Sequencer Profits' },
     ],
     links: [
       { source: 0, target: 1, value: priorityUsd, name: 'Priority Fee' },
       { source: 0, target: 2, value: baseUsd, name: 'Base Fee' },
       { source: 1, target: 3, value: cloudCostScaled, name: 'Cloud Cost' },
       { source: 1, target: 4, value: proverCostScaled, name: 'Prover Cost' },
+      { source: 1, target: 5, value: l1DataCostUsd, name: 'L1 Data Cost' },
+      { source: 1, target: 6, value: profitUsd, name: 'Sequencer Profit' },
     ],
   };
 
