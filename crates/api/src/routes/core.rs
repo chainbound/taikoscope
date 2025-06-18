@@ -34,6 +34,7 @@ type RangeQuery = CommonQuery;
     ),
     tag = "taikoscope"
 )]
+/// Get the timestamp of the latest L2 block
 pub async fn l2_head(State(state): State<ApiState>) -> Result<Json<L2HeadResponse>, ErrorResponse> {
     let ts = state.client.get_last_l2_head_time().await.map_err(|e| {
         tracing::error!("Failed to get L2 head time: {}", e);
@@ -53,6 +54,7 @@ pub async fn l2_head(State(state): State<ApiState>) -> Result<Json<L2HeadRespons
     ),
     tag = "taikoscope"
 )]
+/// Get the timestamp of the latest L1 block
 pub async fn l1_head(State(state): State<ApiState>) -> Result<Json<L1HeadResponse>, ErrorResponse> {
     let ts = state.client.get_last_l1_head_time().await.map_err(|e| {
         tracing::error!("Failed to get L1 head time: {}", e);
@@ -72,6 +74,7 @@ pub async fn l1_head(State(state): State<ApiState>) -> Result<Json<L1HeadRespons
     ),
     tag = "taikoscope"
 )]
+/// Get the block number of the latest L2 block
 pub async fn l2_head_block(
     State(state): State<ApiState>,
 ) -> Result<Json<L2HeadBlockResponse>, ErrorResponse> {
@@ -91,6 +94,7 @@ pub async fn l2_head_block(
     ),
     tag = "taikoscope"
 )]
+/// Get the block number of the latest L1 block
 pub async fn l1_head_block(
     State(state): State<ApiState>,
 ) -> Result<Json<L1HeadBlockResponse>, ErrorResponse> {
@@ -113,6 +117,7 @@ pub async fn l1_head_block(
     ),
     tag = "taikoscope"
 )]
+/// Get list of gateway addresses that have been active in the specified time range
 pub async fn active_gateways(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
@@ -146,6 +151,7 @@ pub async fn active_gateways(
     ),
     tag = "taikoscope"
 )]
+/// Get batch posting timing metrics for the specified time range
 pub async fn batch_posting_times(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
@@ -181,6 +187,7 @@ pub async fn batch_posting_times(
     ),
     tag = "taikoscope"
 )]
+/// Get the average number of blobs per batch for the specified time range
 pub async fn avg_blobs_per_batch(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
@@ -216,6 +223,7 @@ pub async fn avg_blobs_per_batch(
     ),
     tag = "taikoscope"
 )]
+/// Get detailed blob count information for each batch in the specified time range
 pub async fn blobs_per_batch(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
@@ -251,6 +259,7 @@ pub async fn blobs_per_batch(
     ),
     tag = "taikoscope"
 )]
+/// Get batch proving time metrics for the specified time range
 pub async fn prove_times(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
@@ -286,6 +295,7 @@ pub async fn prove_times(
     ),
     tag = "taikoscope"
 )]
+/// Get batch verification time metrics for the specified time range
 pub async fn verify_times(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
@@ -321,6 +331,7 @@ pub async fn verify_times(
     ),
     tag = "taikoscope"
 )]
+/// Get L1 block timing information for the specified time range
 pub async fn l1_block_times(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
@@ -356,6 +367,7 @@ pub async fn l1_block_times(
     ),
     tag = "taikoscope"
 )]
+/// Get the distribution of blocks and TPS across different sequencers
 pub async fn sequencer_distribution(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
@@ -403,6 +415,7 @@ type SequencerBlocksQuery = CommonQuery;
     ),
     tag = "taikoscope"
 )]
+/// Get the list of blocks produced by each sequencer
 pub async fn sequencer_blocks(
     Query(params): Query<SequencerBlocksQuery>,
     State(state): State<ApiState>,
@@ -459,6 +472,7 @@ pub async fn sequencer_blocks(
     ),
     tag = "taikoscope"
 )]
+/// Get L1 data posting cost information for the specified time range
 pub async fn l1_data_cost(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,

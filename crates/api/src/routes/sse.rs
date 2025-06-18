@@ -9,6 +9,7 @@ use axum::{
 use futures::stream::Stream;
 use std::{convert::Infallible, time::Duration as StdDuration};
 
+/// Server-sent events stream for L2 head block number updates
 pub async fn sse_l2_head(
     State(state): State<ApiState>,
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
@@ -78,6 +79,7 @@ pub async fn sse_l2_head(
     Sse::new(stream).keep_alive(keep_alive)
 }
 
+/// Server-sent events stream for L1 head block number updates
 pub async fn sse_l1_head(
     State(state): State<ApiState>,
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {

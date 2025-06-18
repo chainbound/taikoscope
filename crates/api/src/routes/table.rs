@@ -33,6 +33,7 @@ type BlockTransactionsQuery = PaginatedQuery;
     ),
     tag = "taikoscope"
 )]
+/// Get paginated list of L2 blockchain reorganization events
 pub async fn reorgs(
     Query(params): Query<PaginatedQuery>,
     State(state): State<ApiState>,
@@ -72,6 +73,7 @@ pub async fn reorgs(
     ),
     tag = "taikoscope"
 )]
+/// Get paginated L2 transactions per second data
 pub async fn l2_tps(
     Query(params): Query<PaginatedQuery>,
     State(state): State<ApiState>,
@@ -131,6 +133,7 @@ pub async fn l2_tps(
     ),
     tag = "taikoscope"
 )]
+/// Get paginated L2 block timing information
 pub async fn l2_block_times(
     Query(params): Query<PaginatedQuery>,
     State(state): State<ApiState>,
@@ -198,6 +201,7 @@ pub async fn l2_block_times(
     ),
     tag = "taikoscope"
 )]
+/// Get paginated L2 gas usage information per block
 pub async fn l2_gas_used(
     Query(params): Query<PaginatedQuery>,
     State(state): State<ApiState>,
@@ -265,6 +269,7 @@ pub async fn l2_gas_used(
     ),
     tag = "taikoscope"
 )]
+/// Get paginated transaction count information per block with sequencer details
 pub async fn block_transactions(
     Query(params): Query<BlockTransactionsQuery>,
     State(state): State<ApiState>,

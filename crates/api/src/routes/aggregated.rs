@@ -37,6 +37,7 @@ type RangeQuery = CommonQuery;
     ),
     tag = "taikoscope"
 )]
+/// Get aggregated L2 block times with automatic bucketing based on time range
 pub async fn l2_block_times_aggregated(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
@@ -87,6 +88,7 @@ pub async fn l2_block_times_aggregated(
     ),
     tag = "taikoscope"
 )]
+/// Get aggregated L2 gas usage with automatic bucketing based on time range
 pub async fn l2_gas_used_aggregated(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
@@ -137,6 +139,7 @@ pub async fn l2_gas_used_aggregated(
     ),
     tag = "taikoscope"
 )]
+/// Get aggregated block transaction counts with automatic bucketing based on time range
 pub async fn block_transactions_aggregated(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
@@ -204,6 +207,7 @@ pub async fn block_transactions_aggregated(
     ),
     tag = "taikoscope"
 )]
+/// Get L2 fee breakdown including priority fees, base fees, and L1 data costs by sequencer
 pub async fn l2_fees(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
@@ -273,6 +277,7 @@ pub async fn l2_fees(
     ),
     tag = "taikoscope"
 )]
+/// Get detailed fee components per block showing priority fee, base fee, and L1 data cost
 pub async fn l2_fee_components(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
@@ -320,6 +325,7 @@ pub async fn l2_fee_components(
     ),
     tag = "taikoscope"
 )]
+/// Get aggregated fee components with automatic bucketing based on time range
 pub async fn l2_fee_components_aggregated(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
@@ -370,6 +376,7 @@ pub async fn l2_fee_components_aggregated(
     ),
     tag = "taikoscope"
 )]
+/// Get comprehensive dashboard data including metrics, block info, and operational statistics
 pub async fn dashboard_data(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
