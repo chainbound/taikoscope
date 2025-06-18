@@ -64,6 +64,7 @@ pub const MAX_TABLE_LIMIT: u64 = 50000;
         sequencer_distribution,
         sequencer_blocks,
         l2_fees,
+        l2_fees_by_sequencer,
         l2_fee_components,
         dashboard_data,
         l1_data_cost
@@ -109,6 +110,8 @@ pub const MAX_TABLE_LIMIT: u64 = 50000;
             PreconfDataResponse,
             L2FeesResponse,
             FeeComponentsResponse,
+            SequencerFeeRow,
+            L2FeesBySequencerResponse,
             DashboardDataResponse,
             api_types::ErrorResponse,
             L1DataCostResponse
@@ -1373,6 +1376,53 @@ async fn l2_fees(
 
 #[utoipa::path(
     get,
+    path = "/l2-fees/by-sequencer",
+    params(
+        RangeQuery
+    ),
+    responses(
+        (status = 200, description = "Sequencer fee breakdown", body = L2FeesBySequencerResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
+    ),
+    tag = "taikoscope"
+)]
+async fn l2_fees_by_sequencer(
+    Query(params): Query<RangeQuery>,
+    State(state): State<ApiState>,
+) -> Result<Json<L2FeesBySequencerResponse>, ErrorResponse> {
+    validate_time_range(&params.time_range)?;
+
+    let has_time_range = has_time_range_params(&params.time_range);
+    validate_range_exclusivity(has_time_range, false)?;
+
+    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
+
+    let rows = state.client.get_l2_fees_by_sequencer(time_range).await.map_err(|e| {
+        tracing::error!(error = %e, "Failed to get fees by sequencer");
+        ErrorResponse::new(
+            "database-error",
+            "Database error",
+            StatusCode::INTERNAL_SERVER_ERROR,
+            e.to_string(),
+        )
+    })?;
+
+    let sequencers: Vec<SequencerFeeRow> = rows
+        .into_iter()
+        .map(|r| SequencerFeeRow {
+            address: format!("0x{}", encode(r.sequencer)),
+            priority_fee: r.priority_fee,
+            base_fee: r.base_fee,
+            l1_data_cost: r.l1_data_cost,
+        })
+        .collect();
+
+    tracing::info!(count = sequencers.len(), "Returning fees by sequencer");
+    Ok(Json(L2FeesBySequencerResponse { sequencers }))
+}
+
+#[utoipa::path(
+    get,
     path = "/l2-fee-components",
     params(
         RangeQuery
@@ -1650,6 +1700,7 @@ pub fn router(state: ApiState) -> Router {
         .route("/block-transactions", get(block_transactions))
         .route("/block-transactions/aggregated", get(block_transactions_aggregated))
         .route("/l2-fees", get(l2_fees))
+        .route("/l2-fees/by-sequencer", get(l2_fees_by_sequencer))
         .route("/l2-fee-components", get(l2_fee_components))
         .route("/l2-fee-components/aggregated", get(l2_fee_components_aggregated))
         .route("/dashboard-data", get(dashboard_data))
@@ -2355,6 +2406,31 @@ mod tests {
         );
     }
 
+    #[tokio::test]
+    async fn l2_fees_by_sequencer_endpoint() {
+        let mock = Mock::new();
+        #[derive(Serialize, Row)]
+        struct FeeRowTest {
+            sequencer: AddressBytes,
+            priority_fee: u128,
+            base_fee: u128,
+            l1_data_cost: Option<u128>,
+        }
+        mock.add(handlers::provide(vec![FeeRowTest {
+            sequencer: AddressBytes([1u8; 20]),
+            priority_fee: 10,
+            base_fee: 20,
+            l1_data_cost: Some(5),
+        }]));
+        let app = build_app(mock.url());
+        let body =
+            send_request(app, "/l2-fees/by-sequencer?created[gte]=0&created[lte]=3600000").await;
+        assert_eq!(
+            body,
+            json!({ "sequencers": [ { "address": "0x0101010101010101010101010101010101010101", "priority_fee": 10, "base_fee": 20, "l1_data_cost": 5 } ] })
+        );
+    }
+
     #[test]
     fn range_duration_clamps_negative_hours() {
         let d = range_duration(&Some("-5h".to_owned()));
@@ -2445,6 +2521,7 @@ mod tests {
             "/block-transactions",
             "/block-transactions/aggregated",
             "/l2-fees",
+            "/l2-fees/by-sequencer",
             "/l2-fee-components",
             "/dashboard-data",
             "/l1-data-cost",

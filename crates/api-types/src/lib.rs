@@ -294,6 +294,26 @@ pub struct BlockTransactionsResponse {
     pub blocks: Vec<BlockTransactionsItem>,
 }
 
+/// Aggregated L2 fees for a sequencer.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct SequencerFeeRow {
+    /// Sequencer address.
+    pub address: String,
+    /// Sum of priority fees for the sequencer.
+    pub priority_fee: u128,
+    /// 75% of the sum of base fees for the sequencer.
+    pub base_fee: u128,
+    /// Total L1 data posting cost for the sequencer.
+    pub l1_data_cost: Option<u128>,
+}
+
+/// L2 fees grouped by sequencer.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct L2FeesBySequencerResponse {
+    /// Fees aggregated for each sequencer.
+    pub sequencers: Vec<SequencerFeeRow>,
+}
+
 /// Blob count per batch.
 #[derive(Debug, Serialize, ToSchema)]
 pub struct BatchBlobsResponse {
