@@ -171,7 +171,7 @@ pub struct AvgL2TpsResponse {
 pub struct L2FeesResponse {
     /// Sum of priority fees for the range.
     pub priority_fee: Option<u128>,
-    /// 75% of the sum of base fees for the range.
+    /// Sum of base fees for the range.
     pub base_fee: Option<u128>,
     /// Total L1 data posting cost for the range.
     pub l1_data_cost: Option<u128>,
@@ -301,7 +301,7 @@ pub struct SequencerFeeRow {
     pub address: String,
     /// Sum of priority fees for the sequencer.
     pub priority_fee: u128,
-    /// 75% of the sum of base fees for the sequencer.
+    /// Sum of base fees for the sequencer.
     pub base_fee: u128,
     /// Total L1 data posting cost for the sequencer.
     pub l1_data_cost: Option<u128>,
@@ -376,7 +376,7 @@ pub struct DashboardDataResponse {
     pub l1_block: Option<u64>,
     /// Sum of priority fees for the range.
     pub priority_fee: Option<u128>,
-    /// 75% of the sum of base fees for the range.
+    /// Sum of base fees for the range.
     pub base_fee: Option<u128>,
     /// Estimated infrastructure cost in USD for the requested range.
     pub cloud_cost: Option<f64>,

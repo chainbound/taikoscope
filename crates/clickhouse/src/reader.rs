@@ -1297,7 +1297,7 @@ impl ClickhouseReader {
         let mut query = format!(
             "SELECT h.l2_block_number, \
                     sum_priority_fee AS priority_fee, \
-                    toUInt128(sum_base_fee * 3 / 4) AS base_fee, \
+                    sum_base_fee AS base_fee, \
                     toNullable(dc.cost) AS l1_data_cost \
              FROM {db}.l2_head_events h \
              LEFT JOIN {db}.l1_data_costs dc \
@@ -1382,7 +1382,7 @@ impl ClickhouseReader {
         }
 
         let mut query = format!(
-            "SELECT sum(sum_priority_fee + toUInt128(sum_base_fee * 3 / 4)) AS total \
+            "SELECT sum(sum_priority_fee + sum_base_fee) AS total \
              FROM {db}.l2_head_events h \
              WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
                AND {filter}",
@@ -1434,7 +1434,7 @@ impl ClickhouseReader {
         Ok(Some(row.total))
     }
 
-    /// Get 75% of the total base fee for the given range
+    /// Get the total base fee for the given range
     pub async fn get_l2_base_fee(
         &self,
         sequencer: Option<AddressBytes>,
@@ -1446,7 +1446,7 @@ impl ClickhouseReader {
         }
 
         let mut query = format!(
-            "SELECT sum(toUInt128(sum_base_fee * 3 / 4)) AS total \
+            "SELECT sum(sum_base_fee) AS total \
              FROM {db}.l2_head_events h \
              WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
                AND {filter}",
@@ -1479,7 +1479,7 @@ impl ClickhouseReader {
         let query = format!(
             "SELECT h.sequencer,\
                     sum(sum_priority_fee) AS priority_fee,\
-                    sum(toUInt128(sum_base_fee * 3 / 4)) AS base_fee,\
+                    sum(sum_base_fee) AS base_fee,\
                     sum(dc.cost) AS l1_data_cost\
              FROM {db}.l2_head_events h\
              LEFT JOIN {db}.l1_data_costs dc\

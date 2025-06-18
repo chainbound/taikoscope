@@ -45,7 +45,8 @@ const SankeyNode = ({ x, y, width, height, payload }: any) => {
         {payload.name}
         {formattedValue && (
           <tspan fill="#6b7280" fontSize={11}>
-            {' '}({formattedValue})
+            {' '}
+            ({formattedValue})
           </tspan>
         )}
       </text>
@@ -78,6 +79,8 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
   // Convert fees to USD
   const priorityFeeUsd = ((priorityFee ?? 0) / WEI_TO_ETH) * ethPrice;
   const baseFeeUsd = ((baseFee ?? 0) / WEI_TO_ETH) * ethPrice;
+  const baseFeeSeqUsd = baseFeeUsd * 0.75;
+  const baseFeeDaoUsd = baseFeeUsd * 0.25;
 
   // Scale operational costs to the selected time range
   const hours = rangeToHours(timeRange);
@@ -85,7 +88,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
   const proverCostScaled = (proverCost / MONTH_HOURS) * hours;
 
   // Calculate sequencer profit
-  const totalRevenue = priorityFeeUsd + baseFeeUsd;
+  const totalRevenue = priorityFeeUsd + baseFeeSeqUsd;
   const totalCosts = cloudCostScaled + proverCostScaled;
   const sequencerProfit = Math.max(0, totalRevenue - totalCosts);
 
@@ -98,6 +101,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
       { name: 'Cloud Cost', value: cloudCostScaled },
       { name: 'Prover Cost', value: proverCostScaled },
       { name: 'Profit', value: sequencerProfit },
+      { name: 'Taiko DAO', value: baseFeeDaoUsd },
     ],
     links: [
       {
@@ -108,7 +112,12 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
       {
         source: 1,
         target: 2,
-        value: baseFeeUsd,
+        value: baseFeeSeqUsd,
+      },
+      {
+        source: 1,
+        target: 6,
+        value: baseFeeDaoUsd,
       },
       {
         source: 2,
@@ -125,7 +134,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
         target: 5,
         value: sequencerProfit,
       },
-    ].filter(link => link.value > 0), // Only show links with positive values
+    ].filter((link) => link.value > 0), // Only show links with positive values
   };
 
   const formatTooltipValue = (value: number) => formatUsd(value);
