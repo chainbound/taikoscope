@@ -254,6 +254,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
       });
     },
     urlKey: 'block-tx',
+    supportsPagination: true,
   },
 
   'l2-block-times': {
@@ -350,5 +351,6 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
       })),
     urlKey: 'l2-tps',
     reverseOrder: true,
+    supportsPagination: true,
   },
 };

@@ -88,12 +88,6 @@ const responses: Record<string, Record<string, unknown>> = {
     events: [{ l1_block_number: 5, validator_addr: [1, 2] }],
   },
   [`/v1/forced-inclusions?${q15m}`]: { events: [{ blob_hash: [3, 4] }] },
-  [`/v1/l2-block-times?${q1h}`]: {
-    blocks: [
-      { l2_block_number: 1, block_time: '1970-01-01T00:00:01Z', ms_since_prev_block: 1000 },
-      { l2_block_number: 2, block_time: '1970-01-01T00:00:02Z', ms_since_prev_block: 2000 },
-    ],
-  },
   [`/v1/l2-block-times?${q1h}&limit=50`]: {
     blocks: [
       { l2_block_number: 1, block_time: '1970-01-01T00:00:01Z', ms_since_prev_block: 1000 },
@@ -101,12 +95,6 @@ const responses: Record<string, Record<string, unknown>> = {
     ],
   },
   [`/v1/l2-block-times?${q15m}&limit=50`]: {
-    blocks: [
-      { l2_block_number: 1, block_time: '1970-01-01T00:00:01Z', ms_since_prev_block: 1000 },
-      { l2_block_number: 2, block_time: '1970-01-01T00:00:02Z', ms_since_prev_block: 2000 },
-    ],
-  },
-  [`/v1/l2-block-times?${q15m}`]: {
     blocks: [
       { l2_block_number: 1, block_time: '1970-01-01T00:00:01Z', ms_since_prev_block: 1000 },
       { l2_block_number: 2, block_time: '1970-01-01T00:00:02Z', ms_since_prev_block: 2000 },
@@ -202,10 +190,10 @@ let intervals: IntervalId[] = [];
   fn: () => Promise<void> | void,
   ms: number,
 ): NodeJS.Timeout => {
-  const id: IntervalId = { fn, ms };
-  intervals.push(id);
-  return id as unknown as NodeJS.Timeout;
-};
+    const id: IntervalId = { fn, ms };
+    intervals.push(id);
+    return id as unknown as NodeJS.Timeout;
+  };
 (
   globalThis as unknown as { clearInterval: (id: NodeJS.Timeout) => void }
 ).clearInterval = (id: NodeJS.Timeout) => {
