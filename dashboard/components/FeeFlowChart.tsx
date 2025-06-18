@@ -6,6 +6,7 @@ import { fetchL2Fees } from '../services/apiService';
 import { useEthPrice } from '../services/priceService';
 import { TimeRange } from '../types';
 import { rangeToHours } from '../utils/timeRange';
+import { formatEth } from '../utils';
 
 interface FeeFlowChartProps {
   timeRange: TimeRange;
@@ -20,12 +21,29 @@ const WEI_TO_ETH = 1e18;
 // Format numbers as USD without grouping
 const formatUsd = (value: number) => `$${value.toFixed(2)}`;
 
-// Simple node component that renders label with USD value
-const SankeyNode = ({ x, y, width, height, payload }: any) => {
+// Determine if a node represents operational cost
+const isCostNode = (name: string) =>
+  name === 'Cloud Cost' || name === 'Prover Cost';
+
+interface SankeyNodeProps {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  payload: any;
+  ethPrice: number;
+}
+
+// Node component that displays cost nodes in USD and others in ETH
+const SankeyNode = ({ x, y, width, height, payload, ethPrice }: SankeyNodeProps) => {
   const nodeValue = payload?.value;
-  const formattedValue = nodeValue != null ? formatUsd(nodeValue) : '';
-  const isCostNode =
-    payload.name === 'Cloud Cost' || payload.name === 'Prover Cost';
+  let formattedValue = '';
+  if (nodeValue != null) {
+    formattedValue = isCostNode(payload.name)
+      ? formatUsd(nodeValue)
+      : formatEth((nodeValue / ethPrice) * WEI_TO_ETH);
+  }
+  const costNode = isCostNode(payload.name);
 
   return (
     <g>
@@ -34,7 +52,7 @@ const SankeyNode = ({ x, y, width, height, payload }: any) => {
         y={y}
         width={width}
         height={height}
-        fill={isCostNode ? '#ef4444' : TAIKO_PINK}
+        fill={costNode ? '#ef4444' : TAIKO_PINK}
         fillOpacity={0.8}
       />
       <text
@@ -200,7 +218,15 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
 
   const data = { nodes, links };
 
-  const formatTooltipValue = (value: number) => formatUsd(value);
+  const formatTooltipValue = (
+    value: number,
+    sourceName: string,
+    targetName: string,
+  ) => {
+    return isCostNode(sourceName) || isCostNode(targetName)
+      ? formatUsd(value)
+      : formatEth((value / ethPrice) * WEI_TO_ETH);
+  };
 
   const tooltipContent = ({ active, payload }: any) => {
     if (!active || !payload?.[0]) return null;
@@ -214,7 +240,9 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
         <p className="text-sm font-medium">
           {sourceNode.name} → {targetNode.name}
         </p>
-        <p className="text-sm text-gray-600">{formatTooltipValue(value)}</p>
+        <p className="text-sm text-gray-600">
+          {formatTooltipValue(value, sourceNode.name, targetNode.name)}
+        </p>
       </div>
     );
   };
@@ -224,7 +252,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
       <ResponsiveContainer width="100%" height="100%">
         <Sankey
           data={data}
-          node={SankeyNode}
+          node={(props) => <SankeyNode {...props} ethPrice={ethPrice} />}
           nodePadding={10}
           nodeWidth={10}
           margin={{ top: 10, right: 120, bottom: 10, left: 10 }}
