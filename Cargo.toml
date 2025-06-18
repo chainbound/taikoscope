@@ -10,14 +10,14 @@ exclude = [".github/"]
 repository = "https://github.com/chainbound/taikoscope"
 
 [workspace.dependencies]
-alloy = { version = "1.0.9", features = ["provider-ws"] }
-alloy-contract = { version = "1.0.9" }
-alloy-json-rpc = { version = "1.0.9" }
-alloy-rpc-client = "1.0.9"
-alloy-rpc-types-eth = "1.0.9"
+alloy = { version = "1.0.11", features = ["provider-ws"] }
+alloy-contract = { version = "1.0.11" }
+alloy-json-rpc = { version = "1.0.12" }
+alloy-rpc-client = "1.0.11"
+alloy-rpc-types-eth = "1.0.12"
 alloy-primitives = "1.2.0"
-alloy-consensus = "1.0.9"
-alloy-network-primitives = "1.0.9"
+alloy-consensus = "1.0.12"
+alloy-network-primitives = "1.0.12"
 alloy-sol-types = "1.2.0"
 alloy-sol-macro = "1.2.0"
 async-trait = "0.1"
@@ -46,7 +46,7 @@ url = { version = "2.5.4", features = ["serde"] }
 tower-http = { version = "0.5.2", features = ["cors", "trace"] }
 tower = { version = "0.5.2", features = ["limit"] }
 dashmap = "6.1"
-utoipa = { version = "5.3", features = ["axum_extras"] }
+utoipa = { version = "5.4", features = ["axum_extras"] }
 utoipa-swagger-ui = { version = "8.1", features = ["axum", "vendored"] }
 
 [workspace.lints]
