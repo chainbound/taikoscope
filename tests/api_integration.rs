@@ -99,6 +99,25 @@ struct NumRow {
     number: u64,
 }
 
+#[derive(Serialize, Row)]
+struct BlockNumRow {
+    l1_block_number: u64,
+}
+
+#[derive(Serialize, Row)]
+struct BlockTimeRow {
+    minute: u64,
+    block_number: u64,
+}
+
+#[derive(Serialize, Row)]
+struct FeeRow {
+    l2_block_number: u64,
+    priority_fee: u128,
+    base_fee: u128,
+    l1_data_cost: Option<u128>,
+}
+
 #[tokio::test]
 async fn l2_head_block_integration() {
     let mock = Mock::new();
@@ -190,6 +209,93 @@ async fn health_endpoint_unversioned() {
     // Test that health endpoint is NOT accessible at versioned path
     let resp = reqwest::get(format!("http://{addr}/{API_VERSION}/health")).await.unwrap();
     assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+
+    server.abort();
+}
+
+#[tokio::test]
+async fn l1_head_block_integration() {
+    let mock = Mock::new();
+    mock.add(handlers::provide(vec![BlockNumRow { l1_block_number: 3 }]));
+
+    let url = Url::parse(mock.url()).unwrap();
+    let client =
+        ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+    let (addr, server) = spawn_server(client).await;
+    wait_for_server(addr).await;
+
+    let resp = reqwest::get(format!("http://{addr}/{API_VERSION}/l1-head-block"))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body: serde_json::Value = resp.json().await.unwrap();
+    assert_eq!(body, serde_json::json!({ "l1_head_block": 3 }));
+
+    server.abort();
+}
+
+#[tokio::test]
+async fn l1_block_times_success_and_invalid() {
+    let mock = Mock::new();
+    mock.add(handlers::provide(vec![BlockTimeRow { minute: 1, block_number: 2 }]));
+
+    let url = Url::parse(mock.url()).unwrap();
+    let client =
+        ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+    let (addr, server) = spawn_server(client).await;
+    wait_for_server(addr).await;
+
+    let resp = reqwest::get(
+        format!("http://{addr}/{API_VERSION}/l1-block-times?created[gte]=0&created[lte]=3600000"),
+    )
+    .await
+    .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body: serde_json::Value = resp.json().await.unwrap();
+    assert_eq!(body, serde_json::json!({ "blocks": [ { "minute": 1, "block_number": 2 } ] }));
+
+    let resp = reqwest::get(
+        format!("http://{addr}/{API_VERSION}/l1-block-times?created[gte]=10&created[lte]=5"),
+    )
+    .await
+    .unwrap();
+    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+
+    server.abort();
+}
+
+#[tokio::test]
+async fn l2_fee_components_aggregated_integration() {
+    let mock = Mock::new();
+    mock.add(handlers::provide(vec![
+        FeeRow { l2_block_number: 0, priority_fee: 1, base_fee: 2, l1_data_cost: Some(3) },
+        FeeRow { l2_block_number: 1, priority_fee: 4, base_fee: 6, l1_data_cost: None },
+    ]));
+
+    let url = Url::parse(mock.url()).unwrap();
+    let client =
+        ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+    let (addr, server) = spawn_server(client).await;
+    wait_for_server(addr).await;
+
+    let resp = reqwest::get(
+        format!("http://{addr}/{API_VERSION}/l2-fee-components/aggregated?created[gte]=0&created[lte]=86400000"),
+    )
+    .await
+    .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body: serde_json::Value = resp.json().await.unwrap();
+    assert_eq!(body, serde_json::json!({ "blocks": [ { "l2_block_number": 0, "priority_fee": 5, "base_fee": 8, "l1_data_cost": 3 } ] }));
+
+    let resp = reqwest::get(
+        format!("http://{addr}/{API_VERSION}/l2-fee-components/aggregated?created[gte]=0&created[lte]=3600000&address=zzz"),
+    )
+    .await
+    .unwrap();
+    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
 
     server.abort();
 }
