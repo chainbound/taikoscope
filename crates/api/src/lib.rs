@@ -203,12 +203,7 @@ fn _legacy_resolve_time_range(
 async fn l2_head(State(state): State<ApiState>) -> Result<Json<L2HeadResponse>, ErrorResponse> {
     let ts = state.client.get_last_l2_head_time().await.map_err(|e| {
         tracing::error!("Failed to get L2 head time: {}", e);
-        ErrorResponse::new(
-            "database-error",
-            "Database error",
-            StatusCode::INTERNAL_SERVER_ERROR,
-            e.to_string(),
-        )
+        ErrorResponse::database_error()
     })?;
 
     let resp = L2HeadResponse { last_l2_head_time: ts.map(|t| t.to_rfc3339()) };
@@ -227,12 +222,7 @@ async fn l2_head(State(state): State<ApiState>) -> Result<Json<L2HeadResponse>, 
 async fn l1_head(State(state): State<ApiState>) -> Result<Json<L1HeadResponse>, ErrorResponse> {
     let ts = state.client.get_last_l1_head_time().await.map_err(|e| {
         tracing::error!("Failed to get L1 head time: {}", e);
-        ErrorResponse::new(
-            "database-error",
-            "Database error",
-            StatusCode::INTERNAL_SERVER_ERROR,
-            e.to_string(),
-        )
+        ErrorResponse::database_error()
     })?;
 
     let resp = L1HeadResponse { last_l1_head_time: ts.map(|t| t.to_rfc3339()) };
@@ -253,12 +243,7 @@ async fn l2_head_block(
 ) -> Result<Json<L2HeadBlockResponse>, ErrorResponse> {
     let num = state.client.get_last_l2_block_number().await.map_err(|e| {
         tracing::error!("Failed to get L2 head block number: {}", e);
-        ErrorResponse::new(
-            "database-error",
-            "Database error",
-            StatusCode::INTERNAL_SERVER_ERROR,
-            e.to_string(),
-        )
+        ErrorResponse::database_error()
     })?;
     Ok(Json(L2HeadBlockResponse { l2_head_block: num }))
 }
@@ -277,12 +262,7 @@ async fn l1_head_block(
 ) -> Result<Json<L1HeadBlockResponse>, ErrorResponse> {
     let num = state.client.get_last_l1_block_number().await.map_err(|e| {
         tracing::error!("Failed to get L1 head block number: {}", e);
-        ErrorResponse::new(
-            "database-error",
-            "Database error",
-            StatusCode::INTERNAL_SERVER_ERROR,
-            e.to_string(),
-        )
+        ErrorResponse::database_error()
     })?;
     Ok(Json(L1HeadBlockResponse { l1_head_block: num }))
 }
@@ -451,12 +431,7 @@ async fn reorgs(
     let since = resolve_time_range_since(&params.range, &params.time_range);
     let events = state.client.get_l2_reorgs_since(since).await.map_err(|e| {
         tracing::error!(error = %e, "Failed to get reorg events");
-        ErrorResponse::new(
-            "database-error",
-            "Database error",
-            StatusCode::INTERNAL_SERVER_ERROR,
-            e.to_string(),
-        )
+        ErrorResponse::database_error()
     })?;
     tracing::info!(count = events.len(), "Returning reorg events");
     Ok(Json(ReorgEventsResponse { events }))
@@ -488,12 +463,7 @@ async fn active_gateways(
     let since = resolve_time_range_since(&params.range, &params.time_range);
     let gateways = state.client.get_active_gateways_since(since).await.map_err(|e| {
         tracing::error!(error = %e, "Failed to get active gateways");
-        ErrorResponse::new(
-            "database-error",
-            "Database error",
-            StatusCode::INTERNAL_SERVER_ERROR,
-            e.to_string(),
-        )
+        ErrorResponse::database_error()
     })?;
     let gateways: Vec<String> = gateways.into_iter().map(|a| format!("0x{}", encode(a))).collect();
     tracing::info!(count = gateways.len(), "Returning active gateways");
@@ -528,12 +498,7 @@ async fn batch_posting_times(
         Ok(r) => r,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get batch posting times");
-            return Err(ErrorResponse::new(
-                "database-error",
-                "Database error",
-                StatusCode::INTERNAL_SERVER_ERROR,
-                e.to_string(),
-            ));
+            return Err(ErrorResponse::database_error());
         }
     };
     tracing::info!(count = rows.len(), "Returning batch posting times");
@@ -568,12 +533,7 @@ async fn avg_blobs_per_batch(
         Ok(val) => val,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get avg blobs per batch");
-            return Err(ErrorResponse::new(
-                "database-error",
-                "Database error",
-                StatusCode::INTERNAL_SERVER_ERROR,
-                e.to_string(),
-            ));
+            return Err(ErrorResponse::database_error());
         }
     };
     tracing::info!(avg_blobs_per_batch = ?avg, "Returning avg blobs per batch");
@@ -608,12 +568,7 @@ async fn blobs_per_batch(
         Ok(rows) => rows,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get blobs per batch");
-            return Err(ErrorResponse::new(
-                "database-error",
-                "Database error",
-                StatusCode::INTERNAL_SERVER_ERROR,
-                e.to_string(),
-            ));
+            return Err(ErrorResponse::database_error());
         }
     };
     tracing::info!(count = batches.len(), "Returning blobs per batch");
@@ -648,12 +603,7 @@ async fn prove_times(
         Ok(rows) => rows,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get prove times");
-            return Err(ErrorResponse::new(
-                "database-error",
-                "Database error",
-                StatusCode::INTERNAL_SERVER_ERROR,
-                e.to_string(),
-            ));
+            return Err(ErrorResponse::database_error());
         }
     };
     tracing::info!(count = batches.len(), "Returning prove times");
@@ -688,12 +638,7 @@ async fn verify_times(
         Ok(rows) => rows,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get verify times");
-            return Err(ErrorResponse::new(
-                "database-error",
-                "Database error",
-                StatusCode::INTERNAL_SERVER_ERROR,
-                e.to_string(),
-            ));
+            return Err(ErrorResponse::database_error());
         }
     };
     tracing::info!(count = batches.len(), "Returning verify times");
@@ -728,12 +673,7 @@ async fn l1_block_times(
         Ok(rows) => rows,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get L1 block times");
-            return Err(ErrorResponse::new(
-                "database-error",
-                "Database error",
-                StatusCode::INTERNAL_SERVER_ERROR,
-                e.to_string(),
-            ));
+            return Err(ErrorResponse::database_error());
         }
     };
     tracing::info!(count = blocks.len(), "Returning L1 block times");
@@ -781,12 +721,7 @@ async fn l2_block_times_aggregated(
         Ok(rows) => rows,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get L2 block times");
-            return Err(ErrorResponse::new(
-                "database-error",
-                "Database error",
-                StatusCode::INTERNAL_SERVER_ERROR,
-                e.to_string(),
-            ));
+            return Err(ErrorResponse::database_error());
         }
     };
     let bucket = bucket_size_from_range(&time_range);
@@ -836,12 +771,7 @@ async fn l2_gas_used_aggregated(
         Ok(rows) => rows,
         Err(e) => {
             tracing::error!("Failed to get L2 gas used: {}", e);
-            return Err(ErrorResponse::new(
-                "database-error",
-                "Database error",
-                StatusCode::INTERNAL_SERVER_ERROR,
-                e.to_string(),
-            ));
+            return Err(ErrorResponse::database_error());
         }
     };
     let bucket = bucket_size_from_range(&time_range);
@@ -894,12 +824,7 @@ async fn l2_tps(
         Ok(rows) => rows,
         Err(e) => {
             tracing::error!("Failed to get L2 TPS: {}", e);
-            return Err(ErrorResponse::new(
-                "database-error",
-                "Database error",
-                StatusCode::INTERNAL_SERVER_ERROR,
-                e.to_string(),
-            ));
+            return Err(ErrorResponse::database_error());
         }
     };
     tracing::info!(count = blocks.len(), "Returning L2 TPS");
@@ -932,12 +857,7 @@ async fn sequencer_distribution(
     let since = resolve_time_range_since(&params.range, &params.time_range);
     let rows = state.client.get_sequencer_distribution_since(since).await.map_err(|e| {
         tracing::error!(error = %e, "Failed to get sequencer distribution");
-        ErrorResponse::new(
-            "database-error",
-            "Database error",
-            StatusCode::INTERNAL_SERVER_ERROR,
-            e.to_string(),
-        )
+        ErrorResponse::database_error()
     })?;
     let sequencers: Vec<SequencerDistributionItem> = rows
         .into_iter()
@@ -981,12 +901,7 @@ async fn sequencer_blocks(
     let since = resolve_time_range_since(&params.range, &params.time_range);
     let rows = state.client.get_sequencer_blocks_since(since).await.map_err(|e| {
         tracing::error!(error = %e, "Failed to get sequencer blocks");
-        ErrorResponse::new(
-            "database-error",
-            "Database error",
-            StatusCode::INTERNAL_SERVER_ERROR,
-            e.to_string(),
-        )
+        ErrorResponse::database_error()
     })?;
 
     let filter = params.address.as_ref().and_then(|addr| match addr.parse::<Address>() {
@@ -1062,12 +977,7 @@ async fn block_transactions_aggregated(
         Ok(r) => r,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get block transactions");
-            return Err(ErrorResponse::new(
-                "database-error",
-                "Database error",
-                StatusCode::INTERNAL_SERVER_ERROR,
-                e.to_string(),
-            ));
+            return Err(ErrorResponse::database_error());
         }
     };
 
@@ -1147,12 +1057,7 @@ async fn l2_block_times(
         Ok(r) => r,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get L2 block times");
-            return Err(ErrorResponse::new(
-                "database-error",
-                "Database error",
-                StatusCode::INTERNAL_SERVER_ERROR,
-                e.to_string(),
-            ));
+            return Err(ErrorResponse::database_error());
         }
     };
 
@@ -1219,12 +1124,7 @@ async fn l2_gas_used(
         Ok(r) => r,
         Err(e) => {
             tracing::error!("Failed to get L2 gas used: {}", e);
-            return Err(ErrorResponse::new(
-                "database-error",
-                "Database error",
-                StatusCode::INTERNAL_SERVER_ERROR,
-                e.to_string(),
-            ));
+            return Err(ErrorResponse::database_error());
         }
     };
 
@@ -1291,12 +1191,7 @@ async fn block_transactions(
         Ok(r) => r,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get block transactions");
-            return Err(ErrorResponse::new(
-                "database-error",
-                "Database error",
-                StatusCode::INTERNAL_SERVER_ERROR,
-                e.to_string(),
-            ));
+            return Err(ErrorResponse::database_error());
         }
     };
 
@@ -1361,12 +1256,7 @@ async fn l2_fees(
     )
     .map_err(|e| {
         tracing::error!(error = %e, "Failed to get L2 fees");
-        ErrorResponse::new(
-            "database-error",
-            "Database error",
-            StatusCode::INTERNAL_SERVER_ERROR,
-            e.to_string(),
-        )
+        ErrorResponse::database_error()
     })?;
 
     // Filter using the raw `AddressBytes` value to avoid discrepancies caused by
@@ -1429,12 +1319,7 @@ async fn l2_fee_components(
 
     let blocks = state.client.get_l2_fee_components(address, time_range).await.map_err(|e| {
         tracing::error!(error = %e, "Failed to get fee components");
-        ErrorResponse::new(
-            "database-error",
-            "Database error",
-            StatusCode::INTERNAL_SERVER_ERROR,
-            e.to_string(),
-        )
+        ErrorResponse::database_error()
     })?;
 
     Ok(Json(FeeComponentsResponse { blocks }))
@@ -1481,12 +1366,7 @@ async fn l2_fee_components_aggregated(
 
     let blocks = state.client.get_l2_fee_components(address, time_range).await.map_err(|e| {
         tracing::error!(error = %e, "Failed to get fee components");
-        ErrorResponse::new(
-            "database-error",
-            "Database error",
-            StatusCode::INTERNAL_SERVER_ERROR,
-            e.to_string(),
-        )
+        ErrorResponse::database_error()
     })?;
 
     let bucket = bucket_size_from_range(&time_range);
@@ -1557,12 +1437,7 @@ async fn dashboard_data(
     )
     .map_err(|e| {
         tracing::error!(error = %e, "Failed to get dashboard data");
-        ErrorResponse::new(
-            "database-error",
-            "Database error",
-            StatusCode::INTERNAL_SERVER_ERROR,
-            e.to_string(),
-        )
+        ErrorResponse::database_error()
     })?;
 
     let preconf_data = preconf.map(|d| PreconfDataResponse {
@@ -1627,12 +1502,7 @@ async fn l1_data_cost(
         Ok(r) => r,
         Err(e) => {
             tracing::error!("Failed to get L1 data cost: {}", e);
-            return Err(ErrorResponse::new(
-                "database-error",
-                "Database error",
-                StatusCode::INTERNAL_SERVER_ERROR,
-                e.to_string(),
-            ));
+            return Err(ErrorResponse::database_error());
         }
     };
     tracing::info!(count = rows.len(), "Returning L1 data cost");
