@@ -147,6 +147,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
         blobs: d.blobs.toLocaleString(),
       })),
     urlKey: 'blobs-per-batch',
+    supportsPagination: true,
   },
 
   'batch-posting-cadence': {

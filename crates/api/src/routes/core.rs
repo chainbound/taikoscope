@@ -9,11 +9,11 @@ use crate::{
 };
 use alloy_primitives::Address;
 use api_types::{
-    ActiveGatewaysResponse, AvgBlobsPerBatchResponse, BatchBlobsResponse,
-    BatchPostingTimesResponse, ErrorResponse, L1BlockTimesResponse, L1DataCostResponse,
-    L1HeadBlockResponse, L1HeadResponse, L2HeadBlockResponse, L2HeadResponse, ProveTimesResponse,
-    SequencerBlocksItem, SequencerBlocksResponse, SequencerDistributionItem,
-    SequencerDistributionResponse, VerifyTimesResponse,
+    ActiveGatewaysResponse, AvgBlobsPerBatchResponse, BatchPostingTimesResponse, ErrorResponse,
+    L1BlockTimesResponse, L1DataCostResponse, L1HeadBlockResponse, L1HeadResponse,
+    L2HeadBlockResponse, L2HeadResponse, ProveTimesResponse, SequencerBlocksItem,
+    SequencerBlocksResponse, SequencerDistributionItem, SequencerDistributionResponse,
+    VerifyTimesResponse,
 };
 use axum::{
     Json,
@@ -209,42 +209,6 @@ pub async fn avg_blobs_per_batch(
     };
     tracing::info!(avg_blobs_per_batch = ?avg, "Returning avg blobs per batch");
     Ok(Json(AvgBlobsPerBatchResponse { avg_blobs: avg }))
-}
-
-#[utoipa::path(
-    get,
-    path = "/blobs-per-batch",
-    params(
-        RangeQuery
-    ),
-    responses(
-        (status = 200, description = "Blobs per batch", body = BatchBlobsResponse),
-        (status = 500, description = "Database error", body = ErrorResponse)
-    ),
-    tag = "taikoscope"
-)]
-/// Get detailed blob count information for each batch in the specified time range
-pub async fn blobs_per_batch(
-    Query(params): Query<RangeQuery>,
-    State(state): State<ApiState>,
-) -> Result<Json<BatchBlobsResponse>, ErrorResponse> {
-    // Validate time range parameters
-    validate_time_range(&params.time_range)?;
-
-    // Check for range exclusivity
-    let has_time_range = has_time_range_params(&params.time_range);
-    validate_range_exclusivity(has_time_range, false)?;
-
-    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
-    let batches = match state.client.get_blobs_per_batch(time_range).await {
-        Ok(rows) => rows,
-        Err(e) => {
-            tracing::error!(error = %e, "Failed to get blobs per batch");
-            return Err(ErrorResponse::database_error());
-        }
-    };
-    tracing::info!(count = batches.len(), "Returning blobs per batch");
-    Ok(Json(BatchBlobsResponse { batches }))
 }
 
 #[utoipa::path(
