@@ -1,6 +1,8 @@
 import React from 'react';
 import { ResponsiveContainer, Sankey, Tooltip } from 'recharts';
 import { TAIKO_PINK } from '../theme';
+
+const PROFIT_GREEN = '#22c55e';
 import useSWR from 'swr';
 import { fetchL2Fees } from '../services/apiService';
 import { useEthPrice } from '../services/priceService';
@@ -26,6 +28,7 @@ const SankeyNode = ({ x, y, width, height, payload }: any) => {
   const formattedValue = nodeValue != null ? formatUsd(nodeValue) : '';
   const isCostNode =
     payload.name === 'Cloud Cost' || payload.name === 'Prover Cost';
+  const isProfitNode = payload.name === 'Profit';
 
   return (
     <g>
@@ -34,7 +37,7 @@ const SankeyNode = ({ x, y, width, height, payload }: any) => {
         y={y}
         width={width}
         height={height}
-        fill={isCostNode ? '#ef4444' : TAIKO_PINK}
+        fill={isCostNode ? '#ef4444' : isProfitNode ? PROFIT_GREEN : TAIKO_PINK}
         fillOpacity={0.8}
       />
       <text
@@ -71,13 +74,14 @@ const SankeyLink = ({
   const isCost =
     payload.target.name === 'Cloud Cost' ||
     payload.target.name === 'Prover Cost';
+  const isProfit = payload.target.name === 'Profit';
 
   return (
     <path
       className="recharts-sankey-link"
       d={`M${sourceX},${sourceY}C${sourceControlX},${sourceY} ${targetControlX},${targetY} ${targetX},${targetY}`}
       fill="none"
-      stroke={isCost ? '#ef4444' : '#94a3b8'}
+      stroke={isCost ? '#ef4444' : isProfit ? PROFIT_GREEN : '#94a3b8'}
       strokeWidth={linkWidth}
       strokeOpacity={0.2}
       {...rest}
