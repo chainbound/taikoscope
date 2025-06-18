@@ -72,32 +72,16 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
       sourceControlX,
       targetControlX,
       linkWidth,
-      index,
     } = props;
-    const { name, value } = data.links[index];
     const path = `M${sourceX},${sourceY} C${sourceControlX},${sourceY} ${targetControlX},${targetY} ${targetX},${targetY}`;
-    const midX = (sourceX + targetX) / 2;
-    const midY = (sourceY + targetY) / 2;
     return (
-      <g>
-        <path
-          d={path}
-          fill="none"
-          stroke="#333"
-          strokeWidth={linkWidth}
-          strokeOpacity="0.2"
-        />
-        <text
-          x={midX}
-          y={midY - 4}
-          textAnchor="middle"
-          fontSize={10}
-          fill="#333"
-          pointerEvents="none"
-        >
-          {`${name}: $${value.toFixed(2)}`}
-        </text>
-      </g>
+      <path
+        d={path}
+        fill="none"
+        stroke="#333"
+        strokeWidth={linkWidth}
+        strokeOpacity="0.2"
+      />
     );
   };
 
