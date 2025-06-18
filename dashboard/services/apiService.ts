@@ -372,10 +372,24 @@ export const fetchL1BlockTimes = async (
 export const fetchL2BlockTimes = async (
   range: TimeRange,
   address?: string,
+  limit = 50,
+  startingAfter?: number,
+  endingBefore?: number,
 ): Promise<RequestResult<TimeSeriesData[]>> => {
-  const url =
-    `${API_BASE}/l2-block-times?${timeRangeToQuery(range)}` +
-    (address ? `&address=${address}` : '');
+  let url = `${API_BASE}/l2-block-times?`;
+  if (startingAfter === undefined && endingBefore === undefined) {
+    url += `${timeRangeToQuery(range)}&limit=${limit}`;
+  } else {
+    url += `limit=${limit}`;
+  }
+  if (startingAfter !== undefined) {
+    url += `&starting_after=${startingAfter}`;
+  } else if (endingBefore !== undefined) {
+    url += `&ending_before=${endingBefore}`;
+  }
+  if (address) {
+    url += `&address=${address}`;
+  }
   const res = await fetchJson<{
     blocks: {
       l2_block_number: number;
@@ -383,19 +397,17 @@ export const fetchL2BlockTimes = async (
       ms_since_prev_block: number;
     }[];
   }>(url);
-  if (!res.data) {
-    return { data: null, badRequest: res.badRequest, error: res.error };
-  }
-
-  const data = res.data.blocks.slice(1).map(
-    (b): TimeSeriesData => ({
-      value: b.l2_block_number,
-      timestamp: b.ms_since_prev_block / 1000,
-      blockTime: new Date(b.block_time).getTime(),
-    }),
-  );
-
-  return { data, badRequest: res.badRequest, error: res.error };
+  return {
+    data: res.data
+      ? res.data.blocks.map((b) => ({
+          value: b.l2_block_number,
+          timestamp: b.ms_since_prev_block / 1000,
+          blockTime: new Date(b.block_time).getTime(),
+        }))
+      : null,
+    badRequest: res.badRequest,
+    error: res.error,
+  };
 };
 
 export const fetchL2BlockTimesAggregated = async (

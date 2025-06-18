@@ -94,6 +94,18 @@ const responses: Record<string, Record<string, unknown>> = {
       { l2_block_number: 2, block_time: '1970-01-01T00:00:02Z', ms_since_prev_block: 2000 },
     ],
   },
+  [`/v1/l2-block-times?${q1h}&limit=50`]: {
+    blocks: [
+      { l2_block_number: 1, block_time: '1970-01-01T00:00:01Z', ms_since_prev_block: 1000 },
+      { l2_block_number: 2, block_time: '1970-01-01T00:00:02Z', ms_since_prev_block: 2000 },
+    ],
+  },
+  [`/v1/l2-block-times?${q15m}&limit=50`]: {
+    blocks: [
+      { l2_block_number: 1, block_time: '1970-01-01T00:00:01Z', ms_since_prev_block: 1000 },
+      { l2_block_number: 2, block_time: '1970-01-01T00:00:02Z', ms_since_prev_block: 2000 },
+    ],
+  },
   [`/v1/l2-block-times?${q15m}`]: {
     blocks: [
       { l2_block_number: 1, block_time: '1970-01-01T00:00:01Z', ms_since_prev_block: 1000 },
