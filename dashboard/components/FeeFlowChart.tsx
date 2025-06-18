@@ -41,19 +41,25 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
   const cloudCostScaled = (cloudCost / MONTH_HOURS) * hours;
   const proverCostScaled = (proverCost / MONTH_HOURS) * hours;
 
+  // Calculate sequencer profits (total fees minus operational costs)
+  const totalRevenue = priorityUsd + baseUsd;
+  const sequencerProfit = Math.max(0, totalRevenue - cloudCostScaled - proverCostScaled);
+
   const data = {
     nodes: [
-      { name: 'Users' },
+      { name: 'Priority Fee' },
+      { name: 'Base Fee' },
       { name: 'Sequencers' },
-      { name: 'Taiko DAO' },
-      { name: 'Cloud Providers' },
-      { name: 'Provers' },
+      { name: 'Cloud Cost' },
+      { name: 'Prover Cost' },
+      { name: 'Sequencer Profit' },
     ],
     links: [
-      { source: 0, target: 1, value: priorityUsd, name: 'Priority Fee' },
-      { source: 0, target: 2, value: baseUsd, name: 'Base Fee' },
-      { source: 1, target: 3, value: cloudCostScaled, name: 'Cloud Cost' },
-      { source: 1, target: 4, value: proverCostScaled, name: 'Prover Cost' },
+      { source: 0, target: 2, value: priorityUsd, name: 'Priority Fee to Sequencers' },
+      { source: 1, target: 2, value: baseUsd, name: 'Base Fee to Sequencers' },
+      { source: 2, target: 3, value: cloudCostScaled, name: 'Cloud Costs' },
+      { source: 2, target: 4, value: proverCostScaled, name: 'Prover Costs' },
+      { source: 2, target: 5, value: sequencerProfit, name: 'Sequencer Profit' },
     ],
   };
 
@@ -103,7 +109,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
           nodePadding={10}
           node={{ stroke: '#888' }}
           link={renderLink}
-          sort={false}
+          sort={true}
         >
           <Tooltip
             formatter={(v: number) => `$${v.toFixed(2)}`}
