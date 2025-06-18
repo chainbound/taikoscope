@@ -254,6 +254,19 @@ pub struct BlockFeeComponentRow {
     pub l1_data_cost: Option<u128>,
 }
 
+/// Row representing aggregated L2 fees for a sequencer
+#[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
+pub struct SequencerFeeRow {
+    /// Sequencer address
+    pub sequencer: AddressBytes,
+    /// Sum of priority fees paid by the sequencer
+    pub priority_fee: u128,
+    /// 75% of the sum of base fees paid by the sequencer
+    pub base_fee: u128,
+    /// Total L1 data posting cost attributed to the sequencer
+    pub l1_data_cost: Option<u128>,
+}
+
 /// Row representing the transactions per second for an L2 block
 #[derive(Debug, Serialize, Deserialize, PartialEq, ToSchema)]
 pub struct L2TpsRow {

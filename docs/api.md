@@ -24,3 +24,7 @@ All time range parameters are in milliseconds. Time range parameters cannot be u
 | `created[gte]` | integer | No       | Return results created **at or after** this Unix timestamp  |
 | `created[lt]`  | integer | No       | Return results created **before** this Unix timestamp       |
 | `created[lte]` | integer | No       | Return results created **at or before** this Unix timestamp |
+
+### `/l2-fees/by-sequencer`
+
+Returns total priority fee, base fee, and optional L1 data cost grouped by sequencer for the selected time range.
