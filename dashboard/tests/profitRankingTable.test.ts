@@ -14,11 +14,13 @@ describe('ProfitRankingTable', () => {
         data: { data: [{ name: 'SeqA', value: 10, tps: null }] },
       } as any)
       .mockReturnValueOnce({
-        data: [{
-          priority_fee: 2e18,
-          base_fee: 1e18,
-          l1_data_cost: 0,
-        }],
+        data: [
+          {
+            priority_fee: 2e18,
+            base_fee: 1e18,
+            l1_data_cost: 0,
+          },
+        ],
       } as any);
     vi.spyOn(api, 'fetchSequencerDistribution').mockResolvedValue({
       data: [{ name: 'SeqA', value: 10, tps: null }],
@@ -42,6 +44,6 @@ describe('ProfitRankingTable', () => {
       }),
     );
     expect(html.includes('Sequencer Profit Ranking')).toBe(true);
-    expect(html.includes('3,000')).toBe(true);
+    expect(html.includes('2,750')).toBe(true);
   });
 });

@@ -248,7 +248,7 @@ pub struct BlockFeeComponentRow {
     pub l2_block_number: u64,
     /// Total priority fee for the block
     pub priority_fee: u128,
-    /// 75% of the total base fee for the block
+    /// Total base fee for the block
     pub base_fee: u128,
     /// L1 data posting cost associated with the block, if available
     pub l1_data_cost: Option<u128>,
@@ -261,7 +261,7 @@ pub struct SequencerFeeRow {
     pub sequencer: AddressBytes,
     /// Sum of priority fees paid by the sequencer
     pub priority_fee: u128,
-    /// 75% of the sum of base fees paid by the sequencer
+    /// Sum of base fees paid by the sequencer
     pub base_fee: u128,
     /// Total L1 data posting cost attributed to the sequencer
     pub l1_data_cost: Option<u128>,
