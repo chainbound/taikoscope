@@ -666,10 +666,18 @@ export const fetchAvgL2Tps = async (
   };
 };
 
+export interface SequencerFee {
+  address: string;
+  priority_fee: number;
+  base_fee: number;
+  l1_data_cost: number | null;
+}
+
 export interface L2FeesResponse {
   priority_fee: number | null;
   base_fee: number | null;
   l1_data_cost: number | null;
+  sequencers: SequencerFee[];
 }
 
 export const fetchL2Fees = async (

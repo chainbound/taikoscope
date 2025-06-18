@@ -82,7 +82,7 @@ describe('dataFetcher', () => {
 
   it('fetches economics data', async () => {
     setAll({
-      fetchL2Fees: ok({ priority_fee: 1, base_fee: 2, l1_data_cost: 4 }),
+      fetchL2Fees: ok({ priority_fee: 1, base_fee: 2, l1_data_cost: 4, sequencers: [] }),
       fetchL2HeadBlock: ok(2),
       fetchL1HeadBlock: ok(3),
       fetchSequencerDistribution: ok([{ name: 'foo', value: 1, tps: null }]),

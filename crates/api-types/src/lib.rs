@@ -175,6 +175,8 @@ pub struct L2FeesResponse {
     pub base_fee: Option<u128>,
     /// Total L1 data posting cost for the range.
     pub l1_data_cost: Option<u128>,
+    /// Fee breakdown for each sequencer.
+    pub sequencers: Vec<SequencerFeeRow>,
 }
 
 /// Estimated cloud infrastructure cost in USD.
@@ -305,13 +307,6 @@ pub struct SequencerFeeRow {
     pub base_fee: u128,
     /// Total L1 data posting cost for the sequencer.
     pub l1_data_cost: Option<u128>,
-}
-
-/// L2 fees grouped by sequencer.
-#[derive(Debug, Serialize, ToSchema)]
-pub struct L2FeesBySequencerResponse {
-    /// Fees aggregated for each sequencer.
-    pub sequencers: Vec<SequencerFeeRow>,
 }
 
 /// Blob count per batch.
