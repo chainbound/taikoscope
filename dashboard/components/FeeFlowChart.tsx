@@ -98,6 +98,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
 
   const priorityFee = feeRes?.data?.priority_fee ?? null;
   const baseFee = feeRes?.data?.base_fee ?? null;
+  const sequencerFees = feeRes?.data?.sequencers ?? [];
 
   if (priorityFee == null && baseFee == null) {
     return (
@@ -110,63 +111,94 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
   // Convert fees to USD
   const priorityFeeUsd = ((priorityFee ?? 0) / WEI_TO_ETH) * ethPrice;
   const baseFeeUsd = ((baseFee ?? 0) / WEI_TO_ETH) * ethPrice;
-  const baseFeeSeqUsd = baseFeeUsd * 0.75;
   const baseFeeDaoUsd = baseFeeUsd * 0.25;
 
   // Scale operational costs to the selected time range
   const hours = rangeToHours(timeRange);
-  const cloudCostScaled = (cloudCost / MONTH_HOURS) * hours;
-  const proverCostScaled = (proverCost / MONTH_HOURS) * hours;
+  const cloudCostPerSeq = (cloudCost / MONTH_HOURS) * hours;
+  const proverCostPerSeq = (proverCost / MONTH_HOURS) * hours;
+  const totalCloudCost = cloudCostPerSeq;
+  const totalProverCost = proverCostPerSeq;
 
-  // Calculate sequencer profit
-  const totalRevenue = priorityFeeUsd + baseFeeSeqUsd;
-  const totalCosts = cloudCostScaled + proverCostScaled;
-  const sequencerProfit = Math.max(0, totalRevenue - totalCosts);
+  const seqData = sequencerFees.map((f) => {
+    const priorityUsd = ((f.priority_fee ?? 0) / WEI_TO_ETH) * ethPrice;
+    const baseUsd = ((f.base_fee ?? 0) / WEI_TO_ETH) * ethPrice * 0.75;
+    const revenue = priorityUsd + baseUsd;
+    const rawProfit = revenue - cloudCostPerSeq - proverCostPerSeq;
+    const profit = Math.max(0, rawProfit);
+    // For flow conservation, calculate actual outflows
+    const actualCloudCost = rawProfit >= 0 ? cloudCostPerSeq : Math.max(0, Math.min(cloudCostPerSeq, revenue));
+    const actualProverCost = rawProfit >= 0 ? proverCostPerSeq : Math.max(0, revenue - actualCloudCost);
+    return {
+      address: f.address,
+      priorityUsd,
+      baseUsd,
+      revenue,
+      profit,
+      actualCloudCost,
+      actualProverCost
+    };
+  });
 
-  // Build Sankey data
-  const data = {
-    nodes: [
+  // Handle case when no sequencer data is available
+  let nodes, links;
+
+  if (seqData.length === 0) {
+    // Fallback: create a single "Sequencers" node to route fees through
+    const sequencerRevenue = priorityFeeUsd + (baseFeeUsd * 0.75);
+    const sequencerProfit = Math.max(0, sequencerRevenue - totalCloudCost - totalProverCost);
+
+    nodes = [
       { name: 'Priority Fee', value: priorityFeeUsd },
       { name: 'Base Fee', value: baseFeeUsd },
-      { name: 'Sequencers', value: totalRevenue },
-      { name: 'Cloud Cost', value: cloudCostScaled },
-      { name: 'Prover Cost', value: proverCostScaled },
+      { name: 'Sequencers', value: sequencerRevenue },
+      { name: 'Cloud Cost', value: totalCloudCost },
+      { name: 'Prover Cost', value: totalProverCost },
       { name: 'Profit', value: sequencerProfit },
       { name: 'Taiko DAO', value: baseFeeDaoUsd },
-    ],
-    links: [
-      {
-        source: 0,
-        target: 2,
-        value: priorityFeeUsd,
-      },
-      {
-        source: 1,
-        target: 2,
-        value: baseFeeSeqUsd,
-      },
-      {
-        source: 1,
-        target: 6,
-        value: baseFeeDaoUsd,
-      },
-      {
-        source: 2,
-        target: 3,
-        value: cloudCostScaled,
-      },
-      {
-        source: 2,
-        target: 4,
-        value: proverCostScaled,
-      },
-      {
-        source: 2,
-        target: 5,
-        value: sequencerProfit,
-      },
-    ].filter((link) => link.value > 0), // Only show links with positive values
-  };
+    ];
+
+    links = [
+      { source: 0, target: 2, value: priorityFeeUsd }, // Priority Fee → Sequencers
+      { source: 1, target: 2, value: baseFeeUsd * 0.75 }, // 75% Base Fee → Sequencers
+      { source: 1, target: 6, value: baseFeeDaoUsd }, // 25% Base Fee → Taiko DAO
+      { source: 2, target: 3, value: Math.min(totalCloudCost, sequencerRevenue) }, // Sequencers → Cloud Cost
+      { source: 2, target: 4, value: Math.min(totalProverCost, Math.max(0, sequencerRevenue - totalCloudCost)) }, // Sequencers → Prover Cost
+      { source: 2, target: 5, value: sequencerProfit }, // Sequencers → Profit
+    ].filter((l) => l.value > 0);
+  } else {
+    const totalProfit = seqData.reduce((acc, s) => acc + s.profit, 0);
+    const totalActualCloudCost = seqData.reduce((acc, s) => acc + s.actualCloudCost, 0);
+    const totalActualProverCost = seqData.reduce((acc, s) => acc + s.actualProverCost, 0);
+
+    // Build Sankey data with one node per sequencer
+    const baseIndex = 2; // first sequencer node index
+    const cloudIndex = baseIndex + seqData.length;
+    const proverIndex = cloudIndex + 1;
+    const profitIndex = proverIndex + 1;
+    const daoIndex = profitIndex + 1;
+
+    nodes = [
+      { name: 'Priority Fee', value: priorityFeeUsd },
+      { name: 'Base Fee', value: baseFeeUsd },
+      ...seqData.map((s) => ({ name: s.address, value: s.revenue })),
+      { name: 'Cloud Cost', value: totalActualCloudCost },
+      { name: 'Prover Cost', value: totalActualProverCost },
+      { name: 'Profit', value: totalProfit },
+      { name: 'Taiko DAO', value: baseFeeDaoUsd },
+    ];
+
+    links = [
+      ...seqData.map((s, i) => ({ source: 0, target: baseIndex + i, value: s.priorityUsd })),
+      ...seqData.map((s, i) => ({ source: 1, target: baseIndex + i, value: s.baseUsd })),
+      { source: 1, target: daoIndex, value: baseFeeDaoUsd },
+      ...seqData.map((s, i) => ({ source: baseIndex + i, target: cloudIndex, value: s.actualCloudCost })),
+      ...seqData.map((s, i) => ({ source: baseIndex + i, target: proverIndex, value: s.actualProverCost })),
+      ...seqData.map((s, i) => ({ source: baseIndex + i, target: profitIndex, value: s.profit })),
+    ].filter((l) => l.value > 0);
+  }
+
+  const data = { nodes, links };
 
   const formatTooltipValue = (value: number) => formatUsd(value);
 
