@@ -1,4 +1,4 @@
-const metaEnv = import.meta.env as any;
+const metaEnv = import.meta.env as ImportMetaEnv;
 export const API_BASE: string =
   (metaEnv.VITE_API_BASE ?? metaEnv.API_BASE ?? '') + '/v1';
 
