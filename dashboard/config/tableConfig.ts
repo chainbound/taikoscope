@@ -16,6 +16,7 @@ import {
   fetchVerifyTimes,
   fetchAllBlockTransactions,
   fetchL2BlockTimes,
+  fetchL2BlockTimesAggregated,
   fetchL2GasUsed,
   fetchL2GasUsedAggregated,
   fetchSequencerDistribution,
@@ -245,6 +246,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     title: 'L2 Block Times',
     description: 'Interval between consecutive L2 blocks.',
     fetcher: fetchL2BlockTimes,
+    aggregatedFetcher: fetchL2BlockTimesAggregated,
     columns: [
       { key: 'value', label: 'L2 Block Number' },
       { key: 'timestamp', label: 'Interval (s)' },
@@ -254,6 +256,17 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
         value: blockLink(d.value),
         timestamp: d.timestamp.toLocaleString(),
       })),
+    chart: (data) => {
+      const BlockTimeChart = React.lazy(() =>
+        import('../components/BlockTimeChart').then((m) => ({
+          default: m.BlockTimeChart,
+        })),
+      );
+      return React.createElement(BlockTimeChart, {
+        data,
+        lineColor: '#FAA43A',
+      });
+    },
     urlKey: 'l2-block-times',
     reverseOrder: true,
   },
