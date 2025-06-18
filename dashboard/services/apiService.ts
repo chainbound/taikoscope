@@ -238,7 +238,7 @@ export const fetchForcedInclusionEvents = async (
 export const fetchL2HeadBlock = async (
   range: TimeRange,
 ): Promise<RequestResult<number>> => {
-  const url = `${API_BASE}/l2-block-times?${timeRangeToQuery(range)}`;
+  const url = `${API_BASE}/l2-block-times?${timeRangeToQuery(range)}&limit=50`;
   const res = await fetchJson<{ blocks: { l2_block_number: number }[] }>(url);
   const value =
     res.data && res.data.blocks.length > 0
@@ -781,10 +781,24 @@ export const fetchFeeComponents = async (
 export const fetchL2Tps = async (
   range: TimeRange,
   address?: string,
+  limit = 50,
+  startingAfter?: number,
+  endingBefore?: number,
 ): Promise<RequestResult<{ block: number; tps: number }[]>> => {
-  const url =
-    `${API_BASE}/l2-tps?${timeRangeToQuery(range)}` +
-    (address ? `&address=${address}` : '');
+  let url = `${API_BASE}/l2-tps?`;
+  if (startingAfter === undefined && endingBefore === undefined) {
+    url += `${timeRangeToQuery(range)}&limit=${limit}`;
+  } else {
+    url += `limit=${limit}`;
+  }
+  if (startingAfter !== undefined) {
+    url += `&starting_after=${startingAfter}`;
+  } else if (endingBefore !== undefined) {
+    url += `&ending_before=${endingBefore}`;
+  }
+  if (address) {
+    url += `&address=${address}`;
+  }
   const res = await fetchJson<{
     blocks: { l2_block_number: number; tps: number }[];
   }>(url);

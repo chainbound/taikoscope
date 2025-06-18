@@ -804,6 +804,62 @@ impl ClickhouseReader {
             .collect())
     }
 
+    /// Get L2 TPS since the given cutoff with cursor-based pagination.
+    /// Results are returned in descending order by block number.
+    pub async fn get_l2_tps_paginated(
+        &self,
+        since: DateTime<Utc>,
+        limit: u64,
+        starting_after: Option<u64>,
+        ending_before: Option<u64>,
+        sequencer: Option<AddressBytes>,
+    ) -> Result<Vec<L2TpsRow>> {
+        #[derive(Row, Deserialize)]
+        struct RawRow {
+            l2_block_number: u64,
+            sum_tx: u32,
+            ms_since_prev_block: Option<u64>,
+        }
+
+        let mut query = format!(
+            "SELECT h.l2_block_number, sum_tx, \
+                    toUInt64OrNull(toString((h.block_ts - lagInFrame(h.block_ts) OVER (ORDER BY h.l2_block_number)) * 1000)) AS ms_since_prev_block \
+             FROM {db}.l2_head_events h \
+             WHERE h.block_ts >= {since} \
+               AND {filter}",
+            since = since.timestamp(),
+            filter = self.reorg_filter("h"),
+            db = self.db_name,
+        );
+        if let Some(addr) = sequencer {
+            query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
+        }
+        if let Some(start) = starting_after {
+            query.push_str(&format!(" AND l2_block_number < {}", start));
+        }
+        if let Some(end) = ending_before {
+            query.push_str(&format!(" AND l2_block_number > {}", end));
+        }
+        query.push_str(" ORDER BY l2_block_number DESC");
+        query.push_str(&format!(" LIMIT {}", limit));
+
+        let rows = self.execute::<RawRow>(&query).await?;
+        Ok(rows
+            .into_iter()
+            .filter_map(|r| {
+                let ms = r.ms_since_prev_block?;
+                if ms == 0 {
+                    None
+                } else {
+                    Some(L2TpsRow {
+                        l2_block_number: r.l2_block_number,
+                        tps: r.sum_tx as f64 / (ms as f64 / 1000.0),
+                    })
+                }
+            })
+            .collect())
+    }
+
     /// Get the average time in milliseconds it takes for a batch to be proven
     /// for proofs submitted within the given time range
     pub async fn get_avg_prove_time(&self, range: TimeRange) -> Result<Option<u64>> {

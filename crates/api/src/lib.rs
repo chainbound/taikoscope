@@ -830,18 +830,22 @@ async fn l2_gas_used_aggregated(
     tag = "taikoscope"
 )]
 async fn l2_tps(
-    Query(params): Query<RangeQuery>,
+    Query(params): Query<PaginatedQuery>,
     State(state): State<ApiState>,
 ) -> Result<Json<L2TpsResponse>, ErrorResponse> {
-    // Validate time range parameters
-    validate_time_range(&params.time_range)?;
+    validate_time_range(&params.common.time_range)?;
+    let limit = validate_pagination(
+        params.starting_after.as_ref(),
+        params.ending_before.as_ref(),
+        params.limit.as_ref(),
+        MAX_TABLE_LIMIT,
+    )?;
+    let has_time_range = has_time_range_params(&params.common.time_range);
+    let has_slot_range = params.starting_after.is_some() || params.ending_before.is_some();
+    validate_range_exclusivity(has_time_range, has_slot_range)?;
 
-    // Check for range exclusivity
-    let has_time_range = has_time_range_params(&params.time_range);
-    validate_range_exclusivity(has_time_range, false)?;
-
-    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
-    let address = if let Some(addr) = params.address.as_ref() {
+    let since = resolve_time_range_since(&params.common.range, &params.common.time_range);
+    let address = if let Some(addr) = params.common.address.as_ref() {
         match addr.parse::<Address>() {
             Ok(a) => Some(AddressBytes::from(a)),
             Err(e) => {
@@ -857,7 +861,11 @@ async fn l2_tps(
     } else {
         None
     };
-    let blocks = match state.client.get_l2_tps(address, time_range).await {
+    let blocks = match state
+        .client
+        .get_l2_tps_paginated(since, limit, params.starting_after, params.ending_before, address)
+        .await
+    {
         Ok(rows) => rows,
         Err(e) => {
             tracing::error!("Failed to get L2 TPS: {}", e);

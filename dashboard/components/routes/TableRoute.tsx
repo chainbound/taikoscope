@@ -122,7 +122,7 @@ export const TableRoute: React.FC = () => {
 
         let res;
         let aggRes;
-        if (tableType === 'l2-gas-used' || tableType === 'l2-block-times') {
+        if (config.supportsPagination) {
           const address = fetcherArgs.pop();
           if (config.aggregatedFetcher) {
             [res, aggRes] = await Promise.all([
@@ -196,7 +196,7 @@ export const TableRoute: React.FC = () => {
             rows: mappedData,
             chart,
           };
-          if (tableType === 'l2-gas-used' || tableType === 'reorgs' || tableType === 'l2-block-times') {
+          if (config.supportsPagination) {
             const disablePrev = page === 0;
             const disableNext = originalData.length < PAGE_LIMIT;
             view.serverPagination = {
