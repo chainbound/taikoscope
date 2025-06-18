@@ -85,13 +85,42 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     );
   };
 
+  const renderNode = (props: any) => {
+    const { x, y, width, height, index } = props;
+    const node = data.nodes[index];
+    return (
+      <g>
+        <rect
+          x={x}
+          y={y}
+          width={width}
+          height={height}
+          fill="#4ade80"
+          stroke="#333"
+          strokeWidth={1}
+        />
+        <text
+          x={x + width / 2}
+          y={y + height / 2}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fontSize={12}
+          fill="#333"
+          fontWeight="500"
+        >
+          {node.name}
+        </text>
+      </g>
+    );
+  };
+
   return (
     <div className="mt-6" style={{ height: 240 }}>
       <ResponsiveContainer width="100%" height="100%">
         <Sankey
           data={data}
           nodePadding={10}
-          node={{ stroke: '#888' }}
+          node={renderNode}
           link={renderLink}
           sort={true}
         >
