@@ -1091,6 +1091,63 @@ impl ClickhouseReader {
         Ok(rows)
     }
 
+    /// Get prove times in seconds for batches proved since the given cutoff
+    /// using cursor-based pagination. Results are returned in descending order
+    /// by batch id.
+    pub async fn get_prove_times_paginated(
+        &self,
+        since: DateTime<Utc>,
+        limit: u64,
+        starting_after: Option<u64>,
+        ending_before: Option<u64>,
+    ) -> Result<Vec<BatchProveTimeRow>> {
+        let mut query = format!(
+            "SELECT batch_id, toUInt64(prove_time_ms / 1000) AS seconds_to_prove \
+             FROM {db}.batch_prove_times_mv \
+             WHERE proved_at >= toDateTime64({since}, 3)",
+            since = since.timestamp_millis() as f64 / 1000.0,
+            db = self.db_name,
+        );
+        if let Some(start) = starting_after {
+            query.push_str(&format!(" AND batch_id < {}", start));
+        }
+        if let Some(end) = ending_before {
+            query.push_str(&format!(" AND batch_id > {}", end));
+        }
+        query.push_str(" ORDER BY batch_id DESC");
+        query.push_str(&format!(" LIMIT {}", limit));
+
+        let rows = self.execute::<BatchProveTimeRow>(&query).await?;
+        if !rows.is_empty() {
+            return Ok(rows);
+        }
+
+        let mut query = format!(
+            "SELECT toUInt64(b.batch_id) AS batch_id, \
+                    (l1_proved.block_ts - l1_proposed.block_ts) AS seconds_to_prove \
+             FROM {db}.batches b \
+             JOIN {db}.proved_batches pb ON b.batch_id = pb.batch_id \
+             JOIN {db}.l1_head_events l1_proposed \
+               ON b.l1_block_number = l1_proposed.l1_block_number \
+             JOIN {db}.l1_head_events l1_proved \
+               ON pb.l1_block_number = l1_proved.l1_block_number \
+             WHERE l1_proved.block_ts >= {since}",
+            since = since.timestamp(),
+            db = self.db_name,
+        );
+        if let Some(start) = starting_after {
+            query.push_str(&format!(" AND b.batch_id < {}", start));
+        }
+        if let Some(end) = ending_before {
+            query.push_str(&format!(" AND b.batch_id > {}", end));
+        }
+        query.push_str(" ORDER BY b.batch_id DESC");
+        query.push_str(&format!(" LIMIT {}", limit));
+
+        let rows = self.execute::<BatchProveTimeRow>(&query).await?;
+        Ok(rows)
+    }
+
     /// Get verify times in seconds for batches verified within the given range
     pub async fn get_verify_times(&self, range: TimeRange) -> Result<Vec<BatchVerifyTimeRow>> {
         let mv_query = format!(
@@ -1127,6 +1184,67 @@ impl ClickhouseReader {
         );
 
         let rows = self.execute::<BatchVerifyTimeRow>(&fallback_query).await?;
+        Ok(rows)
+    }
+
+    /// Get verify times in seconds for batches verified since the given cutoff
+    /// using cursor-based pagination. Results are returned in descending order
+    /// by batch id.
+    pub async fn get_verify_times_paginated(
+        &self,
+        since: DateTime<Utc>,
+        limit: u64,
+        starting_after: Option<u64>,
+        ending_before: Option<u64>,
+    ) -> Result<Vec<BatchVerifyTimeRow>> {
+        let mut query = format!(
+            "SELECT batch_id, toUInt64(verify_time_ms / 1000) AS seconds_to_verify \
+             FROM {db}.batch_verify_times_mv \
+             WHERE verified_at >= toDateTime64({since}, 3) \
+               AND verify_time_ms > 60000",
+            since = since.timestamp_millis() as f64 / 1000.0,
+            db = self.db_name,
+        );
+        if let Some(start) = starting_after {
+            query.push_str(&format!(" AND batch_id < {}", start));
+        }
+        if let Some(end) = ending_before {
+            query.push_str(&format!(" AND batch_id > {}", end));
+        }
+        query.push_str(" ORDER BY batch_id DESC");
+        query.push_str(&format!(" LIMIT {}", limit));
+
+        let rows = self.execute::<BatchVerifyTimeRow>(&query).await?;
+        if !rows.is_empty() {
+            return Ok(rows);
+        }
+
+        let mut query = format!(
+            "SELECT toUInt64(pb.batch_id) AS batch_id, \
+                    (l1_verified.block_ts - l1_proved.block_ts) AS seconds_to_verify \
+             FROM {db}.proved_batches pb \
+             INNER JOIN {db}.verified_batches vb \
+                ON pb.batch_id = vb.batch_id AND pb.block_hash = vb.block_hash \
+             INNER JOIN {db}.l1_head_events l1_proved \
+                ON pb.l1_block_number = l1_proved.l1_block_number \
+             INNER JOIN {db}.l1_head_events l1_verified \
+                ON vb.l1_block_number = l1_verified.l1_block_number \
+             WHERE l1_verified.block_ts >= {since} \
+               AND l1_verified.block_ts > l1_proved.block_ts \
+               AND (l1_verified.block_ts - l1_proved.block_ts) > 60",
+            since = since.timestamp(),
+            db = self.db_name,
+        );
+        if let Some(start) = starting_after {
+            query.push_str(&format!(" AND pb.batch_id < {}", start));
+        }
+        if let Some(end) = ending_before {
+            query.push_str(&format!(" AND pb.batch_id > {}", end));
+        }
+        query.push_str(" ORDER BY pb.batch_id DESC");
+        query.push_str(&format!(" LIMIT {}", limit));
+
+        let rows = self.execute::<BatchVerifyTimeRow>(&query).await?;
         Ok(rows)
     }
 

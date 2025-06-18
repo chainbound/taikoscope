@@ -439,7 +439,7 @@ async fn sse_l1_head(
     get,
     path = "/reorgs",
     params(
-        RangeQuery
+        PaginatedQuery
     ),
     responses(
         (status = 200, description = "Reorg events", body = ReorgEventsResponse),
@@ -478,7 +478,7 @@ async fn reorgs(
     get,
     path = "/active-gateways",
     params(
-        RangeQuery
+        PaginatedQuery
     ),
     responses(
         (status = 200, description = "Active gateways", body = ActiveGatewaysResponse),
@@ -511,7 +511,7 @@ async fn active_gateways(
     get,
     path = "/batch-posting-times",
     params(
-        RangeQuery
+        PaginatedQuery
     ),
     responses(
         (status = 200, description = "Batch posting times", body = BatchPostingTimesResponse),
@@ -546,7 +546,7 @@ async fn batch_posting_times(
     get,
     path = "/avg-blobs-per-batch",
     params(
-        RangeQuery
+        PaginatedQuery
     ),
     responses(
         (status = 200, description = "Average blobs per batch", body = AvgBlobsPerBatchResponse),
@@ -625,18 +625,26 @@ async fn blobs_per_batch(
     tag = "taikoscope"
 )]
 async fn prove_times(
-    Query(params): Query<RangeQuery>,
+    Query(params): Query<PaginatedQuery>,
     State(state): State<ApiState>,
 ) -> Result<Json<ProveTimesResponse>, ErrorResponse> {
-    // Validate time range parameters
-    validate_time_range(&params.time_range)?;
+    validate_time_range(&params.common.time_range)?;
+    let limit = validate_pagination(
+        params.starting_after.as_ref(),
+        params.ending_before.as_ref(),
+        params.limit.as_ref(),
+        MAX_TABLE_LIMIT,
+    )?;
+    let has_time_range = has_time_range_params(&params.common.time_range);
+    let has_slot_range = params.starting_after.is_some() || params.ending_before.is_some();
+    validate_range_exclusivity(has_time_range, has_slot_range)?;
 
-    // Check for range exclusivity
-    let has_time_range = has_time_range_params(&params.time_range);
-    validate_range_exclusivity(has_time_range, false)?;
-
-    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
-    let batches = match state.client.get_prove_times(time_range).await {
+    let since = resolve_time_range_since(&params.common.range, &params.common.time_range);
+    let batches = match state
+        .client
+        .get_prove_times_paginated(since, limit, params.starting_after, params.ending_before)
+        .await
+    {
         Ok(rows) => rows,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get prove times");
@@ -651,7 +659,7 @@ async fn prove_times(
     get,
     path = "/verify-times",
     params(
-        RangeQuery
+        PaginatedQuery
     ),
     responses(
         (status = 200, description = "Verify times", body = VerifyTimesResponse),
@@ -660,18 +668,26 @@ async fn prove_times(
     tag = "taikoscope"
 )]
 async fn verify_times(
-    Query(params): Query<RangeQuery>,
+    Query(params): Query<PaginatedQuery>,
     State(state): State<ApiState>,
 ) -> Result<Json<VerifyTimesResponse>, ErrorResponse> {
-    // Validate time range parameters
-    validate_time_range(&params.time_range)?;
+    validate_time_range(&params.common.time_range)?;
+    let limit = validate_pagination(
+        params.starting_after.as_ref(),
+        params.ending_before.as_ref(),
+        params.limit.as_ref(),
+        MAX_TABLE_LIMIT,
+    )?;
+    let has_time_range = has_time_range_params(&params.common.time_range);
+    let has_slot_range = params.starting_after.is_some() || params.ending_before.is_some();
+    validate_range_exclusivity(has_time_range, has_slot_range)?;
 
-    // Check for range exclusivity
-    let has_time_range = has_time_range_params(&params.time_range);
-    validate_range_exclusivity(has_time_range, false)?;
-
-    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
-    let batches = match state.client.get_verify_times(time_range).await {
+    let since = resolve_time_range_since(&params.common.range, &params.common.time_range);
+    let batches = match state
+        .client
+        .get_verify_times_paginated(since, limit, params.starting_after, params.ending_before)
+        .await
+    {
         Ok(rows) => rows,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get verify times");

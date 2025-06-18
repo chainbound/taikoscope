@@ -299,18 +299,31 @@ export const fetchL1HeadNumber = async (): Promise<RequestResult<number>> => {
 
 export const fetchProveTimes = async (
   range: TimeRange,
+  limit = 50,
+  startingAfter?: number,
+  endingBefore?: number,
 ): Promise<RequestResult<TimeSeriesData[]>> => {
-  const url = `${API_BASE}/prove-times?${timeRangeToQuery(range)}`;
+  let url = `${API_BASE}/prove-times?`;
+  if (startingAfter === undefined && endingBefore === undefined) {
+    url += `${timeRangeToQuery(range)}&limit=${limit}`;
+  } else {
+    url += `limit=${limit}`;
+  }
+  if (startingAfter !== undefined) {
+    url += `&starting_after=${startingAfter}`;
+  } else if (endingBefore !== undefined) {
+    url += `&ending_before=${endingBefore}`;
+  }
   const res = await fetchJson<{
     batches: { batch_id: number; seconds_to_prove: number }[];
   }>(url);
   return {
-    data: res.data
+    data: res.data?.batches
       ? res.data.batches.map((b) => ({
-        name: b.batch_id.toString(),
-        value: b.seconds_to_prove,
-        timestamp: 0,
-      }))
+          name: b.batch_id.toString(),
+          value: b.seconds_to_prove,
+          timestamp: 0,
+        }))
       : null,
     badRequest: res.badRequest,
     error: res.error,
@@ -319,18 +332,31 @@ export const fetchProveTimes = async (
 
 export const fetchVerifyTimes = async (
   range: TimeRange,
+  limit = 50,
+  startingAfter?: number,
+  endingBefore?: number,
 ): Promise<RequestResult<TimeSeriesData[]>> => {
-  const url = `${API_BASE}/verify-times?${timeRangeToQuery(range)}`;
+  let url = `${API_BASE}/verify-times?`;
+  if (startingAfter === undefined && endingBefore === undefined) {
+    url += `${timeRangeToQuery(range)}&limit=${limit}`;
+  } else {
+    url += `limit=${limit}`;
+  }
+  if (startingAfter !== undefined) {
+    url += `&starting_after=${startingAfter}`;
+  } else if (endingBefore !== undefined) {
+    url += `&ending_before=${endingBefore}`;
+  }
   const res = await fetchJson<{
     batches: { batch_id: number; seconds_to_verify: number }[];
   }>(url);
   return {
-    data: res.data
+    data: res.data?.batches
       ? res.data.batches.map((b) => ({
-        name: b.batch_id.toString(),
-        value: b.seconds_to_verify,
-        timestamp: 0,
-      }))
+          name: b.batch_id.toString(),
+          value: b.seconds_to_verify,
+          timestamp: 0,
+        }))
       : null,
     badRequest: res.badRequest,
     error: res.error,
