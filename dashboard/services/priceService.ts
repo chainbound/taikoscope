@@ -22,6 +22,7 @@ export const getEthPrice = async (): Promise<number> => {
   const data = await res.json();
   const price = data?.ethereum?.usd;
   if (typeof price !== 'number') {
+    showToast('Failed to fetch ETH price');
     throw new Error('Invalid ETH price response format');
   }
 
@@ -33,25 +34,25 @@ export const useEthPrice = () => {
     typeof localStorage === 'undefined'
       ? undefined
       : (() => {
-          const cached = localStorage.getItem(CACHE_KEY);
-          if (cached) {
-            try {
-              const { price, timestamp } = JSON.parse(cached) as {
-                price: number;
-                timestamp: number;
-              };
-              if (
-                Date.now() - timestamp < 3600_000 &&
-                typeof price === 'number'
-              ) {
-                return price;
-              }
-            } catch {
-              // ignore malformed cache
+        const cached = localStorage.getItem(CACHE_KEY);
+        if (cached) {
+          try {
+            const { price, timestamp } = JSON.parse(cached) as {
+              price: number;
+              timestamp: number;
+            };
+            if (
+              Date.now() - timestamp < 3600_000 &&
+              typeof price === 'number'
+            ) {
+              return price;
             }
+          } catch {
+            // ignore malformed cache
           }
-          return undefined;
-        })();
+        }
+        return undefined;
+      })();
 
   const swr = useSWR<number>('ethPrice', getEthPrice, {
     revalidateOnFocus: false,
