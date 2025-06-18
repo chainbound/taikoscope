@@ -150,6 +150,17 @@ export const TableRoute: React.FC = () => {
           [res] = await Promise.all([
             config.fetcher(range, PAGE_LIMIT, startingAfter, endingBefore),
           ]);
+        } else if (tableType === 'blobs-per-batch') {
+          if (config.aggregatedFetcher) {
+            [res, aggRes] = await Promise.all([
+              config.fetcher(range, PAGE_LIMIT, startingAfter, endingBefore),
+              config.aggregatedFetcher(range),
+            ]);
+          } else {
+            [res] = await Promise.all([
+              config.fetcher(range, PAGE_LIMIT, startingAfter, endingBefore),
+            ]);
+          }
         } else {
           [res, aggRes] = await (config.aggregatedFetcher
             ? Promise.all([

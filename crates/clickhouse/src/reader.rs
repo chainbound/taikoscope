@@ -1578,6 +1578,41 @@ impl ClickhouseReader {
         Ok(rows)
     }
 
+    /// Get the blob count for each batch since the given cutoff time with
+    /// cursor-based pagination. Results are returned in descending order by L1
+    /// block number.
+    pub async fn get_blobs_per_batch_paginated(
+        &self,
+        since: DateTime<Utc>,
+        limit: u64,
+        starting_after: Option<u64>,
+        ending_before: Option<u64>,
+    ) -> Result<Vec<BatchBlobCountRow>> {
+        let mut query = format!(
+            "SELECT b.l1_block_number, b.batch_id, b.blob_count \
+             FROM {db}.batches b \
+             INNER JOIN {db}.l1_head_events l1_events \
+               ON b.l1_block_number = l1_events.l1_block_number \
+             WHERE l1_events.block_ts >= {since}",
+            since = since.timestamp(),
+            db = self.db_name,
+        );
+
+        if let Some(start) = starting_after {
+            query.push_str(&format!(" AND b.l1_block_number < {}", start));
+        }
+
+        if let Some(end) = ending_before {
+            query.push_str(&format!(" AND b.l1_block_number > {}", end));
+        }
+
+        query.push_str(" ORDER BY b.l1_block_number DESC");
+        query.push_str(&format!(" LIMIT {}", limit));
+
+        let rows = self.execute::<BatchBlobCountRow>(&query).await?;
+        Ok(rows)
+    }
+
     /// Get the average number of blobs per batch for the given range
     pub async fn get_avg_blobs_per_batch(&self, range: TimeRange) -> Result<Option<f64>> {
         #[derive(Row, Deserialize)]
