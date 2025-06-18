@@ -119,14 +119,17 @@ impl ClickhouseReader {
     }
 
     /// Anti-subquery that hides blocks later rolled back by a reorg.
-    /// Use with `NOT IN (SELECT l2_block_number FROM ...)`
+    /// Use with `NOT EXISTS (SELECT 1 FROM ... WHERE ...)`.
     fn reorg_filter(&self, table_alias: &str) -> String {
         format!(
-            "{table_alias}.l2_block_number NOT IN ( \
-                SELECT l2_block_number \
-                FROM {db}.l2_reorgs\
-            )",
+            "NOT EXISTS ( \
+               SELECT 1 \
+               FROM   {db}.l2_reorgs AS r \
+               WHERE  {alias}.l2_block_number > r.l2_block_number \
+                  AND {alias}.l2_block_number <= r.l2_block_number + r.depth \
+             )",
             db = self.db_name,
+            alias = table_alias,
         )
     }
 
@@ -1172,8 +1175,8 @@ impl ClickhouseReader {
         };
 
         if row.max_ts > row.min_ts && row.tx_sum > 0 {
-            let duration = (row.max_ts - row.min_ts) as f64;
-            Ok(Some(row.tx_sum as f64 / duration))
+            let duration_secs = (row.max_ts - row.min_ts) as f64;
+            Ok(Some(row.tx_sum as f64 / duration_secs))
         } else {
             Ok(None)
         }
