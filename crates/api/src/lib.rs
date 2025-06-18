@@ -1369,22 +1369,18 @@ async fn l2_fees(
         )
     })?;
 
+    // Filter using the raw `AddressBytes` value to avoid discrepancies caused by
+    // different textual representations of the same address (e.g. case, missing
+    // "0x" prefix). Only after filtering do we convert addresses to their
+    // canonical hex string form.
     let sequencers: Vec<SequencerFeeRow> = rows
         .into_iter()
+        .filter(|r| if let Some(target) = address { r.sequencer == target } else { true })
         .map(|r| SequencerFeeRow {
             address: format!("0x{}", encode(r.sequencer)),
             priority_fee: r.priority_fee,
             base_fee: r.base_fee,
             l1_data_cost: r.l1_data_cost,
-        })
-        .filter(|r| {
-            if let Some(target_address) = address {
-                // Compare against the normalized address format for consistency
-                let target_address_str = format!("0x{}", encode(target_address));
-                r.address == target_address_str
-            } else {
-                true
-            }
         })
         .collect();
 
