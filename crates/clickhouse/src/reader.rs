@@ -1480,7 +1480,7 @@ impl ClickhouseReader {
             "SELECT h.sequencer, \
                     sum(sum_priority_fee) AS priority_fee, \
                     sum(sum_base_fee) AS base_fee, \
-                    sum(dc.cost) AS l1_data_cost \
+                    toNullable(sum(dc.cost)) AS l1_data_cost \
              FROM {db}.l2_head_events h \
              LEFT JOIN {db}.l1_data_costs dc \
                ON h.l2_block_number = dc.l2_block_number \
