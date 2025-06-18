@@ -148,7 +148,7 @@ describe('apiService', () => {
   });
 
   it('shows toast on server error', async () => {
-    const spy = vi.spyOn(toast, 'showToast').mockImplementation(() => {});
+    const spy = vi.spyOn(toast, 'showToast').mockImplementation(() => { });
     globalThis.fetch = mockFetch({}, 500, false);
     const res = await fetchAvgProveTime('1h');
     expect(res.badRequest).toBe(false);
@@ -158,7 +158,7 @@ describe('apiService', () => {
   });
 
   it('shows toast on network error after retries', async () => {
-    const spy = vi.spyOn(toast, 'showToast').mockImplementation(() => {});
+    const spy = vi.spyOn(toast, 'showToast').mockImplementation(() => { });
     globalThis.fetch = vi.fn(async () => {
       throw new Error('offline');
     });
