@@ -89,9 +89,15 @@ export const formatWithCommas = (value: number): string =>
 
 export const formatEth = (wei: number): string => {
   const eth = wei / 1e18;
+  if (Math.abs(eth) >= 1000) {
+    return `${Math.trunc(eth).toLocaleString()} ETH`;
+  }
   const ethFormatted = formatDecimal(eth);
   if (wei !== 0 && ethFormatted === '0.00') {
     const gwei = wei / 1e9;
+    if (Math.abs(gwei) >= 1000) {
+      return `${Math.trunc(gwei).toLocaleString()} Gwei`;
+    }
     const gweiFormatted = Number.isInteger(gwei)
       ? gwei.toLocaleString()
       : formatDecimal(gwei);
