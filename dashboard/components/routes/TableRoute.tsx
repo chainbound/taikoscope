@@ -126,20 +126,36 @@ export const TableRoute: React.FC = () => {
           const address = fetcherArgs.pop();
           if (config.aggregatedFetcher) {
             [res, aggRes] = await Promise.all([
-              config.fetcher(range, address, PAGE_LIMIT, startingAfter, endingBefore),
+              config.fetcher(
+                range,
+                address,
+                PAGE_LIMIT,
+                startingAfter,
+                endingBefore,
+              ),
               config.aggregatedFetcher(range, address),
             ]);
           } else {
             [res] = await Promise.all([
-              config.fetcher(range, address, PAGE_LIMIT, startingAfter, endingBefore),
+              config.fetcher(
+                range,
+                address,
+                PAGE_LIMIT,
+                startingAfter,
+                endingBefore,
+              ),
             ]);
           }
+        } else if (tableType === 'reorgs') {
+          [res] = await Promise.all([
+            config.fetcher(range, PAGE_LIMIT, startingAfter, endingBefore),
+          ]);
         } else {
           [res, aggRes] = await (config.aggregatedFetcher
             ? Promise.all([
-              config.fetcher(range, ...fetcherArgs),
-              config.aggregatedFetcher(range, ...fetcherArgs),
-            ])
+                config.fetcher(range, ...fetcherArgs),
+                config.aggregatedFetcher(range, ...fetcherArgs),
+              ])
             : Promise.all([config.fetcher(range, ...fetcherArgs)]));
         }
         if (currentFetchId !== fetchIdRef.current) return;
@@ -148,8 +164,15 @@ export const TableRoute: React.FC = () => {
 
         // Calculate pagination cursors from original data before reversing
         const originalData = data;
-        const nextCursor = originalData.length > 0 ? originalData[originalData.length - 1].value : undefined;
-        const prevCursor = originalData.length > 0 ? originalData[0].value : undefined;
+        const nextCursor =
+          originalData.length > 0
+            ? (originalData[originalData.length - 1].value ??
+              originalData[originalData.length - 1].l2_block_number)
+            : undefined;
+        const prevCursor =
+          originalData.length > 0
+            ? (originalData[0].value ?? originalData[0].l2_block_number)
+            : undefined;
 
         if (config.reverseOrder) {
           data = [...data].reverse();
@@ -173,7 +196,7 @@ export const TableRoute: React.FC = () => {
             rows: mappedData,
             chart,
           };
-          if (tableType === 'l2-gas-used') {
+          if (tableType === 'l2-gas-used' || tableType === 'reorgs') {
             const disablePrev = page === 0;
             const disableNext = originalData.length < PAGE_LIMIT;
             view.serverPagination = {
@@ -181,14 +204,16 @@ export const TableRoute: React.FC = () => {
               onNext: () => {
                 const params = new URLSearchParams(searchParams);
                 params.set('page', String(page + 1));
-                if (nextCursor !== undefined) params.set('start', String(nextCursor));
+                if (nextCursor !== undefined)
+                  params.set('start', String(nextCursor));
                 params.delete('end');
                 setSearchParams(params);
               },
               onPrev: () => {
                 const params = new URLSearchParams(searchParams);
                 params.set('page', String(page - 1));
-                if (prevCursor !== undefined) params.set('end', String(prevCursor));
+                if (prevCursor !== undefined)
+                  params.set('end', String(prevCursor));
                 params.delete('start');
                 setSearchParams(params);
               },

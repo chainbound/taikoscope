@@ -156,18 +156,31 @@ export const fetchL2Reorgs = async (
 
 export const fetchL2ReorgEvents = async (
   range: TimeRange,
+  limit = 50,
+  startingAfter?: number,
+  endingBefore?: number,
 ): Promise<RequestResult<L2ReorgEvent[]>> => {
-  const url = `${API_BASE}/reorgs?${timeRangeToQuery(range)}`;
+  let url = `${API_BASE}/reorgs?`;
+  if (startingAfter === undefined && endingBefore === undefined) {
+    url += `${timeRangeToQuery(range)}&limit=${limit}`;
+  } else {
+    url += `limit=${limit}`;
+  }
+  if (startingAfter !== undefined) {
+    url += `&starting_after=${startingAfter}`;
+  } else if (endingBefore !== undefined) {
+    url += `&ending_before=${endingBefore}`;
+  }
   const res = await fetchJson<{
     events: { l2_block_number: number; depth: number; inserted_at: string }[];
   }>(url);
   return {
-    data: res.data
+    data: res.data?.events
       ? res.data.events.map((e) => ({
-        l2_block_number: e.l2_block_number,
-        depth: e.depth,
-        timestamp: Date.parse(e.inserted_at),
-      }))
+          l2_block_number: e.l2_block_number,
+          depth: e.depth,
+          timestamp: Date.parse(e.inserted_at),
+        }))
       : null,
     badRequest: res.badRequest,
     error: res.error,
@@ -293,10 +306,10 @@ export const fetchProveTimes = async (
   return {
     data: res.data
       ? res.data.batches.map((b) => ({
-        name: b.batch_id.toString(),
-        value: b.seconds_to_prove,
-        timestamp: 0,
-      }))
+          name: b.batch_id.toString(),
+          value: b.seconds_to_prove,
+          timestamp: 0,
+        }))
       : null,
     badRequest: res.badRequest,
     error: res.error,
@@ -313,10 +326,10 @@ export const fetchVerifyTimes = async (
   return {
     data: res.data
       ? res.data.batches.map((b) => ({
-        name: b.batch_id.toString(),
-        value: b.seconds_to_verify,
-        timestamp: 0,
-      }))
+          name: b.batch_id.toString(),
+          value: b.seconds_to_verify,
+          timestamp: 0,
+        }))
       : null,
     badRequest: res.badRequest,
     error: res.error,
@@ -364,7 +377,11 @@ export const fetchL2BlockTimes = async (
     `${API_BASE}/l2-block-times?${timeRangeToQuery(range)}` +
     (address ? `&address=${address}` : '');
   const res = await fetchJson<{
-    blocks: { l2_block_number: number; block_time: string; ms_since_prev_block: number }[];
+    blocks: {
+      l2_block_number: number;
+      block_time: string;
+      ms_since_prev_block: number;
+    }[];
   }>(url);
   if (!res.data) {
     return { data: null, badRequest: res.badRequest, error: res.error };
@@ -389,7 +406,11 @@ export const fetchL2BlockTimesAggregated = async (
     `${API_BASE}/l2-block-times/aggregated?${timeRangeToQuery(range)}` +
     (address ? `&address=${address}` : '');
   const res = await fetchJson<{
-    blocks: { l2_block_number: number; block_time: string; ms_since_prev_block: number }[];
+    blocks: {
+      l2_block_number: number;
+      block_time: string;
+      ms_since_prev_block: number;
+    }[];
   }>(url);
   if (!res.data) {
     return { data: null, badRequest: res.badRequest, error: res.error };
@@ -452,10 +473,10 @@ export const fetchL2GasUsed = async (
   return {
     data: res.data
       ? res.data.blocks.map((b) => ({
-        value: b.l2_block_number,
-        timestamp: b.gas_used,
-        blockTime: new Date(b.block_time).getTime(),
-      }))
+          value: b.l2_block_number,
+          timestamp: b.gas_used,
+          blockTime: new Date(b.block_time).getTime(),
+        }))
       : null,
     badRequest: res.badRequest,
     error: res.error,
@@ -475,10 +496,10 @@ export const fetchL2GasUsedAggregated = async (
   return {
     data: res.data
       ? res.data.blocks.map((b) => ({
-        value: b.l2_block_number,
-        timestamp: b.gas_used,
-        blockTime: new Date(b.block_time).getTime(),
-      }))
+          value: b.l2_block_number,
+          timestamp: b.gas_used,
+          blockTime: new Date(b.block_time).getTime(),
+        }))
       : null,
     badRequest: res.badRequest,
     error: res.error,
@@ -487,7 +508,9 @@ export const fetchL2GasUsedAggregated = async (
 
 export const fetchSequencerDistribution = async (
   range: TimeRange,
-): Promise<RequestResult<{ name: string; value: number; tps: number | null }[]>> => {
+): Promise<
+  RequestResult<{ name: string; value: number; tps: number | null }[]>
+> => {
   const url = `${API_BASE}/sequencer-distribution?${timeRangeToQuery(range)}`;
   const res = await fetchJson<{
     sequencers: { address: string; blocks: number; tps: number | null }[];
@@ -495,10 +518,10 @@ export const fetchSequencerDistribution = async (
   return {
     data: res.data
       ? res.data.sequencers.map((s) => ({
-        name: getSequencerName(s.address),
-        value: s.blocks,
-        tps: s.tps,
-      }))
+          name: getSequencerName(s.address),
+          value: s.blocks,
+          tps: s.tps,
+        }))
       : null,
     badRequest: res.badRequest,
     error: res.error,
@@ -554,15 +577,22 @@ export const fetchBlockTransactions = async (
   if (address) {
     url += `&address=${address}`;
   }
-  const res = await fetchJson<{ blocks: { block: number; txs: number; sequencer: string; block_time: string }[] }>(url);
+  const res = await fetchJson<{
+    blocks: {
+      block: number;
+      txs: number;
+      sequencer: string;
+      block_time: string;
+    }[];
+  }>(url);
   return {
     data: res.data?.blocks
       ? res.data.blocks.map((b) => ({
-        block: b.block,
-        txs: b.txs,
-        sequencer: getSequencerName(b.sequencer),
-        blockTime: new Date(b.block_time).getTime(),
-      }))
+          block: b.block,
+          txs: b.txs,
+          sequencer: getSequencerName(b.sequencer),
+          blockTime: new Date(b.block_time).getTime(),
+        }))
       : null,
     badRequest: res.badRequest,
     error: res.error,
@@ -593,16 +623,21 @@ export const fetchBlockTransactionsAggregated = async (
     `${API_BASE}/block-transactions/aggregated?${timeRangeToQuery(range)}` +
     (address ? `&address=${address}` : '');
   const res = await fetchJson<{
-    blocks: { block: number; txs: number; sequencer: string; block_time: string }[];
+    blocks: {
+      block: number;
+      txs: number;
+      sequencer: string;
+      block_time: string;
+    }[];
   }>(url);
   return {
     data: res.data?.blocks
       ? res.data.blocks.map((b) => ({
-        block: b.block,
-        txs: b.txs,
-        sequencer: getSequencerName(b.sequencer),
-        blockTime: new Date(b.block_time).getTime(),
-      }))
+          block: b.block,
+          txs: b.txs,
+          sequencer: getSequencerName(b.sequencer),
+          blockTime: new Date(b.block_time).getTime(),
+        }))
       : null,
     badRequest: res.badRequest,
     error: res.error,
@@ -629,10 +664,10 @@ export const fetchBatchBlobCounts = async (
   return {
     data: res.data
       ? res.data.batches.map((b) => ({
-        block: b.l1_block_number ?? b.batch_id, // Fallback to batch_id for backward compatibility
-        batch: b.batch_id,
-        blobs: b.blob_count,
-      }))
+          block: b.l1_block_number ?? b.batch_id, // Fallback to batch_id for backward compatibility
+          batch: b.batch_id,
+          blobs: b.blob_count,
+        }))
       : null,
     badRequest: res.badRequest,
     error: res.error,
@@ -720,11 +755,11 @@ export const fetchFeeComponents = async (
   return {
     data: res.data
       ? res.data.blocks.map((b) => ({
-        block: b.l2_block_number,
-        priority: b.priority_fee,
-        base: b.base_fee,
-        l1Cost: b.l1_data_cost ?? null,
-      }))
+          block: b.l2_block_number,
+          priority: b.priority_fee,
+          base: b.base_fee,
+          l1Cost: b.l1_data_cost ?? null,
+        }))
       : null,
     badRequest: res.badRequest,
     error: res.error,
