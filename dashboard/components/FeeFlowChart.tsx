@@ -112,7 +112,6 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
   const priorityFeeUsd = ((priorityFee ?? 0) / WEI_TO_ETH) * ethPrice;
   const baseFeeUsd = ((baseFee ?? 0) / WEI_TO_ETH) * ethPrice;
   const baseFeeDaoUsd = baseFeeUsd * 0.25;
-  const seqCount = sequencerFees.length || 1;
 
   // Scale operational costs to the selected time range
   const hours = rangeToHours(timeRange);
