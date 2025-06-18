@@ -397,17 +397,17 @@ export const fetchL2BlockTimes = async (
       ms_since_prev_block: number;
     }[];
   }>(url);
-  return {
-    data: res.data
-      ? res.data.blocks.map((b) => ({
-          value: b.l2_block_number,
-          timestamp: b.ms_since_prev_block / 1000,
-          blockTime: new Date(b.block_time).getTime(),
-        }))
-      : null,
-    badRequest: res.badRequest,
-    error: res.error,
-  };
+  if (!res.data) {
+    return { data: null, badRequest: res.badRequest, error: res.error };
+  }
+
+  const data = res.data.blocks.slice(1).map((b) => ({
+    value: b.l2_block_number,
+    timestamp: b.ms_since_prev_block / 1000,
+    blockTime: new Date(b.block_time).getTime(),
+  }));
+
+  return { data, badRequest: res.badRequest, error: res.error };
 };
 
 export const fetchL2BlockTimesAggregated = async (
