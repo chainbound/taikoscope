@@ -5,6 +5,7 @@ import {
   fetchSequencerDistribution,
   fetchL2Fees,
 } from '../services/apiService';
+import * as apiService from '../services/apiService';
 import { getSequencerAddress } from '../sequencerConfig';
 import { useEthPrice } from '../services/priceService';
 import { rangeToHours } from '../utils/timeRange';
@@ -38,19 +39,19 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
 
   const { data: ethPrice = 0 } = useEthPrice();
 
-  const { data: feeData } = useSWR(
-    sequencers.length ? ['profitRankingFees', timeRange, sequencers] : null,
-    async () => {
-      const fees = await Promise.all(
-        sequencers.map((s) =>
-          fetchL2Fees(timeRange, getSequencerAddress(s.name) || ''),
-        ),
-      );
-      return fees.map((f) => f.data);
-    },
-  );
+  const { data: feeRes } = useSWR([
+    'profitRankingFees',
+    timeRange,
+  ], () => fetchL2Fees(timeRange));
+  const feeDataMap = React.useMemo(() => {
+    const map = new Map<string, apiService.SequencerFee>();
+    feeRes?.data?.sequencers.forEach((f) => {
+      map.set(f.address.toLowerCase(), f);
+    });
+    return map;
+  }, [feeRes]);
 
-  if (!feeData) {
+  if (!feeRes) {
     return (
       <div className="flex items-center justify-center h-20 text-gray-500 dark:text-gray-400">
         Loading...
@@ -62,8 +63,9 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
   const MONTH_HOURS = 30 * 24;
   const costPerSeq = ((cloudCost + proverCost) / MONTH_HOURS) * hours;
 
-  const rows = sequencers.map((seq, idx) => {
-    const fees = feeData[idx];
+  const rows = sequencers.map((seq) => {
+    const addr = getSequencerAddress(seq.name) || '';
+    const fees = feeDataMap.get(addr.toLowerCase());
     if (!fees) {
       return {
         name: seq.name,

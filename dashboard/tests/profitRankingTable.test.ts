@@ -5,6 +5,7 @@ import * as swr from 'swr';
 vi.mock('swr', () => ({ default: vi.fn() }));
 import * as api from '../services/apiService';
 import * as priceService from '../services/priceService';
+import * as seqCfg from '../sequencerConfig';
 import { ProfitRankingTable } from '../components/ProfitRankingTable';
 
 describe('ProfitRankingTable', () => {
@@ -14,14 +15,21 @@ describe('ProfitRankingTable', () => {
         data: { data: [{ name: 'SeqA', value: 10, tps: null }] },
       } as any)
       .mockReturnValueOnce({
-        data: [
-          {
+        data: {
+          data: {
             priority_fee: 2e18,
             base_fee: 1e18,
             l1_data_cost: 0,
-            sequencers: [],
+            sequencers: [
+              {
+                address: '0xseq',
+                priority_fee: 2e18,
+                base_fee: 1e18,
+                l1_data_cost: 0,
+              },
+            ],
           },
-        ],
+        },
       } as any);
     vi.spyOn(api, 'fetchSequencerDistribution').mockResolvedValue({
       data: [{ name: 'SeqA', value: 10, tps: null }],
@@ -29,13 +37,26 @@ describe('ProfitRankingTable', () => {
       error: null,
     } as any);
     vi.spyOn(api, 'fetchL2Fees').mockResolvedValue({
-      data: { priority_fee: 2e18, base_fee: 1e18, l1_data_cost: 0, sequencers: [] },
+      data: {
+        priority_fee: 2e18,
+        base_fee: 1e18,
+        l1_data_cost: 0,
+        sequencers: [
+          {
+            address: '0xseq',
+            priority_fee: 2e18,
+            base_fee: 1e18,
+            l1_data_cost: 0,
+          },
+        ],
+      },
       badRequest: false,
       error: null,
     } as any);
     vi.spyOn(priceService, 'useEthPrice').mockReturnValue({
       data: 1000,
     } as any);
+    vi.spyOn(seqCfg, 'getSequencerAddress').mockReturnValue('0xseq');
 
     const html = renderToStaticMarkup(
       React.createElement(ProfitRankingTable, {
