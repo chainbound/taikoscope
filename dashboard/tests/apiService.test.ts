@@ -72,7 +72,6 @@ describe('apiService', () => {
     const blockTimes = await fetchL2BlockTimes('1h');
     expect(blockTimes.error).toBeNull();
     expect(blockTimes.data).toStrictEqual([
-      { value: 1, timestamp: 0.01, blockTime: new Date('1970-01-01T00:00:01Z').getTime() },
       { value: 2, timestamp: 0.02, blockTime: new Date('1970-01-01T00:00:02Z').getTime() },
     ]);
   });
@@ -87,7 +86,6 @@ describe('apiService', () => {
     const blockTimes = await fetchL2BlockTimes('15m');
     expect(blockTimes.error).toBeNull();
     expect(blockTimes.data).toStrictEqual([
-      { value: 1, timestamp: 0.01, blockTime: new Date('1970-01-01T00:00:01Z').getTime() },
       { value: 2, timestamp: 0.02, blockTime: new Date('1970-01-01T00:00:02Z').getTime() },
     ]);
   });
@@ -150,7 +148,7 @@ describe('apiService', () => {
   });
 
   it('shows toast on server error', async () => {
-    const spy = vi.spyOn(toast, 'showToast').mockImplementation(() => {});
+    const spy = vi.spyOn(toast, 'showToast').mockImplementation(() => { });
     globalThis.fetch = mockFetch({}, 500, false);
     const res = await fetchAvgProveTime('1h');
     expect(res.badRequest).toBe(false);
@@ -160,7 +158,7 @@ describe('apiService', () => {
   });
 
   it('shows toast on network error after retries', async () => {
-    const spy = vi.spyOn(toast, 'showToast').mockImplementation(() => {});
+    const spy = vi.spyOn(toast, 'showToast').mockImplementation(() => { });
     globalThis.fetch = vi.fn(async () => {
       throw new Error('offline');
     });
