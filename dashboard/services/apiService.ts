@@ -17,6 +17,7 @@ import type {
 
 export interface SequencerDistributionDataItem {
   name: string;
+  address: string;
   value: number;
   tps: number | null;
 }
@@ -520,9 +521,7 @@ export const fetchL2GasUsedAggregated = async (
 
 export const fetchSequencerDistribution = async (
   range: TimeRange,
-): Promise<
-  RequestResult<{ name: string; value: number; tps: number | null }[]>
-> => {
+): Promise<RequestResult<SequencerDistributionDataItem[]>> => {
   const url = `${API_BASE}/sequencer-distribution?${timeRangeToQuery(range)}`;
   const res = await fetchJson<{
     sequencers: { address: string; blocks: number; tps: number | null }[];
@@ -531,6 +530,7 @@ export const fetchSequencerDistribution = async (
     data: res.data
       ? res.data.sequencers.map((s) => ({
         name: getSequencerName(s.address),
+        address: s.address,
         value: s.blocks,
         tps: s.tps,
       }))
