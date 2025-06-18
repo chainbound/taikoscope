@@ -439,7 +439,7 @@ async fn sse_l1_head(
     get,
     path = "/reorgs",
     params(
-        PaginatedQuery
+        RangeQuery
     ),
     responses(
         (status = 200, description = "Reorg events", body = ReorgEventsResponse),
