@@ -24,6 +24,8 @@ const formatUsd = (value: number) => `$${value.toFixed(2)}`;
 const SankeyNode = ({ x, y, width, height, payload }: any) => {
   const nodeValue = payload?.value;
   const formattedValue = nodeValue != null ? formatUsd(nodeValue) : '';
+  const isCostNode =
+    payload.name === 'Cloud Cost' || payload.name === 'Prover Cost';
 
   return (
     <g>
@@ -32,7 +34,7 @@ const SankeyNode = ({ x, y, width, height, payload }: any) => {
         y={y}
         width={width}
         height={height}
-        fill={TAIKO_PINK}
+        fill={isCostNode ? '#ef4444' : TAIKO_PINK}
         fillOpacity={0.8}
       />
       <text
@@ -52,6 +54,34 @@ const SankeyNode = ({ x, y, width, height, payload }: any) => {
         )}
       </text>
     </g>
+  );
+};
+
+const SankeyLink = ({
+  sourceX,
+  sourceY,
+  sourceControlX,
+  targetX,
+  targetY,
+  targetControlX,
+  linkWidth,
+  payload,
+  ...rest
+}: any) => {
+  const isCost =
+    payload.target.name === 'Cloud Cost' ||
+    payload.target.name === 'Prover Cost';
+
+  return (
+    <path
+      className="recharts-sankey-link"
+      d={`M${sourceX},${sourceY}C${sourceControlX},${sourceY} ${targetControlX},${targetY} ${targetX},${targetY}`}
+      fill="none"
+      stroke={isCost ? '#ef4444' : '#94a3b8'}
+      strokeWidth={linkWidth}
+      strokeOpacity={0.2}
+      {...rest}
+    />
   );
 };
 
@@ -168,7 +198,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
           margin={{ top: 10, right: 120, bottom: 10, left: 10 }}
           sort={false}
           iterations={32}
-          link={{ stroke: '#94a3b8', strokeOpacity: 0.2 }}
+          link={SankeyLink}
         >
           <Tooltip
             content={tooltipContent}
