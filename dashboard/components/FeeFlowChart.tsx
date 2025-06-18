@@ -1,7 +1,7 @@
 import React from 'react';
 import { ResponsiveContainer, Sankey, Tooltip } from 'recharts';
 import useSWR from 'swr';
-import { fetchDashboardData } from '../services/apiService';
+import { fetchL2Fees } from '../services/apiService';
 import { useEthPrice } from '../services/priceService';
 import { TimeRange } from '../types';
 import { rangeToHours } from '../utils/timeRange';
@@ -60,13 +60,13 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
   proverCost,
   address,
 }) => {
-  const { data: dashRes } = useSWR(['dashboardData', timeRange, address], () =>
-    fetchDashboardData(timeRange, address),
+  const { data: feeRes } = useSWR(['l2FeesFlow', timeRange, address], () =>
+    fetchL2Fees(timeRange, address),
   );
   const { data: ethPrice = 0 } = useEthPrice();
 
-  const priorityFee = dashRes?.data?.priority_fee ?? null;
-  const baseFee = dashRes?.data?.base_fee ?? null;
+  const priorityFee = feeRes?.data?.priority_fee ?? null;
+  const baseFee = feeRes?.data?.base_fee ?? null;
 
   if (priorityFee == null && baseFee == null) {
     return (
