@@ -1130,6 +1130,65 @@ impl ClickhouseReader {
         Ok(rows)
     }
 
+    /// Get verify times with cursor-based pagination
+    /// Results are returned in descending order by batch id
+    pub async fn get_verify_times_paginated(
+        &self,
+        since: DateTime<Utc>,
+        limit: u64,
+        starting_after: Option<u64>,
+        ending_before: Option<u64>,
+    ) -> Result<Vec<BatchVerifyTimeRow>> {
+        let mut query = format!(
+            "SELECT batch_id, toUInt64(verify_time_ms / 1000) AS seconds_to_verify \
+             FROM {db}.batch_verify_times_mv \
+             WHERE verified_at >= {since} \
+               AND verify_time_ms > 60000",
+            since = since.timestamp(),
+            db = self.db_name,
+        );
+        if let Some(start) = starting_after {
+            query.push_str(&format!(" AND batch_id < {}", start));
+        }
+        if let Some(end) = ending_before {
+            query.push_str(&format!(" AND batch_id > {}", end));
+        }
+        query.push_str(" ORDER BY batch_id DESC");
+        query.push_str(&format!(" LIMIT {}", limit));
+
+        let rows = self.execute::<BatchVerifyTimeRow>(&query).await?;
+        Ok(rows)
+    }
+
+    /// Get prove times with cursor-based pagination
+    /// Results are returned in descending order by batch id
+    pub async fn get_prove_times_paginated(
+        &self,
+        since: DateTime<Utc>,
+        limit: u64,
+        starting_after: Option<u64>,
+        ending_before: Option<u64>,
+    ) -> Result<Vec<BatchProveTimeRow>> {
+        let mut query = format!(
+            "SELECT batch_id, toUInt64(prove_time_ms / 1000) AS seconds_to_prove \
+             FROM {db}.batch_prove_times_mv \
+             WHERE proved_at >= {since}",
+            since = since.timestamp(),
+            db = self.db_name,
+        );
+        if let Some(start) = starting_after {
+            query.push_str(&format!(" AND batch_id < {}", start));
+        }
+        if let Some(end) = ending_before {
+            query.push_str(&format!(" AND batch_id > {}", end));
+        }
+        query.push_str(" ORDER BY batch_id DESC");
+        query.push_str(&format!(" LIMIT {}", limit));
+
+        let rows = self.execute::<BatchProveTimeRow>(&query).await?;
+        Ok(rows)
+    }
+
     /// Get L1 block numbers grouped by minute for the given range
     pub async fn get_l1_block_times(&self, range: TimeRange) -> Result<Vec<L1BlockTimeRow>> {
         let query = format!(
