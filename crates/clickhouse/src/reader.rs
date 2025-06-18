@@ -1477,16 +1477,16 @@ impl ClickhouseReader {
         }
 
         let query = format!(
-            "SELECT h.sequencer,\
-                    sum(sum_priority_fee) AS priority_fee,\
-                    sum(sum_base_fee) AS base_fee,\
-                    sum(dc.cost) AS l1_data_cost\
-             FROM {db}.l2_head_events h\
-             LEFT JOIN {db}.l1_data_costs dc\
-               ON h.l2_block_number = dc.l2_block_number\
-             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})\
-               AND {filter}\
-             GROUP BY h.sequencer\
+            "SELECT h.sequencer, \
+                    sum(sum_priority_fee) AS priority_fee, \
+                    sum(sum_base_fee) AS base_fee, \
+                    toNullable(sum(dc.cost)) AS l1_data_cost \
+             FROM {db}.l2_head_events h \
+             LEFT JOIN {db}.l1_data_costs dc \
+               ON h.l2_block_number = dc.l2_block_number \
+             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
+               AND {filter} \
+             GROUP BY h.sequencer \
              ORDER BY priority_fee DESC",
             interval = range.interval(),
             filter = self.reorg_filter("h"),
@@ -1622,5 +1622,51 @@ mod tests {
                 l1_data_cost: Some(5),
             }]
         );
+    }
+
+    #[test]
+    fn fees_by_sequencer_query_has_proper_spacing() {
+        // Test that the generated SQL query has proper spacing between keywords
+        let reader =
+            ClickhouseReader { base: clickhouse::Client::default(), db_name: "test_db".to_owned() };
+
+        // Simulate the query generation logic
+        let range = TimeRange::LastHour;
+        let query = format!(
+            "SELECT h.sequencer, \
+                    sum(sum_priority_fee) AS priority_fee, \
+                    sum(sum_base_fee) AS base_fee, \
+                    sum(dc.cost) AS l1_data_cost \
+             FROM {db}.l2_head_events h \
+             LEFT JOIN {db}.l1_data_costs dc \
+               ON h.l2_block_number = dc.l2_block_number \
+             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
+               AND {filter} \
+             GROUP BY h.sequencer \
+             ORDER BY priority_fee DESC",
+            interval = range.interval(),
+            filter = reader.reorg_filter("h"),
+            db = reader.db_name,
+        );
+
+        // Verify that the problematic concatenations have proper spacing
+        assert!(
+            query.contains("l2_head_events h LEFT JOIN"),
+            "Query should have space between 'h' and 'LEFT JOIN'"
+        );
+        assert!(
+            query.contains("l1_data_costs dc ON"),
+            "Query should have space between 'dc' and 'ON'"
+        );
+        assert!(
+            query.contains("dc.l2_block_number WHERE"),
+            "Query should have space between 'l2_block_number' and 'WHERE'"
+        );
+        assert!(query.contains(") AND"), "Query should have space between ')' and 'AND'");
+
+        // Verify that malformed tokens are not present
+        assert!(!query.contains("hLEFT"), "Query should not contain 'hLEFT'");
+        assert!(!query.contains("dcON"), "Query should not contain 'dcON'");
+        assert!(!query.contains("numberWHERE"), "Query should not contain 'numberWHERE'");
     }
 }

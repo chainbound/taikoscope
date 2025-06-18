@@ -1,5 +1,6 @@
 import React from 'react';
 import { ResponsiveContainer, Sankey, Tooltip } from 'recharts';
+import { TAIKO_PINK } from '../theme';
 import useSWR from 'swr';
 import { fetchL2Fees } from '../services/apiService';
 import { useEthPrice } from '../services/priceService';
@@ -31,7 +32,7 @@ const SankeyNode = ({ x, y, width, height, payload }: any) => {
         y={y}
         width={width}
         height={height}
-        fill="#10b981"
+        fill={TAIKO_PINK}
         fillOpacity={0.8}
       />
       <text

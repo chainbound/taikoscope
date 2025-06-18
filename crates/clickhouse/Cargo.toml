@@ -22,7 +22,7 @@ url.workspace = true
 hex.workspace = true
 include_dir = "0.7"
 regex = "1"
-utoipa = { version = "5.3", features = ["chrono"] }
+utoipa = { version = "5.4", features = ["chrono"] }
 
 [dev-dependencies]
 clickhouse.workspace = true

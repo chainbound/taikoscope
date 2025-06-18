@@ -12,19 +12,30 @@ describe('ProfitRankingTable', () => {
   it('renders sequencer profits', async () => {
     vi.mocked(swr.default)
       .mockReturnValueOnce({
-        data: { data: [{ name: 'SeqA', value: 10, tps: null }] },
+        data: {
+          data: [
+            { name: 'SeqA', value: 10, tps: null },
+            { name: 'SeqB', value: 5, tps: null },
+          ],
+        },
       } as any)
       .mockReturnValueOnce({
         data: {
           data: {
-            priority_fee: 2e18,
-            base_fee: 1e18,
+            priority_fee: 3e18,
+            base_fee: 1.5e18,
             l1_data_cost: 0,
             sequencers: [
               {
-                address: '0xseq',
+                address: '0xseqA',
                 priority_fee: 2e18,
                 base_fee: 1e18,
+                l1_data_cost: 0,
+              },
+              {
+                address: '0xseqB',
+                priority_fee: 1e18,
+                base_fee: 0.5e18,
                 l1_data_cost: 0,
               },
             ],
@@ -32,20 +43,29 @@ describe('ProfitRankingTable', () => {
         },
       } as any);
     vi.spyOn(api, 'fetchSequencerDistribution').mockResolvedValue({
-      data: [{ name: 'SeqA', value: 10, tps: null }],
+      data: [
+        { name: 'SeqA', value: 10, tps: null },
+        { name: 'SeqB', value: 5, tps: null },
+      ],
       badRequest: false,
       error: null,
     } as any);
     vi.spyOn(api, 'fetchL2Fees').mockResolvedValue({
       data: {
-        priority_fee: 2e18,
-        base_fee: 1e18,
+        priority_fee: 3e18,
+        base_fee: 1.5e18,
         l1_data_cost: 0,
         sequencers: [
           {
-            address: '0xseq',
+            address: '0xseqA',
             priority_fee: 2e18,
             base_fee: 1e18,
+            l1_data_cost: 0,
+          },
+          {
+            address: '0xseqB',
+            priority_fee: 1e18,
+            base_fee: 0.5e18,
             l1_data_cost: 0,
           },
         ],
@@ -56,7 +76,9 @@ describe('ProfitRankingTable', () => {
     vi.spyOn(priceService, 'useEthPrice').mockReturnValue({
       data: 1000,
     } as any);
-    vi.spyOn(seqCfg, 'getSequencerAddress').mockReturnValue('0xseq');
+    vi.spyOn(seqCfg, 'getSequencerAddress').mockImplementation(
+      (name: string) => (name === 'SeqA' ? '0xseqA' : '0xseqB'),
+    );
 
     const html = renderToStaticMarkup(
       React.createElement(ProfitRankingTable, {
@@ -67,5 +89,11 @@ describe('ProfitRankingTable', () => {
     );
     expect(html.includes('Sequencer Profit Ranking')).toBe(true);
     expect(html.includes('2,750')).toBe(true);
+    const firstSeqIdx = html.indexOf('SeqA');
+    const secondSeqIdx = html.indexOf('SeqB');
+    expect(firstSeqIdx).toBeGreaterThan(-1);
+    expect(secondSeqIdx).toBeGreaterThan(firstSeqIdx);
+    expect(html.includes('Profit (USD)')).toBe(true);
+    expect(html.includes('↓')).toBe(true);
   });
 });

@@ -79,6 +79,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
       })),
     urlKey: 'reorgs',
     reverseOrder: true,
+    supportsPagination: true,
   },
 
   slashings: {
