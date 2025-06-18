@@ -39,10 +39,9 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
 
   const { data: ethPrice = 0 } = useEthPrice();
 
-  const { data: feeRes } = useSWR([
-    'profitRankingFees',
-    timeRange,
-  ], () => fetchL2Fees(timeRange));
+  const { data: feeRes } = useSWR(['profitRankingFees', timeRange], () =>
+    fetchL2Fees(timeRange),
+  );
   const feeDataMap = React.useMemo(() => {
     const map = new Map<string, apiService.SequencerFee>();
     feeRes?.data?.sequencers.forEach((f) => {
@@ -82,9 +81,39 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
     return { name: seq.name, blocks: seq.value, profit };
   });
 
-  const sorted = rows.sort(
-    (a, b) => (b.profit ?? -Infinity) - (a.profit ?? -Infinity),
+  const [sortBy, setSortBy] = React.useState<'name' | 'blocks' | 'profit'>(
+    'profit',
   );
+  const [sortDirection, setSortDirection] = React.useState<'asc' | 'desc'>(
+    'desc',
+  );
+
+  const sorted = React.useMemo(() => {
+    const data = [...rows];
+    data.sort((a, b) => {
+      const aVal = a[sortBy];
+      const bVal = b[sortBy];
+      let cmp = 0;
+      if (typeof aVal === 'number' && typeof bVal === 'number') {
+        cmp = (aVal ?? -Infinity) - (bVal ?? -Infinity);
+      } else {
+        cmp = String(aVal).localeCompare(String(bVal), undefined, {
+          numeric: true,
+        });
+      }
+      return sortDirection === 'desc' ? -cmp : cmp;
+    });
+    return data;
+  }, [rows, sortBy, sortDirection]);
+
+  const handleSort = (column: 'name' | 'blocks' | 'profit') => {
+    if (sortBy === column) {
+      setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortBy(column);
+      setSortDirection('desc');
+    }
+  };
 
   return (
     <div className="mt-6">
@@ -93,9 +122,39 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
         <table className="min-w-full border border-gray-200 dark:border-gray-700 divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
           <thead>
             <tr>
-              <th className="px-2 py-1 text-left">Sequencer</th>
-              <th className="px-2 py-1 text-left">Blocks</th>
-              <th className="px-2 py-1 text-left">Profit (USD)</th>
+              <th
+                className="px-2 py-1 text-left cursor-pointer select-none"
+                onClick={() => handleSort('name')}
+              >
+                Sequencer
+                {sortBy === 'name' && (
+                  <span className="ml-1">
+                    {sortDirection === 'asc' ? '↑' : '↓'}
+                  </span>
+                )}
+              </th>
+              <th
+                className="px-2 py-1 text-left cursor-pointer select-none"
+                onClick={() => handleSort('blocks')}
+              >
+                Blocks
+                {sortBy === 'blocks' && (
+                  <span className="ml-1">
+                    {sortDirection === 'asc' ? '↑' : '↓'}
+                  </span>
+                )}
+              </th>
+              <th
+                className="px-2 py-1 text-left cursor-pointer select-none"
+                onClick={() => handleSort('profit')}
+              >
+                Profit (USD)
+                {sortBy === 'profit' && (
+                  <span className="ml-1">
+                    {sortDirection === 'asc' ? '↑' : '↓'}
+                  </span>
+                )}
+              </th>
             </tr>
           </thead>
           <tbody>
