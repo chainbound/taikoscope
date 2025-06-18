@@ -95,7 +95,9 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
       const bVal = b[sortBy];
       let cmp = 0;
       if (typeof aVal === 'number' && typeof bVal === 'number') {
-        cmp = (aVal ?? -Infinity) - (bVal ?? -Infinity);
+        const safeA = aVal ?? -Infinity;
+        const safeB = bVal ?? -Infinity;
+        cmp = safeA - safeB;
       } else {
         cmp = String(aVal).localeCompare(String(bVal), undefined, {
           numeric: true,
