@@ -13,6 +13,9 @@ interface FeeFlowChartProps {
   address?: string;
 }
 
+const MONTH_HOURS = 30 * 24;
+const WEI_TO_ETH = 1e18;
+
 export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
   timeRange,
   cloudCost,
@@ -24,9 +27,10 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
   );
   const { data: ethPrice = 0 } = useEthPrice();
 
-  const priority = dashRes?.data?.priority_fee ?? null;
-  const base = dashRes?.data?.base_fee ?? null;
-  if (priority == null && base == null) {
+  const priorityFee = dashRes?.data?.priority_fee ?? null;
+  const baseFee = dashRes?.data?.base_fee ?? null;
+
+  if (priorityFee == null && baseFee == null) {
     return (
       <div className="flex items-center justify-center h-full text-gray-500">
         No data available
@@ -34,17 +38,21 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     );
   }
 
-  const priorityUsd = ((priority ?? 0) / 1e18) * ethPrice;
-  const baseUsd = ((base ?? 0) / 1e18) * ethPrice;
+  // Convert fees to USD
+  const priorityFeeUsd = ((priorityFee ?? 0) / WEI_TO_ETH) * ethPrice;
+  const baseFeeUsd = ((baseFee ?? 0) / WEI_TO_ETH) * ethPrice;
+
+  // Scale operational costs to the selected time range
   const hours = rangeToHours(timeRange);
-  const MONTH_HOURS = 30 * 24;
   const cloudCostScaled = (cloudCost / MONTH_HOURS) * hours;
   const proverCostScaled = (proverCost / MONTH_HOURS) * hours;
 
-  // Calculate sequencer profits (total fees minus operational costs)
-  const totalRevenue = priorityUsd + baseUsd;
-  const sequencerProfit = Math.max(0, totalRevenue - cloudCostScaled - proverCostScaled);
+  // Calculate sequencer profit
+  const totalRevenue = priorityFeeUsd + baseFeeUsd;
+  const totalCosts = cloudCostScaled + proverCostScaled;
+  const sequencerProfit = Math.max(0, totalRevenue - totalCosts);
 
+  // Build Sankey data with proper node names
   const data = {
     nodes: [
       { name: 'Priority Fee' },
@@ -52,65 +60,53 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
       { name: 'Sequencers' },
       { name: 'Cloud Cost' },
       { name: 'Prover Cost' },
-      { name: 'Sequencer Profit' },
+      { name: 'Profit' },
     ],
     links: [
-      { source: 0, target: 2, value: priorityUsd, name: 'Priority Fee to Sequencers' },
-      { source: 1, target: 2, value: baseUsd, name: 'Base Fee to Sequencers' },
-      { source: 2, target: 3, value: cloudCostScaled, name: 'Cloud Costs' },
-      { source: 2, target: 4, value: proverCostScaled, name: 'Prover Costs' },
-      { source: 2, target: 5, value: sequencerProfit, name: 'Sequencer Profit' },
-    ],
+      {
+        source: 0,
+        target: 2,
+        value: priorityFeeUsd,
+      },
+      {
+        source: 1,
+        target: 2,
+        value: baseFeeUsd,
+      },
+      {
+        source: 2,
+        target: 3,
+        value: cloudCostScaled,
+      },
+      {
+        source: 2,
+        target: 4,
+        value: proverCostScaled,
+      },
+      {
+        source: 2,
+        target: 5,
+        value: sequencerProfit,
+      },
+    ].filter(link => link.value > 0), // Only show links with positive values
   };
 
-  const renderLink = (props: any) => {
-    const {
-      sourceX,
-      targetX,
-      sourceY,
-      targetY,
-      sourceControlX,
-      targetControlX,
-      linkWidth,
-    } = props;
-    const path = `M${sourceX},${sourceY} C${sourceControlX},${sourceY} ${targetControlX},${targetY} ${targetX},${targetY}`;
-    return (
-      <path
-        d={path}
-        fill="none"
-        stroke="#333"
-        strokeWidth={linkWidth}
-        strokeOpacity="0.2"
-      />
-    );
-  };
+  const formatTooltipValue = (value: number) => `$${value.toFixed(2)}`;
 
-  const renderNode = (props: any) => {
-    const { x, y, width, height, index } = props;
-    const node = data.nodes[index];
+  const tooltipContent = ({ active, payload }: any) => {
+    if (!active || !payload?.[0]) return null;
+
+    const { value, payload: linkData } = payload[0];
+    const sourceNode = data.nodes[linkData.source];
+    const targetNode = data.nodes[linkData.target];
+
     return (
-      <g>
-        <rect
-          x={x}
-          y={y}
-          width={width}
-          height={height}
-          fill="#4ade80"
-          stroke="#333"
-          strokeWidth={1}
-        />
-        <text
-          x={x + width / 2}
-          y={y + height / 2}
-          textAnchor="middle"
-          dominantBaseline="middle"
-          fontSize={12}
-          fill="#333"
-          fontWeight="500"
-        >
-          {node.name}
-        </text>
-      </g>
+      <div className="bg-white p-2 border border-gray-200 rounded shadow-sm">
+        <p className="text-sm font-medium">
+          {sourceNode.name} → {targetNode.name}
+        </p>
+        <p className="text-sm text-gray-600">{formatTooltipValue(value)}</p>
+      </div>
     );
   };
 
@@ -120,13 +116,18 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
         <Sankey
           data={data}
           nodePadding={10}
-          node={renderNode}
-          link={renderLink}
-          sort={true}
+          nodeWidth={10}
+          margin={{ top: 10, right: 10, bottom: 10, left: 10 }}
+          sort={false}
+          iterations={32}
         >
           <Tooltip
-            formatter={(v: number) => `$${v.toFixed(2)}`}
-            labelFormatter={() => ''}
+            content={tooltipContent}
+            contentStyle={{
+              backgroundColor: 'white',
+              border: '1px solid #e5e7eb',
+              borderRadius: '0.375rem',
+            }}
           />
         </Sankey>
       </ResponsiveContainer>
