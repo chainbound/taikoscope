@@ -15,6 +15,7 @@ import {
   fetchProveTimes,
   fetchVerifyTimes,
   fetchAllBlockTransactions,
+  fetchBlockTransactionsAggregated,
   fetchL2BlockTimes,
   fetchL2BlockTimesAggregated,
   fetchL2GasUsed,
@@ -226,6 +227,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     title: 'Tx Count Per L2 Block',
     description: 'Transactions included in each L2 block.',
     fetcher: fetchAllBlockTransactions,
+    aggregatedFetcher: fetchBlockTransactionsAggregated,
     columns: [
       { key: 'block', label: 'L2 Block Number' },
       { key: 'txs', label: 'Tx Count' },
@@ -239,6 +241,17 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
           sequencer: addressLink(d.sequencer),
         }),
       ),
+    chart: (data) => {
+      const BlockTxChart = React.lazy(() =>
+        import('../components/BlockTxChart').then((m) => ({
+          default: m.BlockTxChart,
+        })),
+      );
+      return React.createElement(BlockTxChart, {
+        data,
+        lineColor: '#4E79A7',
+      });
+    },
     urlKey: 'block-tx',
   },
 
