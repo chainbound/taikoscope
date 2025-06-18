@@ -48,6 +48,16 @@ impl ErrorResponse {
             detail: detail.into(),
         }
     }
+
+    /// Create a generic database error without exposing internals.
+    pub fn database_error() -> Self {
+        Self::new(
+            "database-error",
+            "Database error",
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal error",
+        )
+    }
 }
 
 impl IntoResponse for ErrorResponse {
