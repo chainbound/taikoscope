@@ -7,7 +7,7 @@ use derive_more::Debug;
 use eyre::{Context, Result};
 use hex::encode;
 use serde::{Deserialize, Serialize};
-use std::time::Instant;
+use std::{collections::BTreeSet, time::Instant};
 use tracing::{debug, error};
 use url::Url;
 
@@ -592,7 +592,7 @@ impl ClickhouseReader {
         }
 
         let rows = result?;
-        let mut set = std::collections::HashSet::new();
+        let mut set = BTreeSet::new();
         for row in rows {
             for cand in row.candidates {
                 set.insert(cand);
