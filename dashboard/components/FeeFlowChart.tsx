@@ -39,6 +39,12 @@ const SankeyNode = ({ x, y, width, height, payload }: any) => {
           : formatUsd(nodeValue)
       : '';
   const isProfitNode = payload.name === 'Profit' || payload.profitNode;
+  const hideLabel = payload.hideLabel;
+  const addressLabel = payload.addressLabel;
+
+  const label = isProfitNode && addressLabel
+    ? `${payload.name} ${addressLabel}`
+    : payload.name;
 
   return (
     <g>
@@ -50,22 +56,24 @@ const SankeyNode = ({ x, y, width, height, payload }: any) => {
         fill={isCostNode ? '#ef4444' : isProfitNode ? PROFIT_GREEN : TAIKO_PINK}
         fillOpacity={0.8}
       />
-      <text
-        x={x + width + 6}
-        y={y + height / 2}
-        textAnchor="start"
-        dominantBaseline="middle"
-        fontSize={12}
-        fill="#374151"
-      >
-        {payload.name}
-        {formattedValue && (
-          <tspan fill="#6b7280" fontSize={11}>
-            {' '}
-            ({formattedValue})
-          </tspan>
-        )}
-      </text>
+      {!hideLabel && (
+        <text
+          x={x + width + 6}
+          y={y + height / 2}
+          textAnchor="start"
+          dominantBaseline="middle"
+          fontSize={12}
+          fill="#374151"
+        >
+          {label}
+          {formattedValue && (
+            <tspan fill="#6b7280" fontSize={11}>
+              {' '}
+              ({formattedValue})
+            </tspan>
+          )}
+        </text>
+      )}
     </g>
   );
 };
@@ -243,16 +251,18 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
       { name: 'Priority Fee', value: priorityFeeUsd, wei: priorityFee ?? 0 },
       { name: 'Base Fee', value: baseFeeUsd, wei: baseFee ?? 0 },
       ...seqData.map((s) => ({
-        name: isMobile ? s.shortAddress : s.address,
+        name: '',
         address: s.address,
         value: s.revenue,
         wei: s.revenueWei,
+        hideLabel: true,
       })),
       { name: 'Cloud Cost', value: totalActualCloudCost, usd: true },
       { name: 'Prover Cost', value: totalActualProverCost, usd: true },
       ...seqData.map((s) => ({
         name: 'Profit',
         address: s.address,
+        addressLabel: isMobile ? s.shortAddress : s.address,
         value: s.profit,
         wei: s.profitWei,
         profitNode: true,
