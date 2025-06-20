@@ -37,7 +37,7 @@ const SankeyNode = ({ x, y, width, height, payload }: any) => {
           ? formatEth(payload.wei)
           : formatUsd(nodeValue)
       : '';
-  const isProfitNode = payload.name === 'Profit';
+  const isProfitNode = payload.name === 'Profit' || payload.profitNode;
 
   return (
     <g>
@@ -83,7 +83,7 @@ const SankeyLink = ({
   const isCost =
     payload.target.name === 'Cloud Cost' ||
     payload.target.name === 'Prover Cost';
-  const isProfit = payload.target.name === 'Profit';
+  const isProfit = payload.target.name === 'Profit' || payload.target.profitNode;
 
   return (
     <path
@@ -218,8 +218,6 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
       { source: 2, target: 5, value: sequencerProfit }, // Sequencers → Profit
     ].filter((l) => l.value > 0);
   } else {
-    const totalProfit = seqData.reduce((acc, s) => acc + s.profit, 0);
-    const totalProfitWei = seqData.reduce((acc, s) => acc + s.profitWei, 0);
     const totalActualCloudCost = seqData.reduce(
       (acc, s) => acc + s.actualCloudCost,
       0,
@@ -233,8 +231,8 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     const baseIndex = 2; // first sequencer node index
     const cloudIndex = baseIndex + seqData.length;
     const proverIndex = cloudIndex + 1;
-    const profitIndex = proverIndex + 1;
-    const daoIndex = profitIndex + 1;
+    const profitStartIndex = proverIndex + 1;
+    const daoIndex = profitStartIndex + seqData.length;
 
     nodes = [
       { name: 'Priority Fee', value: priorityFeeUsd, wei: priorityFee ?? 0 },
@@ -246,7 +244,12 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
       })),
       { name: 'Cloud Cost', value: totalActualCloudCost, usd: true },
       { name: 'Prover Cost', value: totalActualProverCost, usd: true },
-      { name: 'Profit', value: totalProfit, wei: totalProfitWei },
+      ...seqData.map((s) => ({
+        name: 'Profit',
+        value: s.profit,
+        wei: s.profitWei,
+        profitNode: true,
+      })),
       { name: 'Taiko DAO', value: baseFeeDaoUsd, wei: (baseFee ?? 0) * 0.25 },
     ];
 
@@ -274,7 +277,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
       })),
       ...seqData.map((s, i) => ({
         source: baseIndex + i,
-        target: profitIndex,
+        target: profitStartIndex + i,
         value: s.profit,
       })),
     ].filter((l) => l.value > 0);
