@@ -10,6 +10,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
+import { useIsMobile } from '../hooks/useIsMobile';
 import { TimeSeriesData } from '../types';
 import {
   formatDecimal,
@@ -31,6 +32,7 @@ const BlockTimeChartComponent: React.FC<BlockTimeChartProps> = ({
   histogram = false,
   seconds = false,
 }) => {
+  const isMobile = useIsMobile();
   if (!data || data.length === 0) {
     return (
       <div className="flex items-center justify-center h-full text-gray-500">
@@ -59,7 +61,7 @@ const BlockTimeChartComponent: React.FC<BlockTimeChartProps> = ({
             fontSize: 10,
             fill: '#666666',
           }}
-          padding={{ left: 10, right: 10 }}
+          padding={{ left: isMobile ? 5 : 10, right: isMobile ? 5 : 10 }}
         />
         <YAxis
           stroke="#666666"
