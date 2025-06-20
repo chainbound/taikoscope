@@ -3,6 +3,7 @@ import { ResponsiveContainer, Sankey, Tooltip } from 'recharts';
 import { TAIKO_PINK } from '../theme';
 
 import { formatEth } from '../utils';
+import { useIsMobile } from '../hooks/useIsMobile';
 
 const PROFIT_GREEN = '#22c55e';
 import useSWR from 'swr';
@@ -83,7 +84,8 @@ const SankeyLink = ({
   const isCost =
     payload.target.name === 'Cloud Cost' ||
     payload.target.name === 'Prover Cost';
-  const isProfit = payload.target.name === 'Profit' || payload.target.profitNode;
+  const isProfit =
+    payload.target.name === 'Profit' || payload.target.profitNode;
 
   return (
     <path
@@ -108,6 +110,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     fetchL2Fees(timeRange, address),
   );
   const { data: ethPrice = 0 } = useEthPrice();
+  const isMobile = useIsMobile();
 
   const priorityFee = feeRes?.data?.priority_fee ?? null;
   const baseFee = feeRes?.data?.base_fee ?? null;
@@ -158,8 +161,10 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     const actualProverCostWei = ethPrice
       ? (actualProverCost / ethPrice) * WEI_TO_ETH
       : 0;
+    const shortAddress = `${f.address.slice(0, 6)}…`;
     return {
       address: f.address,
+      shortAddress,
       priorityUsd,
       baseUsd,
       revenue,
@@ -238,7 +243,8 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
       { name: 'Priority Fee', value: priorityFeeUsd, wei: priorityFee ?? 0 },
       { name: 'Base Fee', value: baseFeeUsd, wei: baseFee ?? 0 },
       ...seqData.map((s) => ({
-        name: s.address,
+        name: isMobile ? s.shortAddress : s.address,
+        address: s.address,
         value: s.revenue,
         wei: s.revenueWei,
       })),
@@ -246,6 +252,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
       { name: 'Prover Cost', value: totalActualProverCost, usd: true },
       ...seqData.map((s) => ({
         name: 'Profit',
+        address: s.address,
         value: s.profit,
         wei: s.profitWei,
         profitNode: true,
@@ -291,13 +298,15 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     if (!active || !payload?.[0]) return null;
 
     const { value, payload: linkData } = payload[0];
-    const sourceNode = data.nodes[linkData.source];
-    const targetNode = data.nodes[linkData.target];
+    const sourceNode = data.nodes[linkData.source] as any;
+    const targetNode = data.nodes[linkData.target] as any;
+    const sourceLabel = sourceNode.address ?? sourceNode.name;
+    const targetLabel = targetNode.address ?? targetNode.name;
 
     return (
       <div className="bg-white p-2 border border-gray-200 rounded shadow-sm">
         <p className="text-sm font-medium">
-          {sourceNode.name} → {targetNode.name}
+          {sourceLabel} → {targetLabel}
         </p>
         <p className="text-sm text-gray-600">{formatTooltipValue(value)}</p>
       </div>
