@@ -1,4 +1,5 @@
 import React from 'react';
+import { useIsMobile } from '../hooks/useIsMobile';
 import {
   BarChart,
   Bar,
@@ -27,11 +28,18 @@ const BlobsPerBatchChartComponent: React.FC<BlobsPerBatchChartProps> = ({
     );
   }
 
+  const isMobile = useIsMobile();
+
   return (
     <ResponsiveContainer width="100%" height="100%">
       <BarChart
         data={data}
-        margin={{ top: 5, right: 20, left: 20, bottom: 40 }}
+        margin={{
+          top: 5,
+          right: isMobile ? 10 : 20,
+          left: isMobile ? 10 : 20,
+          bottom: 40,
+        }}
       >
         <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
         <XAxis

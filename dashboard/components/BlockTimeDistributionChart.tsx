@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { useIsMobile } from '../hooks/useIsMobile';
 import {
   BarChart,
   Bar,
@@ -16,7 +17,7 @@ const MIN_BIN_COUNT = 5;
 const MAX_BIN_COUNT = 20;
 const MIN_REASONABLE_BLOCK_TIME_MS = 0;
 const MAX_REASONABLE_BLOCK_TIME_MS = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
-const CHART_MARGINS = { top: 5, right: 20, left: 20, bottom: 40 };
+const BASE_MARGINS = { top: 5, right: 20, left: 20, bottom: 40 };
 
 interface BlockTimeDistributionChartProps {
   data: TimeSeriesData[];
@@ -35,6 +36,7 @@ const BlockTimeDistributionChartComponent: React.FC<
   }
 
   const showMinutes = shouldShowMinutes(data);
+  const isMobile = useIsMobile();
 
   const distributionData = useMemo(() => {
     // Extract block times (timestamps) and filter for reasonable bounds
@@ -89,6 +91,13 @@ const BlockTimeDistributionChartComponent: React.FC<
       </div>
     );
   }
+
+  const CHART_MARGINS = {
+    top: BASE_MARGINS.top,
+    right: isMobile ? 10 : BASE_MARGINS.right,
+    left: isMobile ? 10 : BASE_MARGINS.left,
+    bottom: BASE_MARGINS.bottom,
+  };
 
   return (
     <ResponsiveContainer width="100%" height="100%">

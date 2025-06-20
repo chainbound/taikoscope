@@ -14,7 +14,7 @@ export const ChartCard: React.FC<ChartCardProps> = ({
   loading,
 }) => {
   return (
-    <div className="bg-white dark:bg-gray-800 p-4 md:p-6 rounded-lg border border-gray-200 dark:border-gray-700 relative">
+    <div className="bg-white dark:bg-gray-800 px-2 py-4 md:p-6 rounded-lg border border-gray-200 dark:border-gray-700 relative">
       <div className="flex justify-between items-start mb-4">
         <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300">
           {title}

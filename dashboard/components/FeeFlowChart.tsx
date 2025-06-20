@@ -1,4 +1,5 @@
 import React from 'react';
+import { useIsMobile } from '../hooks/useIsMobile';
 import { ResponsiveContainer, Sankey, Tooltip } from 'recharts';
 import { TAIKO_PINK } from '../theme';
 
@@ -108,6 +109,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     fetchL2Fees(timeRange, address),
   );
   const { data: ethPrice = 0 } = useEthPrice();
+  const isMobile = useIsMobile();
 
   const priorityFee = feeRes?.data?.priority_fee ?? null;
   const baseFee = feeRes?.data?.base_fee ?? null;
@@ -309,7 +311,12 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
           node={SankeyNode}
           nodePadding={10}
           nodeWidth={10}
-          margin={{ top: 10, right: 120, bottom: 10, left: 10 }}
+          margin={{
+            top: 10,
+            right: isMobile ? 60 : 120,
+            bottom: 10,
+            left: 10,
+          }}
           sort={false}
           iterations={32}
           link={SankeyLink}

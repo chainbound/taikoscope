@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { useIsMobile } from '../hooks/useIsMobile';
 import {
   LineChart,
   Line,
@@ -31,11 +32,17 @@ const BlockTxChartComponent: React.FC<BlockTxChartProps> = ({
     () => [...data].sort((a, b) => a.block - b.block),
     [data],
   );
+  const isMobile = useIsMobile();
   return (
     <ResponsiveContainer width="100%" height="100%">
       <LineChart
         data={sortedData}
-        margin={{ top: 5, right: 20, left: 20, bottom: 40 }}
+        margin={{
+          top: 5,
+          right: isMobile ? 10 : 20,
+          left: isMobile ? 10 : 20,
+          bottom: 40,
+        }}
       >
         <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
         <XAxis

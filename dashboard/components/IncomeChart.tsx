@@ -1,4 +1,5 @@
 import React from 'react';
+import { useIsMobile } from '../hooks/useIsMobile';
 import {
   LineChart,
   Line,
@@ -27,6 +28,7 @@ export const IncomeChart: React.FC<IncomeChartProps> = ({
   );
   const feeData: FeeComponent[] | null = feeRes?.data ?? null;
   const { data: ethPrice = 0, error: ethPriceError } = useEthPrice();
+  const isMobile = useIsMobile();
 
   if (!feeData || feeData.length === 0) {
     return (
@@ -50,7 +52,12 @@ export const IncomeChart: React.FC<IncomeChartProps> = ({
       <ResponsiveContainer width="100%" height={240}>
         <LineChart
           data={data}
-          margin={{ top: 5, right: 20, left: 20, bottom: 40 }}
+          margin={{
+            top: 5,
+            right: isMobile ? 10 : 20,
+            left: isMobile ? 10 : 20,
+            bottom: 40,
+          }}
         >
           <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
           <XAxis
