@@ -318,7 +318,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
       });
     },
     urlKey: 'l2-gas-used',
-    reverseOrder: false,
+    reverseOrder: true,
     supportsPagination: true,
   },
 
@@ -372,7 +372,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
         tps: d.tps.toFixed(2),
       })),
     urlKey: 'l2-tps',
-    reverseOrder: false,
+    reverseOrder: true,
     supportsPagination: true,
   },
 };
