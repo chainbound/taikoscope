@@ -8,6 +8,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
+import { useIsMobile } from '../hooks/useIsMobile';
 import type { MissedBlockProposal } from '../types';
 import { TAIKO_PINK } from '../theme';
 
@@ -18,6 +19,7 @@ interface MissedBlockChartProps {
 const MissedBlockChartComponent: React.FC<MissedBlockChartProps> = ({
   data,
 }) => {
+  const isMobile = useIsMobile();
   if (!data || data.length === 0) {
     return (
       <div className="flex items-center justify-center h-full text-gray-500">
@@ -50,7 +52,7 @@ const MissedBlockChartComponent: React.FC<MissedBlockChartProps> = ({
             fontSize: 10,
             fill: '#666666',
           }}
-          padding={{ left: 10, right: 10 }}
+          padding={{ left: isMobile ? 5 : 10, right: isMobile ? 5 : 10 }}
         />
         <YAxis
           stroke="#666666"
