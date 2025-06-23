@@ -83,8 +83,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const isEconomicsView = searchParams.get('view') === 'economics';
-  const [cloudCost, setCloudCost] = useState(100);
-  const [proverCost, setProverCost] = useState(200);
+  // Default monthly costs in USD
+  const [cloudCost, setCloudCost] = useState(1000);
+  const [proverCost, setProverCost] = useState(1000);
 
   const visibleMetrics = React.useMemo(
     () =>
