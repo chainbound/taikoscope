@@ -1,10 +1,9 @@
 import React from 'react';
 import { ResponsiveContainer, Sankey, Tooltip } from 'recharts';
+import { formatEth } from '../utils';
 import { TAIKO_PINK } from '../theme';
 
-import { formatEth } from '../utils';
-
-const PROFIT_GREEN = '#22c55e';
+const NODE_GREEN = '#22c55e';
 import useSWR from 'swr';
 import { fetchL2Fees } from '../services/apiService';
 import { useEthPrice } from '../services/priceService';
@@ -26,22 +25,20 @@ const formatUsd = (value: number) => `$${value.toFixed(2)}`;
 
 // Simple node component that renders label with currency-aware value
 const SankeyNode = ({ x, y, width, height, payload }: any) => {
-  const nodeValue = payload?.value;
   const isCostNode =
     payload.name === 'Cloud Cost' || payload.name === 'Prover Cost';
-  const formattedValue =
-    nodeValue != null
-      ? isCostNode
-        ? formatUsd(nodeValue)
-        : payload.wei != null
-          ? formatEth(payload.wei)
-          : formatUsd(nodeValue)
-      : '';
   const isProfitNode = payload.name === 'Profit' || payload.profitNode;
+  const isPinkNode =
+    payload.name === 'Taiko DAO' ||
+    payload.name === 'Priority Fee' ||
+    payload.name === 'Base Fee';
   const hideLabel = payload.hideLabel;
   const addressLabel = payload.addressLabel;
 
-  const label = isProfitNode && addressLabel ? addressLabel : payload.name;
+  let label = addressLabel ?? payload.name;
+  if (isProfitNode && addressLabel) {
+    label = `${addressLabel} Profit`;
+  }
 
   return (
     <g>
@@ -50,7 +47,7 @@ const SankeyNode = ({ x, y, width, height, payload }: any) => {
         y={y}
         width={width}
         height={height}
-        fill={isCostNode ? '#ef4444' : isProfitNode ? PROFIT_GREEN : TAIKO_PINK}
+        fill={isCostNode ? '#ef4444' : isPinkNode ? TAIKO_PINK : NODE_GREEN}
         fillOpacity={0.8}
       />
       {!hideLabel && (
@@ -63,12 +60,6 @@ const SankeyNode = ({ x, y, width, height, payload }: any) => {
           fill="#374151"
         >
           {label}
-          {formattedValue && (
-            <tspan fill="#6b7280" fontSize={11}>
-              {' '}
-              ({formattedValue})
-            </tspan>
-          )}
         </text>
       )}
     </g>
@@ -97,7 +88,7 @@ const SankeyLink = ({
       className="recharts-sankey-link"
       d={`M${sourceX},${sourceY}C${sourceControlX},${sourceY} ${targetControlX},${targetY} ${targetX},${targetY}`}
       fill="none"
-      stroke={isCost ? '#ef4444' : isProfit ? PROFIT_GREEN : '#94a3b8'}
+      stroke={isCost ? '#ef4444' : isProfit ? NODE_GREEN : '#94a3b8'}
       strokeWidth={linkWidth}
       strokeOpacity={0.2}
       {...rest}
@@ -165,7 +156,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     const actualProverCostWei = ethPrice
       ? (actualProverCost / ethPrice) * WEI_TO_ETH
       : 0;
-    const shortAddress = `${f.address.slice(0, 6)}…`;
+    const shortAddress = f.address.slice(0, 7);
     return {
       address: f.address,
       shortAddress,
@@ -252,7 +243,6 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
         addressLabel: s.shortAddress,
         value: s.revenue,
         wei: s.revenueWei,
-        hideLabel: true,
       })),
       { name: 'Cloud Cost', value: totalActualCloudCost, usd: true },
       { name: 'Prover Cost', value: totalActualProverCost, usd: true },
@@ -299,25 +289,51 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
 
   const data = { nodes, links };
 
-  const formatTooltipValue = (value: number) => formatUsd(value);
+  const formatTooltipValue = (value: number, itemData?: any) => {
+    const usd = formatUsd(value);
+    if (itemData?.wei != null) {
+      return `${usd} (${formatEth(itemData.wei)})`;
+    }
+    if (!itemData?.usd && ethPrice) {
+      const wei = (value / ethPrice) * WEI_TO_ETH;
+      return `${usd} (${formatEth(wei)})`;
+    }
+    return usd;
+  };
 
   const tooltipContent = ({ active, payload }: any) => {
     if (!active || !payload?.[0]) return null;
 
-    const { value, payload: linkData } = payload[0];
-    const sourceNode = data.nodes[linkData.source] as any;
-    const targetNode = data.nodes[linkData.target] as any;
-    const sourceLabel =
-      sourceNode.addressLabel ?? sourceNode.address ?? sourceNode.name;
-    const targetLabel =
-      targetNode.addressLabel ?? targetNode.address ?? targetNode.name;
+    const { value, payload: itemData } = payload[0];
 
+    if (itemData.source != null && itemData.target != null) {
+      const sourceNode = data.nodes[itemData.source] as any;
+      const targetNode = data.nodes[itemData.target] as any;
+      const sourceLabel =
+        sourceNode.addressLabel ?? sourceNode.address ?? sourceNode.name;
+      const targetLabel =
+        targetNode.addressLabel ?? targetNode.address ?? targetNode.name;
+
+      return (
+        <div className="bg-white p-2 border border-gray-200 rounded shadow-sm">
+          <p className="text-sm font-medium">
+            {sourceLabel} → {targetLabel}
+          </p>
+          <p className="text-sm text-gray-600">
+            {formatTooltipValue(value, itemData)}
+          </p>
+        </div>
+      );
+    }
+
+    const nodeLabel =
+      itemData.addressLabel ?? itemData.address ?? itemData.name;
     return (
       <div className="bg-white p-2 border border-gray-200 rounded shadow-sm">
-        <p className="text-sm font-medium">
-          {sourceLabel} → {targetLabel}
+        <p className="text-sm font-medium">{nodeLabel}</p>
+        <p className="text-sm text-gray-600">
+          {formatTooltipValue(value, itemData)}
         </p>
-        <p className="text-sm text-gray-600">{formatTooltipValue(value)}</p>
       </div>
     );
   };
@@ -337,6 +353,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
         >
           <Tooltip
             content={tooltipContent}
+            trigger="hover"
             contentStyle={{
               backgroundColor: 'white',
               border: '1px solid #e5e7eb',

@@ -468,8 +468,21 @@ export const fetchL2BlockTimesAggregated = async (
 
 export const fetchBatchPostingTimes = async (
   range: TimeRange,
+  limit = 50,
+  startingAfter?: number,
+  endingBefore?: number,
 ): Promise<RequestResult<TimeSeriesData[]>> => {
-  const url = `${API_BASE}/batch-posting-times?${timeRangeToQuery(range)}`;
+  let url = `${API_BASE}/batch-posting-times?`;
+  if (startingAfter === undefined && endingBefore === undefined) {
+    url += `${timeRangeToQuery(range)}&limit=${limit}`;
+  } else {
+    url += `limit=${limit}`;
+  }
+  if (startingAfter !== undefined) {
+    url += `&starting_after=${startingAfter}`;
+  } else if (endingBefore !== undefined) {
+    url += `&ending_before=${endingBefore}`;
+  }
   const res = await fetchJson<{
     batches: { batch_id: number; ms_since_prev_batch: number }[];
   }>(url);
@@ -811,6 +824,40 @@ export const fetchFeeComponents = async (
         base: b.base_fee,
         l1Cost: b.l1_data_cost ?? null,
       }))
+      : null,
+    badRequest: res.badRequest,
+    error: res.error,
+  };
+};
+
+export interface L1DataCostItem {
+  block: number;
+  cost: number;
+}
+
+export const fetchL1DataCost = async (
+  range: TimeRange,
+  limit = 50,
+  startingAfter?: number,
+  endingBefore?: number,
+): Promise<RequestResult<L1DataCostItem[]>> => {
+  let url = `${API_BASE}/l1-data-cost?`;
+  if (startingAfter === undefined && endingBefore === undefined) {
+    url += `${timeRangeToQuery(range)}&limit=${limit}`;
+  } else {
+    url += `limit=${limit}`;
+  }
+  if (startingAfter !== undefined) {
+    url += `&starting_after=${startingAfter}`;
+  } else if (endingBefore !== undefined) {
+    url += `&ending_before=${endingBefore}`;
+  }
+  const res = await fetchJson<{
+    blocks: { l1_block_number: number; cost: number }[];
+  }>(url);
+  return {
+    data: res.data
+      ? res.data.blocks.map((b) => ({ block: b.l1_block_number, cost: b.cost }))
       : null,
     badRequest: res.badRequest,
     error: res.error,

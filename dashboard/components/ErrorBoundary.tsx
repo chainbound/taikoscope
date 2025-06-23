@@ -34,12 +34,26 @@ export const ErrorBoundary: React.FC<
     return (
       <div className="p-4 bg-red-50 border border-red-200 rounded text-red-700 space-y-2">
         <div>Oops! Something went wrong.</div>
-        <button
-          onClick={resetErrorBoundary}
-          className="text-sm bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700"
-        >
-          Retry
-        </button>
+        <div className="flex space-x-2">
+          <button
+            onClick={() => {
+              if (window.history.length > 1) {
+                window.history.back();
+              } else {
+                window.location.assign('/');
+              }
+            }}
+            className="text-sm bg-gray-200 text-gray-800 px-2 py-1 rounded hover:bg-gray-300"
+          >
+            Back
+          </button>
+          <button
+            onClick={resetErrorBoundary}
+            className="text-sm bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700"
+          >
+            Retry
+          </button>
+        </div>
       </div>
     );
   };

@@ -83,8 +83,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const isEconomicsView = searchParams.get('view') === 'economics';
-  const [cloudCost, setCloudCost] = useState(100);
-  const [proverCost, setProverCost] = useState(200);
+  // Default monthly costs in USD
+  const [cloudCost, setCloudCost] = useState(1000);
+  const [proverCost, setProverCost] = useState(1000);
 
   const visibleMetrics = React.useMemo(
     () =>
@@ -153,6 +154,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         'Batch Posting Cadence': () => onOpenTable('batch-posting-cadence'),
         'Avg. Prove Time': () => onOpenTable('prove-time', timeRange),
         'Avg. Verify Time': () => onOpenTable('verify-time', timeRange),
+        'L1 Data Cost': () => onOpenTable('l1-data-cost', timeRange),
       };
       return actions[title];
     },
@@ -299,6 +301,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         {isEconomicsView && (
           <>
+            <FeeFlowChart
+              timeRange={timeRange}
+              cloudCost={cloudCost}
+              proverCost={proverCost}
+              address={selectedSequencer || undefined}
+            />
             <ProfitCalculator
               metrics={metricsData.metrics}
               timeRange={timeRange}
@@ -335,12 +343,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               timeRange={timeRange}
               cloudCost={cloudCost}
               proverCost={proverCost}
-            />
-            <FeeFlowChart
-              timeRange={timeRange}
-              cloudCost={cloudCost}
-              proverCost={proverCost}
-              address={selectedSequencer || undefined}
             />
           </>
         )}

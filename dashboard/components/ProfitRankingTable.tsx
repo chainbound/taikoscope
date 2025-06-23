@@ -50,13 +50,8 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
     return map;
   }, [feeRes]);
 
-  if (!feeRes) {
-    return (
-      <div className="flex items-center justify-center h-20 text-gray-500 dark:text-gray-400">
-        Loading...
-      </div>
-    );
-  }
+  const [sortBy, setSortBy] = React.useState<'name' | 'blocks' | 'profit'>('profit');
+  const [sortDirection, setSortDirection] = React.useState<'asc' | 'desc'>('desc');
 
   const hours = rangeToHours(timeRange);
   const MONTH_HOURS = 30 * 24;
@@ -81,12 +76,6 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
     return { name: seq.name, blocks: seq.value, profit };
   });
 
-  const [sortBy, setSortBy] = React.useState<'name' | 'blocks' | 'profit'>(
-    'profit',
-  );
-  const [sortDirection, setSortDirection] = React.useState<'asc' | 'desc'>(
-    'desc',
-  );
 
   const sorted = React.useMemo(() => {
     const data = [...rows];
@@ -108,6 +97,14 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
     });
     return data;
   }, [rows, sortBy, sortDirection]);
+
+  if (!feeRes) {
+    return (
+      <div className="flex items-center justify-center h-20 text-gray-500 dark:text-gray-400">
+        Loading...
+      </div>
+    );
+  }
 
   const handleSort = (column: 'name' | 'blocks' | 'profit') => {
     if (sortBy === column) {

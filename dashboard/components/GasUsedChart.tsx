@@ -8,6 +8,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
+import { useIsMobile } from '../hooks/useIsMobile';
 import { TimeSeriesData } from '../types';
 import { formatLargeNumber, formatDateTime } from '../utils';
 
@@ -20,6 +21,7 @@ const GasUsedChartComponent: React.FC<GasUsedChartProps> = ({
   data,
   lineColor,
 }) => {
+  const isMobile = useIsMobile();
   if (!data || data.length === 0) {
     return (
       <div className="flex items-center justify-center h-full text-gray-500">
@@ -46,7 +48,7 @@ const GasUsedChartComponent: React.FC<GasUsedChartProps> = ({
             fontSize: 10,
             fill: '#666666',
           }}
-          padding={{ left: 10, right: 10 }}
+          padding={{ left: isMobile ? 5 : 10, right: isMobile ? 5 : 10 }}
         />
         <YAxis
           stroke="#666666"
@@ -68,7 +70,7 @@ const GasUsedChartComponent: React.FC<GasUsedChartProps> = ({
             const timeStr = ts ? formatDateTime(ts) : '';
             return `Block ${label.toLocaleString()} (${timeStr})`;
           }}
-          formatter={(value: number) => [formatLargeNumber(value), 'gas']}
+          formatter={(value: number) => [formatLargeNumber(value), 'avg gas']}
           contentStyle={{
             backgroundColor: 'rgba(255, 255, 255, 0.8)',
             borderColor: lineColor,
