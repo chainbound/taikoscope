@@ -301,6 +301,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         {isEconomicsView && (
           <>
+            <FeeFlowChart
+              timeRange={timeRange}
+              cloudCost={cloudCost}
+              proverCost={proverCost}
+              address={selectedSequencer || undefined}
+            />
             <ProfitCalculator
               metrics={metricsData.metrics}
               timeRange={timeRange}
@@ -337,12 +343,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               timeRange={timeRange}
               cloudCost={cloudCost}
               proverCost={proverCost}
-            />
-            <FeeFlowChart
-              timeRange={timeRange}
-              cloudCost={cloudCost}
-              proverCost={proverCost}
-              address={selectedSequencer || undefined}
             />
           </>
         )}
