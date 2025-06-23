@@ -7,7 +7,7 @@ use derive_more::Debug;
 use eyre::{Context, Result};
 use hex::encode;
 use serde::{Deserialize, Serialize};
-use std::time::Instant;
+use std::{collections::BTreeSet, time::Instant};
 use tracing::{debug, error};
 use url::Url;
 
@@ -592,7 +592,7 @@ impl ClickhouseReader {
         }
 
         let rows = result?;
-        let mut set = std::collections::HashSet::new();
+        let mut set = BTreeSet::new();
         for row in rows {
             for cand in row.candidates {
                 set.insert(cand);
@@ -1130,6 +1130,65 @@ impl ClickhouseReader {
         Ok(rows)
     }
 
+    /// Get verify times with cursor-based pagination
+    /// Results are returned in descending order by batch id
+    pub async fn get_verify_times_paginated(
+        &self,
+        since: DateTime<Utc>,
+        limit: u64,
+        starting_after: Option<u64>,
+        ending_before: Option<u64>,
+    ) -> Result<Vec<BatchVerifyTimeRow>> {
+        let mut query = format!(
+            "SELECT batch_id, toUInt64(verify_time_ms / 1000) AS seconds_to_verify \
+             FROM {db}.batch_verify_times_mv \
+             WHERE verified_at >= {since} \
+               AND verify_time_ms > 60000",
+            since = since.timestamp(),
+            db = self.db_name,
+        );
+        if let Some(start) = starting_after {
+            query.push_str(&format!(" AND batch_id < {}", start));
+        }
+        if let Some(end) = ending_before {
+            query.push_str(&format!(" AND batch_id > {}", end));
+        }
+        query.push_str(" ORDER BY batch_id DESC");
+        query.push_str(&format!(" LIMIT {}", limit));
+
+        let rows = self.execute::<BatchVerifyTimeRow>(&query).await?;
+        Ok(rows)
+    }
+
+    /// Get prove times with cursor-based pagination
+    /// Results are returned in descending order by batch id
+    pub async fn get_prove_times_paginated(
+        &self,
+        since: DateTime<Utc>,
+        limit: u64,
+        starting_after: Option<u64>,
+        ending_before: Option<u64>,
+    ) -> Result<Vec<BatchProveTimeRow>> {
+        let mut query = format!(
+            "SELECT batch_id, toUInt64(prove_time_ms / 1000) AS seconds_to_prove \
+             FROM {db}.batch_prove_times_mv \
+             WHERE proved_at >= {since}",
+            since = since.timestamp(),
+            db = self.db_name,
+        );
+        if let Some(start) = starting_after {
+            query.push_str(&format!(" AND batch_id < {}", start));
+        }
+        if let Some(end) = ending_before {
+            query.push_str(&format!(" AND batch_id > {}", end));
+        }
+        query.push_str(" ORDER BY batch_id DESC");
+        query.push_str(&format!(" LIMIT {}", limit));
+
+        let rows = self.execute::<BatchProveTimeRow>(&query).await?;
+        Ok(rows)
+    }
+
     /// Get L1 block numbers grouped by minute for the given range
     pub async fn get_l1_block_times(&self, range: TimeRange) -> Result<Vec<L1BlockTimeRow>> {
         let query = format!(
@@ -1573,6 +1632,37 @@ impl ClickhouseReader {
             interval = range.interval(),
             db = self.db_name,
         );
+
+        let rows = self.execute::<BatchBlobCountRow>(&query).await?;
+        Ok(rows)
+    }
+
+    /// Get the blob count per batch since the given cutoff time with cursor-based pagination.
+    /// Results are returned in descending order by batch id.
+    pub async fn get_blobs_per_batch_paginated(
+        &self,
+        since: DateTime<Utc>,
+        limit: u64,
+        starting_after: Option<u64>,
+        ending_before: Option<u64>,
+    ) -> Result<Vec<BatchBlobCountRow>> {
+        let mut query = format!(
+            "SELECT b.l1_block_number, b.batch_id, b.blob_count \
+             FROM {db}.batches b \
+             INNER JOIN {db}.l1_head_events l1_events \
+               ON b.l1_block_number = l1_events.l1_block_number \
+             WHERE l1_events.block_ts >= {since}",
+            since = since.timestamp(),
+            db = self.db_name,
+        );
+        if let Some(start) = starting_after {
+            query.push_str(&format!(" AND b.batch_id < {}", start));
+        }
+        if let Some(end) = ending_before {
+            query.push_str(&format!(" AND b.batch_id > {}", end));
+        }
+        query.push_str(" ORDER BY b.batch_id DESC");
+        query.push_str(&format!(" LIMIT {}", limit));
 
         let rows = self.execute::<BatchBlobCountRow>(&query).await?;
         Ok(rows)

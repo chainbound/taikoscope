@@ -169,11 +169,13 @@ pub struct ClickhouseWriter {
 }
 
 impl ClickhouseWriter {
-    /// Create a new `ClickHouse` writer client
-    pub fn new(url: Url, db_name: String, username: String, password: String) -> Result<Self> {
+    /// Create a new `ClickHouse` writer client.
+    ///
+    /// This constructor is infallible and directly returns the writer instance.
+    pub fn new(url: Url, db_name: String, username: String, password: String) -> Self {
         let client = Client::default().with_url(url).with_user(username).with_password(password);
 
-        Ok(Self { base: client, db_name })
+        Self { base: client, db_name }
     }
 
     /// Create a table with the given schema
@@ -429,8 +431,7 @@ mod tests {
         let mock = Mock::new();
         let ctl = mock.add(handlers::record_ddl());
         let url = Url::parse(mock.url()).unwrap();
-        let writer =
-            ClickhouseWriter::new(url, "db".to_owned(), "user".into(), "pass".into()).unwrap();
+        let writer = ClickhouseWriter::new(url, "db".to_owned(), "user".into(), "pass".into());
 
         writer.create_table(&TABLE_SCHEMAS[0]).await.unwrap();
         let query = ctl.query().await;
@@ -443,8 +444,7 @@ mod tests {
         let ctl = mock.add(handlers::record::<L1HeadEvent>());
 
         let url = Url::parse(mock.url()).unwrap();
-        let writer =
-            ClickhouseWriter::new(url, "db".to_owned(), "user".into(), "pass".into()).unwrap();
+        let writer = ClickhouseWriter::new(url, "db".to_owned(), "user".into(), "pass".into());
 
         let header = L1Header { number: 1, hash: B256::repeat_byte(1), slot: 2, timestamp: 42 };
 
@@ -466,8 +466,7 @@ mod tests {
         let ctl = mock.add(handlers::record::<PreconfData>());
 
         let url = Url::parse(mock.url()).unwrap();
-        let writer =
-            ClickhouseWriter::new(url, "db".to_owned(), "user".into(), "pass".into()).unwrap();
+        let writer = ClickhouseWriter::new(url, "db".to_owned(), "user".into(), "pass".into());
 
         let candidates = vec![Address::repeat_byte(1), Address::repeat_byte(2)];
         writer
@@ -494,8 +493,7 @@ mod tests {
         let ctl = mock.add(handlers::record::<L2ReorgInsertRow>());
 
         let url = Url::parse(mock.url()).unwrap();
-        let writer =
-            ClickhouseWriter::new(url, "db".to_owned(), "user".into(), "pass".into()).unwrap();
+        let writer = ClickhouseWriter::new(url, "db".to_owned(), "user".into(), "pass".into());
 
         writer.insert_l2_reorg(10, 3).await.unwrap();
 
@@ -511,8 +509,7 @@ mod tests {
         let ctl = mock.add(handlers::record::<L2HeadEvent>());
 
         let url = Url::parse(mock.url()).unwrap();
-        let writer =
-            ClickhouseWriter::new(url, "db".to_owned(), "user".into(), "pass".into()).unwrap();
+        let writer = ClickhouseWriter::new(url, "db".to_owned(), "user".into(), "pass".into());
 
         let event = L2HeadEvent {
             l2_block_number: 1,
@@ -537,8 +534,7 @@ mod tests {
         let ctl = mock.add(handlers::record::<BatchRow>());
 
         let url = Url::parse(mock.url()).unwrap();
-        let writer =
-            ClickhouseWriter::new(url, "db".to_owned(), "user".into(), "pass".into()).unwrap();
+        let writer = ClickhouseWriter::new(url, "db".to_owned(), "user".into(), "pass".into());
 
         let batch = ITaikoInbox::BatchProposed {
             info: ITaikoInbox::BatchInfo {
@@ -576,8 +572,7 @@ mod tests {
         let ctl = mock.add(handlers::record::<ProvedBatchRow>());
 
         let url = Url::parse(mock.url()).unwrap();
-        let writer =
-            ClickhouseWriter::new(url, "db".to_owned(), "user".into(), "pass".into()).unwrap();
+        let writer = ClickhouseWriter::new(url, "db".to_owned(), "user".into(), "pass".into());
 
         let transition = ITaikoInbox::Transition {
             parentHash: B256::repeat_byte(1),
@@ -610,8 +605,7 @@ mod tests {
         let ctl = mock.add(handlers::record::<VerifiedBatchRow>());
 
         let url = Url::parse(mock.url()).unwrap();
-        let writer =
-            ClickhouseWriter::new(url, "db".to_owned(), "user".into(), "pass".into()).unwrap();
+        let writer = ClickhouseWriter::new(url, "db".to_owned(), "user".into(), "pass".into());
 
         let verified = chainio::BatchesVerified { batch_id: 3, block_hash: [9u8; 32] };
 
@@ -632,8 +626,7 @@ mod tests {
         let ctl = mock.add(handlers::record::<ForcedInclusionProcessedRow>());
 
         let url = Url::parse(mock.url()).unwrap();
-        let writer =
-            ClickhouseWriter::new(url, "db".to_owned(), "user".into(), "pass".into()).unwrap();
+        let writer = ClickhouseWriter::new(url, "db".to_owned(), "user".into(), "pass".into());
 
         let event = ITaikoWrapper::ForcedInclusionProcessed {
             blobHash: B256::repeat_byte(5),
@@ -659,8 +652,7 @@ mod tests {
         let ctl = mock.add(handlers::record::<L1DataCostInsertRow>());
 
         let url = Url::parse(mock.url()).unwrap();
-        let writer =
-            ClickhouseWriter::new(url, "db".to_owned(), "user".into(), "pass".into()).unwrap();
+        let writer = ClickhouseWriter::new(url, "db".to_owned(), "user".into(), "pass".into());
 
         writer.insert_l1_data_cost(10, 11, 42).await.unwrap();
 
@@ -693,8 +685,7 @@ mod tests {
             std::iter::repeat_with(|| mock.add(handlers::record_ddl())).take(total).collect();
 
         let url = Url::parse(mock.url()).unwrap();
-        let writer =
-            ClickhouseWriter::new(url, "db".to_owned(), "user".into(), "pass".into()).unwrap();
+        let writer = ClickhouseWriter::new(url, "db".to_owned(), "user".into(), "pass".into());
 
         writer.init_schema().await.unwrap();
 
@@ -723,8 +714,7 @@ mod tests {
             std::iter::repeat_with(|| mock.add(handlers::record_ddl())).take(total).collect();
 
         let url = Url::parse(mock.url()).unwrap();
-        let writer =
-            ClickhouseWriter::new(url, "db".to_owned(), "user".into(), "pass".into()).unwrap();
+        let writer = ClickhouseWriter::new(url, "db".to_owned(), "user".into(), "pass".into());
 
         writer.init_db(true).await.unwrap();
 
@@ -742,8 +732,7 @@ mod tests {
         mock.add(handlers::failure(test::status::INTERNAL_SERVER_ERROR));
 
         let url = Url::parse(mock.url()).unwrap();
-        let writer =
-            ClickhouseWriter::new(url, "db".to_owned(), "user".into(), "pass".into()).unwrap();
+        let writer = ClickhouseWriter::new(url, "db".to_owned(), "user".into(), "pass".into());
 
         let result = writer.create_table(&TABLE_SCHEMAS[0]).await;
         assert!(result.is_err());
@@ -753,8 +742,7 @@ mod tests {
     async fn insert_batch_fails_with_too_many_blobs() {
         let mock = Mock::new();
         let url = Url::parse(mock.url()).unwrap();
-        let writer =
-            ClickhouseWriter::new(url, "db".to_owned(), "user".into(), "pass".into()).unwrap();
+        let writer = ClickhouseWriter::new(url, "db".to_owned(), "user".into(), "pass".into());
 
         let batch = ITaikoInbox::BatchProposed {
             info: ITaikoInbox::BatchInfo {
@@ -781,8 +769,7 @@ mod tests {
         let mock = Mock::new();
         mock.add(handlers::failure(test::status::INTERNAL_SERVER_ERROR));
         let url = Url::parse(mock.url()).unwrap();
-        let writer =
-            ClickhouseWriter::new(url, "db".to_owned(), "user".into(), "pass".into()).unwrap();
+        let writer = ClickhouseWriter::new(url, "db".to_owned(), "user".into(), "pass".into());
 
         let transition = ITaikoInbox::Transition {
             parentHash: B256::repeat_byte(1),

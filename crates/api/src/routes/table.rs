@@ -334,3 +334,47 @@ pub async fn block_transactions(
     tracing::info!(count = blocks.len(), "Returning table block transactions");
     Ok(Json(BlockTransactionsResponse { blocks }))
 }
+
+#[utoipa::path(
+    get,
+    path = "/blobs-per-batch",
+    params(
+        PaginatedQuery
+    ),
+    responses(
+        (status = 200, description = "Blobs per batch", body = BatchBlobsResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
+    ),
+    tag = "taikoscope"
+)]
+/// Get paginated blob count information for each batch
+pub async fn blobs_per_batch(
+    Query(params): Query<PaginatedQuery>,
+    State(state): State<ApiState>,
+) -> Result<Json<BatchBlobsResponse>, ErrorResponse> {
+    validate_time_range(&params.common.time_range)?;
+    let limit = validate_pagination(
+        params.starting_after.as_ref(),
+        params.ending_before.as_ref(),
+        params.limit.as_ref(),
+        MAX_TABLE_LIMIT,
+    )?;
+    let has_time_range = has_time_range_params(&params.common.time_range);
+    let has_slot_range = params.starting_after.is_some() || params.ending_before.is_some();
+    validate_range_exclusivity(has_time_range, has_slot_range)?;
+
+    let since = resolve_time_range_since(&params.common.range, &params.common.time_range);
+    let batches = match state
+        .client
+        .get_blobs_per_batch_paginated(since, limit, params.starting_after, params.ending_before)
+        .await
+    {
+        Ok(rows) => rows,
+        Err(e) => {
+            tracing::error!(error = %e, "Failed to get blobs per batch");
+            return Err(ErrorResponse::database_error());
+        }
+    };
+    tracing::info!(count = batches.len(), "Returning blobs per batch");
+    Ok(Json(BatchBlobsResponse { batches }))
+}

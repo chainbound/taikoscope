@@ -112,16 +112,16 @@ const responses: Record<string, Record<string, unknown>> = {
       { block_number: 52, minute: 2 },
     ],
   },
-  [`/v1/prove-times?${q1h}`]: {
+  [`/v1/prove-times?${q1h}&limit=50`]: {
     batches: [{ batch_id: 1, seconds_to_prove: 3 }],
   },
-  [`/v1/prove-times?${q15m}`]: {
+  [`/v1/prove-times?${q15m}&limit=50`]: {
     batches: [{ batch_id: 1, seconds_to_prove: 3 }],
   },
-  [`/v1/verify-times?${q1h}`]: {
+  [`/v1/verify-times?${q1h}&limit=50`]: {
     batches: [{ batch_id: 1, seconds_to_verify: 4 }],
   },
-  [`/v1/verify-times?${q15m}`]: {
+  [`/v1/verify-times?${q15m}&limit=50`]: {
     batches: [{ batch_id: 1, seconds_to_verify: 4 }],
   },
   [`/v1/l2-gas-used?${q1h}&limit=50`]: {

@@ -75,7 +75,7 @@ impl Driver {
             opts.clickhouse.db.clone(),
             opts.clickhouse.username.clone(),
             opts.clickhouse.password.clone(),
-        )?;
+        );
 
         // init db reader for monitors
         let clickhouse_reader = ClickhouseReader::new(

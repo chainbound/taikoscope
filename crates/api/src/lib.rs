@@ -27,7 +27,7 @@ use utoipa::OpenApi;
         routes::core::active_gateways,
         routes::core::batch_posting_times,
         routes::core::avg_blobs_per_batch,
-        routes::core::blobs_per_batch,
+        routes::table::blobs_per_batch,
         routes::core::prove_times,
         routes::core::verify_times,
         routes::core::l1_block_times,

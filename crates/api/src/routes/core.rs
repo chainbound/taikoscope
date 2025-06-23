@@ -1,19 +1,20 @@
 //! Core simple API endpoints
 
 use crate::{
-    state::ApiState,
+    state::{ApiState, MAX_TABLE_LIMIT},
     validation::{
-        CommonQuery, has_time_range_params, resolve_time_range_enum, resolve_time_range_since,
-        validate_range_exclusivity, validate_time_range,
+        CommonQuery, PaginatedQuery, has_time_range_params, resolve_time_range_enum,
+        resolve_time_range_since, validate_pagination, validate_range_exclusivity,
+        validate_time_range,
     },
 };
 use alloy_primitives::Address;
 use api_types::{
-    ActiveGatewaysResponse, AvgBlobsPerBatchResponse, BatchBlobsResponse,
-    BatchPostingTimesResponse, ErrorResponse, L1BlockTimesResponse, L1DataCostResponse,
-    L1HeadBlockResponse, L1HeadResponse, L2HeadBlockResponse, L2HeadResponse, ProveTimesResponse,
-    SequencerBlocksItem, SequencerBlocksResponse, SequencerDistributionItem,
-    SequencerDistributionResponse, VerifyTimesResponse,
+    ActiveGatewaysResponse, AvgBlobsPerBatchResponse, BatchPostingTimesResponse, ErrorResponse,
+    L1BlockTimesResponse, L1DataCostResponse, L1HeadBlockResponse, L1HeadResponse,
+    L2HeadBlockResponse, L2HeadResponse, ProveTimesResponse, SequencerBlocksItem,
+    SequencerBlocksResponse, SequencerDistributionItem, SequencerDistributionResponse,
+    VerifyTimesResponse,
 };
 use axum::{
     Json,
@@ -109,7 +110,7 @@ pub async fn l1_head_block(
     get,
     path = "/active-gateways",
     params(
-        RangeQuery
+        PaginatedQuery
     ),
     responses(
         (status = 200, description = "Active gateways", body = ActiveGatewaysResponse),
@@ -213,42 +214,6 @@ pub async fn avg_blobs_per_batch(
 
 #[utoipa::path(
     get,
-    path = "/blobs-per-batch",
-    params(
-        RangeQuery
-    ),
-    responses(
-        (status = 200, description = "Blobs per batch", body = BatchBlobsResponse),
-        (status = 500, description = "Database error", body = ErrorResponse)
-    ),
-    tag = "taikoscope"
-)]
-/// Get detailed blob count information for each batch in the specified time range
-pub async fn blobs_per_batch(
-    Query(params): Query<RangeQuery>,
-    State(state): State<ApiState>,
-) -> Result<Json<BatchBlobsResponse>, ErrorResponse> {
-    // Validate time range parameters
-    validate_time_range(&params.time_range)?;
-
-    // Check for range exclusivity
-    let has_time_range = has_time_range_params(&params.time_range);
-    validate_range_exclusivity(has_time_range, false)?;
-
-    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
-    let batches = match state.client.get_blobs_per_batch(time_range).await {
-        Ok(rows) => rows,
-        Err(e) => {
-            tracing::error!(error = %e, "Failed to get blobs per batch");
-            return Err(ErrorResponse::database_error());
-        }
-    };
-    tracing::info!(count = batches.len(), "Returning blobs per batch");
-    Ok(Json(BatchBlobsResponse { batches }))
-}
-
-#[utoipa::path(
-    get,
     path = "/prove-times",
     params(
         RangeQuery
@@ -261,18 +226,29 @@ pub async fn blobs_per_batch(
 )]
 /// Get batch proving time metrics for the specified time range
 pub async fn prove_times(
-    Query(params): Query<RangeQuery>,
+    Query(params): Query<PaginatedQuery>,
     State(state): State<ApiState>,
 ) -> Result<Json<ProveTimesResponse>, ErrorResponse> {
     // Validate time range parameters
-    validate_time_range(&params.time_range)?;
+    validate_time_range(&params.common.time_range)?;
 
     // Check for range exclusivity
-    let has_time_range = has_time_range_params(&params.time_range);
-    validate_range_exclusivity(has_time_range, false)?;
+    let limit = validate_pagination(
+        params.starting_after.as_ref(),
+        params.ending_before.as_ref(),
+        params.limit.as_ref(),
+        MAX_TABLE_LIMIT,
+    )?;
+    let has_time_range = has_time_range_params(&params.common.time_range);
+    let has_slot_range = params.starting_after.is_some() || params.ending_before.is_some();
+    validate_range_exclusivity(has_time_range, has_slot_range)?;
 
-    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
-    let batches = match state.client.get_prove_times(time_range).await {
+    let since = resolve_time_range_since(&params.common.range, &params.common.time_range);
+    let batches = match state
+        .client
+        .get_prove_times_paginated(since, limit, params.starting_after, params.ending_before)
+        .await
+    {
         Ok(rows) => rows,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get prove times");
@@ -287,7 +263,7 @@ pub async fn prove_times(
     get,
     path = "/verify-times",
     params(
-        RangeQuery
+        PaginatedQuery
     ),
     responses(
         (status = 200, description = "Verify times", body = VerifyTimesResponse),
@@ -297,18 +273,29 @@ pub async fn prove_times(
 )]
 /// Get batch verification time metrics for the specified time range
 pub async fn verify_times(
-    Query(params): Query<RangeQuery>,
+    Query(params): Query<PaginatedQuery>,
     State(state): State<ApiState>,
 ) -> Result<Json<VerifyTimesResponse>, ErrorResponse> {
     // Validate time range parameters
-    validate_time_range(&params.time_range)?;
+    validate_time_range(&params.common.time_range)?;
 
     // Check for range exclusivity
-    let has_time_range = has_time_range_params(&params.time_range);
-    validate_range_exclusivity(has_time_range, false)?;
+    let limit = validate_pagination(
+        params.starting_after.as_ref(),
+        params.ending_before.as_ref(),
+        params.limit.as_ref(),
+        MAX_TABLE_LIMIT,
+    )?;
+    let has_time_range = has_time_range_params(&params.common.time_range);
+    let has_slot_range = params.starting_after.is_some() || params.ending_before.is_some();
+    validate_range_exclusivity(has_time_range, has_slot_range)?;
 
-    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
-    let batches = match state.client.get_verify_times(time_range).await {
+    let since = resolve_time_range_since(&params.common.range, &params.common.time_range);
+    let batches = match state
+        .client
+        .get_verify_times_paginated(since, limit, params.starting_after, params.ending_before)
+        .await
+    {
         Ok(rows) => rows,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get verify times");
