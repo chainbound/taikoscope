@@ -74,6 +74,12 @@ export const timeRangeToQuery = (range: string): string => {
   return params.toString();
 };
 
+export const rangeToQuery = (range: string): string => {
+  const params = new URLSearchParams();
+  params.set('range', range.trim());
+  return params.toString();
+};
+
 export const formatTimeRangeDisplay = (range: string): string => {
   const trimmed = range.trim();
   const preset = trimmed.match(/^(\d+)([mhd])$/i);
