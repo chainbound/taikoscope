@@ -1419,6 +1419,37 @@ impl ClickhouseReader {
             .collect())
     }
 
+    /// Get the L1 data posting cost since the given cutoff time with cursor-based pagination.
+    /// Results are returned in descending order by block number.
+    pub async fn get_l1_data_costs_paginated(
+        &self,
+        since: DateTime<Utc>,
+        limit: u64,
+        starting_after: Option<u64>,
+        ending_before: Option<u64>,
+    ) -> Result<Vec<L1DataCostRow>> {
+        let mut query = format!(
+            "SELECT c.l1_block_number, c.cost \
+             FROM {db}.l1_data_costs c \
+             INNER JOIN {db}.l1_head_events h \
+               ON c.l1_block_number = h.l1_block_number \
+             WHERE h.block_ts >= {since}",
+            since = since.timestamp(),
+            db = self.db_name,
+        );
+        if let Some(start) = starting_after {
+            query.push_str(&format!(" AND c.l1_block_number < {}", start));
+        }
+        if let Some(end) = ending_before {
+            query.push_str(&format!(" AND c.l1_block_number > {}", end));
+        }
+        query.push_str(" ORDER BY c.l1_block_number DESC");
+        query.push_str(&format!(" LIMIT {}", limit));
+
+        let rows = self.execute::<L1DataCostRow>(&query).await?;
+        Ok(rows)
+    }
+
     /// Get the total L1 data posting cost for the given range
     pub async fn get_l1_total_data_cost(
         &self,
