@@ -3,7 +3,6 @@ import { ResponsiveContainer, Sankey, Tooltip } from 'recharts';
 import { TAIKO_PINK } from '../theme';
 
 import { formatEth } from '../utils';
-import { useIsMobile } from '../hooks/useIsMobile';
 
 const PROFIT_GREEN = '#22c55e';
 import useSWR from 'swr';
@@ -42,9 +41,7 @@ const SankeyNode = ({ x, y, width, height, payload }: any) => {
   const hideLabel = payload.hideLabel;
   const addressLabel = payload.addressLabel;
 
-  const label = isProfitNode && addressLabel
-    ? addressLabel
-    : payload.name;
+  const label = isProfitNode && addressLabel ? addressLabel : payload.name;
 
   return (
     <g>
@@ -118,7 +115,6 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     fetchL2Fees(timeRange, address),
   );
   const { data: ethPrice = 0 } = useEthPrice();
-  const isMobile = useIsMobile();
 
   const priorityFee = feeRes?.data?.priority_fee ?? null;
   const baseFee = feeRes?.data?.base_fee ?? null;
@@ -253,6 +249,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
       ...seqData.map((s) => ({
         name: '',
         address: s.address,
+        addressLabel: s.shortAddress,
         value: s.revenue,
         wei: s.revenueWei,
         hideLabel: true,
@@ -262,7 +259,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
       ...seqData.map((s) => ({
         name: 'Profit',
         address: s.address,
-        addressLabel: isMobile ? s.shortAddress : s.address,
+        addressLabel: s.shortAddress,
         value: s.profit,
         wei: s.profitWei,
         profitNode: true,
@@ -310,8 +307,10 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     const { value, payload: linkData } = payload[0];
     const sourceNode = data.nodes[linkData.source] as any;
     const targetNode = data.nodes[linkData.target] as any;
-    const sourceLabel = sourceNode.address ?? sourceNode.name;
-    const targetLabel = targetNode.address ?? targetNode.name;
+    const sourceLabel =
+      sourceNode.addressLabel ?? sourceNode.address ?? sourceNode.name;
+    const targetLabel =
+      targetNode.addressLabel ?? targetNode.address ?? targetNode.name;
 
     return (
       <div className="bg-white p-2 border border-gray-200 rounded shadow-sm">
