@@ -38,6 +38,8 @@ const SankeyNode = ({ x, y, width, height, payload }: any) => {
   let label = addressLabel ?? payload.name;
   if (isProfitNode && addressLabel) {
     label = `${addressLabel} Profit`;
+  } else if (payload.incomeNode && addressLabel) {
+    label = `${addressLabel} Income`;
   }
 
   return (
@@ -243,6 +245,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
         addressLabel: s.shortAddress,
         value: s.revenue,
         wei: s.revenueWei,
+        incomeNode: true,
       })),
       { name: 'Cloud Cost', value: totalActualCloudCost, usd: true },
       { name: 'Prover Cost', value: totalActualProverCost, usd: true },
@@ -309,10 +312,17 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     if (itemData.source != null && itemData.target != null) {
       const sourceNode = data.nodes[itemData.source] as any;
       const targetNode = data.nodes[itemData.target] as any;
-      const sourceLabel =
-        sourceNode.addressLabel ?? sourceNode.address ?? sourceNode.name;
-      const targetLabel =
-        targetNode.addressLabel ?? targetNode.address ?? targetNode.name;
+      const formatLabel = (node: any) => {
+        if (node.profitNode && node.addressLabel) {
+          return `${node.addressLabel} Profit`;
+        }
+        if (node.incomeNode && node.addressLabel) {
+          return `${node.addressLabel} Income`;
+        }
+        return node.addressLabel ?? node.address ?? node.name;
+      };
+      const sourceLabel = formatLabel(sourceNode);
+      const targetLabel = formatLabel(targetNode);
 
       return (
         <div className="bg-white p-2 border border-gray-200 rounded shadow-sm">
@@ -326,8 +336,15 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
       );
     }
 
-    const nodeLabel =
-      itemData.addressLabel ?? itemData.address ?? itemData.name;
+    const nodeLabel = (() => {
+      if (itemData.profitNode && itemData.addressLabel) {
+        return `${itemData.addressLabel} Profit`;
+      }
+      if (itemData.incomeNode && itemData.addressLabel) {
+        return `${itemData.addressLabel} Income`;
+      }
+      return itemData.addressLabel ?? itemData.address ?? itemData.name;
+    })();
     return (
       <div className="bg-white p-2 border border-gray-200 rounded shadow-sm">
         <p className="text-sm font-medium">{nodeLabel}</p>
