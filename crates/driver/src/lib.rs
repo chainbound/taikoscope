@@ -34,7 +34,6 @@ pub struct Driver {
     clickhouse: ClickhouseWriter,
     clickhouse_reader: ClickhouseReader,
     extractor: Extractor,
-    inbox_address: Address,
     reorg: ReorgDetector,
     incident_client: IncidentClient,
     instatus_batch_submission_component_id: String,
@@ -131,7 +130,6 @@ impl Driver {
             clickhouse,
             clickhouse_reader,
             extractor,
-            inbox_address: opts.taiko_addresses.inbox_address,
             reorg: ReorgDetector::new(),
             incident_client,
             instatus_batch_submission_component_id,
@@ -406,23 +404,6 @@ impl Driver {
             info!(header_number = header.number, "Inserted L1 header");
         }
 
-        match self.extractor.get_l1_data_posting_cost(header.hash, self.inbox_address).await {
-            Ok(cost) => {
-                if let Err(e) = self
-                    .clickhouse
-                    .insert_l1_data_cost(header.number, self.last_proposed_l2_block, cost)
-                    .await
-                {
-                    tracing::error!(block_number = header.number, err = %e, "Failed to insert L1 data cost");
-                } else {
-                    info!(block_number = header.number, cost, "Inserted L1 data cost");
-                }
-            }
-            Err(e) => {
-                tracing::error!(block_number = header.number, err = %e, "Failed to fetch L1 data cost");
-            }
-        }
-
         let opt_candidates = match self.extractor.get_operator_candidates_for_current_epoch().await
         {
             Ok(c) => {
@@ -557,6 +538,39 @@ impl Driver {
             info!(last_block_number = ?batch.last_block_number(), "Inserted batch");
         }
         self.last_proposed_l2_block = batch.last_block_number();
+
+        // Calculate L1 data cost from the transaction that proposed this batch
+        match self.extractor.get_receipt(batch.info.txsHash).await {
+            Ok(receipt) => {
+                let cost = primitives::l1_data_cost::cost_from_receipt(&receipt);
+                if let Err(e) = self
+                    .clickhouse
+                    .insert_l1_data_cost(batch.info.proposedIn, self.last_proposed_l2_block, cost)
+                    .await
+                {
+                    tracing::error!(
+                        l1_block_number = batch.info.proposedIn,
+                        tx_hash = ?batch.info.txsHash,
+                        err = %e,
+                        "Failed to insert L1 data cost"
+                    );
+                } else {
+                    info!(
+                        l1_block_number = batch.info.proposedIn,
+                        tx_hash = ?batch.info.txsHash,
+                        cost,
+                        "Inserted L1 data cost"
+                    );
+                }
+            }
+            Err(e) => {
+                tracing::error!(
+                    tx_hash = ?batch.info.txsHash,
+                    err = %e,
+                    "Failed to fetch receipt for batch proposal transaction"
+                );
+            }
+        }
     }
 
     /// Record a forced inclusion event.

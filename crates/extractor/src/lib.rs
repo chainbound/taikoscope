@@ -11,7 +11,7 @@ use chainio::{
 use std::pin::Pin;
 
 use alloy::{
-    primitives::{Address, BlockHash, BlockNumber},
+    primitives::{Address, BlockNumber},
     providers::{Provider, ProviderBuilder},
 };
 use alloy_consensus::BlockHeader;
@@ -400,26 +400,16 @@ impl Extractor {
         Ok(primitives::block_stats::compute_block_stats(&receipts, base_fee))
     }
 
-    /// Calculate total L1 data posting cost for a block
-    pub async fn get_l1_data_posting_cost(
+    /// Get a transaction receipt by hash
+    pub async fn get_receipt(
         &self,
-        block_hash: BlockHash,
-        inbox: Address,
-    ) -> Result<u128> {
-        use alloy_rpc_types_eth::BlockId;
-        use primitives::l1_data_cost::compute_l1_data_posting_cost;
-
-        let block = self
-            .l1_provider
-            .get_block_by_hash(block_hash)
-            .full()
-            .await?
-            .ok_or_else(|| eyre::eyre!("missing block"))?;
-        let receipts_opt = self.l1_provider.get_block_receipts(BlockId::hash(block_hash)).await?;
-        let receipts = receipts_opt.ok_or_else(|| eyre::eyre!("missing receipts"))?;
-
-        let txs = block.transactions.into_transactions_vec();
-        Ok(compute_l1_data_posting_cost(&txs, &receipts, inbox))
+        tx_hash: alloy::primitives::B256,
+    ) -> Result<alloy_rpc_types_eth::TransactionReceipt> {
+        let receipt =
+            self.l1_provider.get_transaction_receipt(tx_hash).await?.ok_or_else(|| {
+                eyre::eyre!("Receipt not found for transaction hash: {}", tx_hash)
+            })?;
+        Ok(receipt)
     }
 }
 

@@ -11,6 +11,19 @@ pub fn calculate_blob_fee_from_receipt<R: ReceiptResponse>(receipt: &R) -> u128 
     }
 }
 
+/// Calculate the total cost for a single receipt (execution + blob fees).
+/// This function computes the cost for any transaction receipt without filtering.
+pub fn cost_from_receipt<R: ReceiptResponse>(receipt: &R) -> u128 {
+    // Calculate execution gas cost (gas_used * effective_gas_price)
+    let exec_cost = (receipt.gas_used() as u128).saturating_mul(receipt.effective_gas_price());
+
+    // Calculate blob gas cost if present
+    let blob_cost = calculate_blob_fee_from_receipt(receipt);
+
+    // Return total cost
+    exec_cost.saturating_add(blob_cost)
+}
+
 /// Compute the total L1 data posting cost for the given transactions and receipts.
 /// Only transactions sent to the provided inbox address are considered.
 pub fn compute_l1_data_posting_cost<T, R>(txs: &[T], receipts: &[R], inbox: Address) -> u128
@@ -229,5 +242,46 @@ mod tests {
         // tx3: exec_cost = 200 * 5 = 1000, blob_cost = 30 * 6 = 180, total = 1180
         // Total = 200 + 1180 = 1380
         assert_eq!(cost, 1380);
+    }
+
+    #[test]
+    fn cost_from_receipt_with_both_fees() {
+        let receipt =
+            TestReceipt { gas: 1000, price: 50, blob_gas: Some(200), blob_price: Some(10) };
+        let cost = cost_from_receipt(&receipt);
+        // exec_cost = 1000 * 50 = 50000
+        // blob_cost = 200 * 10 = 2000
+        // total = 50000 + 2000 = 52000
+        assert_eq!(cost, 52000);
+    }
+
+    #[test]
+    fn cost_from_receipt_execution_only() {
+        let receipt = TestReceipt { gas: 100, price: 5, blob_gas: None, blob_price: None };
+        let cost = cost_from_receipt(&receipt);
+        // exec_cost = 100 * 5 = 500
+        // blob_cost = 0
+        // total = 500
+        assert_eq!(cost, 500);
+    }
+
+    #[test]
+    fn cost_from_receipt_zero_cost() {
+        let receipt = TestReceipt { gas: 0, price: 0, blob_gas: None, blob_price: None };
+        let cost = cost_from_receipt(&receipt);
+        assert_eq!(cost, 0);
+    }
+
+    #[test]
+    fn cost_from_receipt_saturating_arithmetic() {
+        let receipt = TestReceipt {
+            gas: u64::MAX,
+            price: u128::MAX,
+            blob_gas: Some(u64::MAX),
+            blob_price: Some(u128::MAX),
+        };
+        let cost = cost_from_receipt(&receipt);
+        // Both calculations should saturate to u128::MAX, and the addition should also saturate
+        assert_eq!(cost, u128::MAX);
     }
 }
