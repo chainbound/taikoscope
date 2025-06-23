@@ -56,3 +56,8 @@ export interface FeeComponent {
   base: number;
   l1Cost: number | null;
 }
+
+export interface BlockProfit {
+  block: number;
+  profit: number;
+}
