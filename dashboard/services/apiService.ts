@@ -4,7 +4,7 @@ export const API_BASE: string =
 
 import { getSequencerName } from '../sequencerConfig';
 import { showToast } from '../utils/toast';
-import { timeRangeToQuery } from '../utils/timeRange';
+import { timeRangeToQuery, rangeToQuery } from '../utils/timeRange';
 
 import type {
   TimeSeriesData,
@@ -165,7 +165,7 @@ export const fetchL2ReorgEvents = async (
   if (startingAfter === undefined && endingBefore === undefined) {
     url += `${timeRangeToQuery(range)}&limit=${limit}`;
   } else {
-    url += `limit=${limit}`;
+    url += `${rangeToQuery(range)}&limit=${limit}`;
   }
   if (startingAfter !== undefined) {
     url += `&starting_after=${startingAfter}`;
