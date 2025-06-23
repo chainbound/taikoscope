@@ -26,17 +26,10 @@ interface BlockTimeDistributionChartProps {
 const BlockTimeDistributionChartComponent: React.FC<
   BlockTimeDistributionChartProps
 > = ({ data, barColor }) => {
-  if (!data || data.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-full text-gray-500">
-        No data available
-      </div>
-    );
-  }
-
-  const showMinutes = shouldShowMinutes(data);
-
   const distributionData = useMemo(() => {
+    if (!data) {
+      return [];
+    }
     // Extract block times (timestamps) and filter for reasonable bounds
     const times = data
       .map((d) => d.timestamp)
@@ -81,6 +74,16 @@ const BlockTimeDistributionChartComponent: React.FC<
 
     return bins;
   }, [data]);
+
+  if (!data || data.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-full text-gray-500">
+        No data available
+      </div>
+    );
+  }
+
+  const showMinutes = shouldShowMinutes(data);
 
   if (distributionData.length === 0) {
     return (
