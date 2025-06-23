@@ -20,11 +20,12 @@ import {
   fetchL2BlockTimesAggregated,
   fetchL2GasUsed,
   fetchL2GasUsedAggregated,
+  fetchL1DataCost,
   fetchSequencerDistribution,
   fetchL2Tps,
 } from '../services/apiService';
 import { getSequencerName } from '../sequencerConfig';
-import { bytesToHex, blockLink, addressLink, formatDateTime } from '../utils';
+import { bytesToHex, blockLink, addressLink, formatDateTime, formatEth } from '../utils';
 import { TAIKO_PINK } from '../theme';
 import React from 'react';
 
@@ -317,6 +318,23 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     },
     urlKey: 'l2-gas-used',
     reverseOrder: false,
+    supportsPagination: true,
+  },
+
+  'l1-data-cost': {
+    title: 'L1 Data Cost',
+    description: 'Data posting cost for each L1 block.',
+    fetcher: fetchL1DataCost,
+    columns: [
+      { key: 'block', label: 'L1 Block' },
+      { key: 'cost', label: 'Cost' },
+    ],
+    mapData: (data) =>
+      (data as { block: number; cost: number }[]).map((d) => ({
+        block: blockLink(d.block),
+        cost: formatEth(d.cost),
+      })),
+    urlKey: 'l1-data-cost',
     supportsPagination: true,
   },
 
