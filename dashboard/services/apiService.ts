@@ -4,7 +4,7 @@ export const API_BASE: string =
 
 import { getSequencerName } from '../sequencerConfig';
 import { showToast } from '../utils/toast';
-import { timeRangeToQuery } from '../utils/timeRange';
+import { timeRangeToQuery, rangeToQuery } from '../utils/timeRange';
 
 import type {
   TimeSeriesData,
@@ -165,7 +165,7 @@ export const fetchL2ReorgEvents = async (
   if (startingAfter === undefined && endingBefore === undefined) {
     url += `${timeRangeToQuery(range)}&limit=${limit}`;
   } else {
-    url += `limit=${limit}`;
+    url += `${rangeToQuery(range)}&limit=${limit}`;
   }
   if (startingAfter !== undefined) {
     url += `&starting_after=${startingAfter}`;
@@ -899,6 +899,28 @@ export const fetchL2Tps = async (
   }));
 
   return { data, badRequest: res.badRequest, error: res.error };
+};
+
+export interface BlockProfit {
+  block: number;
+  profit: number;
+}
+
+export const fetchBlockProfits = async (
+  range: TimeRange,
+  order: 'asc' | 'desc' = 'desc',
+  limit = 5,
+  address?: string,
+): Promise<RequestResult<BlockProfit[]>> => {
+  const url =
+    `${API_BASE}/block-profits?${timeRangeToQuery(range)}&order=${order}&limit=${limit}` +
+    (address ? `&address=${address}` : '');
+  const res = await fetchJson<{ blocks: { block: number; profit: number }[] }>(url);
+  return {
+    data: res.data ? res.data.blocks.map((b) => ({ block: b.block, profit: b.profit })) : null,
+    badRequest: res.badRequest,
+    error: res.error,
+  };
 };
 
 export interface DashboardDataResponse {

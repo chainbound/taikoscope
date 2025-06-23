@@ -3,22 +3,23 @@
 use crate::{
     state::{ApiState, MAX_TABLE_LIMIT},
     validation::{
-        CommonQuery, PaginatedQuery, has_time_range_params, resolve_time_range_enum,
+        CommonQuery, PaginatedQuery, ProfitQuery, has_time_range_params, resolve_time_range_enum,
         resolve_time_range_since, validate_pagination, validate_range_exclusivity,
         validate_time_range,
     },
 };
 use alloy_primitives::Address;
 use api_types::{
-    ActiveGatewaysResponse, AvgBlobsPerBatchResponse, BatchPostingTimesResponse, ErrorResponse,
-    L1BlockTimesResponse, L1DataCostResponse, L1HeadBlockResponse, L1HeadResponse,
-    L2HeadBlockResponse, L2HeadResponse, ProveTimesResponse, SequencerBlocksItem,
-    SequencerBlocksResponse, SequencerDistributionItem, SequencerDistributionResponse,
-    VerifyTimesResponse,
+    ActiveGatewaysResponse, AvgBlobsPerBatchResponse, BatchPostingTimesResponse, BlockProfitItem,
+    BlockProfitsResponse, ErrorResponse, L1BlockTimesResponse, L1DataCostResponse,
+    L1HeadBlockResponse, L1HeadResponse, L2HeadBlockResponse, L2HeadResponse, ProveTimesResponse,
+    SequencerBlocksItem, SequencerBlocksResponse, SequencerDistributionItem,
+    SequencerDistributionResponse, VerifyTimesResponse,
 };
 use axum::{
     Json,
     extract::{Query, State},
+    http::StatusCode,
 };
 use clickhouse_lib::AddressBytes;
 use hex::encode;
@@ -505,4 +506,69 @@ pub async fn l1_data_cost(
     };
     tracing::info!(count = rows.len(), "Returning L1 data cost");
     Ok(Json(L1DataCostResponse { blocks: rows }))
+}
+
+#[utoipa::path(
+    get,
+    path = "/block-profits",
+    params(
+        ProfitQuery
+    ),
+    responses(
+        (status = 200, description = "Block profit ranking", body = BlockProfitsResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
+    ),
+    tag = "taikoscope"
+)]
+/// Get the most or least profitable blocks in the specified range
+pub async fn block_profits(
+    Query(params): Query<ProfitQuery>,
+    State(state): State<ApiState>,
+) -> Result<Json<BlockProfitsResponse>, ErrorResponse> {
+    validate_time_range(&params.common.time_range)?;
+    let limit = params.limit.unwrap_or(5).min(MAX_TABLE_LIMIT);
+    let order_desc =
+        params.order.as_deref().map(|o| o.eq_ignore_ascii_case("desc")).unwrap_or(true);
+    let has_time_range = has_time_range_params(&params.common.time_range);
+    validate_range_exclusivity(has_time_range, false)?;
+
+    let time_range = resolve_time_range_enum(&params.common.range, &params.common.time_range);
+    let address = if let Some(addr) = params.common.address.as_ref() {
+        match addr.parse::<Address>() {
+            Ok(a) => Some(AddressBytes::from(a)),
+            Err(e) => {
+                tracing::warn!(error = %e, "Failed to parse address");
+                return Err(ErrorResponse::new(
+                    "invalid-params",
+                    "Bad Request",
+                    StatusCode::BAD_REQUEST,
+                    e.to_string(),
+                ));
+            }
+        }
+    } else {
+        None
+    };
+
+    let rows = state.client.get_l2_fee_components(address, time_range).await.map_err(|e| {
+        tracing::error!(error = %e, "Failed to get fee components");
+        ErrorResponse::database_error()
+    })?;
+
+    let mut blocks: Vec<BlockProfitItem> = rows
+        .into_iter()
+        .map(|r| BlockProfitItem {
+            block: r.l2_block_number,
+            profit: r.priority_fee as i128 + r.base_fee as i128 -
+                r.l1_data_cost.unwrap_or(0) as i128,
+        })
+        .collect();
+
+    blocks.sort_by_key(|b| b.profit);
+    if order_desc {
+        blocks.reverse();
+    }
+    blocks.truncate(limit as usize);
+    tracing::info!(count = blocks.len(), "Returning block profits");
+    Ok(Json(BlockProfitsResponse { blocks }))
 }
