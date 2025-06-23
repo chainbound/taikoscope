@@ -41,7 +41,7 @@ const SankeyNode = ({ x, y, width, height, payload }: any) => {
   const hideLabel = payload.hideLabel;
   const addressLabel = payload.addressLabel;
 
-  const label = isProfitNode && addressLabel ? addressLabel : payload.name;
+  const label = addressLabel ?? payload.name;
 
   return (
     <g>
@@ -252,7 +252,6 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
         addressLabel: s.shortAddress,
         value: s.revenue,
         wei: s.revenueWei,
-        hideLabel: true,
       })),
       { name: 'Cloud Cost', value: totalActualCloudCost, usd: true },
       { name: 'Prover Cost', value: totalActualProverCost, usd: true },
