@@ -1638,7 +1638,7 @@ impl ClickhouseReader {
     }
 
     /// Get the blob count per batch since the given cutoff time with cursor-based pagination.
-    /// Results are returned in ascending order by batch id.
+    /// Results are returned in descending order by batch id.
     pub async fn get_blobs_per_batch_paginated(
         &self,
         since: DateTime<Utc>,
@@ -1656,12 +1656,12 @@ impl ClickhouseReader {
             db = self.db_name,
         );
         if let Some(start) = starting_after {
-            query.push_str(&format!(" AND b.batch_id > {}", start));
+            query.push_str(&format!(" AND b.batch_id < {}", start));
         }
         if let Some(end) = ending_before {
-            query.push_str(&format!(" AND b.batch_id < {}", end));
+            query.push_str(&format!(" AND b.batch_id > {}", end));
         }
-        query.push_str(" ORDER BY b.batch_id ASC");
+        query.push_str(" ORDER BY b.batch_id DESC");
         query.push_str(&format!(" LIMIT {}", limit));
 
         let rows = self.execute::<BatchBlobCountRow>(&query).await?;
