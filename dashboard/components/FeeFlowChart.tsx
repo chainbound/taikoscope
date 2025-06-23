@@ -1,6 +1,7 @@
 import React from 'react';
 import { ResponsiveContainer, Sankey, Tooltip } from 'recharts';
 import { formatEth } from '../utils';
+import { TAIKO_PINK } from '../theme';
 
 const NODE_GREEN = '#22c55e';
 import useSWR from 'swr';
@@ -27,6 +28,10 @@ const SankeyNode = ({ x, y, width, height, payload }: any) => {
   const isCostNode =
     payload.name === 'Cloud Cost' || payload.name === 'Prover Cost';
   const isProfitNode = payload.name === 'Profit' || payload.profitNode;
+  const isPinkNode =
+    payload.name === 'Taiko DAO' ||
+    payload.name === 'Priority Fee' ||
+    payload.name === 'Base Fee';
   const hideLabel = payload.hideLabel;
   const addressLabel = payload.addressLabel;
 
@@ -42,7 +47,7 @@ const SankeyNode = ({ x, y, width, height, payload }: any) => {
         y={y}
         width={width}
         height={height}
-        fill={isCostNode ? '#ef4444' : NODE_GREEN}
+        fill={isCostNode ? '#ef4444' : isPinkNode ? TAIKO_PINK : NODE_GREEN}
         fillOpacity={0.8}
       />
       {!hideLabel && (
