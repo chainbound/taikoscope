@@ -351,6 +351,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
         >
           <Tooltip
             content={tooltipContent}
+            trigger="hover"
             contentStyle={{
               backgroundColor: 'white',
               border: '1px solid #e5e7eb',
