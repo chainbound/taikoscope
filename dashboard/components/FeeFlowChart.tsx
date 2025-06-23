@@ -41,7 +41,10 @@ const SankeyNode = ({ x, y, width, height, payload }: any) => {
   const hideLabel = payload.hideLabel;
   const addressLabel = payload.addressLabel;
 
-  const label = addressLabel ?? payload.name;
+  let label = addressLabel ?? payload.name;
+  if (isProfitNode && addressLabel) {
+    label = `${addressLabel} Profit`;
+  }
 
   return (
     <g>
@@ -63,7 +66,7 @@ const SankeyNode = ({ x, y, width, height, payload }: any) => {
           fill="#374151"
         >
           {label}
-          {formattedValue && (
+          {!isProfitNode && formattedValue && (
             <tspan fill="#6b7280" fontSize={11}>
               {' '}
               ({formattedValue})
@@ -303,19 +306,31 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
   const tooltipContent = ({ active, payload }: any) => {
     if (!active || !payload?.[0]) return null;
 
-    const { value, payload: linkData } = payload[0];
-    const sourceNode = data.nodes[linkData.source] as any;
-    const targetNode = data.nodes[linkData.target] as any;
-    const sourceLabel =
-      sourceNode.addressLabel ?? sourceNode.address ?? sourceNode.name;
-    const targetLabel =
-      targetNode.addressLabel ?? targetNode.address ?? targetNode.name;
+    const { value, payload: itemData } = payload[0];
 
+    if (itemData.source != null && itemData.target != null) {
+      const sourceNode = data.nodes[itemData.source] as any;
+      const targetNode = data.nodes[itemData.target] as any;
+      const sourceLabel =
+        sourceNode.addressLabel ?? sourceNode.address ?? sourceNode.name;
+      const targetLabel =
+        targetNode.addressLabel ?? targetNode.address ?? targetNode.name;
+
+      return (
+        <div className="bg-white p-2 border border-gray-200 rounded shadow-sm">
+          <p className="text-sm font-medium">
+            {sourceLabel} → {targetLabel}
+          </p>
+          <p className="text-sm text-gray-600">{formatTooltipValue(value)}</p>
+        </div>
+      );
+    }
+
+    const nodeLabel =
+      itemData.addressLabel ?? itemData.address ?? itemData.name;
     return (
       <div className="bg-white p-2 border border-gray-200 rounded shadow-sm">
-        <p className="text-sm font-medium">
-          {sourceLabel} → {targetLabel}
-        </p>
+        <p className="text-sm font-medium">{nodeLabel}</p>
         <p className="text-sm text-gray-600">{formatTooltipValue(value)}</p>
       </div>
     );
