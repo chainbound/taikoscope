@@ -1,6 +1,7 @@
 import React from 'react';
 import { ResponsiveContainer, Sankey, Tooltip } from 'recharts';
 import { formatEth } from '../utils';
+import { TAIKO_PINK } from '../theme';
 
 const NODE_GREEN = '#22c55e';
 import useSWR from 'swr';
@@ -24,18 +25,13 @@ const formatUsd = (value: number) => `$${value.toFixed(2)}`;
 
 // Simple node component that renders label with currency-aware value
 const SankeyNode = ({ x, y, width, height, payload }: any) => {
-  const nodeValue = payload?.value;
   const isCostNode =
     payload.name === 'Cloud Cost' || payload.name === 'Prover Cost';
-  const formattedValue =
-    nodeValue != null
-      ? isCostNode
-        ? formatUsd(nodeValue)
-        : payload.wei != null
-          ? formatEth(payload.wei)
-          : formatUsd(nodeValue)
-      : '';
   const isProfitNode = payload.name === 'Profit' || payload.profitNode;
+  const isPinkNode =
+    payload.name === 'Taiko DAO' ||
+    payload.name === 'Priority Fee' ||
+    payload.name === 'Base Fee';
   const hideLabel = payload.hideLabel;
   const addressLabel = payload.addressLabel;
 
@@ -51,7 +47,7 @@ const SankeyNode = ({ x, y, width, height, payload }: any) => {
         y={y}
         width={width}
         height={height}
-        fill={isCostNode ? '#ef4444' : NODE_GREEN}
+        fill={isCostNode ? '#ef4444' : isPinkNode ? TAIKO_PINK : NODE_GREEN}
         fillOpacity={0.8}
       />
       {!hideLabel && (
@@ -64,12 +60,6 @@ const SankeyNode = ({ x, y, width, height, payload }: any) => {
           fill="#374151"
         >
           {label}
-          {!isProfitNode && formattedValue && (
-            <tspan fill="#6b7280" fontSize={11}>
-              {' '}
-              ({formattedValue})
-            </tspan>
-          )}
         </text>
       )}
     </g>
@@ -299,7 +289,17 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
 
   const data = { nodes, links };
 
-  const formatTooltipValue = (value: number) => formatUsd(value);
+  const formatTooltipValue = (value: number, itemData?: any) => {
+    const usd = formatUsd(value);
+    if (itemData?.wei != null) {
+      return `${usd} (${formatEth(itemData.wei)})`;
+    }
+    if (!itemData?.usd && ethPrice) {
+      const wei = (value / ethPrice) * WEI_TO_ETH;
+      return `${usd} (${formatEth(wei)})`;
+    }
+    return usd;
+  };
 
   const tooltipContent = ({ active, payload }: any) => {
     if (!active || !payload?.[0]) return null;
@@ -319,7 +319,9 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
           <p className="text-sm font-medium">
             {sourceLabel} → {targetLabel}
           </p>
-          <p className="text-sm text-gray-600">{formatTooltipValue(value)}</p>
+          <p className="text-sm text-gray-600">
+            {formatTooltipValue(value, itemData)}
+          </p>
         </div>
       );
     }
@@ -329,7 +331,9 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     return (
       <div className="bg-white p-2 border border-gray-200 rounded shadow-sm">
         <p className="text-sm font-medium">{nodeLabel}</p>
-        <p className="text-sm text-gray-600">{formatTooltipValue(value)}</p>
+        <p className="text-sm text-gray-600">
+          {formatTooltipValue(value, itemData)}
+        </p>
       </div>
     );
   };
