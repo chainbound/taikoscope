@@ -53,6 +53,18 @@ pub struct PaginatedQuery {
     pub ending_before: Option<u64>,
 }
 
+/// Query parameters for block profit ranking endpoints
+#[derive(Debug, Deserialize, ToSchema, IntoParams)]
+pub struct ProfitQuery {
+    /// Common query parameters
+    #[serde(flatten)]
+    pub common: CommonQuery,
+    /// Maximum number of items to return
+    pub limit: Option<u64>,
+    /// Sort order for profits ("asc" or "desc")
+    pub order: Option<String>,
+}
+
 /// Validate time range parameters for logical consistency
 pub fn validate_time_range(params: &TimeRangeParams) -> Result<(), ErrorResponse> {
     // Check for mutually exclusive parameters

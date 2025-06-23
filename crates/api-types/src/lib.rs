@@ -306,6 +306,22 @@ pub struct BlockTransactionsResponse {
     pub blocks: Vec<BlockTransactionsItem>,
 }
 
+/// Profit information for a block.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct BlockProfitItem {
+    /// Block number.
+    pub block: u64,
+    /// Profit in wei (priority + base - L1 cost).
+    pub profit: i128,
+}
+
+/// Collection of block profit entries.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct BlockProfitsResponse {
+    /// Profit entries for the requested range.
+    pub blocks: Vec<BlockProfitItem>,
+}
+
 /// Aggregated L2 fees for a sequencer.
 #[derive(Debug, Serialize, ToSchema)]
 pub struct SequencerFeeRow {

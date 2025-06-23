@@ -6,6 +6,7 @@ import { IncomeChart } from '../IncomeChart';
 import { CostChart } from '../CostChart';
 import { ProfitabilityChart } from '../ProfitabilityChart';
 import { ProfitRankingTable } from '../ProfitRankingTable';
+import { BlockProfitTables } from '../BlockProfitTables';
 import { FeeFlowChart } from '../FeeFlowChart';
 import { ChartCard } from '../ChartCard';
 import { TAIKO_PINK } from '../../theme';
@@ -343,6 +344,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               timeRange={timeRange}
               cloudCost={cloudCost}
               proverCost={proverCost}
+            />
+            <BlockProfitTables
+              timeRange={timeRange}
+              cloudCost={cloudCost}
+              proverCost={proverCost}
+              address={selectedSequencer || undefined}
             />
           </>
         )}

@@ -901,6 +901,28 @@ export const fetchL2Tps = async (
   return { data, badRequest: res.badRequest, error: res.error };
 };
 
+export interface BlockProfit {
+  block: number;
+  profit: number;
+}
+
+export const fetchBlockProfits = async (
+  range: TimeRange,
+  order: 'asc' | 'desc' = 'desc',
+  limit = 5,
+  address?: string,
+): Promise<RequestResult<BlockProfit[]>> => {
+  const url =
+    `${API_BASE}/block-profits?${timeRangeToQuery(range)}&order=${order}&limit=${limit}` +
+    (address ? `&address=${address}` : '');
+  const res = await fetchJson<{ blocks: { block: number; profit: number }[] }>(url);
+  return {
+    data: res.data ? res.data.blocks.map((b) => ({ block: b.block, profit: b.profit })) : null,
+    badRequest: res.badRequest,
+    error: res.error,
+  };
+};
+
 export interface DashboardDataResponse {
   l2_block_cadence_ms: number | null;
   batch_posting_cadence_ms: number | null;
