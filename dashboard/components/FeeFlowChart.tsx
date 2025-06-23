@@ -165,7 +165,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     const actualProverCostWei = ethPrice
       ? (actualProverCost / ethPrice) * WEI_TO_ETH
       : 0;
-    const shortAddress = `${f.address.slice(0, 6)}…`;
+    const shortAddress = f.address.slice(0, 7);
     return {
       address: f.address,
       shortAddress,
