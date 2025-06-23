@@ -292,11 +292,11 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
   const formatTooltipValue = (value: number, itemData?: any) => {
     const usd = formatUsd(value);
     if (itemData?.wei != null) {
-      return `${usd} (${formatEth(itemData.wei)})`;
+      return `${formatEth(itemData.wei)} (${usd})`;
     }
     if (!itemData?.usd && ethPrice) {
       const wei = (value / ethPrice) * WEI_TO_ETH;
-      return `${usd} (${formatEth(wei)})`;
+      return `${formatEth(wei)} (${usd})`;
     }
     return usd;
   };
