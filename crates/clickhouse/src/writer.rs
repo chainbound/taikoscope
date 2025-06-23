@@ -358,15 +358,16 @@ impl ClickhouseWriter {
         proved: &chainio::ITaikoInbox::BatchesProved,
         l1_block_number: u64,
     ) -> Result<()> {
+        if proved.batchIds.len() != proved.transitions.len() {
+            return Err(eyre::eyre!("batchIds and transitions length mismatch"));
+        }
+
         let client = self.base.clone();
-        for (i, batch_id) in proved.batchIds.iter().enumerate() {
-            if i >= proved.transitions.len() {
-                continue;
-            }
+        for (batch_id, transition) in proved.batchIds.iter().zip(proved.transitions.iter()) {
             let single_proved = chainio::ITaikoInbox::BatchesProved {
                 verifier: proved.verifier,
                 batchIds: vec![*batch_id],
-                transitions: vec![proved.transitions[i].clone()],
+                transitions: vec![transition.clone()],
             };
             let proved_row = ProvedBatchRow::try_from((&single_proved, l1_block_number))?;
             let mut insert = client.insert(&format!("{}.proved_batches", self.db_name))?;
@@ -792,6 +793,28 @@ mod tests {
         let proved = ITaikoInbox::BatchesProved {
             verifier: Address::repeat_byte(4),
             batchIds: vec![1],
+            transitions: vec![transition],
+        };
+
+        let result = writer.insert_proved_batch(&proved, 10).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn insert_proved_batch_returns_error_on_length_mismatch() {
+        let mock = Mock::new();
+        let url = Url::parse(mock.url()).unwrap();
+        let writer =
+            ClickhouseWriter::new(url, "db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+        let transition = ITaikoInbox::Transition {
+            parentHash: B256::repeat_byte(1),
+            blockHash: B256::repeat_byte(2),
+            stateRoot: B256::repeat_byte(3),
+        };
+        let proved = ITaikoInbox::BatchesProved {
+            verifier: Address::repeat_byte(4),
+            batchIds: vec![1, 2],
             transitions: vec![transition],
         };
 
