@@ -88,6 +88,9 @@ export const formatWithCommas = (value: number): string =>
   value.toLocaleString();
 
 export const formatEth = (wei: number): string => {
+  if (Math.abs(wei) < 1e9) {
+    return `${wei.toLocaleString()} wei`;
+  }
   const eth = wei / 1e18;
   if (Math.abs(eth) >= 1000) {
     return `${Math.trunc(eth).toLocaleString()} ETH`;
