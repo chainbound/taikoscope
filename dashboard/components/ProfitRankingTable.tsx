@@ -53,14 +53,6 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
   const [sortBy, setSortBy] = React.useState<'name' | 'blocks' | 'profit'>('profit');
   const [sortDirection, setSortDirection] = React.useState<'asc' | 'desc'>('desc');
 
-  if (!feeRes) {
-    return (
-      <div className="flex items-center justify-center h-20 text-gray-500 dark:text-gray-400">
-        Loading...
-      </div>
-    );
-  }
-
   const hours = rangeToHours(timeRange);
   const MONTH_HOURS = 30 * 24;
   const costPerSeq = ((cloudCost + proverCost) / MONTH_HOURS) * hours;
@@ -105,6 +97,14 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
     });
     return data;
   }, [rows, sortBy, sortDirection]);
+
+  if (!feeRes) {
+    return (
+      <div className="flex items-center justify-center h-20 text-gray-500 dark:text-gray-400">
+        Loading...
+      </div>
+    );
+  }
 
   const handleSort = (column: 'name' | 'blocks' | 'profit') => {
     if (sortBy === column) {
