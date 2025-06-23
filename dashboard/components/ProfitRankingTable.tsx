@@ -50,6 +50,9 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
     return map;
   }, [feeRes]);
 
+  const [sortBy, setSortBy] = React.useState<'name' | 'blocks' | 'profit'>('profit');
+  const [sortDirection, setSortDirection] = React.useState<'asc' | 'desc'>('desc');
+
   if (!feeRes) {
     return (
       <div className="flex items-center justify-center h-20 text-gray-500 dark:text-gray-400">
@@ -81,12 +84,6 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
     return { name: seq.name, blocks: seq.value, profit };
   });
 
-  const [sortBy, setSortBy] = React.useState<'name' | 'blocks' | 'profit'>(
-    'profit',
-  );
-  const [sortDirection, setSortDirection] = React.useState<'asc' | 'desc'>(
-    'desc',
-  );
 
   const sorted = React.useMemo(() => {
     const data = [...rows];
