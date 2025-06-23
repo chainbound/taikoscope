@@ -43,7 +43,7 @@ const SankeyNode = ({ x, y, width, height, payload }: any) => {
   const addressLabel = payload.addressLabel;
 
   const label = isProfitNode && addressLabel
-    ? `${payload.name} ${addressLabel}`
+    ? addressLabel
     : payload.name;
 
   return (
