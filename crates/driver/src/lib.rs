@@ -539,6 +539,12 @@ impl Driver {
         }
         self.last_proposed_l2_block = batch.last_block_number();
 
+        // Skip L1 data cost calculation for zero hash (test scenarios)
+        if batch.info.txsHash.is_zero() {
+            tracing::debug!("Skipping L1 data cost calculation for zero transaction hash");
+            return;
+        }
+
         // Calculate L1 data cost from the transaction that proposed this batch
         match self.extractor.get_receipt(batch.info.txsHash).await {
             Ok(receipt) => {
