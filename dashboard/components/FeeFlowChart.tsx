@@ -24,17 +24,8 @@ const formatUsd = (value: number) => `$${value.toFixed(2)}`;
 
 // Simple node component that renders label with currency-aware value
 const SankeyNode = ({ x, y, width, height, payload }: any) => {
-  const nodeValue = payload?.value;
   const isCostNode =
     payload.name === 'Cloud Cost' || payload.name === 'Prover Cost';
-  const formattedValue =
-    nodeValue != null
-      ? isCostNode
-        ? formatUsd(nodeValue)
-        : payload.wei != null
-          ? formatEth(payload.wei)
-          : formatUsd(nodeValue)
-      : '';
   const isProfitNode = payload.name === 'Profit' || payload.profitNode;
   const hideLabel = payload.hideLabel;
   const addressLabel = payload.addressLabel;
@@ -64,12 +55,6 @@ const SankeyNode = ({ x, y, width, height, payload }: any) => {
           fill="#374151"
         >
           {label}
-          {!isProfitNode && formattedValue && (
-            <tspan fill="#6b7280" fontSize={11}>
-              {' '}
-              ({formattedValue})
-            </tspan>
-          )}
         </text>
       )}
     </g>
@@ -299,7 +284,17 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
 
   const data = { nodes, links };
 
-  const formatTooltipValue = (value: number) => formatUsd(value);
+  const formatTooltipValue = (value: number, itemData?: any) => {
+    const usd = formatUsd(value);
+    if (itemData?.wei != null) {
+      return `${usd} (${formatEth(itemData.wei)})`;
+    }
+    if (!itemData?.usd && ethPrice) {
+      const wei = (value / ethPrice) * WEI_TO_ETH;
+      return `${usd} (${formatEth(wei)})`;
+    }
+    return usd;
+  };
 
   const tooltipContent = ({ active, payload }: any) => {
     if (!active || !payload?.[0]) return null;
@@ -319,7 +314,9 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
           <p className="text-sm font-medium">
             {sourceLabel} → {targetLabel}
           </p>
-          <p className="text-sm text-gray-600">{formatTooltipValue(value)}</p>
+          <p className="text-sm text-gray-600">
+            {formatTooltipValue(value, itemData)}
+          </p>
         </div>
       );
     }
@@ -329,7 +326,9 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     return (
       <div className="bg-white p-2 border border-gray-200 rounded shadow-sm">
         <p className="text-sm font-medium">{nodeLabel}</p>
-        <p className="text-sm text-gray-600">{formatTooltipValue(value)}</p>
+        <p className="text-sm text-gray-600">
+          {formatTooltipValue(value, itemData)}
+        </p>
       </div>
     );
   };
