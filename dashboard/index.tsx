@@ -17,13 +17,13 @@ const root = ReactDOM.createRoot(rootElement);
 
 const app = (
   <ToastProvider>
-    <ErrorBoundary>
-      <ErrorProvider>
+    <ErrorProvider>
+      <ErrorBoundary>
         <BrowserRouter>
           <App />
         </BrowserRouter>
-      </ErrorProvider>
-    </ErrorBoundary>
+      </ErrorBoundary>
+    </ErrorProvider>
   </ToastProvider>
 );
 
