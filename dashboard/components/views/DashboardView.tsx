@@ -154,6 +154,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         'Batch Posting Cadence': () => onOpenTable('batch-posting-cadence'),
         'Avg. Prove Time': () => onOpenTable('prove-time', timeRange),
         'Avg. Verify Time': () => onOpenTable('verify-time', timeRange),
+        'L1 Data Cost': () => onOpenTable('l1-data-cost', timeRange),
       };
       return actions[title];
     },
