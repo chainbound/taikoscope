@@ -559,6 +559,55 @@ impl ClickhouseReader {
             .collect())
     }
 
+    /// Get L2 reorg events since the given cutoff with cursor-based pagination.
+    /// Results are returned in descending order by block number.
+    pub async fn get_l2_reorgs_paginated(
+        &self,
+        since: DateTime<Utc>,
+        limit: u64,
+        starting_after: Option<u64>,
+        ending_before: Option<u64>,
+    ) -> Result<Vec<L2ReorgRow>> {
+        #[derive(Row, Deserialize)]
+        struct RawRow {
+            l2_block_number: u64,
+            depth: u16,
+            ts: u64,
+        }
+
+        let mut query = format!(
+            "SELECT l2_block_number, depth, \
+                    toUInt64(toUnixTimestamp64Milli(inserted_at)) AS ts \
+             FROM {db}.l2_reorgs \
+             WHERE inserted_at > toDateTime64({since}, 3)",
+            db = self.db_name,
+            since = since.timestamp_millis() as f64 / 1000.0,
+        );
+
+        if let Some(start) = starting_after {
+            query.push_str(&format!(" AND l2_block_number < {}", start));
+        }
+        if let Some(end) = ending_before {
+            query.push_str(&format!(" AND l2_block_number > {}", end));
+        }
+
+        query.push_str(" ORDER BY l2_block_number DESC");
+        query.push_str(&format!(" LIMIT {}", limit));
+
+        let rows = self.execute::<RawRow>(&query).await.context("fetching reorg events failed")?;
+        Ok(rows
+            .into_iter()
+            .filter_map(|r| {
+                let ts = Utc.timestamp_millis_opt(r.ts as i64).single()?;
+                Some(L2ReorgRow {
+                    l2_block_number: r.l2_block_number,
+                    depth: r.depth,
+                    inserted_at: Some(ts),
+                })
+            })
+            .collect())
+    }
+
     /// Get all active gateway addresses observed since the given cutoff time
     pub async fn get_active_gateways_since(
         &self,
