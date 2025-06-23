@@ -277,14 +277,14 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
         timestamp: d.timestamp.toLocaleString(),
       })),
     chart: (data) => {
-      const BlockTimeChart = React.lazy(() =>
-        import('../components/BlockTimeChart').then((m) => ({
-          default: m.BlockTimeChart,
+      const BlockTimeDistributionChart = React.lazy(() =>
+        import('../components/BlockTimeDistributionChart').then((m) => ({
+          default: m.BlockTimeDistributionChart,
         })),
       );
-      return React.createElement(BlockTimeChart, {
+      return React.createElement(BlockTimeDistributionChart, {
         data,
-        lineColor: '#FAA43A',
+        barColor: '#FAA43A',
       });
     },
     urlKey: 'l2-block-times',
