@@ -70,7 +70,7 @@ const GasUsedChartComponent: React.FC<GasUsedChartProps> = ({
             const timeStr = ts ? formatDateTime(ts) : '';
             return `Block ${label.toLocaleString()} (${timeStr})`;
           }}
-          formatter={(value: number) => [formatLargeNumber(value), 'gas']}
+          formatter={(value: number) => [formatLargeNumber(value), 'avg gas']}
           contentStyle={{
             backgroundColor: 'rgba(255, 255, 255, 0.8)',
             borderColor: lineColor,
