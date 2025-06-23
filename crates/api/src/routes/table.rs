@@ -1,7 +1,6 @@
 //! Paginated table endpoints
 
 use crate::{
-    helpers::paginate_desc,
     state::{ApiState, MAX_TABLE_LIMIT},
     validation::{
         PaginatedQuery, has_time_range_params, resolve_time_range_since, validate_pagination,
@@ -50,13 +49,17 @@ pub async fn reorgs(
     validate_range_exclusivity(has_time_range, has_slot_range)?;
 
     let since = resolve_time_range_since(&params.common.range, &params.common.time_range);
-    let mut events = state.client.get_l2_reorgs_since(since).await.map_err(|e| {
-        tracing::error!(error = %e, "Failed to get reorg events");
-        ErrorResponse::database_error()
-    })?;
-    events = paginate_desc(events, limit, params.starting_after, params.ending_before, |e| {
-        e.l2_block_number
-    });
+    let events = match state
+        .client
+        .get_l2_reorgs_paginated(since, limit, params.starting_after, params.ending_before)
+        .await
+    {
+        Ok(rows) => rows,
+        Err(e) => {
+            tracing::error!(error = %e, "Failed to get reorg events");
+            return Err(ErrorResponse::database_error());
+        }
+    };
     tracing::info!(count = events.len(), "Returning reorg events");
     Ok(Json(ReorgEventsResponse { events }))
 }
