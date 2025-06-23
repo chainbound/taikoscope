@@ -468,8 +468,21 @@ export const fetchL2BlockTimesAggregated = async (
 
 export const fetchBatchPostingTimes = async (
   range: TimeRange,
+  limit = 50,
+  startingAfter?: number,
+  endingBefore?: number,
 ): Promise<RequestResult<TimeSeriesData[]>> => {
-  const url = `${API_BASE}/batch-posting-times?${timeRangeToQuery(range)}`;
+  let url = `${API_BASE}/batch-posting-times?`;
+  if (startingAfter === undefined && endingBefore === undefined) {
+    url += `${timeRangeToQuery(range)}&limit=${limit}`;
+  } else {
+    url += `limit=${limit}`;
+  }
+  if (startingAfter !== undefined) {
+    url += `&starting_after=${startingAfter}`;
+  } else if (endingBefore !== undefined) {
+    url += `&ending_before=${endingBefore}`;
+  }
   const res = await fetchJson<{
     batches: { batch_id: number; ms_since_prev_batch: number }[];
   }>(url);

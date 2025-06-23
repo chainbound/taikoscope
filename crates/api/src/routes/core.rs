@@ -144,7 +144,7 @@ pub async fn active_gateways(
     get,
     path = "/batch-posting-times",
     params(
-        RangeQuery
+        PaginatedQuery
     ),
     responses(
         (status = 200, description = "Batch posting times", body = BatchPostingTimesResponse),
@@ -154,18 +154,34 @@ pub async fn active_gateways(
 )]
 /// Get batch posting timing metrics for the specified time range
 pub async fn batch_posting_times(
-    Query(params): Query<RangeQuery>,
+    Query(params): Query<PaginatedQuery>,
     State(state): State<ApiState>,
 ) -> Result<Json<BatchPostingTimesResponse>, ErrorResponse> {
     // Validate time range parameters
-    validate_time_range(&params.time_range)?;
+    validate_time_range(&params.common.time_range)?;
 
     // Check for range exclusivity
-    let has_time_range = has_time_range_params(&params.time_range);
-    validate_range_exclusivity(has_time_range, false)?;
+    let limit = validate_pagination(
+        params.starting_after.as_ref(),
+        params.ending_before.as_ref(),
+        params.limit.as_ref(),
+        MAX_TABLE_LIMIT,
+    )?;
+    let has_time_range = has_time_range_params(&params.common.time_range);
+    let has_slot_range = params.starting_after.is_some() || params.ending_before.is_some();
+    validate_range_exclusivity(has_time_range, has_slot_range)?;
 
-    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
-    let rows = match state.client.get_batch_posting_times(time_range).await {
+    let since = resolve_time_range_since(&params.common.range, &params.common.time_range);
+    let rows = match state
+        .client
+        .get_batch_posting_times_paginated(
+            since,
+            limit,
+            params.starting_after,
+            params.ending_before,
+        )
+        .await
+    {
         Ok(r) => r,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get batch posting times");

@@ -165,6 +165,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
       })),
     urlKey: 'batch-posting-cadence',
     reverseOrder: true,
+    supportsPagination: true,
   },
 
   'prove-time': {

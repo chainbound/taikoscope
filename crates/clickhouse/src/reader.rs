@@ -1056,6 +1056,64 @@ impl ClickhouseReader {
             .collect())
     }
 
+    /// Get the interval between consecutive batch proposals since the given cutoff
+    /// time with cursor-based pagination. Results are returned in ascending order
+    /// by batch id.
+    pub async fn get_batch_posting_times_paginated(
+        &self,
+        since: DateTime<Utc>,
+        limit: u64,
+        starting_after: Option<u64>,
+        ending_before: Option<u64>,
+    ) -> Result<Vec<BatchPostingTimeRow>> {
+        #[derive(Row, Deserialize)]
+        struct RawRow {
+            batch_id: u64,
+            ts: u64,
+            ms_since_prev_batch: Option<u64>,
+        }
+
+        let mut query = format!(
+            "SELECT batch_id, ts, \
+                    toUInt64OrNull(toString(toInt128(ts) - toInt128(prev_ts))) AS ms_since_prev_batch \
+             FROM ( \
+                 SELECT b.batch_id AS batch_id, \
+                        toUInt64(l1_events.block_ts * 1000) AS ts, \
+                        lagInFrame(toNullable(toUInt64(l1_events.block_ts * 1000))) \
+                            OVER (ORDER BY l1_events.block_ts, b.batch_id) AS prev_ts \
+                   FROM {db}.batches b \
+                   INNER JOIN {db}.l1_head_events l1_events \
+                     ON b.l1_block_number = l1_events.l1_block_number \
+                  WHERE l1_events.block_ts >= {since} \
+                  ORDER BY l1_events.block_ts, b.batch_id \
+             ) \
+             WHERE prev_ts IS NOT NULL",
+            since = since.timestamp(),
+            db = self.db_name,
+        );
+        if let Some(start) = starting_after {
+            query.push_str(&format!(" AND batch_id > {}", start));
+        }
+        if let Some(end) = ending_before {
+            query.push_str(&format!(" AND batch_id < {}", end));
+        }
+        query.push_str(" ORDER BY batch_id ASC");
+        query.push_str(&format!(" LIMIT {}", limit));
+
+        let rows = self.execute::<RawRow>(&query).await?;
+        Ok(rows
+            .into_iter()
+            .filter_map(|r| {
+                let dt = Utc.timestamp_millis_opt(r.ts as i64).single()?;
+                r.ms_since_prev_batch.map(|ms| BatchPostingTimeRow {
+                    batch_id: r.batch_id,
+                    inserted_at: dt,
+                    ms_since_prev_batch: Some(ms),
+                })
+            })
+            .collect())
+    }
+
     /// Get prove times in seconds for batches proved within the given range
     pub async fn get_prove_times(&self, range: TimeRange) -> Result<Vec<BatchProveTimeRow>> {
         let mv_query = format!(
