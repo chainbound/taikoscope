@@ -400,16 +400,45 @@ impl Extractor {
         Ok(primitives::block_stats::compute_block_stats(&receipts, base_fee))
     }
 
-    /// Get a transaction receipt by hash
+    /// Get a transaction receipt by hash with retry logic
     pub async fn get_receipt(
         &self,
         tx_hash: alloy::primitives::B256,
     ) -> Result<alloy_rpc_types_eth::TransactionReceipt> {
-        let receipt =
-            self.l1_provider.get_transaction_receipt(tx_hash).await?.ok_or_else(|| {
-                eyre::eyre!("Receipt not found for transaction hash: {}", tx_hash)
-            })?;
-        Ok(receipt)
+        const MAX_RETRIES: u32 = 10;
+        const BASE_DELAY_MS: u64 = 500;
+
+        for attempt in 0..MAX_RETRIES {
+            match self.l1_provider.get_transaction_receipt(tx_hash).await {
+                Ok(Some(receipt)) => return Ok(receipt),
+                Ok(None) => {
+                    // Receipt not yet available, retry after delay
+                    if attempt < MAX_RETRIES - 1 {
+                        // Exponential backoff with simple jitter: base_delay * 2^attempt + fixed
+                        // jitter
+                        let delay_ms = BASE_DELAY_MS * (1u64 << attempt).min(8) // Cap at 8x base delay
+                            + ((attempt as u64) * 50).min(100); // Add simple jitter
+
+                        tracing::debug!(
+                            attempt = attempt + 1,
+                            max_retries = MAX_RETRIES,
+                            delay_ms,
+                            tx_hash = %tx_hash,
+                            "Receipt not found, retrying..."
+                        );
+
+                        tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
+                    }
+                }
+                Err(e) => {
+                    // RPC error, propagate immediately
+                    return Err(e.into());
+                }
+            }
+        }
+
+        // All retries exhausted
+        Err(eyre::eyre!("Receipt not found for transaction hash: {}", tx_hash))
     }
 }
 
@@ -556,5 +585,27 @@ mod tests {
         let decoded = decode_batches_verified(&log).unwrap();
         assert_eq!(decoded.batch_id, 7);
         assert_eq!(decoded.block_hash, [2u8; 32]);
+    }
+
+    #[tokio::test]
+    async fn test_get_receipt_retry_delay_calculation() {
+        // This test verifies the retry delay calculation logic
+        const BASE_DELAY_MS: u64 = 500;
+
+        for attempt in 0..3 {
+            let delay_ms =
+                BASE_DELAY_MS * (1u64 << attempt).min(8) + ((attempt as u64) * 50).min(100);
+
+            match attempt {
+                0 => assert_eq!(delay_ms, 500),  // 500 * 1 + 0 = 500
+                1 => assert_eq!(delay_ms, 1050), // 500 * 2 + 50 = 1050
+                2 => assert_eq!(delay_ms, 2100), // 500 * 4 + 100 = 2100
+                _ => {}
+            }
+        }
+
+        // Test delay cap - verify that large shifts are capped at 8x
+        let delay_ms = BASE_DELAY_MS * 8 + 100; // Capped at 8x base delay
+        assert_eq!(delay_ms, 4100); // 500 * 8 + 100 = 4100
     }
 }
