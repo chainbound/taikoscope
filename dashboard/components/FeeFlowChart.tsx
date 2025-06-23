@@ -1,10 +1,8 @@
 import React from 'react';
 import { ResponsiveContainer, Sankey, Tooltip } from 'recharts';
-import { TAIKO_PINK } from '../theme';
-
 import { formatEth } from '../utils';
 
-const PROFIT_GREEN = '#22c55e';
+const NODE_GREEN = '#22c55e';
 import useSWR from 'swr';
 import { fetchL2Fees } from '../services/apiService';
 import { useEthPrice } from '../services/priceService';
@@ -53,7 +51,7 @@ const SankeyNode = ({ x, y, width, height, payload }: any) => {
         y={y}
         width={width}
         height={height}
-        fill={isCostNode ? '#ef4444' : isProfitNode ? PROFIT_GREEN : TAIKO_PINK}
+        fill={isCostNode ? '#ef4444' : NODE_GREEN}
         fillOpacity={0.8}
       />
       {!hideLabel && (
@@ -100,7 +98,7 @@ const SankeyLink = ({
       className="recharts-sankey-link"
       d={`M${sourceX},${sourceY}C${sourceControlX},${sourceY} ${targetControlX},${targetY} ${targetX},${targetY}`}
       fill="none"
-      stroke={isCost ? '#ef4444' : isProfit ? PROFIT_GREEN : '#94a3b8'}
+      stroke={isCost ? '#ef4444' : isProfit ? NODE_GREEN : '#94a3b8'}
       strokeWidth={linkWidth}
       strokeOpacity={0.2}
       {...rest}
