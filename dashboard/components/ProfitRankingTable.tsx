@@ -80,13 +80,14 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
     const l1CostEth = (fees.l1_data_cost ?? 0) / 1e18;
     const revenue = revenueEth * ethPrice;
     const l1CostUsd = l1CostEth * ethPrice;
-    const profit = revenue - l1CostUsd - costPerSeq;
+    const cost = costPerSeq + l1CostUsd;
+    const profit = revenue - cost;
     return {
       name: seq.name,
       address: addr,
       blocks: seq.value,
       revenue,
-      cost: costPerSeq,
+      cost,
       profit,
     };
   });
