@@ -93,6 +93,8 @@ describe('ProfitRankingTable', () => {
     const secondSeqIdx = html.indexOf('0xseqB');
     expect(firstSeqIdx).toBeGreaterThan(-1);
     expect(secondSeqIdx).toBeGreaterThan(firstSeqIdx);
+    expect(html.includes('Revenue (USD)')).toBe(true);
+    expect(html.includes('Cost (USD)')).toBe(true);
     expect(html.includes('Profit (USD)')).toBe(true);
     expect(html.includes('↓')).toBe(true);
   });

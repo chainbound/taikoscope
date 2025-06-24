@@ -45,6 +45,15 @@ export const ProfitCalculator: React.FC<ProfitCalculatorProps> = ({
           />
         </label>
       </div>
+      <p className="mt-3 text-sm">
+        Profit ({formatTimeRangeLabel(timeRange)}):{' '}
+        <span className="font-semibold">${formatProfit(profit)}</span>
+        {ethPriceError && (
+          <span className="text-red-500 ml-2 text-xs">
+            (ETH price unavailable)
+          </span>
+        )}
+      </p>
     </div>
   );
 };
