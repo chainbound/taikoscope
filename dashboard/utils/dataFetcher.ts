@@ -10,9 +10,9 @@ import {
   fetchSequencerDistribution,
   fetchBlockTransactionsAggregated,
   fetchBatchBlobCounts,
-
-  fetchBatchL2Fees,
-  fetchBatchDashboardData,
+  fetchL2Fees,
+  fetchL2HeadBlock,
+  fetchL1HeadBlock,
 } from '../services/apiService';
 
 export interface MainDashboardData {
@@ -126,22 +126,23 @@ export const fetchEconomicsData = async (
   selectedSequencer: string | null,
 ): Promise<EconomicsData> => {
   const normalizedRange = normalizeTimeRange(timeRange);
-  const [batchL2FeesRes, batchDashboardRes, sequencerDistRes] = await Promise.all([
-    fetchBatchL2Fees(
+  const [l2FeesRes, l2BlockRes, l1BlockRes, sequencerDistRes] = await Promise.all([
+    fetchL2Fees(
       normalizedRange,
       selectedSequencer ? getSequencerAddress(selectedSequencer) : undefined,
     ),
-    fetchBatchDashboardData(normalizedRange, selectedSequencer ? getSequencerAddress(selectedSequencer) : undefined),
+    fetchL2HeadBlock(normalizedRange),
+    fetchL1HeadBlock(normalizedRange),
     fetchSequencerDistribution(normalizedRange),
   ]);
 
   return {
-    priorityFee: batchL2FeesRes.data?.priority_fee ?? null,
-    baseFee: batchL2FeesRes.data?.base_fee ?? null,
-    l1DataCost: batchL2FeesRes.data?.l1_data_cost ?? null,
-    l2Block: batchDashboardRes.data?.l2_block ?? null,
-    l1Block: batchDashboardRes.data?.l1_block ?? null,
+    priorityFee: l2FeesRes.data?.priority_fee ?? null,
+    baseFee: l2FeesRes.data?.base_fee ?? null,
+    l1DataCost: l2FeesRes.data?.l1_data_cost ?? null,
+    l2Block: l2BlockRes.data,
+    l1Block: l1BlockRes.data,
     sequencerDist: sequencerDistRes.data || [],
-    badRequestResults: [batchL2FeesRes, batchDashboardRes, sequencerDistRes],
+    badRequestResults: [l2FeesRes, l2BlockRes, l1BlockRes, sequencerDistRes],
   };
 };

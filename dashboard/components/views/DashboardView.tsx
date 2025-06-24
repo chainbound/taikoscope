@@ -6,7 +6,7 @@ import { IncomeChart } from '../IncomeChart';
 import { CostChart } from '../CostChart';
 import { ProfitabilityChart } from '../ProfitabilityChart';
 import { ProfitRankingTable } from '../ProfitRankingTable';
-import { BatchProfitTables } from '../BlockProfitTables';
+import { BlockProfitTables } from '../BlockProfitTables';
 import { FeeFlowChart } from '../FeeFlowChart';
 import { ChartCard } from '../ChartCard';
 import { TAIKO_PINK } from '../../theme';
@@ -116,10 +116,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const skeletonGroupCounts: Record<string, number> = isEconomicsView
     ? { 'Network Economics': 3 }
     : {
-      'Network Performance': 3,
-      'Network Health': 5,
-      Sequencers: 3,
-    };
+        'Network Performance': 3,
+        'Network Health': 5,
+        Sequencers: 3,
+      };
 
   const displayGroupName = useCallback(
     (group: string): string => {
@@ -345,7 +345,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               cloudCost={cloudCost}
               proverCost={proverCost}
             />
-            <BatchProfitTables
+            <BlockProfitTables
               timeRange={timeRange}
               cloudCost={cloudCost}
               proverCost={proverCost}

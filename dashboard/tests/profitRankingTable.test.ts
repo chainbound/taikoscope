@@ -14,8 +14,8 @@ describe('ProfitRankingTable', () => {
         data: {
           data: [
             { name: 'SeqA', address: '0xseqA', value: 10, tps: null },
-            { name: 'SeqB', address: '0xseqB', value: 5, tps: null },
-          ],
+            { name: 'SeqB', address: '0xseqB', value: 5, tps: null }
+          ]
         },
       } as any)
       .mockReturnValueOnce({
@@ -30,14 +30,12 @@ describe('ProfitRankingTable', () => {
                 priority_fee: 2e18,
                 base_fee: 1e18,
                 l1_data_cost: 0,
-                batch_count: 5,
               },
               {
                 address: '0xseqB',
                 priority_fee: 1e18,
                 base_fee: 0.5e18,
                 l1_data_cost: 0,
-                batch_count: 3,
               },
             ],
           },
@@ -46,12 +44,12 @@ describe('ProfitRankingTable', () => {
     vi.spyOn(api, 'fetchSequencerDistribution').mockResolvedValue({
       data: [
         { name: 'SeqA', address: '0xseqA', value: 10, tps: null },
-        { name: 'SeqB', address: '0xseqB', value: 5, tps: null },
+        { name: 'SeqB', address: '0xseqB', value: 5, tps: null }
       ],
       badRequest: false,
       error: null,
     } as any);
-    vi.spyOn(api, 'fetchBatchL2Fees').mockResolvedValue({
+    vi.spyOn(api, 'fetchL2Fees').mockResolvedValue({
       data: {
         priority_fee: 3e18,
         base_fee: 1.5e18,
@@ -62,14 +60,12 @@ describe('ProfitRankingTable', () => {
             priority_fee: 2e18,
             base_fee: 1e18,
             l1_data_cost: 0,
-            batch_count: 5,
           },
           {
             address: '0xseqB',
             priority_fee: 1e18,
             base_fee: 0.5e18,
             l1_data_cost: 0,
-            batch_count: 3,
           },
         ],
       },
@@ -89,8 +85,8 @@ describe('ProfitRankingTable', () => {
     );
     expect(html.includes('Sequencer Profit Ranking')).toBe(true);
     expect(html.includes('2,750')).toBe(true);
-    const firstSeqIdx = html.indexOf('0xseqA');
-    const secondSeqIdx = html.indexOf('0xseqB');
+    const firstSeqIdx = html.indexOf('SeqA');
+    const secondSeqIdx = html.indexOf('SeqB');
     expect(firstSeqIdx).toBeGreaterThan(-1);
     expect(secondSeqIdx).toBeGreaterThan(firstSeqIdx);
     expect(html.includes('Profit (USD)')).toBe(true);

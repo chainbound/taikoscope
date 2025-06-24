@@ -43,11 +43,7 @@ use utoipa::OpenApi;
         routes::aggregated::l2_fees,
         routes::aggregated::l2_fee_components,
         routes::aggregated::dashboard_data,
-        routes::core::l1_data_cost,
-        routes::batch::get_batch_economics,
-        routes::batch::get_batch_profit_ranking,
-        routes::batch::get_batch_l2_fees,
-        routes::batch::get_batch_dashboard_data
+        routes::core::l1_data_cost
     ),
     components(
         schemas(
@@ -93,14 +89,7 @@ use utoipa::OpenApi;
             SequencerFeeRow,
             DashboardDataResponse,
             api_types::ErrorResponse,
-            L1DataCostResponse,
-            BatchEconomicsResponse,
-            BatchEconomicsItem,
-            BatchProfitRankingResponse,
-            BatchProfitItem,
-            BatchL2FeesResponse,
-            BatchSequencerFeeRow,
-            BatchDashboardDataResponse
+            L1DataCostResponse
         )
     ),
     tags(

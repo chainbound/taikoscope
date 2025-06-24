@@ -10,7 +10,6 @@ repository.workspace = true
 chainio = { path = "../chainio" }
 primitives = { path = "../primitives" }
 
-
 alloy.workspace = true
 chrono = { workspace = true, features = ["serde"] }
 clickhouse.workspace = true

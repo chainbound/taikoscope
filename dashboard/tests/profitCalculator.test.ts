@@ -5,18 +5,25 @@ import { ProfitCalculator } from '../components/ProfitCalculator';
 import * as priceService from '../services/priceService';
 
 describe('ProfitCalculator', () => {
-  it('renders hardware cost inputs', () => {
+  it('calculates profit for time range', () => {
+    vi.spyOn(priceService, 'useEthPrice').mockReturnValue({
+      data: 2000,
+    } as any);
     const html = renderToStaticMarkup(
       React.createElement(ProfitCalculator, {
-        metrics: [],
+        metrics: [
+          { title: 'Priority Fee', value: '0.6 ETH' },
+          { title: 'Base Fee', value: '0.4 ETH' },
+          { title: 'L1 Data Cost', value: '0.1 ETH' },
+        ],
         timeRange: '1h',
         cloudCost: 100,
         proverCost: 100,
-        onCloudCostChange: () => { },
-        onProverCostChange: () => { },
+        onCloudCostChange: () => {},
+        onProverCostChange: () => {},
       }),
     );
-    expect(html.includes('Hardware Costs')).toBe(true);
+    expect(html.includes('1,799')).toBe(true);
   });
 
   it('rejects negative values via min attribute', () => {
@@ -32,26 +39,31 @@ describe('ProfitCalculator', () => {
         timeRange: '1h',
         cloudCost: 0,
         proverCost: 0,
-        onCloudCostChange: () => { },
-        onProverCostChange: () => { },
+        onCloudCostChange: () => {},
+        onProverCostChange: () => {},
       }),
     );
     const matches = html.match(/min="0"/g) ?? [];
     expect(matches.length).toBe(2);
   });
 
-  it('renders cost input values', () => {
+  it('handles base fee in gwei', () => {
+    vi.spyOn(priceService, 'useEthPrice').mockReturnValue({
+      data: 2000,
+    } as any);
     const html = renderToStaticMarkup(
       React.createElement(ProfitCalculator, {
-        metrics: [],
+        metrics: [
+          { title: 'Priority Fee', value: '0.6 ETH' },
+          { title: 'Base Fee', value: '1334501 Gwei' },
+        ],
         timeRange: '1h',
-        cloudCost: 150,
-        proverCost: 250,
-        onCloudCostChange: () => { },
-        onProverCostChange: () => { },
+        cloudCost: 0,
+        proverCost: 0,
+        onCloudCostChange: () => {},
+        onProverCostChange: () => {},
       }),
     );
-    expect(html.includes('value="150"')).toBe(true);
-    expect(html.includes('value="250"')).toBe(true);
+    expect(html.includes('1,202')).toBe(true);
   });
 });

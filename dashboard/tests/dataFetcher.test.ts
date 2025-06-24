@@ -82,8 +82,9 @@ describe('dataFetcher', () => {
 
   it('fetches economics data', async () => {
     setAll({
-      fetchBatchL2Fees: ok({ priority_fee: 1, base_fee: 2, l1_data_cost: 4, sequencers: [] }),
-      fetchBatchDashboardData: ok({ l2_block: 2, l1_block: 3 }),
+      fetchL2Fees: ok({ priority_fee: 1, base_fee: 2, l1_data_cost: 4, sequencers: [] }),
+      fetchL2HeadBlock: ok(2),
+      fetchL1HeadBlock: ok(3),
       fetchSequencerDistribution: ok([{ name: 'foo', address: '0xfoo', value: 1, tps: null }]),
     });
 
@@ -94,7 +95,7 @@ describe('dataFetcher', () => {
     expect(res.l1Block).toBe(3);
     expect(res.l1DataCost).toBe(4);
     expect(res.sequencerDist[0].name).toBe('foo');
-    expect(res.badRequestResults).toHaveLength(3);
+    expect(res.badRequestResults).toHaveLength(4);
   });
 
   it('resets isTimeRangeChanging on fetch error', async () => {

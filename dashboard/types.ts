@@ -61,19 +61,3 @@ export interface BlockProfit {
   block: number;
   profit: number;
 }
-
-export interface BatchProfit {
-  batch_id: number;
-  profit: number;
-}
-
-export interface BatchEconomics {
-  batch_id: number;
-  first_l2_block: number;
-  last_l2_block: number;
-  priority_fee: number;
-  base_fee: number;
-  l1_data_cost: number | null;
-  total_revenue: number;
-  net_revenue: number;
-}

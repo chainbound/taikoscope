@@ -62,44 +62,12 @@ pub struct BatchRow {
     pub batch_id: u64,
     /// Batch size
     pub batch_size: u16,
-    /// Last L2 block number in this batch
-    pub last_l2_block_number: u64,
     /// Proposer address
     pub proposer_addr: AddressBytes,
     /// Blob count
     pub blob_count: u8,
     /// Blob total bytes
     pub blob_total_bytes: u32,
-}
-
-impl BatchRow {
-    /// Returns the L2 block numbers that belong to this batch.
-    /// Calculates the range based on `last_l2_block_number` and `batch_size`.
-    pub fn l2_block_numbers(&self) -> Vec<u64> {
-        let last = self.last_l2_block_number;
-        let count = self.batch_size as u64;
-
-        // When the last block id is 0 but there are blocks, the batch must
-        // contain the genesis block. In this case we simply return `[0]`.
-        if last == 0 && count > 0 {
-            return vec![0];
-        }
-
-        // Add 1 to avoid off-by-one errors.
-        // Example: `last == 3`, `count == 3`, then `first == 1`.
-        let first = last.saturating_sub(count) + 1;
-
-        (first..=last).collect()
-    }
-
-    /// Returns the first L2 block number in this batch.
-    pub const fn first_l2_block_number(&self) -> u64 {
-        let count = self.batch_size as u64;
-        if self.last_l2_block_number == 0 && count > 0 {
-            return 0;
-        }
-        self.last_l2_block_number.saturating_sub(count) + 1
-    }
 }
 
 /// Proved batch row
@@ -328,64 +296,4 @@ pub struct BatchPostingTimeRow {
     pub inserted_at: DateTime<Utc>,
     /// Milliseconds since the previous batch
     pub ms_since_prev_batch: Option<u64>,
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_batch_row_l2_block_numbers() {
-        // Test normal case
-        let batch = BatchRow {
-            l1_block_number: 1,
-            batch_id: 1,
-            batch_size: 3,
-            last_l2_block_number: 5,
-            proposer_addr: AddressBytes([0u8; 20]),
-            blob_count: 1,
-            blob_total_bytes: 100,
-        };
-        assert_eq!(batch.l2_block_numbers(), vec![3, 4, 5]);
-        assert_eq!(batch.first_l2_block_number(), 3);
-
-        // Test genesis block case
-        let genesis_batch = BatchRow {
-            l1_block_number: 1,
-            batch_id: 1,
-            batch_size: 1,
-            last_l2_block_number: 0,
-            proposer_addr: AddressBytes([0u8; 20]),
-            blob_count: 1,
-            blob_total_bytes: 100,
-        };
-        assert_eq!(genesis_batch.l2_block_numbers(), vec![0]);
-        assert_eq!(genesis_batch.first_l2_block_number(), 0);
-
-        // Test single block case
-        let single_batch = BatchRow {
-            l1_block_number: 1,
-            batch_id: 1,
-            batch_size: 1,
-            last_l2_block_number: 10,
-            proposer_addr: AddressBytes([0u8; 20]),
-            blob_count: 1,
-            blob_total_bytes: 100,
-        };
-        assert_eq!(single_batch.l2_block_numbers(), vec![10]);
-        assert_eq!(single_batch.first_l2_block_number(), 10);
-
-        // Test edge case with zero blocks
-        let empty_batch = BatchRow {
-            l1_block_number: 1,
-            batch_id: 1,
-            batch_size: 0,
-            last_l2_block_number: 5,
-            proposer_addr: AddressBytes([0u8; 20]),
-            blob_count: 1,
-            blob_total_bytes: 100,
-        };
-        assert_eq!(empty_batch.l2_block_numbers(), Vec::<u64>::new());
-        assert_eq!(empty_batch.first_l2_block_number(), 6);
-    }
 }

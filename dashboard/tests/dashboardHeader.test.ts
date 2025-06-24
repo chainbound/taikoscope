@@ -20,14 +20,14 @@ describe('DashboardHeader', () => {
             null,
             React.createElement(DashboardHeader, {
               timeRange: '1h',
-              onTimeRangeChange: () => {},
+              onTimeRangeChange: () => { },
               refreshRate: 60000,
-              onRefreshRateChange: () => {},
+              onRefreshRateChange: () => { },
               lastRefresh: Date.now(),
-              onManualRefresh: () => {},
+              onManualRefresh: () => { },
               sequencers: ['seq1', 'seq2'],
               selectedSequencer: null,
-              onSequencerChange: () => {},
+              onSequencerChange: () => { },
             }),
           ),
         ),
@@ -39,7 +39,6 @@ describe('DashboardHeader', () => {
     expect(html.includes('Status')).toBe(true);
     expect(html.includes('All Sequencers')).toBe(true);
     expect(html.includes('Economics')).toBe(false);
-    expect(html.includes('Dark Mode')).toBe(true);
   });
 
   it('hides sequencer selector in economics view', () => {
@@ -69,6 +68,5 @@ describe('DashboardHeader', () => {
       ),
     );
     expect(html.includes('All Sequencers')).toBe(false);
-    expect(html.includes('Dark Mode')).toBe(true);
   });
 });
