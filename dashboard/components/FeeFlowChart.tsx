@@ -217,21 +217,21 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
       : 0;
 
     nodes = [
+      { name: 'Subsidy', value: l1Subsidy, usd: true },
       { name: 'Priority Fee', value: priorityFeeUsd, wei: priorityFee ?? 0 },
       { name: 'Base Fee', value: baseFeeUsd, wei: baseFee ?? 0 },
       { name: 'Sequencers', value: sequencerRevenue, wei: sequencerRevenueWei },
       { name: 'Cloud Cost', value: totalCloudCost, usd: true },
       { name: 'Prover Cost', value: totalProverCost, usd: true },
       { name: 'L1 Data Cost', value: l1DataCostTotalUsd, usd: true },
-      { name: 'Subsidy', value: l1Subsidy, usd: true },
       { name: 'Profit', value: sequencerProfit, wei: sequencerProfitWei },
       { name: 'Taiko DAO', value: baseFeeDaoUsd, wei: (baseFee ?? 0) * 0.25 },
     ];
 
     links = [
-      { source: 0, target: 2, value: priorityFeeUsd }, // Priority Fee → Sequencers
-      { source: 1, target: 2, value: baseFeeUsd * 0.75 }, // 75% Base Fee → Sequencers
-      { source: 1, target: 8, value: baseFeeDaoUsd }, // 25% Base Fee → Taiko DAO
+      { source: 1, target: 3, value: priorityFeeUsd }, // Priority Fee → Sequencers
+      { source: 2, target: 3, value: baseFeeUsd * 0.75 }, // 75% Base Fee → Sequencers
+      { source: 2, target: 8, value: baseFeeDaoUsd }, // 25% Base Fee → Taiko DAO
       {
         source: 2,
         target: 3,
@@ -253,8 +253,8 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
           Math.max(0, sequencerRevenue - totalCloudCost - totalProverCost),
         ),
       }, // Sequencers → L1 Data Cost
-      { source: 6, target: 5, value: l1Subsidy }, // Subsidy → L1 Data Cost
-      { source: 2, target: 7, value: sequencerProfit }, // Sequencers → Profit
+      { source: 0, target: 6, value: l1Subsidy }, // Subsidy → L1 Data Cost
+      { source: 3, target: 7, value: sequencerProfit }, // Sequencers → Profit
     ].filter((l) => l.value > 0);
   } else {
     const totalActualCloudCost = seqData.reduce(
@@ -273,15 +273,24 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     const totalL1Cost = totalActualL1Cost + totalSubsidy;
 
     // Build Sankey data with one node per sequencer
-    const baseIndex = 2; // first sequencer node index
+    const subsidyStartIndex = 0;
+    const priorityIndex = subsidyStartIndex + seqData.length;
+    const baseFeeIndex = priorityIndex + 1;
+    const baseIndex = baseFeeIndex + 1; // first sequencer node index
     const cloudIndex = baseIndex + seqData.length;
     const proverIndex = cloudIndex + 1;
     const l1Index = proverIndex + 1;
-    const subsidyStartIndex = l1Index + 1;
-    const profitStartIndex = subsidyStartIndex + seqData.length;
+    const profitStartIndex = l1Index + 1;
     const daoIndex = profitStartIndex + seqData.length;
 
     nodes = [
+      ...seqData.map((s) => ({
+        name: 'Subsidy',
+        address: s.address,
+        addressLabel: `${s.shortAddress} Subsidy`,
+        value: s.subsidyUsd,
+        usd: true,
+      })),
       { name: 'Priority Fee', value: priorityFeeUsd, wei: priorityFee ?? 0 },
       { name: 'Base Fee', value: baseFeeUsd, wei: baseFee ?? 0 },
       ...seqData.map((s) => ({
@@ -296,13 +305,6 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
       { name: 'Prover Cost', value: totalActualProverCost, usd: true },
       { name: 'L1 Data Cost', value: totalL1Cost, usd: true },
       ...seqData.map((s) => ({
-        name: 'Subsidy',
-        address: s.address,
-        addressLabel: s.shortAddress,
-        value: s.subsidyUsd,
-        usd: true,
-      })),
-      ...seqData.map((s) => ({
         name: 'Profit',
         address: s.address,
         addressLabel: s.shortAddress,
@@ -315,16 +317,16 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
 
     links = [
       ...seqData.map((s, i) => ({
-        source: 0,
+        source: priorityIndex,
         target: baseIndex + i,
         value: s.priorityUsd,
       })),
       ...seqData.map((s, i) => ({
-        source: 1,
+        source: baseFeeIndex,
         target: baseIndex + i,
         value: s.baseUsd,
       })),
-      { source: 1, target: daoIndex, value: baseFeeDaoUsd },
+      { source: baseFeeIndex, target: daoIndex, value: baseFeeDaoUsd },
       ...seqData.map((s, i) => ({
         source: baseIndex + i,
         target: cloudIndex,
