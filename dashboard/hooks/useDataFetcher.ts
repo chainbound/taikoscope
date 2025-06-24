@@ -72,6 +72,12 @@ export const useDataFetcher = ({
         priorityFee: data.priorityFee,
         baseFee: data.baseFee,
         l1DataCost: data.l1DataCost,
+        profit:
+          data.priorityFee != null &&
+          data.baseFee != null &&
+          data.l1DataCost != null
+            ? data.priorityFee + data.baseFee - data.l1DataCost
+            : null,
         l2Block: data.l2Block,
         l1Block: data.l1Block,
       };
@@ -109,6 +115,7 @@ export const useDataFetcher = ({
       priorityFee: data.priorityFee,
       baseFee: data.baseFee,
       l1DataCost: null,
+      profit: null,
       l2Block: data.l2Block,
       l1Block: data.l1Block,
     };
