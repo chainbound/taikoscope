@@ -17,8 +17,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     cmake \
     && rm -rf /var/lib/apt/lists/*
 
-RUN cargo install sccache --locked
-RUN cargo install cargo-chef --locked
+RUN cargo install --locked sccache cargo-chef && \
+    rm -rf /usr/local/cargo/registry /usr/local/cargo/git
 
 ENV RUSTC_WRAPPER=sccache SCCACHE_DIR=/sccache
 
