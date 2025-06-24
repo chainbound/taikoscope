@@ -102,6 +102,15 @@ impl BatchRow {
     }
 }
 
+/// Batch block mapping row
+#[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq)]
+pub struct BatchBlockRow {
+    /// Batch ID
+    pub batch_id: u64,
+    /// L2 block number
+    pub l2_block_number: u64,
+}
+
 /// Proved batch row
 #[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ProvedBatchRow {

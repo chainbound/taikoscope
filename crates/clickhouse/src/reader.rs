@@ -1595,15 +1595,17 @@ impl ClickhouseReader {
 
         let filter = self.reorg_filter("h");
         let mut query = format!(
-            "SELECT b.batch_id, \
+            "SELECT bb.batch_id, \
                     sum(h.sum_priority_fee) AS priority_fee, \
                     sum(h.sum_base_fee) AS base_fee, \
                     toNullable(sum(dc.cost)) AS l1_data_cost \
-             FROM {db}.batches b \
+             FROM {db}.batch_blocks bb \
+             INNER JOIN {db}.batches b \
+               ON bb.batch_id = b.batch_id \
              INNER JOIN {db}.l1_head_events l1 \
                ON b.l1_block_number = l1.l1_block_number \
              LEFT JOIN {db}.l2_head_events h \
-               ON h.l2_block_number BETWEEN if(b.last_l2_block_number = 0 AND b.batch_size > 0, 0, b.last_l2_block_number - b.batch_size + 1) AND b.last_l2_block_number \
+               ON bb.l2_block_number = h.l2_block_number \
              LEFT JOIN {db}.l1_data_costs dc \
                ON h.l2_block_number = dc.l2_block_number \
              WHERE l1.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
@@ -1615,7 +1617,7 @@ impl ClickhouseReader {
         if let Some(addr) = proposer {
             query.push_str(&format!(" AND b.proposer_addr = unhex('{}')", encode(addr)));
         }
-        query.push_str(" GROUP BY b.batch_id ORDER BY b.batch_id ASC");
+        query.push_str(" GROUP BY bb.batch_id ORDER BY bb.batch_id ASC");
 
         let rows = self.execute::<RawRow>(&query).await?;
         Ok(rows
@@ -1681,11 +1683,13 @@ impl ClickhouseReader {
                     sum(h.sum_priority_fee) AS priority_fee, \
                     sum(h.sum_base_fee) AS base_fee, \
                     toNullable(sum(dc.cost)) AS l1_data_cost \
-             FROM {db}.batches b \
+             FROM {db}.batch_blocks bb \
+             INNER JOIN {db}.batches b \
+               ON bb.batch_id = b.batch_id \
              INNER JOIN {db}.l1_head_events l1 \
                ON b.l1_block_number = l1.l1_block_number \
              LEFT JOIN {db}.l2_head_events h \
-               ON h.l2_block_number BETWEEN if(b.last_l2_block_number = 0 AND b.batch_size > 0, 0, b.last_l2_block_number - b.batch_size + 1) AND b.last_l2_block_number \
+               ON bb.l2_block_number = h.l2_block_number \
              LEFT JOIN {db}.l1_data_costs dc \
                ON h.l2_block_number = dc.l2_block_number \
              WHERE l1.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \

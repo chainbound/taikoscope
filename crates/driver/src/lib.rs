@@ -616,8 +616,8 @@ mod tests {
     use super::*;
     use chainio::{ITaikoInbox, taiko::wrapper::ITaikoWrapper};
     use clickhouse::{
-        AddressBytes, BatchRow, ForcedInclusionProcessedRow, HashBytes, ProvedBatchRow,
-        VerifiedBatchRow,
+        AddressBytes, BatchBlockRow, BatchRow, ForcedInclusionProcessedRow, HashBytes,
+        ProvedBatchRow, VerifiedBatchRow,
     };
     use clickhouse_rs::test::{Mock, handlers};
     use config::{ApiOpts, ClickhouseOpts, InstatusOpts, Opts, RpcOpts, TaikoAddressOpts};
@@ -699,6 +699,8 @@ mod tests {
     async fn handle_batch_proposed_inserts_row() {
         let mock = Mock::new();
         let ctl = mock.add(handlers::record::<BatchRow>());
+        // Add handler for batch_blocks table insert
+        let _ctl_blocks = mock.add(handlers::record::<BatchBlockRow>());
 
         let url = Url::parse(mock.url()).unwrap();
         let (l1_url, l1_handle) = start_ws_server().await;

@@ -151,8 +151,8 @@ fn validate_migration_name(name: &str) -> bool {
 use crate::{
     L1Header,
     models::{
-        BatchRow, ForcedInclusionProcessedRow, L1DataCostInsertRow, L1HeadEvent, L2HeadEvent,
-        L2ReorgInsertRow, PreconfData, ProvedBatchRow, VerifiedBatchRow,
+        BatchBlockRow, BatchRow, ForcedInclusionProcessedRow, L1DataCostInsertRow, L1HeadEvent,
+        L2HeadEvent, L2ReorgInsertRow, PreconfData, ProvedBatchRow, VerifiedBatchRow,
     },
     schema::{TABLE_SCHEMAS, TABLES, TableSchema, VIEWS},
     types::{AddressBytes, HashBytes},
@@ -344,13 +344,42 @@ impl ClickhouseWriter {
         Ok(())
     }
 
-    /// Insert a batch
+    /// Insert batch block mappings for a batch
+    pub async fn insert_batch_blocks(
+        &self,
+        batch_id: u64,
+        l2_block_numbers: Vec<u64>,
+    ) -> Result<()> {
+        if l2_block_numbers.is_empty() {
+            return Ok(());
+        }
+
+        let client = self.base.clone();
+        let mut insert = client.insert(&format!("{}.batch_blocks", self.db_name))?;
+
+        for l2_block_number in l2_block_numbers {
+            let row = BatchBlockRow { batch_id, l2_block_number };
+            insert.write(&row).await?;
+        }
+
+        insert.end().await?;
+        Ok(())
+    }
+
+    /// Insert a batch and its block mappings
     pub async fn insert_batch(&self, batch: &chainio::ITaikoInbox::BatchProposed) -> Result<()> {
         let client = self.base.clone();
         let batch_row = BatchRow::try_from(batch)?;
+
+        // Insert the batch
         let mut insert = client.insert(&format!("{}.batches", self.db_name))?;
         insert.write(&batch_row).await?;
         insert.end().await?;
+
+        // Insert batch-block mappings
+        let l2_block_numbers = batch_row.l2_block_numbers();
+        self.insert_batch_blocks(batch_row.batch_id, l2_block_numbers).await?;
+
         Ok(())
     }
 
@@ -532,6 +561,8 @@ mod tests {
     async fn insert_batch_writes_expected_row() {
         let mock = Mock::new();
         let ctl = mock.add(handlers::record::<BatchRow>());
+        // Add a handler for the batch_blocks table insert
+        let _ctl_blocks = mock.add(handlers::record::<BatchBlockRow>());
 
         let url = Url::parse(mock.url()).unwrap();
         let writer = ClickhouseWriter::new(url, "db".to_owned(), "user".into(), "pass".into());
@@ -566,6 +597,25 @@ mod tests {
             blob_total_bytes: 50,
         };
         assert_eq!(rows, vec![expected]);
+    }
+
+    #[tokio::test]
+    async fn insert_batch_blocks_writes_expected_rows() {
+        let mock = Mock::new();
+        let ctl = mock.add(handlers::record::<BatchBlockRow>());
+
+        let url = Url::parse(mock.url()).unwrap();
+        let writer = ClickhouseWriter::new(url, "db".to_owned(), "user".into(), "pass".into());
+
+        writer.insert_batch_blocks(7, vec![98, 99, 100]).await.unwrap();
+
+        let rows: Vec<BatchBlockRow> = ctl.collect().await;
+        let expected = vec![
+            BatchBlockRow { batch_id: 7, l2_block_number: 98 },
+            BatchBlockRow { batch_id: 7, l2_block_number: 99 },
+            BatchBlockRow { batch_id: 7, l2_block_number: 100 },
+        ];
+        assert_eq!(rows, expected);
     }
 
     #[tokio::test]

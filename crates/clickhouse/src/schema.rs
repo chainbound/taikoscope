@@ -17,6 +17,7 @@ pub const TABLES: &[&str] = &[
     "preconf_data",
     "l2_head_events",
     "batches",
+    "batch_blocks",
     "proved_batches",
     "l2_reorgs",
     "forced_inclusion_processed",
@@ -83,6 +84,13 @@ pub const TABLE_SCHEMAS: &[TableSchema] = &[
                  blob_total_bytes UInt32,
                  inserted_at DateTime64(3) DEFAULT now64()",
         order_by: "l1_block_number, batch_id",
+    },
+    TableSchema {
+        name: "batch_blocks",
+        columns: "batch_id UInt64,
+                 l2_block_number UInt64,
+                 inserted_at DateTime64(3) DEFAULT now64()",
+        order_by: "batch_id, l2_block_number",
     },
     TableSchema {
         name: "proved_batches",
