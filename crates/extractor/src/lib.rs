@@ -39,8 +39,9 @@ pub struct Extractor {
     taiko_wrapper: TaikoWrapper,
 }
 
-/// Stream of batch proposed events
-pub type BatchProposedStream = Pin<Box<dyn Stream<Item = BatchProposed> + Send>>;
+/// Stream of batch proposed events with their L1 transaction hash
+pub type BatchProposedStream =
+    Pin<Box<dyn Stream<Item = (BatchProposed, alloy::primitives::B256)> + Send>>;
 /// Stream of batches proved events
 pub type BatchesProvedStream =
     Pin<Box<dyn Stream<Item = (chainio::ITaikoInbox::BatchesProved, u64)> + Send>>;
@@ -164,8 +165,9 @@ impl Extractor {
         Ok(Box::pin(UnboundedReceiverStream::new(rx)))
     }
 
-    /// Subscribes to the `TaikoInbox` `BatchProposed` event and returns a stream of decoded events.
-    /// This stream will attempt to automatically resubscribe and continue yielding events.
+    /// Subscribes to the `TaikoInbox` `BatchProposed` event and returns a stream of decoded events
+    /// along with the L1 transaction hash. This stream will attempt to automatically resubscribe
+    /// and continue yielding events.
     pub async fn get_batch_proposed_stream(&self) -> Result<BatchProposedStream> {
         let (tx, rx) = mpsc::unbounded_channel();
         let provider = self.l1_provider.clone();
@@ -192,7 +194,9 @@ impl Extractor {
                 while let Some(log) = log_stream.next().await {
                     match log.log_decode::<BatchProposed>() {
                         Ok(decoded) => {
-                            if tx.send(decoded.data().clone()).is_err() {
+                            // Include the transaction hash from the log
+                            let tx_hash = log.transaction_hash.unwrap_or_default();
+                            if tx.send((decoded.data().clone(), tx_hash)).is_err() {
                                 error!(
                                     "BatchProposed receiver dropped. Stopping BatchProposed event task."
                                 );

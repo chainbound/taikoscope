@@ -2,7 +2,7 @@
 
 use std::time::Duration;
 
-use alloy_primitives::Address;
+use alloy_primitives::{Address, B256};
 use eyre::Result;
 use network::public_rpc_monitor;
 use tokio_stream::StreamExt;
@@ -345,8 +345,8 @@ impl Driver {
                 }
                 maybe_batch = batch_stream.next() => {
                     match maybe_batch {
-                        Some(batch) => {
-                            self.handle_batch_proposed(batch).await;
+                        Some(batch_data) => {
+                            self.handle_batch_proposed(batch_data).await;
                         }
                         None => {
                             tracing::warn!("Batch proposed stream ended; re-subscribing…");
@@ -531,7 +531,9 @@ impl Driver {
     }
 
     /// Store a newly proposed batch.
-    async fn handle_batch_proposed(&mut self, batch: BatchProposed) {
+    async fn handle_batch_proposed(&mut self, batch_data: (BatchProposed, B256)) {
+        let (batch, l1_tx_hash) = batch_data;
+
         if let Err(e) = self.clickhouse.insert_batch(&batch).await {
             tracing::error!(batch_last_block = ?batch.last_block_number(), err = %e, "Failed to insert batch");
         } else {
@@ -540,13 +542,13 @@ impl Driver {
         self.last_proposed_l2_block = batch.last_block_number();
 
         // Skip L1 data cost calculation for zero hash (test scenarios)
-        if batch.info.txsHash.is_zero() {
+        if l1_tx_hash.is_zero() {
             tracing::debug!("Skipping L1 data cost calculation for zero transaction hash");
             return;
         }
 
         // Calculate L1 data cost from the transaction that proposed this batch
-        match self.extractor.get_receipt(batch.info.txsHash).await {
+        match self.extractor.get_receipt(l1_tx_hash).await {
             Ok(receipt) => {
                 let cost = primitives::l1_data_cost::cost_from_receipt(&receipt);
                 if let Err(e) = self
@@ -556,14 +558,14 @@ impl Driver {
                 {
                     tracing::error!(
                         l1_block_number = batch.info.proposedIn,
-                        tx_hash = ?batch.info.txsHash,
+                        tx_hash = ?l1_tx_hash,
                         err = %e,
                         "Failed to insert L1 data cost"
                     );
                 } else {
                     info!(
                         l1_block_number = batch.info.proposedIn,
-                        tx_hash = ?batch.info.txsHash,
+                        tx_hash = ?l1_tx_hash,
                         cost,
                         "Inserted L1 data cost"
                     );
@@ -571,7 +573,7 @@ impl Driver {
             }
             Err(e) => {
                 tracing::error!(
-                    tx_hash = ?batch.info.txsHash,
+                    tx_hash = ?l1_tx_hash,
                     err = %e,
                     "Failed to fetch receipt for batch proposal transaction"
                 );
@@ -724,7 +726,7 @@ mod tests {
             ..Default::default()
         };
 
-        driver.handle_batch_proposed(batch).await;
+        driver.handle_batch_proposed((batch, B256::ZERO)).await;
 
         let rows: Vec<BatchRow> = ctl.collect().await;
         assert_eq!(
