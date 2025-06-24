@@ -14,7 +14,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     clang \
     llvm-19 \
     libclang-19-dev \
-    cmake
+    cmake \
+    && rm -rf /var/lib/apt/lists/*
 
 RUN cargo install sccache --locked
 RUN cargo install cargo-chef --locked
