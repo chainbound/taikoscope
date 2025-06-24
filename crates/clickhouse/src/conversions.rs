@@ -25,6 +25,7 @@ impl TryFrom<&ITaikoInbox::BatchProposed> for BatchRow {
             l1_block_number: batch.info.proposedIn,
             batch_id: batch.meta.batchId,
             batch_size,
+            last_l2_block_number: batch.info.lastBlockId,
             proposer_addr,
             blob_count,
             blob_total_bytes: batch.info.blobByteSize,
@@ -108,6 +109,7 @@ mod tests {
                 blobByteSize: 100,
                 blocks: vec![ITaikoInbox::BlockParams::default(); 2],
                 blobHashes: vec![B256::repeat_byte(1)],
+                lastBlockId: 105, // Adding a test value for the last block ID
                 ..Default::default()
             },
             meta: ITaikoInbox::BatchMetadata {
@@ -125,6 +127,7 @@ mod tests {
                 l1_block_number: 7,
                 batch_id: 42,
                 batch_size: 2,
+                last_l2_block_number: 105,
                 proposer_addr: AddressBytes::from(Address::repeat_byte(9)),
                 blob_count: 1,
                 blob_total_bytes: 100,

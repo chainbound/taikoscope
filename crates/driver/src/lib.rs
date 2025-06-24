@@ -716,6 +716,7 @@ mod tests {
                 blobByteSize: 50,
                 blocks: vec![ITaikoInbox::BlockParams::default(); 1],
                 blobHashes: vec![B256::repeat_byte(1)],
+                lastBlockId: 100, // Adding test value for last block ID
                 ..Default::default()
             },
             meta: ITaikoInbox::BatchMetadata {
@@ -735,6 +736,7 @@ mod tests {
                 l1_block_number: 2,
                 batch_id: 7,
                 batch_size: 1,
+                last_l2_block_number: 100,
                 proposer_addr: AddressBytes::from(Address::repeat_byte(2)),
                 blob_count: 1,
                 blob_total_bytes: 50,
