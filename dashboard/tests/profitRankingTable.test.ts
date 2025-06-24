@@ -40,7 +40,8 @@ describe('ProfitRankingTable', () => {
             ],
           },
         },
-      } as any);
+        } as any)
+      .mockReturnValueOnce({ data: new Map([['0xseqa', 1], ['0xseqb', 1]]) } as any);
     vi.spyOn(api, 'fetchSequencerDistribution').mockResolvedValue({
       data: [
         { name: 'SeqA', address: '0xseqA', value: 10, tps: null },
@@ -48,7 +49,8 @@ describe('ProfitRankingTable', () => {
       ],
       badRequest: false,
       error: null,
-    } as any);
+        } as any)
+      .mockReturnValueOnce({ data: new Map([['0xseqa', 1]]) } as any);
     vi.spyOn(api, 'fetchL2Fees').mockResolvedValue({
       data: {
         priority_fee: 3e18,
@@ -90,6 +92,7 @@ describe('ProfitRankingTable', () => {
     expect(firstSeqIdx).toBeGreaterThan(-1);
     expect(secondSeqIdx).toBeGreaterThan(firstSeqIdx);
     expect(html.includes('Revenue (USD)')).toBe(true);
+    expect(html.includes('Batches')).toBe(true);
     expect(html.includes('Cost (USD)')).toBe(true);
     expect(html.includes('Profit (USD)')).toBe(true);
     expect(html.includes('↓')).toBe(true);
@@ -120,7 +123,8 @@ describe('ProfitRankingTable', () => {
             ],
           },
         },
-      } as any);
+      } as any)
+      .mockReturnValueOnce({ data: new Map([['0xseqa', 1]]) } as any);
 
     vi.spyOn(api, 'fetchSequencerDistribution').mockResolvedValue({
       data: [{ name: 'SeqA', address: '0xseqA', value: 1, tps: null }],

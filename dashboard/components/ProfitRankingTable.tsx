@@ -4,6 +4,7 @@ import { TimeRange } from '../types';
 import {
   fetchSequencerDistribution,
   fetchL2Fees,
+  fetchBatchFeeComponents,
 } from '../services/apiService';
 import * as apiService from '../services/apiService';
 import { getSequencerAddress } from '../sequencerConfig';
@@ -51,8 +52,30 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
     return map;
   }, [feeRes]);
 
+  const addresses = React.useMemo(
+    () =>
+      sequencers.map((s) =>
+        (s.address || getSequencerAddress(s.name) || '').toLowerCase(),
+      ),
+    [sequencers],
+  );
+
+  const { data: batchCounts } = useSWR(
+    sequencers.length ? ['profitRankingBatches', timeRange, addresses.join(',')] : null,
+    async () => {
+      const results = await Promise.all(
+        addresses.map((addr) => fetchBatchFeeComponents(timeRange, addr)),
+      );
+      const map = new Map<string, number>();
+      results.forEach((res, i) => {
+        map.set(addresses[i], res.data?.length ?? 0);
+      });
+      return map;
+    },
+  );
+
   const [sortBy, setSortBy] = React.useState<
-    'name' | 'blocks' | 'revenue' | 'cost' | 'profit'
+    'name' | 'blocks' | 'batches' | 'revenue' | 'cost' | 'profit'
   >('profit');
   const [sortDirection, setSortDirection] = React.useState<'asc' | 'desc'>(
     'desc',
@@ -64,12 +87,14 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
 
   const rows = sequencers.map((seq) => {
     const addr = seq.address || getSequencerAddress(seq.name) || '';
+    const batchCount = batchCounts?.get(addr.toLowerCase()) ?? null;
     const fees = feeDataMap.get(addr.toLowerCase());
     if (!fees) {
       return {
         name: seq.name,
         address: addr,
         blocks: seq.value,
+        batches: batchCount,
         revenue: null as number | null,
         cost: costPerSeq,
         profit: null as number | null,
@@ -86,6 +111,7 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
       name: seq.name,
       address: addr,
       blocks: seq.value,
+      batches: batchCount,
       revenue,
       cost,
       profit,
@@ -101,6 +127,7 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
       // Handle numeric columns (blocks, revenue, cost and profit) including null values
       if (
         sortBy === 'blocks' ||
+        sortBy === 'batches' ||
         sortBy === 'revenue' ||
         sortBy === 'cost' ||
         sortBy === 'profit'
@@ -127,7 +154,7 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
   }
 
   const handleSort = (
-    column: 'name' | 'blocks' | 'revenue' | 'cost' | 'profit',
+    column: 'name' | 'blocks' | 'batches' | 'revenue' | 'cost' | 'profit',
   ) => {
     if (sortBy === column) {
       setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'));
@@ -161,6 +188,17 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
               >
                 Blocks
                 {sortBy === 'blocks' && (
+                  <span className="ml-1">
+                    {sortDirection === 'asc' ? '↑' : '↓'}
+                  </span>
+                )}
+              </th>
+              <th
+                className="px-2 py-1 text-left cursor-pointer select-none"
+                onClick={() => handleSort('batches')}
+              >
+                Batches
+                {sortBy === 'batches' && (
                   <span className="ml-1">
                     {sortDirection === 'asc' ? '↑' : '↓'}
                   </span>
@@ -209,6 +247,9 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
               >
                 <td className="px-2 py-1">{addressLink(row.address)}</td>
                 <td className="px-2 py-1">{row.blocks.toLocaleString()}</td>
+                <td className="px-2 py-1">
+                  {row.batches != null ? row.batches.toLocaleString() : 'N/A'}
+                </td>
                 <td className="px-2 py-1">
                   {row.revenue != null ? `$${formatUsd(row.revenue)}` : 'N/A'}
                 </td>
