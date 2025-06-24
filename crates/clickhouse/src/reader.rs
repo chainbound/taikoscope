@@ -1913,33 +1913,54 @@ impl ClickhouseReader {
             proposed_at: u64,
         }
 
-        // Avoid CTE and complex JOIN conditions that ClickHouse doesn't support
         let query = format!(
-            "SELECT
-                b.batch_id,
-                b.l1_block_number,
-                b.batch_size,
-                b.last_l2_block_number,
-                b.proposer_addr,
-                sum(h.sum_priority_fee) AS total_priority_fee,
-                sum(h.sum_base_fee) AS total_base_fee,
-                sum(dc.cost) AS total_l1_data_cost,
-                sum(h.sum_tx) AS total_transactions,
-                sum(h.gas_used) AS total_gas_used,
-                toUnixTimestamp(b.inserted_at) AS proposed_at
-            FROM {db}.batches b
-            INNER JOIN {db}.l1_head_events l1_events
-              ON b.l1_block_number = l1_events.l1_block_number
-            LEFT JOIN {db}.l2_head_events h
-              ON h.l2_block_number >= (b.last_l2_block_number - b.batch_size + 1)
-              AND h.l2_block_number <= b.last_l2_block_number
-              AND {filter}
-            LEFT JOIN {db}.l1_data_costs dc
-              ON h.l2_block_number = dc.l2_block_number
-            WHERE l1_events.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})
-            GROUP BY b.batch_id, b.l1_block_number, b.batch_size, b.last_l2_block_number,
-                     b.proposer_addr, b.inserted_at
-            ORDER BY b.batch_id DESC",
+            "
+            WITH batch_blocks AS (
+                SELECT
+                    b.batch_id,
+                    b.l1_block_number,
+                    b.batch_size,
+                    b.last_l2_block_number,
+                    b.proposer_addr,
+                    b.inserted_at,
+                    h.l2_block_number,
+                    h.sum_priority_fee,
+                    h.sum_base_fee,
+                    h.sum_tx,
+                    h.gas_used
+                FROM {db}.batches b
+                INNER JOIN {db}.l1_head_events l1_events
+                    ON b.l1_block_number = l1_events.l1_block_number
+                CROSS JOIN {db}.l2_head_events h
+                WHERE l1_events.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})
+                AND h.l2_block_number >= (b.last_l2_block_number - b.batch_size + 1)
+                AND h.l2_block_number <= b.last_l2_block_number
+                AND {filter}
+            ),
+            batch_costs AS (
+                SELECT
+                    bb.batch_id,
+                    dc.cost
+                FROM batch_blocks bb
+                LEFT JOIN {db}.l1_data_costs dc ON bb.l2_block_number = dc.l2_block_number
+            )
+            SELECT
+                bb.batch_id,
+                bb.l1_block_number,
+                bb.batch_size,
+                bb.last_l2_block_number,
+                bb.proposer_addr,
+                sum(bb.sum_priority_fee) AS total_priority_fee,
+                sum(bb.sum_base_fee) AS total_base_fee,
+                sum(bc.cost) AS total_l1_data_cost,
+                sum(bb.sum_tx) AS total_transactions,
+                sum(bb.gas_used) AS total_gas_used,
+                toUnixTimestamp(bb.inserted_at) AS proposed_at
+            FROM batch_blocks bb
+            LEFT JOIN batch_costs bc ON bb.batch_id = bc.batch_id
+            GROUP BY bb.batch_id, bb.l1_block_number, bb.batch_size, bb.last_l2_block_number,
+                     bb.proposer_addr, bb.inserted_at
+            ORDER BY bb.batch_id DESC",
             interval = range.interval(),
             filter = self.reorg_filter("h"),
             db = self.db_name,
@@ -2002,29 +2023,47 @@ impl ClickhouseReader {
 
         let order = if order_desc { "DESC" } else { "ASC" };
 
-        // Avoid CTE and use direct JOINs
         let query = format!(
-            "SELECT
-                b.batch_id,
-                b.l1_block_number,
-                b.last_l2_block_number,
-                b.batch_size,
-                b.proposer_addr,
-                sum(h.sum_priority_fee) AS total_priority_fee,
-                sum(h.sum_base_fee) AS total_base_fee,
-                sum(dc.cost) AS total_l1_data_cost
-            FROM {db}.batches b
-            INNER JOIN {db}.l1_head_events l1_events
-              ON b.l1_block_number = l1_events.l1_block_number
-            LEFT JOIN {db}.l2_head_events h
-              ON h.l2_block_number >= (b.last_l2_block_number - b.batch_size + 1)
-              AND h.l2_block_number <= b.last_l2_block_number
-              AND {filter}
-            LEFT JOIN {db}.l1_data_costs dc
-              ON h.l2_block_number = dc.l2_block_number
-            WHERE l1_events.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})
-            {sequencer_filter}
-            GROUP BY b.batch_id, b.l1_block_number, b.last_l2_block_number, b.batch_size, b.proposer_addr
+            "
+            WITH batch_blocks AS (
+                SELECT
+                    b.batch_id,
+                    b.l1_block_number,
+                    b.last_l2_block_number,
+                    b.batch_size,
+                    b.proposer_addr,
+                    h.l2_block_number,
+                    h.sum_priority_fee,
+                    h.sum_base_fee
+                FROM {db}.batches b
+                INNER JOIN {db}.l1_head_events l1_events
+                    ON b.l1_block_number = l1_events.l1_block_number
+                CROSS JOIN {db}.l2_head_events h
+                WHERE l1_events.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})
+                AND h.l2_block_number >= (b.last_l2_block_number - b.batch_size + 1)
+                AND h.l2_block_number <= b.last_l2_block_number
+                AND {filter}
+                {sequencer_filter}
+            ),
+            batch_costs AS (
+                SELECT
+                    bb.batch_id,
+                    dc.cost
+                FROM batch_blocks bb
+                LEFT JOIN {db}.l1_data_costs dc ON bb.l2_block_number = dc.l2_block_number
+            )
+            SELECT
+                bb.batch_id,
+                bb.l1_block_number,
+                bb.last_l2_block_number,
+                bb.batch_size,
+                bb.proposer_addr,
+                sum(bb.sum_priority_fee) AS total_priority_fee,
+                sum(bb.sum_base_fee) AS total_base_fee,
+                sum(bc.cost) AS total_l1_data_cost
+            FROM batch_blocks bb
+            LEFT JOIN batch_costs bc ON bb.batch_id = bc.batch_id
+            GROUP BY bb.batch_id, bb.l1_block_number, bb.last_l2_block_number, bb.batch_size, bb.proposer_addr
             ORDER BY (total_priority_fee + total_base_fee - coalesce(total_l1_data_cost, 0)) {order}
             LIMIT {limit}",
             interval = range.interval(),
@@ -2070,34 +2109,40 @@ impl ClickhouseReader {
             batch_count: u64,
         }
 
-        // Use subquery instead of CTE
         let query = format!(
-            "SELECT
-                proposer_addr,
-                sum(batch_priority_fee) AS priority_fee,
-                sum(batch_base_fee) AS base_fee,
-                sum(batch_l1_data_cost) AS l1_data_cost,
-                count(DISTINCT batch_id) AS batch_count
-            FROM (
+            "
+            WITH batch_blocks AS (
                 SELECT
-                    b.proposer_addr,
                     b.batch_id,
-                    sum(h.sum_priority_fee) AS batch_priority_fee,
-                    sum(h.sum_base_fee) AS batch_base_fee,
-                    sum(dc.cost) AS batch_l1_data_cost
+                    b.proposer_addr,
+                    h.l2_block_number,
+                    h.sum_priority_fee,
+                    h.sum_base_fee
                 FROM {db}.batches b
                 INNER JOIN {db}.l1_head_events l1_events
-                  ON b.l1_block_number = l1_events.l1_block_number
-                LEFT JOIN {db}.l2_head_events h
-                  ON h.l2_block_number >= (b.last_l2_block_number - b.batch_size + 1)
-                  AND h.l2_block_number <= b.last_l2_block_number
-                  AND {filter}
-                LEFT JOIN {db}.l1_data_costs dc
-                  ON h.l2_block_number = dc.l2_block_number
+                    ON b.l1_block_number = l1_events.l1_block_number
+                CROSS JOIN {db}.l2_head_events h
                 WHERE l1_events.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})
-                GROUP BY b.proposer_addr, b.batch_id
+                AND h.l2_block_number >= (b.last_l2_block_number - b.batch_size + 1)
+                AND h.l2_block_number <= b.last_l2_block_number
+                AND {filter}
+            ),
+            batch_costs AS (
+                SELECT
+                    bb.batch_id,
+                    dc.cost
+                FROM batch_blocks bb
+                LEFT JOIN {db}.l1_data_costs dc ON bb.l2_block_number = dc.l2_block_number
             )
-            GROUP BY proposer_addr
+            SELECT
+                bb.proposer_addr,
+                sum(bb.sum_priority_fee) as priority_fee,
+                sum(bb.sum_base_fee) as base_fee,
+                sum(bc.cost) as l1_data_cost,
+                count(DISTINCT bb.batch_id) as batch_count
+            FROM batch_blocks bb
+            LEFT JOIN batch_costs bc ON bb.batch_id = bc.batch_id
+            GROUP BY bb.proposer_addr
             ORDER BY priority_fee DESC",
             interval = range.interval(),
             filter = self.reorg_filter("h"),
@@ -2136,23 +2181,33 @@ impl ClickhouseReader {
             String::new()
         };
 
-        // Direct query without CTE
         let query = format!(
-            "SELECT
-                sum(h.sum_priority_fee) AS priority_fee,
-                sum(h.sum_base_fee) AS base_fee,
+            "
+            WITH batch_blocks AS (
+                SELECT
+                    b.batch_id,
+                    b.last_l2_block_number,
+                    b.batch_size,
+                    h.l2_block_number,
+                    h.sum_priority_fee,
+                    h.sum_base_fee
+                FROM {db}.batches b
+                INNER JOIN {db}.l1_head_events l1_events
+                  ON b.l1_block_number = l1_events.l1_block_number
+                INNER JOIN {db}.l2_head_events h
+                  ON h.l2_block_number >= (b.last_l2_block_number - b.batch_size + 1)
+                  AND h.l2_block_number <= b.last_l2_block_number
+                WHERE l1_events.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})
+                  AND {filter}
+                  {sequencer_filter}
+            )
+            SELECT
+                sum(bb.sum_priority_fee) AS priority_fee,
+                sum(bb.sum_base_fee) AS base_fee,
                 sum(dc.cost) AS l1_data_cost
-            FROM {db}.batches b
-            INNER JOIN {db}.l1_head_events l1_events
-              ON b.l1_block_number = l1_events.l1_block_number
-            LEFT JOIN {db}.l2_head_events h
-              ON h.l2_block_number >= (b.last_l2_block_number - b.batch_size + 1)
-              AND h.l2_block_number <= b.last_l2_block_number
-              AND {filter}
+            FROM batch_blocks bb
             LEFT JOIN {db}.l1_data_costs dc
-              ON h.l2_block_number = dc.l2_block_number
-            WHERE l1_events.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})
-            {sequencer_filter}",
+              ON bb.l2_block_number = dc.l2_block_number",
             interval = range.interval(),
             filter = self.reorg_filter("h"),
             sequencer_filter = sequencer_filter,
