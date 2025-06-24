@@ -14,8 +14,8 @@ describe('ProfitRankingTable', () => {
         data: {
           data: [
             { name: 'SeqA', address: '0xseqA', value: 10, tps: null },
-            { name: 'SeqB', address: '0xseqB', value: 5, tps: null }
-          ]
+            { name: 'SeqB', address: '0xseqB', value: 5, tps: null },
+          ],
         },
       } as any)
       .mockReturnValueOnce({
@@ -44,7 +44,7 @@ describe('ProfitRankingTable', () => {
     vi.spyOn(api, 'fetchSequencerDistribution').mockResolvedValue({
       data: [
         { name: 'SeqA', address: '0xseqA', value: 10, tps: null },
-        { name: 'SeqB', address: '0xseqB', value: 5, tps: null }
+        { name: 'SeqB', address: '0xseqB', value: 5, tps: null },
       ],
       badRequest: false,
       error: null,
@@ -85,8 +85,8 @@ describe('ProfitRankingTable', () => {
     );
     expect(html.includes('Sequencer Profit Ranking')).toBe(true);
     expect(html.includes('2,750')).toBe(true);
-    const firstSeqIdx = html.indexOf('SeqA');
-    const secondSeqIdx = html.indexOf('SeqB');
+    const firstSeqIdx = html.indexOf('0xseqA');
+    const secondSeqIdx = html.indexOf('0xseqB');
     expect(firstSeqIdx).toBeGreaterThan(-1);
     expect(secondSeqIdx).toBeGreaterThan(firstSeqIdx);
     expect(html.includes('Profit (USD)')).toBe(true);
