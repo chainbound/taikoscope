@@ -94,4 +94,67 @@ describe('ProfitRankingTable', () => {
     expect(html.includes('Profit (USD)')).toBe(true);
     expect(html.includes('↓')).toBe(true);
   });
+
+  it('adds l1 cost to cost column', async () => {
+    vi.mocked(swr.default)
+      .mockReturnValueOnce({
+        data: {
+          data: [
+            { name: 'SeqA', address: '0xseqA', value: 1, tps: null },
+          ],
+        },
+      } as any)
+      .mockReturnValueOnce({
+        data: {
+          data: {
+            priority_fee: 1e18,
+            base_fee: 0,
+            l1_data_cost: 5e17,
+            sequencers: [
+              {
+                address: '0xseqA',
+                priority_fee: 1e18,
+                base_fee: 0,
+                l1_data_cost: 5e17,
+              },
+            ],
+          },
+        },
+      } as any);
+
+    vi.spyOn(api, 'fetchSequencerDistribution').mockResolvedValue({
+      data: [{ name: 'SeqA', address: '0xseqA', value: 1, tps: null }],
+      badRequest: false,
+      error: null,
+    } as any);
+    vi.spyOn(api, 'fetchL2Fees').mockResolvedValue({
+      data: {
+        priority_fee: 1e18,
+        base_fee: 0,
+        l1_data_cost: 5e17,
+        sequencers: [
+          {
+            address: '0xseqA',
+            priority_fee: 1e18,
+            base_fee: 0,
+            l1_data_cost: 5e17,
+          },
+        ],
+      },
+      badRequest: false,
+      error: null,
+    } as any);
+    vi.spyOn(priceService, 'useEthPrice').mockReturnValue({
+      data: 100,
+    } as any);
+
+    const html = renderToStaticMarkup(
+      React.createElement(ProfitRankingTable, {
+        timeRange: '1h',
+        cloudCost: 0,
+        proverCost: 0,
+      }),
+    );
+    expect(html.includes('$50.00')).toBe(true);
+  });
 });
