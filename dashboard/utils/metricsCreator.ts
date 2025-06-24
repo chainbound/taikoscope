@@ -25,6 +25,7 @@ export interface MetricInputData {
   priorityFee: number | null;
   baseFee: number | null;
   l1DataCost?: number | null;
+  profit?: number | null;
 }
 
 export const createMetrics = (data: MetricInputData): MetricData[] => [
@@ -105,11 +106,16 @@ export const createMetrics = (data: MetricInputData): MetricData[] => [
   },
   {
     title: 'Forced Inclusions',
-    value:
-      data.forcedInclusions != null
-        ? formatWithCommas(data.forcedInclusions)
-        : 'N/A',
+      value:
+        data.forcedInclusions != null
+          ? formatWithCommas(data.forcedInclusions)
+          : 'N/A',
     group: 'Network Health',
+  },
+  {
+    title: 'Profit',
+    value: data.profit != null ? formatEth(data.profit) : 'N/A',
+    group: 'Network Economics',
   },
   {
     title: 'Priority Fee',
