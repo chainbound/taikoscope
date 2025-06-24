@@ -947,5 +947,125 @@ export const fetchDashboardData = async (
   const url =
     `${API_BASE}/dashboard-data?${timeRangeToQuery(range)}` +
     (address ? `&address=${address}` : '');
-  return fetchJson<DashboardDataResponse>(url);
+  const res = await fetchJson<DashboardDataResponse>(url);
+  return res;
+};
+
+// New batch-level API functions
+export interface BatchEconomicsItem {
+  batch_id: number;
+  first_l2_block: number;
+  last_l2_block: number;
+  priority_fee: number;
+  base_fee: number;
+  l1_data_cost: number | null;
+  total_revenue: number;
+  net_revenue: number;
+}
+
+export interface BatchEconomicsResponse {
+  batches: BatchEconomicsItem[];
+}
+
+export const fetchBatchEconomics = async (
+  range: TimeRange,
+  address?: string,
+  limit = 50,
+  startingAfter?: number,
+  endingBefore?: number,
+): Promise<RequestResult<BatchEconomicsResponse>> => {
+  let url = `${API_BASE}/batch-economics?`;
+  if (startingAfter === undefined && endingBefore === undefined) {
+    url += `${timeRangeToQuery(range)}&limit=${limit}`;
+  } else {
+    url += `limit=${limit}`;
+  }
+  if (startingAfter !== undefined) {
+    url += `&starting_after=${startingAfter}`;
+  } else if (endingBefore !== undefined) {
+    url += `&ending_before=${endingBefore}`;
+  }
+  if (address) {
+    url += `&address=${address}`;
+  }
+  const res = await fetchJson<BatchEconomicsResponse>(url);
+  return res;
+};
+
+export interface BatchProfitItem {
+  batch_id: number;
+  profit: number;
+}
+
+export interface BatchProfitsResponse {
+  batches: BatchProfitItem[];
+}
+
+export const fetchBatchProfits = async (
+  range: TimeRange,
+  order: 'asc' | 'desc' = 'desc',
+  limit = 5,
+  address?: string,
+): Promise<RequestResult<BatchProfitsResponse>> => {
+  const url =
+    `${API_BASE}/batch-profit-ranking?${timeRangeToQuery(range)}&order=${order}&limit=${limit}` +
+    (address ? `&address=${address}` : '');
+  const res = await fetchJson<BatchProfitsResponse>(url);
+  return res;
+};
+
+export interface BatchSequencerFeeRow {
+  address: string;
+  priority_fee: number;
+  base_fee: number;
+  l1_data_cost: number | null;
+  batch_count: number;
+}
+
+export interface BatchL2FeesResponse {
+  priority_fee: number | null;
+  base_fee: number | null;
+  l1_data_cost: number | null;
+  sequencers: BatchSequencerFeeRow[];
+}
+
+export const fetchBatchL2Fees = async (
+  range: TimeRange,
+  address?: string,
+): Promise<RequestResult<BatchL2FeesResponse>> => {
+  const url =
+    `${API_BASE}/batch-l2-fees?${timeRangeToQuery(range)}` +
+    (address ? `&address=${address}` : '');
+  const res = await fetchJson<BatchL2FeesResponse>(url);
+  return res;
+};
+
+export interface BatchDashboardDataResponse {
+  l2_block_cadence_ms: number | null;
+  batch_posting_cadence_ms: number | null;
+  avg_prove_time_ms: number | null;
+  avg_verify_time_ms: number | null;
+  avg_tps: number | null;
+  preconf_data: PreconfData | null;
+  l2_reorgs: number;
+  slashings: number;
+  forced_inclusions: number;
+  l2_block: number | null;
+  l1_block: number | null;
+  priority_fee: number | null;
+  base_fee: number | null;
+  cloud_cost: number | null;
+  batch_count: number | null;
+  avg_blocks_per_batch: number | null;
+}
+
+export const fetchBatchDashboardData = async (
+  range: TimeRange,
+  address?: string,
+): Promise<RequestResult<BatchDashboardDataResponse>> => {
+  const url =
+    `${API_BASE}/batch-dashboard-data?${timeRangeToQuery(range)}` +
+    (address ? `&address=${address}` : '');
+  const res = await fetchJson<BatchDashboardDataResponse>(url);
+  return res;
 };

@@ -1,6 +1,8 @@
 //! API route definitions
 
 pub mod aggregated;
+/// Batch-level economics and profit endpoints.
+pub mod batch;
 pub mod core;
 pub mod sse;
 pub mod table;
@@ -11,6 +13,7 @@ use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
 use aggregated::*;
+use batch::*;
 use core::*;
 use sse::*;
 use table::*;
@@ -47,7 +50,11 @@ pub fn router(state: ApiState) -> Router {
         .route("/l2-fee-components/aggregated", get(l2_fee_components_aggregated))
         .route("/dashboard-data", get(dashboard_data))
         .route("/l1-data-cost", get(l1_data_cost))
-        .route("/block-profits", get(block_profits));
+        .route("/block-profits", get(block_profits))
+        .route("/batch-economics", get(get_batch_economics))
+        .route("/batch-profit-ranking", get(get_batch_profit_ranking))
+        .route("/batch-l2-fees", get(get_batch_l2_fees))
+        .route("/batch-dashboard-data", get(get_batch_dashboard_data));
 
     Router::new()
         .merge(SwaggerUi::new("/swagger-ui").url("/api-doc/openapi.json", ApiDoc::openapi()))

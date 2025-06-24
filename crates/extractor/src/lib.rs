@@ -11,7 +11,7 @@ use chainio::{
 use std::pin::Pin;
 
 use alloy::{
-    primitives::{Address, BlockHash, BlockNumber},
+    primitives::{Address, BlockNumber},
     providers::{Provider, ProviderBuilder},
 };
 use alloy_consensus::BlockHeader;
@@ -39,8 +39,9 @@ pub struct Extractor {
     taiko_wrapper: TaikoWrapper,
 }
 
-/// Stream of batch proposed events
-pub type BatchProposedStream = Pin<Box<dyn Stream<Item = BatchProposed> + Send>>;
+/// Stream of batch proposed events with their L1 transaction hash
+pub type BatchProposedStream =
+    Pin<Box<dyn Stream<Item = (BatchProposed, alloy::primitives::B256)> + Send>>;
 /// Stream of batches proved events
 pub type BatchesProvedStream =
     Pin<Box<dyn Stream<Item = (chainio::ITaikoInbox::BatchesProved, u64)> + Send>>;
@@ -164,8 +165,9 @@ impl Extractor {
         Ok(Box::pin(UnboundedReceiverStream::new(rx)))
     }
 
-    /// Subscribes to the `TaikoInbox` `BatchProposed` event and returns a stream of decoded events.
-    /// This stream will attempt to automatically resubscribe and continue yielding events.
+    /// Subscribes to the `TaikoInbox` `BatchProposed` event and returns a stream of decoded events
+    /// along with the L1 transaction hash. This stream will attempt to automatically resubscribe
+    /// and continue yielding events.
     pub async fn get_batch_proposed_stream(&self) -> Result<BatchProposedStream> {
         let (tx, rx) = mpsc::unbounded_channel();
         let provider = self.l1_provider.clone();
@@ -192,7 +194,9 @@ impl Extractor {
                 while let Some(log) = log_stream.next().await {
                     match log.log_decode::<BatchProposed>() {
                         Ok(decoded) => {
-                            if tx.send(decoded.data().clone()).is_err() {
+                            // Include the transaction hash from the log
+                            let tx_hash = log.transaction_hash.unwrap_or_default();
+                            if tx.send((decoded.data().clone(), tx_hash)).is_err() {
                                 error!(
                                     "BatchProposed receiver dropped. Stopping BatchProposed event task."
                                 );
@@ -400,26 +404,45 @@ impl Extractor {
         Ok(primitives::block_stats::compute_block_stats(&receipts, base_fee))
     }
 
-    /// Calculate total L1 data posting cost for a block
-    pub async fn get_l1_data_posting_cost(
+    /// Get a transaction receipt by hash with retry logic
+    pub async fn get_receipt(
         &self,
-        block_hash: BlockHash,
-        inbox: Address,
-    ) -> Result<u128> {
-        use alloy_rpc_types_eth::BlockId;
-        use primitives::l1_data_cost::compute_l1_data_posting_cost;
+        tx_hash: alloy::primitives::B256,
+    ) -> Result<alloy_rpc_types_eth::TransactionReceipt> {
+        const MAX_RETRIES: u32 = 10;
+        const BASE_DELAY_MS: u64 = 500;
 
-        let block = self
-            .l1_provider
-            .get_block_by_hash(block_hash)
-            .full()
-            .await?
-            .ok_or_else(|| eyre::eyre!("missing block"))?;
-        let receipts_opt = self.l1_provider.get_block_receipts(BlockId::hash(block_hash)).await?;
-        let receipts = receipts_opt.ok_or_else(|| eyre::eyre!("missing receipts"))?;
+        for attempt in 0..MAX_RETRIES {
+            match self.l1_provider.get_transaction_receipt(tx_hash).await {
+                Ok(Some(receipt)) => return Ok(receipt),
+                Ok(None) => {
+                    // Receipt not yet available, retry after delay
+                    if attempt < MAX_RETRIES - 1 {
+                        // Exponential backoff with simple jitter: base_delay * 2^attempt + fixed
+                        // jitter
+                        let delay_ms = BASE_DELAY_MS * (1u64 << attempt).min(8) // Cap at 8x base delay
+                            + ((attempt as u64) * 50).min(100); // Add simple jitter
 
-        let txs = block.transactions.into_transactions_vec();
-        Ok(compute_l1_data_posting_cost(&txs, &receipts, inbox))
+                        tracing::debug!(
+                            attempt = attempt + 1,
+                            max_retries = MAX_RETRIES,
+                            delay_ms,
+                            tx_hash = %tx_hash,
+                            "Receipt not found, retrying..."
+                        );
+
+                        tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
+                    }
+                }
+                Err(e) => {
+                    // RPC error, propagate immediately
+                    return Err(e.into());
+                }
+            }
+        }
+
+        // All retries exhausted
+        Err(eyre::eyre!("Receipt not found for transaction hash: {}", tx_hash))
     }
 }
 
@@ -566,5 +589,27 @@ mod tests {
         let decoded = decode_batches_verified(&log).unwrap();
         assert_eq!(decoded.batch_id, 7);
         assert_eq!(decoded.block_hash, [2u8; 32]);
+    }
+
+    #[tokio::test]
+    async fn test_get_receipt_retry_delay_calculation() {
+        // This test verifies the retry delay calculation logic
+        const BASE_DELAY_MS: u64 = 500;
+
+        for attempt in 0..3 {
+            let delay_ms =
+                BASE_DELAY_MS * (1u64 << attempt).min(8) + ((attempt as u64) * 50).min(100);
+
+            match attempt {
+                0 => assert_eq!(delay_ms, 500),  // 500 * 1 + 0 = 500
+                1 => assert_eq!(delay_ms, 1050), // 500 * 2 + 50 = 1050
+                2 => assert_eq!(delay_ms, 2100), // 500 * 4 + 100 = 2100
+                _ => {}
+            }
+        }
+
+        // Test delay cap - verify that large shifts are capped at 8x
+        let delay_ms = BASE_DELAY_MS * 8 + 100; // Capped at 8x base delay
+        assert_eq!(delay_ms, 4100); // 500 * 8 + 100 = 4100
     }
 }

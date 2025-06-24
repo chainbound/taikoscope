@@ -21,6 +21,71 @@ use crate::{
     types::AddressBytes,
 };
 
+// Batch economics types - defined locally to avoid cyclic dependency
+
+/// Economics data for a specific batch including fees, costs, and profit.
+#[derive(Debug, Clone, Serialize)]
+pub struct BatchEconomicsItem {
+    /// Batch ID.
+    pub batch_id: u64,
+    /// L1 block number where this batch was proposed.
+    pub l1_block_number: u64,
+    /// Size of the batch in bytes.
+    pub batch_size: u16,
+    /// Last L2 block number included in this batch.
+    pub last_l2_block_number: u64,
+    /// First L2 block number included in this batch.
+    pub first_l2_block_number: u64,
+    /// Address of the proposer who submitted this batch.
+    pub proposer_addr: String,
+    /// Total priority fees collected from L2 blocks in this batch (in wei).
+    pub total_priority_fee: u128,
+    /// Total base fees collected from L2 blocks in this batch (in wei).
+    pub total_base_fee: u128,
+    /// Total L1 data cost for this batch (in wei), if available.
+    pub total_l1_data_cost: Option<u128>,
+    /// Net profit (total fees minus L1 data cost) for this batch (in wei).
+    pub net_profit: i128,
+    /// Total number of transactions across all L2 blocks in this batch.
+    pub total_transactions: u64,
+    /// Total gas used across all L2 blocks in this batch.
+    pub total_gas_used: u64,
+    /// Timestamp when this batch was proposed on L1.
+    pub proposed_at: DateTime<Utc>,
+}
+
+/// Profit information for a specific batch.
+#[derive(Debug, Clone, Serialize)]
+pub struct BatchProfitItem {
+    /// Batch ID.
+    pub batch_id: u64,
+    /// Net profit for this batch (in wei).
+    pub net_profit: i128,
+    /// L1 block number where this batch was proposed.
+    pub l1_block_number: u64,
+    /// First L2 block number included in this batch.
+    pub first_l2_block_number: u64,
+    /// Last L2 block number included in this batch.
+    pub last_l2_block_number: u64,
+    /// Address of the proposer who submitted this batch.
+    pub proposer_addr: String,
+}
+
+/// Aggregated fee data for a sequencer across multiple batches.
+#[derive(Debug, Clone, Serialize)]
+pub struct BatchSequencerFeeRow {
+    /// Sequencer address.
+    pub address: String,
+    /// Total priority fees collected by this sequencer (in wei).
+    pub priority_fee: u128,
+    /// Total base fees collected by this sequencer (in wei).
+    pub base_fee: u128,
+    /// Total L1 data cost for batches by this sequencer (in wei), if available.
+    pub l1_data_cost: Option<u128>,
+    /// Number of batches proposed by this sequencer.
+    pub batch_count: u64,
+}
+
 #[derive(Row, Deserialize, Serialize)]
 struct MaxTs {
     block_ts: u64,
@@ -898,13 +963,12 @@ impl ClickhouseReader {
             .filter_map(|r| {
                 let ms = r.ms_since_prev_block?;
                 if ms == 0 {
-                    None
-                } else {
-                    Some(L2TpsRow {
-                        l2_block_number: r.l2_block_number,
-                        tps: r.sum_tx as f64 / (ms as f64 / 1000.0),
-                    })
+                    return None;
                 }
+                Some(L2TpsRow {
+                    l2_block_number: r.l2_block_number,
+                    tps: r.sum_tx as f64 / (ms as f64 / 1000.0),
+                })
             })
             .collect())
     }
@@ -1830,6 +1894,350 @@ impl ClickhouseReader {
         };
 
         if row.avg.is_nan() { Ok(None) } else { Ok(Some(row.avg)) }
+    }
+
+    /// Get batch economics data for the given range, aggregating block-level data per batch
+    pub async fn get_batch_economics(&self, range: TimeRange) -> Result<Vec<BatchEconomicsItem>> {
+        #[derive(Row, Deserialize)]
+        struct RawBatchEconomicsRow {
+            batch_id: u64,
+            l1_block_number: u64,
+            batch_size: u16,
+            last_l2_block_number: u64,
+            proposer_addr: AddressBytes,
+            total_priority_fee: u128,
+            total_base_fee: u128,
+            total_l1_data_cost: Option<u128>,
+            total_transactions: u64,
+            total_gas_used: u64,
+            proposed_at: u64,
+        }
+
+        let query = format!(
+            "WITH batch_ranges AS (
+                SELECT
+                    b.batch_id,
+                    b.l1_block_number,
+                    b.batch_size,
+                    b.last_l2_block_number,
+                    b.proposer_addr,
+                    b.inserted_at,
+                    b.last_l2_block_number - b.batch_size + 1 AS first_l2_block_number
+                FROM {db}.batches b
+                INNER JOIN {db}.l1_head_events l1_events
+                  ON b.l1_block_number = l1_events.l1_block_number
+                WHERE l1_events.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})
+            )
+            SELECT
+                br.batch_id,
+                br.l1_block_number,
+                br.batch_size,
+                br.last_l2_block_number,
+                br.proposer_addr,
+                sum(h.sum_priority_fee) AS total_priority_fee,
+                sum(h.sum_base_fee) AS total_base_fee,
+                sum(dc.cost) AS total_l1_data_cost,
+                sum(h.sum_tx) AS total_transactions,
+                sum(h.gas_used) AS total_gas_used,
+                toUnixTimestamp(br.inserted_at) AS proposed_at
+            FROM batch_ranges br
+            LEFT JOIN {db}.l2_head_events h
+              ON h.l2_block_number >= br.first_l2_block_number
+              AND h.l2_block_number <= br.last_l2_block_number
+              AND {filter}
+            LEFT JOIN {db}.l1_data_costs dc
+              ON h.l2_block_number = dc.l2_block_number
+            GROUP BY br.batch_id, br.l1_block_number, br.batch_size, br.last_l2_block_number,
+                     br.proposer_addr, br.inserted_at
+            ORDER BY br.batch_id DESC",
+            interval = range.interval(),
+            filter = self.reorg_filter("h"),
+            db = self.db_name,
+        );
+
+        let rows = self.execute::<RawBatchEconomicsRow>(&query).await?;
+        Ok(rows
+            .into_iter()
+            .map(|r| {
+                let first_l2_block_number =
+                    r.last_l2_block_number.saturating_sub(r.batch_size as u64) + 1;
+                let net_profit = r.total_priority_fee as i128 + r.total_base_fee as i128 -
+                    r.total_l1_data_cost.unwrap_or(0) as i128;
+
+                BatchEconomicsItem {
+                    batch_id: r.batch_id,
+                    l1_block_number: r.l1_block_number,
+                    batch_size: r.batch_size,
+                    last_l2_block_number: r.last_l2_block_number,
+                    first_l2_block_number,
+                    proposer_addr: format!("0x{}", encode(r.proposer_addr)),
+                    total_priority_fee: r.total_priority_fee,
+                    total_base_fee: r.total_base_fee,
+                    total_l1_data_cost: r.total_l1_data_cost,
+                    net_profit,
+                    total_transactions: r.total_transactions,
+                    total_gas_used: r.total_gas_used,
+                    proposed_at: DateTime::<Utc>::from_timestamp(r.proposed_at as i64, 0)
+                        .unwrap_or_default(),
+                }
+            })
+            .collect())
+    }
+
+    /// Get batch profit ranking with optional ordering and limit
+    pub async fn get_batch_profit_ranking(
+        &self,
+        range: TimeRange,
+        limit: u64,
+        order_desc: bool,
+        sequencer: Option<AddressBytes>,
+    ) -> Result<Vec<BatchProfitItem>> {
+        #[derive(Row, Deserialize)]
+        struct RawBatchProfitRow {
+            batch_id: u64,
+            l1_block_number: u64,
+            last_l2_block_number: u64,
+            batch_size: u16,
+            proposer_addr: AddressBytes,
+            total_priority_fee: u128,
+            total_base_fee: u128,
+            total_l1_data_cost: Option<u128>,
+        }
+
+        let sequencer_filter = if let Some(seq) = sequencer {
+            format!(" AND b.proposer_addr = unhex('{}')", encode(seq))
+        } else {
+            String::new()
+        };
+
+        let order = if order_desc { "DESC" } else { "ASC" };
+
+        let query = format!(
+            "WITH batch_ranges AS (
+                SELECT
+                    b.batch_id,
+                    b.l1_block_number,
+                    b.batch_size,
+                    b.last_l2_block_number,
+                    b.proposer_addr,
+                    b.last_l2_block_number - b.batch_size + 1 AS first_l2_block_number
+                FROM {db}.batches b
+                INNER JOIN {db}.l1_head_events l1_events
+                  ON b.l1_block_number = l1_events.l1_block_number
+                WHERE l1_events.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})
+                {sequencer_filter}
+            )
+            SELECT
+                br.batch_id,
+                br.l1_block_number,
+                br.last_l2_block_number,
+                br.batch_size,
+                br.proposer_addr,
+                sum(h.sum_priority_fee) AS total_priority_fee,
+                sum(h.sum_base_fee) AS total_base_fee,
+                sum(dc.cost) AS total_l1_data_cost
+            FROM batch_ranges br
+            LEFT JOIN {db}.l2_head_events h
+              ON h.l2_block_number >= br.first_l2_block_number
+              AND h.l2_block_number <= br.last_l2_block_number
+              AND {filter}
+            LEFT JOIN {db}.l1_data_costs dc
+              ON h.l2_block_number = dc.l2_block_number
+            GROUP BY br.batch_id, br.l1_block_number, br.last_l2_block_number, br.batch_size, br.proposer_addr
+            ORDER BY (total_priority_fee + total_base_fee - coalesce(total_l1_data_cost, 0)) {order}
+            LIMIT {limit}",
+            interval = range.interval(),
+            filter = self.reorg_filter("h"),
+            sequencer_filter = sequencer_filter,
+            order = order,
+            limit = limit,
+            db = self.db_name,
+        );
+
+        let rows = self.execute::<RawBatchProfitRow>(&query).await?;
+        Ok(rows
+            .into_iter()
+            .map(|r| {
+                let first_l2_block_number =
+                    r.last_l2_block_number.saturating_sub(r.batch_size as u64) + 1;
+                let net_profit = r.total_priority_fee as i128 + r.total_base_fee as i128 -
+                    r.total_l1_data_cost.unwrap_or(0) as i128;
+
+                BatchProfitItem {
+                    batch_id: r.batch_id,
+                    net_profit,
+                    l1_block_number: r.l1_block_number,
+                    first_l2_block_number,
+                    last_l2_block_number: r.last_l2_block_number,
+                    proposer_addr: format!("0x{}", encode(r.proposer_addr)),
+                }
+            })
+            .collect())
+    }
+
+    /// Get batch-level fee aggregation by sequencer for the given range
+    pub async fn get_batch_l2_fees_by_sequencer(
+        &self,
+        range: TimeRange,
+    ) -> Result<Vec<BatchSequencerFeeRow>> {
+        #[derive(Row, Deserialize)]
+        struct RawBatchSequencerFeeRow {
+            proposer_addr: AddressBytes,
+            priority_fee: u128,
+            base_fee: u128,
+            l1_data_cost: Option<u128>,
+            batch_count: u64,
+        }
+
+        let query = format!(
+            "WITH batch_ranges AS (
+                SELECT
+                    b.batch_id,
+                    b.proposer_addr,
+                    b.last_l2_block_number,
+                    b.batch_size,
+                    b.last_l2_block_number - b.batch_size + 1 AS first_l2_block_number
+                FROM {db}.batches b
+                INNER JOIN {db}.l1_head_events l1_events
+                  ON b.l1_block_number = l1_events.l1_block_number
+                WHERE l1_events.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})
+            ),
+            batch_economics AS (
+                SELECT
+                    br.proposer_addr,
+                    br.batch_id,
+                    sum(h.sum_priority_fee) AS batch_priority_fee,
+                    sum(h.sum_base_fee) AS batch_base_fee,
+                    sum(dc.cost) AS batch_l1_data_cost
+                FROM batch_ranges br
+                LEFT JOIN {db}.l2_head_events h
+                  ON h.l2_block_number >= br.first_l2_block_number
+                  AND h.l2_block_number <= br.last_l2_block_number
+                  AND {filter}
+                LEFT JOIN {db}.l1_data_costs dc
+                  ON h.l2_block_number = dc.l2_block_number
+                GROUP BY br.proposer_addr, br.batch_id
+            )
+            SELECT
+                proposer_addr,
+                sum(batch_priority_fee) AS priority_fee,
+                sum(batch_base_fee) AS base_fee,
+                sum(batch_l1_data_cost) AS l1_data_cost,
+                count(DISTINCT batch_id) AS batch_count
+            FROM batch_economics
+            GROUP BY proposer_addr
+            ORDER BY priority_fee DESC",
+            interval = range.interval(),
+            filter = self.reorg_filter("h"),
+            db = self.db_name,
+        );
+
+        let rows = self.execute::<RawBatchSequencerFeeRow>(&query).await?;
+        Ok(rows
+            .into_iter()
+            .map(|r| BatchSequencerFeeRow {
+                address: format!("0x{}", encode(r.proposer_addr)),
+                priority_fee: r.priority_fee,
+                base_fee: r.base_fee,
+                l1_data_cost: r.l1_data_cost,
+                batch_count: r.batch_count,
+            })
+            .collect())
+    }
+
+    /// Get aggregated batch-level L2 fees for the given range
+    pub async fn get_batch_l2_fees_totals(
+        &self,
+        sequencer: Option<AddressBytes>,
+        range: TimeRange,
+    ) -> Result<(Option<u128>, Option<u128>, Option<u128>)> {
+        #[derive(Row, Deserialize)]
+        struct BatchFeeSumRow {
+            priority_fee: u128,
+            base_fee: u128,
+            l1_data_cost: Option<u128>,
+        }
+
+        let sequencer_filter = if let Some(seq) = sequencer {
+            format!(" AND b.proposer_addr = unhex('{}')", encode(seq))
+        } else {
+            String::new()
+        };
+
+        let query = format!(
+            "WITH batch_ranges AS (
+                SELECT
+                    b.batch_id,
+                    b.last_l2_block_number,
+                    b.batch_size,
+                    b.last_l2_block_number - b.batch_size + 1 AS first_l2_block_number
+                FROM {db}.batches b
+                INNER JOIN {db}.l1_head_events l1_events
+                  ON b.l1_block_number = l1_events.l1_block_number
+                WHERE l1_events.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})
+                {sequencer_filter}
+            )
+            SELECT
+                sum(h.sum_priority_fee) AS priority_fee,
+                sum(h.sum_base_fee) AS base_fee,
+                sum(dc.cost) AS l1_data_cost
+            FROM batch_ranges br
+            LEFT JOIN {db}.l2_head_events h
+              ON h.l2_block_number >= br.first_l2_block_number
+              AND h.l2_block_number <= br.last_l2_block_number
+              AND {filter}
+            LEFT JOIN {db}.l1_data_costs dc
+              ON h.l2_block_number = dc.l2_block_number",
+            interval = range.interval(),
+            filter = self.reorg_filter("h"),
+            sequencer_filter = sequencer_filter,
+            db = self.db_name,
+        );
+
+        let rows = self.execute::<BatchFeeSumRow>(&query).await?;
+        let row = rows.into_iter().next().unwrap_or(BatchFeeSumRow {
+            priority_fee: 0,
+            base_fee: 0,
+            l1_data_cost: None,
+        });
+
+        let priority_fee = if row.priority_fee == 0 { None } else { Some(row.priority_fee) };
+        let base_fee = if row.base_fee == 0 { None } else { Some(row.base_fee) };
+
+        Ok((priority_fee, base_fee, row.l1_data_cost))
+    }
+
+    /// Get batch-level dashboard metrics
+    pub async fn get_batch_dashboard_metrics(
+        &self,
+        range: TimeRange,
+    ) -> Result<(u64, Option<f64>)> {
+        #[derive(Row, Deserialize)]
+        struct BatchMetricsRow {
+            total_batches: u64,
+            avg_blocks_per_batch: Option<f64>,
+        }
+
+        let query = format!(
+            "SELECT
+                count() AS total_batches,
+                avg(batch_size) AS avg_blocks_per_batch
+            FROM {db}.batches b
+            INNER JOIN {db}.l1_head_events l1_events
+              ON b.l1_block_number = l1_events.l1_block_number
+            WHERE l1_events.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})",
+            interval = range.interval(),
+            db = self.db_name,
+        );
+
+        let rows = self.execute::<BatchMetricsRow>(&query).await?;
+        let row = rows
+            .into_iter()
+            .next()
+            .unwrap_or(BatchMetricsRow { total_batches: 0, avg_blocks_per_batch: None });
+
+        let avg_blocks_per_batch = row.avg_blocks_per_batch.filter(|v| !v.is_nan());
+        Ok((row.total_batches, avg_blocks_per_batch))
     }
 }
 

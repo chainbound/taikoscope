@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS ${DB}.batches (
     l1_block_number UInt64,
     batch_id UInt64,
     batch_size UInt16,
+    last_l2_block_number UInt64,
     proposer_addr FixedString(20),
     blob_count UInt8,
     blob_total_bytes UInt32,

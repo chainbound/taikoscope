@@ -20,18 +20,17 @@ const MissedBlockChartComponent: React.FC<MissedBlockChartProps> = ({
   data,
 }) => {
   const isMobile = useIsMobile();
-  if (!data || data.length === 0) {
+  const sortedData = useMemo(
+    () => (data ? [...data].sort((a, b) => a.slot - b.slot) : []),
+    [data],
+  );
+  if (sortedData.length === 0) {
     return (
       <div className="flex items-center justify-center h-full text-gray-500">
         No data available
       </div>
     );
   }
-
-  const sortedData = useMemo(
-    () => [...data].sort((a, b) => a.slot - b.slot),
-    [data],
-  );
 
   return (
     <ResponsiveContainer width="100%" height="100%">

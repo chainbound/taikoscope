@@ -2,7 +2,7 @@
 
 use std::time::Duration;
 
-use alloy_primitives::Address;
+use alloy_primitives::{Address, B256};
 use eyre::Result;
 use network::public_rpc_monitor;
 use tokio_stream::StreamExt;
@@ -34,7 +34,6 @@ pub struct Driver {
     clickhouse: ClickhouseWriter,
     clickhouse_reader: ClickhouseReader,
     extractor: Extractor,
-    inbox_address: Address,
     reorg: ReorgDetector,
     incident_client: IncidentClient,
     instatus_batch_submission_component_id: String,
@@ -131,7 +130,6 @@ impl Driver {
             clickhouse,
             clickhouse_reader,
             extractor,
-            inbox_address: opts.taiko_addresses.inbox_address,
             reorg: ReorgDetector::new(),
             incident_client,
             instatus_batch_submission_component_id,
@@ -347,8 +345,8 @@ impl Driver {
                 }
                 maybe_batch = batch_stream.next() => {
                     match maybe_batch {
-                        Some(batch) => {
-                            self.handle_batch_proposed(batch).await;
+                        Some(batch_data) => {
+                            self.handle_batch_proposed(batch_data).await;
                         }
                         None => {
                             tracing::warn!("Batch proposed stream ended; re-subscribing…");
@@ -404,23 +402,6 @@ impl Driver {
             tracing::error!(header_number = header.number, err = %e, "Failed to insert L1 header");
         } else {
             info!(header_number = header.number, "Inserted L1 header");
-        }
-
-        match self.extractor.get_l1_data_posting_cost(header.hash, self.inbox_address).await {
-            Ok(cost) => {
-                if let Err(e) = self
-                    .clickhouse
-                    .insert_l1_data_cost(header.number, self.last_proposed_l2_block, cost)
-                    .await
-                {
-                    tracing::error!(block_number = header.number, err = %e, "Failed to insert L1 data cost");
-                } else {
-                    info!(block_number = header.number, cost, "Inserted L1 data cost");
-                }
-            }
-            Err(e) => {
-                tracing::error!(block_number = header.number, err = %e, "Failed to fetch L1 data cost");
-            }
         }
 
         let opt_candidates = match self.extractor.get_operator_candidates_for_current_epoch().await
@@ -550,13 +531,54 @@ impl Driver {
     }
 
     /// Store a newly proposed batch.
-    async fn handle_batch_proposed(&mut self, batch: BatchProposed) {
+    async fn handle_batch_proposed(&mut self, batch_data: (BatchProposed, B256)) {
+        let (batch, l1_tx_hash) = batch_data;
+
         if let Err(e) = self.clickhouse.insert_batch(&batch).await {
             tracing::error!(batch_last_block = ?batch.last_block_number(), err = %e, "Failed to insert batch");
         } else {
             info!(last_block_number = ?batch.last_block_number(), "Inserted batch");
         }
         self.last_proposed_l2_block = batch.last_block_number();
+
+        // Skip L1 data cost calculation for zero hash (test scenarios)
+        if l1_tx_hash.is_zero() {
+            tracing::debug!("Skipping L1 data cost calculation for zero transaction hash");
+            return;
+        }
+
+        // Calculate L1 data cost from the transaction that proposed this batch
+        match self.extractor.get_receipt(l1_tx_hash).await {
+            Ok(receipt) => {
+                let cost = primitives::l1_data_cost::cost_from_receipt(&receipt);
+                if let Err(e) = self
+                    .clickhouse
+                    .insert_l1_data_cost(batch.info.proposedIn, self.last_proposed_l2_block, cost)
+                    .await
+                {
+                    tracing::error!(
+                        l1_block_number = batch.info.proposedIn,
+                        tx_hash = ?l1_tx_hash,
+                        err = %e,
+                        "Failed to insert L1 data cost"
+                    );
+                } else {
+                    info!(
+                        l1_block_number = batch.info.proposedIn,
+                        tx_hash = ?l1_tx_hash,
+                        cost,
+                        "Inserted L1 data cost"
+                    );
+                }
+            }
+            Err(e) => {
+                tracing::error!(
+                    tx_hash = ?l1_tx_hash,
+                    err = %e,
+                    "Failed to fetch receipt for batch proposal transaction"
+                );
+            }
+        }
     }
 
     /// Record a forced inclusion event.
@@ -694,6 +716,7 @@ mod tests {
                 blobByteSize: 50,
                 blocks: vec![ITaikoInbox::BlockParams::default(); 1],
                 blobHashes: vec![B256::repeat_byte(1)],
+                lastBlockId: 100, // Adding test value for last block ID
                 ..Default::default()
             },
             meta: ITaikoInbox::BatchMetadata {
@@ -704,7 +727,7 @@ mod tests {
             ..Default::default()
         };
 
-        driver.handle_batch_proposed(batch).await;
+        driver.handle_batch_proposed((batch, B256::ZERO)).await;
 
         let rows: Vec<BatchRow> = ctl.collect().await;
         assert_eq!(
@@ -713,6 +736,7 @@ mod tests {
                 l1_block_number: 2,
                 batch_id: 7,
                 batch_size: 1,
+                last_l2_block_number: 100,
                 proposer_addr: AddressBytes::from(Address::repeat_byte(2)),
                 blob_count: 1,
                 blob_total_bytes: 50,
