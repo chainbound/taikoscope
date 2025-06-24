@@ -7,6 +7,7 @@ import {
 } from '../services/apiService';
 import * as apiService from '../services/apiService';
 import { getSequencerAddress } from '../sequencerConfig';
+import { addressLink } from '../utils';
 import { useEthPrice } from '../services/priceService';
 import { rangeToHours } from '../utils/timeRange';
 
@@ -50,8 +51,12 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
     return map;
   }, [feeRes]);
 
-  const [sortBy, setSortBy] = React.useState<'name' | 'blocks' | 'profit'>('profit');
-  const [sortDirection, setSortDirection] = React.useState<'asc' | 'desc'>('desc');
+  const [sortBy, setSortBy] = React.useState<'name' | 'blocks' | 'profit'>(
+    'profit',
+  );
+  const [sortDirection, setSortDirection] = React.useState<'asc' | 'desc'>(
+    'desc',
+  );
 
   const hours = rangeToHours(timeRange);
   const MONTH_HOURS = 30 * 24;
@@ -63,6 +68,7 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
     if (!fees) {
       return {
         name: seq.name,
+        address: addr,
         blocks: seq.value,
         profit: null as number | null,
       };
@@ -73,9 +79,8 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
         (fees.l1_data_cost ?? 0)) /
       1e18;
     const profit = revenueEth * ethPrice - costPerSeq;
-    return { name: seq.name, blocks: seq.value, profit };
+    return { name: seq.name, address: addr, blocks: seq.value, profit };
   });
-
 
   const sorted = React.useMemo(() => {
     const data = [...rows];
@@ -160,10 +165,10 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
           <tbody>
             {sorted.map((row) => (
               <tr
-                key={row.name}
+                key={row.address}
                 className="border-t border-gray-200 dark:border-gray-700"
               >
-                <td className="px-2 py-1">{row.name}</td>
+                <td className="px-2 py-1">{addressLink(row.address)}</td>
                 <td className="px-2 py-1">{row.blocks.toLocaleString()}</td>
                 <td className="px-2 py-1">
                   {row.profit != null ? `$${formatProfit(row.profit)}` : 'N/A'}
