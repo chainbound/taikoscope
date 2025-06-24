@@ -4,6 +4,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import * as swr from 'swr';
 vi.mock('swr', () => ({ default: vi.fn() }));
 import { CostChart } from '../components/CostChart';
+import * as priceService from '../services/priceService';
 
 const feeData = [
   { block: 1, priority: 1, base: 1, l1Cost: 0 },
@@ -12,6 +13,7 @@ const feeData = [
 describe('CostChart', () => {
   it('renders with cost data', () => {
     vi.mocked(swr.default).mockReturnValue({ data: { data: feeData } } as any);
+    vi.spyOn(priceService, 'useEthPrice').mockReturnValue({ data: 1 } as any);
 
     const html = renderToStaticMarkup(
       React.createElement(CostChart, {
