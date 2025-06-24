@@ -10,6 +10,7 @@ import { useSearchParams } from 'react-router-dom';
 import { showToast } from '../utils/toast';
 import { DayPicker } from 'react-day-picker';
 import * as Popover from '@radix-ui/react-popover';
+import { ThemeToggle } from './ThemeToggle';
 
 interface ImportMetaEnv {
   readonly VITE_NETWORK_NAME?: string;
@@ -126,6 +127,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
             onChange={onSequencerChange}
           />
         )}
+        <ThemeToggle />
         {/* Export button removed as per request */}
       </div>
     </header>
@@ -144,7 +146,15 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
   isChanging,
 }) => {
   const { updateSearchParams } = useRouterNavigation();
-  const presetRanges: TimeRange[] = ['15m', '1h', '3h', '6h', '12h', '24h', '7d'];
+  const presetRanges: TimeRange[] = [
+    '15m',
+    '1h',
+    '3h',
+    '6h',
+    '12h',
+    '24h',
+    '7d',
+  ];
   const isCustom = /^\d+-\d+$/.test(currentTimeRange);
   const [open, setOpen] = React.useState(false);
   const [date, setDate] = React.useState<Date | undefined>(() => {
