@@ -13,6 +13,7 @@ import { useEthPrice } from '../services/priceService';
 import { fetchBatchFeeComponents } from '../services/apiService';
 import { TimeRange, BatchFeeComponent } from '../types';
 import { rangeToHours } from '../utils/timeRange';
+import { formatEth } from '../utils';
 
 interface ProfitabilityChartProps {
   timeRange: TimeRange;
@@ -44,13 +45,15 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
 
   const hours = rangeToHours(timeRange);
   const HOURS_IN_MONTH = 30 * 24;
-  const totalCost = ((cloudCost + proverCost) / HOURS_IN_MONTH) * hours;
-  const costPerBatch = totalCost / feeData.length;
+  const totalCostUsd = ((cloudCost + proverCost) / HOURS_IN_MONTH) * hours;
+  const totalCostEth = ethPrice ? totalCostUsd / ethPrice : 0;
+  const costPerBatchEth = totalCostEth / feeData.length;
 
   const data = feeData.map((b) => {
     const revenueEth = (b.priority + b.base - (b.l1Cost ?? 0)) / 1e18;
-    const profit = revenueEth * ethPrice - costPerBatch;
-    return { batch: b.batch, profit };
+    const profitEth = revenueEth - costPerBatchEth;
+    const profitUsd = profitEth * ethPrice;
+    return { batch: b.batch, profitEth, profitUsd };
   });
 
   return (
@@ -80,9 +83,9 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
           stroke="#666666"
           fontSize={12}
           domain={['auto', 'auto']}
-          tickFormatter={(v: number) => `$${v.toLocaleString()}`}
+          tickFormatter={(v: number) => formatEth(v * 1e18)}
           label={{
-            value: 'Profit (USD)',
+            value: 'Profit (ETH)',
             angle: -90,
             position: 'insideLeft',
             offset: -16,
@@ -92,7 +95,9 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
         />
         <Tooltip
           labelFormatter={(v: number) => `Batch ${v}`}
-          formatter={(value: number) => [`$${value.toFixed(2)}`, 'Profit']}
+          formatter={(value: number, _name: string, { payload }: any) =>
+            [`${formatEth(value * 1e18)} ($${payload.profitUsd.toFixed(2)})`, 'Profit']
+          }
           contentStyle={{
             backgroundColor: 'rgba(255,255,255,0.8)',
             borderColor: '#8884d8',
@@ -101,7 +106,7 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
         />
         <Line
           type="monotone"
-          dataKey="profit"
+          dataKey="profitEth"
           stroke="#8884d8"
           strokeWidth={2}
           dot={false}
