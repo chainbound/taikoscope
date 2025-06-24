@@ -801,6 +801,13 @@ export interface FeeComponent {
   l1Cost: number | null;
 }
 
+export interface BatchFeeComponent {
+  batch: number;
+  priority: number;
+  base: number;
+  l1Cost: number | null;
+}
+
 export const fetchFeeComponents = async (
   range: TimeRange,
   address?: string,
@@ -824,6 +831,35 @@ export const fetchFeeComponents = async (
         base: b.base_fee,
         l1Cost: b.l1_data_cost ?? null,
       }))
+      : null,
+    badRequest: res.badRequest,
+    error: res.error,
+  };
+};
+
+export const fetchBatchFeeComponents = async (
+  range: TimeRange,
+  address?: string,
+): Promise<RequestResult<BatchFeeComponent[]>> => {
+  const url =
+    `${API_BASE}/batch-fee-components/aggregated?${timeRangeToQuery(range)}` +
+    (address ? `&address=${address}` : '');
+  const res = await fetchJson<{
+    batches: {
+      batch_id: number;
+      priority_fee: number;
+      base_fee: number;
+      l1_data_cost: number | null;
+    }[];
+  }>(url);
+  return {
+    data: res.data
+      ? res.data.batches.map((b) => ({
+          batch: b.batch_id,
+          priority: b.priority_fee,
+          base: b.base_fee,
+          l1Cost: b.l1_data_cost ?? null,
+        }))
       : null,
     badRequest: res.badRequest,
     error: res.error,

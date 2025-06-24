@@ -10,8 +10,8 @@ import {
 } from 'recharts';
 import useSWR from 'swr';
 import { useEthPrice } from '../services/priceService';
-import { fetchFeeComponents } from '../services/apiService';
-import { TimeRange, FeeComponent } from '../types';
+import { fetchBatchFeeComponents } from '../services/apiService';
+import { TimeRange, BatchFeeComponent } from '../types';
 import { rangeToHours } from '../utils/timeRange';
 
 interface ProfitabilityChartProps {
@@ -27,10 +27,11 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
   proverCost,
   address,
 }) => {
-  const { data: feeRes } = useSWR(['feeComponents', timeRange, address], () =>
-    fetchFeeComponents(timeRange, address),
+  const { data: feeRes } = useSWR(
+    ['batchFeeComponents', timeRange, address],
+    () => fetchBatchFeeComponents(timeRange, address),
   );
-  const feeData: FeeComponent[] | null = feeRes?.data ?? null;
+  const feeData: BatchFeeComponent[] | null = feeRes?.data ?? null;
   const { data: ethPrice = 0, error: ethPriceError } = useEthPrice();
 
   if (!feeData || feeData.length === 0) {
@@ -44,12 +45,12 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
   const hours = rangeToHours(timeRange);
   const HOURS_IN_MONTH = 30 * 24;
   const totalCost = ((cloudCost + proverCost) / HOURS_IN_MONTH) * hours;
-  const costPerBlock = totalCost / feeData.length;
+  const costPerBatch = totalCost / feeData.length;
 
   const data = feeData.map((b) => {
     const revenueEth = (b.priority + b.base - (b.l1Cost ?? 0)) / 1e18;
-    const profit = revenueEth * ethPrice - costPerBlock;
-    return { block: b.block, profit };
+    const profit = revenueEth * ethPrice - costPerBatch;
+    return { batch: b.batch, profit };
   });
 
   return (
@@ -64,11 +65,11 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
         >
         <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
         <XAxis
-          dataKey="block"
+          dataKey="batch"
           stroke="#666666"
           fontSize={12}
           label={{
-            value: 'L2 Block',
+            value: 'Batch',
             position: 'insideBottom',
             offset: -10,
             fontSize: 10,
@@ -90,7 +91,7 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
           }}
         />
         <Tooltip
-          labelFormatter={(v: number) => `Block ${v}`}
+          labelFormatter={(v: number) => `Batch ${v}`}
           formatter={(value: number) => [`$${value.toFixed(2)}`, 'Profit']}
           contentStyle={{
             backgroundColor: 'rgba(255,255,255,0.8)',

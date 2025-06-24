@@ -7,7 +7,7 @@ import { CostChart } from '../components/CostChart';
 import * as priceService from '../services/priceService';
 
 const feeData = [
-  { block: 1, priority: 1, base: 1, l1Cost: 0 },
+  { batch: 1, priority: 1, base: 1, l1Cost: 0 },
 ];
 
 describe('CostChart', () => {
