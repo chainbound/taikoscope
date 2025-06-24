@@ -8,7 +8,7 @@ import { ProfitabilityChart } from '../components/ProfitabilityChart';
 
 // Helper data with negative profit
 const feeData = [
-  { block: 1, priority: 0, base: 0, l1Cost: 0 },
+  { batch: 1, priority: 0, base: 0, l1Cost: 0 },
 ];
 
 describe('ProfitabilityChart', () => {

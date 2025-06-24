@@ -9,8 +9,8 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import useSWR from 'swr';
-import { fetchFeeComponents } from '../services/apiService';
-import { TimeRange, FeeComponent } from '../types';
+import { fetchBatchFeeComponents } from '../services/apiService';
+import { TimeRange, BatchFeeComponent } from '../types';
 import { rangeToHours } from '../utils/timeRange';
 import { useEthPrice } from '../services/priceService';
 
@@ -27,11 +27,12 @@ export const CostChart: React.FC<CostChartProps> = ({
   proverCost,
   address,
 }) => {
-  const { data: feeRes } = useSWR(['feeComponents', timeRange, address], () =>
-    fetchFeeComponents(timeRange, address),
+  const { data: feeRes } = useSWR(
+    ['batchFeeComponents', timeRange, address],
+    () => fetchBatchFeeComponents(timeRange, address),
   );
   const { data: ethPrice = 0, error: ethPriceError } = useEthPrice();
-  const feeData: FeeComponent[] | null = feeRes?.data ?? null;
+  const feeData: BatchFeeComponent[] | null = feeRes?.data ?? null;
 
   if (!feeData || feeData.length === 0) {
     return (
@@ -44,11 +45,11 @@ export const CostChart: React.FC<CostChartProps> = ({
   const hours = rangeToHours(timeRange);
   const HOURS_IN_MONTH = 30 * 24;
   const baseCost = ((cloudCost + proverCost) / HOURS_IN_MONTH) * hours;
-  const baseCostPerBlock = baseCost / feeData.length;
+  const baseCostPerBatch = baseCost / feeData.length;
 
   const data = feeData.map((b) => {
     const l1CostUsd = ((b.l1Cost ?? 0) / 1e18) * ethPrice;
-    return { block: b.block, cost: baseCostPerBlock + l1CostUsd };
+    return { batch: b.batch, cost: baseCostPerBatch + l1CostUsd };
   });
 
   return (
@@ -63,11 +64,11 @@ export const CostChart: React.FC<CostChartProps> = ({
         >
         <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
         <XAxis
-          dataKey="block"
+          dataKey="batch"
           stroke="#666666"
           fontSize={12}
           label={{
-            value: 'L2 Block',
+            value: 'Batch',
             position: 'insideBottom',
             offset: -10,
             fontSize: 10,
@@ -89,7 +90,7 @@ export const CostChart: React.FC<CostChartProps> = ({
           }}
         />
         <Tooltip
-          labelFormatter={(v: number) => `Block ${v}`}
+          labelFormatter={(v: number) => `Batch ${v}`}
           formatter={(value: number) => [`$${value.toFixed(2)}`, 'Cost']}
           contentStyle={{
             backgroundColor: 'rgba(255,255,255,0.8)',
