@@ -9,6 +9,7 @@ import * as apiService from '../services/apiService';
 import { getSequencerAddress } from '../sequencerConfig';
 import { useEthPrice } from '../services/priceService';
 import { rangeToHours } from '../utils/timeRange';
+import { addressLink } from '../utils';
 
 interface ProfitRankingTableProps {
   timeRange: TimeRange;
@@ -63,6 +64,7 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
     if (!fees) {
       return {
         name: seq.name,
+        address: addr,
         blocks: seq.value,
         profit: null as number | null,
       };
@@ -73,7 +75,7 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
         (fees.l1_data_cost ?? 0)) /
       1e18;
     const profit = revenueEth * ethPrice - costPerSeq;
-    return { name: seq.name, blocks: seq.value, profit };
+    return { name: seq.name, address: addr, blocks: seq.value, profit };
   });
 
 
@@ -133,6 +135,7 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
                   </span>
                 )}
               </th>
+              <th className="px-2 py-1 text-left">Address</th>
               <th
                 className="px-2 py-1 text-left cursor-pointer select-none"
                 onClick={() => handleSort('blocks')}
@@ -164,6 +167,7 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
                 className="border-t border-gray-200 dark:border-gray-700"
               >
                 <td className="px-2 py-1">{row.name}</td>
+                <td className="px-2 py-1">{addressLink(row.address)}</td>
                 <td className="px-2 py-1">{row.blocks.toLocaleString()}</td>
                 <td className="px-2 py-1">
                   {row.profit != null ? `$${formatProfit(row.profit)}` : 'N/A'}

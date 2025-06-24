@@ -91,5 +91,6 @@ describe('ProfitRankingTable', () => {
     expect(secondSeqIdx).toBeGreaterThan(firstSeqIdx);
     expect(html.includes('Profit (USD)')).toBe(true);
     expect(html.includes('↓')).toBe(true);
+    expect(html).toContain('/address/0xseqA');
   });
 });
