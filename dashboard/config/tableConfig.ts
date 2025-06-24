@@ -318,7 +318,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
       });
     },
     urlKey: 'l2-gas-used',
-    reverseOrder: true,
+    reverseOrder: false,
     supportsPagination: true,
   },
 
