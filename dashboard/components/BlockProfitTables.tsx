@@ -4,6 +4,7 @@ import { fetchBatchFeeComponents } from '../services/apiService';
 import { useEthPrice } from '../services/priceService';
 import { TimeRange } from '../types';
 import { rangeToHours } from '../utils/timeRange';
+import { blockLink } from '../utils';
 
 interface BlockProfitTablesProps {
   timeRange: TimeRange;
@@ -59,7 +60,7 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
           <tbody>
             {items?.map((b) => (
               <tr key={b.batch} className="border-t border-gray-200 dark:border-gray-700">
-                <td className="px-2 py-1">{b.batch}</td>
+                <td className="px-2 py-1">{blockLink(b.batch)}</td>
                 <td className="px-2 py-1">${formatUsd(calcProfit(b.profit))}</td>
               </tr>
             ))}
