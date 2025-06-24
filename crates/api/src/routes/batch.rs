@@ -53,7 +53,7 @@ pub async fn get_batch_economics(
     };
 
     // Convert clickhouse types to api types
-    let batches = rows
+    let batches: Vec<api_types::BatchEconomicsItem> = rows
         .into_iter()
         .map(|r| api_types::BatchEconomicsItem {
             batch_id: r.batch_id,
@@ -128,7 +128,7 @@ pub async fn get_batch_profit_ranking(
         })?;
 
     // Convert clickhouse types to api types
-    let batches = rows
+    let batches: Vec<api_types::BatchProfitItem> = rows
         .into_iter()
         .map(|r| api_types::BatchProfitItem {
             batch_id: r.batch_id,
@@ -195,7 +195,7 @@ pub async fn get_batch_l2_fees(
     })?;
 
     // Convert clickhouse types to api types
-    let sequencers = seq_rows
+    let sequencers: Vec<api_types::BatchSequencerFeeRow> = seq_rows
         .into_iter()
         .map(|r| api_types::BatchSequencerFeeRow {
             address: r.address,

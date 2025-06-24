@@ -22,39 +22,67 @@ use crate::{
 };
 
 // Batch economics types - defined locally to avoid cyclic dependency
+
+/// Economics data for a specific batch including fees, costs, and profit.
 #[derive(Debug, Clone, Serialize)]
 pub struct BatchEconomicsItem {
+    /// Batch ID.
     pub batch_id: u64,
+    /// L1 block number where this batch was proposed.
     pub l1_block_number: u64,
+    /// Size of the batch in bytes.
     pub batch_size: u16,
+    /// Last L2 block number included in this batch.
     pub last_l2_block_number: u64,
+    /// First L2 block number included in this batch.
     pub first_l2_block_number: u64,
+    /// Address of the proposer who submitted this batch.
     pub proposer_addr: String,
+    /// Total priority fees collected from L2 blocks in this batch (in wei).
     pub total_priority_fee: u128,
+    /// Total base fees collected from L2 blocks in this batch (in wei).
     pub total_base_fee: u128,
+    /// Total L1 data cost for this batch (in wei), if available.
     pub total_l1_data_cost: Option<u128>,
+    /// Net profit (total fees minus L1 data cost) for this batch (in wei).
     pub net_profit: i128,
+    /// Total number of transactions across all L2 blocks in this batch.
     pub total_transactions: u64,
+    /// Total gas used across all L2 blocks in this batch.
     pub total_gas_used: u64,
+    /// Timestamp when this batch was proposed on L1.
     pub proposed_at: DateTime<Utc>,
 }
 
+/// Profit information for a specific batch.
 #[derive(Debug, Clone, Serialize)]
 pub struct BatchProfitItem {
+    /// Batch ID.
     pub batch_id: u64,
+    /// Net profit for this batch (in wei).
     pub net_profit: i128,
+    /// L1 block number where this batch was proposed.
     pub l1_block_number: u64,
+    /// First L2 block number included in this batch.
     pub first_l2_block_number: u64,
+    /// Last L2 block number included in this batch.
     pub last_l2_block_number: u64,
+    /// Address of the proposer who submitted this batch.
     pub proposer_addr: String,
 }
 
+/// Aggregated fee data for a sequencer across multiple batches.
 #[derive(Debug, Clone, Serialize)]
 pub struct BatchSequencerFeeRow {
+    /// Sequencer address.
     pub address: String,
+    /// Total priority fees collected by this sequencer (in wei).
     pub priority_fee: u128,
+    /// Total base fees collected by this sequencer (in wei).
     pub base_fee: u128,
+    /// Total L1 data cost for batches by this sequencer (in wei), if available.
     pub l1_data_cost: Option<u128>,
+    /// Number of batches proposed by this sequencer.
     pub batch_count: u64,
 }
 

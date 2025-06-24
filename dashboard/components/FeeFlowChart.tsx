@@ -5,7 +5,7 @@ import { TAIKO_PINK } from '../theme';
 
 const NODE_GREEN = '#22c55e';
 import useSWR from 'swr';
-import { fetchL2Fees } from '../services/apiService';
+import { fetchBatchL2Fees } from '../services/apiService';
 import { useEthPrice } from '../services/priceService';
 import { TimeRange } from '../types';
 import { rangeToHours } from '../utils/timeRange';
@@ -107,8 +107,8 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
   proverCost,
   address,
 }) => {
-  const { data: feeRes } = useSWR(['l2FeesFlow', timeRange, address], () =>
-    fetchL2Fees(timeRange, address),
+  const { data: feeRes } = useSWR(['batchL2FeesFlow', timeRange, address], () =>
+    fetchBatchL2Fees(timeRange, address),
   );
   const { data: ethPrice = 0 } = useEthPrice();
 

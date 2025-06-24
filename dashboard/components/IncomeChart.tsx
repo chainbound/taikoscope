@@ -10,8 +10,8 @@ import {
 } from 'recharts';
 import useSWR from 'swr';
 import { useEthPrice } from '../services/priceService';
-import { fetchFeeComponents } from '../services/apiService';
-import { TimeRange, FeeComponent } from '../types';
+import { fetchBatchEconomics } from '../services/apiService';
+import { TimeRange } from '../types';
 
 interface IncomeChartProps {
   timeRange: TimeRange;
@@ -22,13 +22,13 @@ export const IncomeChart: React.FC<IncomeChartProps> = ({
   timeRange,
   address,
 }) => {
-  const { data: feeRes } = useSWR(['feeComponents', timeRange, address], () =>
-    fetchFeeComponents(timeRange, address),
+  const { data: batchRes } = useSWR(['batchEconomics', timeRange, address], () =>
+    fetchBatchEconomics(timeRange, address),
   );
-  const feeData: FeeComponent[] | null = feeRes?.data ?? null;
+  const batchData = batchRes?.data?.batches ?? null;
   const { data: ethPrice = 0, error: ethPriceError } = useEthPrice();
 
-  if (!feeData || feeData.length === 0) {
+  if (!batchData || batchData.length === 0) {
     return (
       <div className="flex items-center justify-center h-full text-gray-500">
         No data available
@@ -36,10 +36,10 @@ export const IncomeChart: React.FC<IncomeChartProps> = ({
     );
   }
 
-  const data = feeData.map((b) => {
-    const revenueEth = (b.priority + b.base) / 1e18;
+  const data = batchData.map((b) => {
+    const revenueEth = b.total_revenue / 1e18;
     const income = revenueEth * ethPrice;
-    return { block: b.block, income };
+    return { batch_id: b.batch_id, income };
   });
 
   return (
@@ -54,11 +54,11 @@ export const IncomeChart: React.FC<IncomeChartProps> = ({
         >
           <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
           <XAxis
-            dataKey="block"
+            dataKey="batch_id"
             stroke="#666666"
             fontSize={12}
             label={{
-              value: 'L2 Block',
+              value: 'Batch ID',
               position: 'insideBottom',
               offset: -10,
               fontSize: 10,
@@ -80,18 +80,18 @@ export const IncomeChart: React.FC<IncomeChartProps> = ({
             }}
           />
           <Tooltip
-            labelFormatter={(v: number) => `Block ${v}`}
+            labelFormatter={(v: number) => `Batch ${v}`}
             formatter={(value: number) => [`$${value.toFixed(2)}`, 'Income']}
             contentStyle={{
               backgroundColor: 'rgba(255,255,255,0.8)',
-              borderColor: '#4E79A7',
+              borderColor: '#82ca9d',
             }}
             labelStyle={{ color: '#333' }}
           />
           <Line
             type="monotone"
             dataKey="income"
-            stroke="#4E79A7"
+            stroke="#82ca9d"
             strokeWidth={2}
             dot={false}
             name="Income"

@@ -9,8 +9,8 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import useSWR from 'swr';
-import { fetchFeeComponents } from '../services/apiService';
-import { TimeRange, FeeComponent } from '../types';
+import { fetchBatchEconomics } from '../services/apiService';
+import { TimeRange } from '../types';
 import { rangeToHours } from '../utils/timeRange';
 import { useEthPrice } from '../services/priceService';
 
@@ -27,13 +27,13 @@ export const CostChart: React.FC<CostChartProps> = ({
   proverCost,
   address,
 }) => {
-  const { data: feeRes } = useSWR(['feeComponents', timeRange, address], () =>
-    fetchFeeComponents(timeRange, address),
+  const { data: batchRes } = useSWR(['batchEconomics', timeRange, address], () =>
+    fetchBatchEconomics(timeRange, address),
   );
+  const batchData = batchRes?.data?.batches ?? null;
   const { data: ethPrice = 0, error: ethPriceError } = useEthPrice();
-  const feeData: FeeComponent[] | null = feeRes?.data ?? null;
 
-  if (!feeData || feeData.length === 0) {
+  if (!batchData || batchData.length === 0) {
     return (
       <div className="flex items-center justify-center h-full text-gray-500">
         No data available
@@ -43,12 +43,20 @@ export const CostChart: React.FC<CostChartProps> = ({
 
   const hours = rangeToHours(timeRange);
   const HOURS_IN_MONTH = 30 * 24;
-  const baseCost = ((cloudCost + proverCost) / HOURS_IN_MONTH) * hours;
-  const baseCostPerBlock = baseCost / feeData.length;
+  const totalCost = ((cloudCost + proverCost) / HOURS_IN_MONTH) * hours;
+  const costPerBatch = totalCost / batchData.length;
 
-  const data = feeData.map((b) => {
-    const l1CostUsd = ((b.l1Cost ?? 0) / 1e18) * ethPrice;
-    return { block: b.block, cost: baseCostPerBlock + l1CostUsd };
+  const data = batchData.map((b) => {
+    const l1CostEth = (b.l1_data_cost ?? 0) / 1e18;
+    const l1CostUsd = l1CostEth * ethPrice;
+    const totalCostUsd = costPerBatch + l1CostUsd;
+    return {
+      batch_id: b.batch_id,
+      cloudCost: costPerBatch * (cloudCost / (cloudCost + proverCost)),
+      proverCost: costPerBatch * (proverCost / (cloudCost + proverCost)),
+      l1Cost: l1CostUsd,
+      totalCost: totalCostUsd,
+    };
   });
 
   return (
@@ -61,52 +69,57 @@ export const CostChart: React.FC<CostChartProps> = ({
           data={data}
           margin={{ top: 5, right: 20, left: 20, bottom: 40 }}
         >
-        <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-        <XAxis
-          dataKey="block"
-          stroke="#666666"
-          fontSize={12}
-          label={{
-            value: 'L2 Block',
-            position: 'insideBottom',
-            offset: -10,
-            fontSize: 10,
-            fill: '#666666',
-          }}
-        />
-        <YAxis
-          stroke="#666666"
-          fontSize={12}
-          domain={['auto', 'auto']}
-          tickFormatter={(v: number) => `$${v.toLocaleString()}`}
-          label={{
-            value: 'Cost (USD)',
-            angle: -90,
-            position: 'insideLeft',
-            offset: -16,
-            fontSize: 10,
-            fill: '#666666',
-          }}
-        />
-        <Tooltip
-          labelFormatter={(v: number) => `Block ${v}`}
-          formatter={(value: number) => [`$${value.toFixed(2)}`, 'Cost']}
-          contentStyle={{
-            backgroundColor: 'rgba(255,255,255,0.8)',
-            borderColor: '#E573B5',
-          }}
-          labelStyle={{ color: '#333' }}
-        />
-        <Line
-          type="monotone"
-          dataKey="cost"
-          stroke="#E573B5"
-          strokeWidth={2}
-          dot={false}
-          name="Cost"
-        />
-      </LineChart>
-    </ResponsiveContainer>
+          <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+          <XAxis
+            dataKey="batch_id"
+            stroke="#666666"
+            fontSize={12}
+            label={{
+              value: 'Batch ID',
+              position: 'insideBottom',
+              offset: -10,
+              fontSize: 10,
+              fill: '#666666',
+            }}
+          />
+          <YAxis
+            stroke="#666666"
+            fontSize={12}
+            domain={['auto', 'auto']}
+            tickFormatter={(v: number) => `$${v.toLocaleString()}`}
+            label={{
+              value: 'Cost (USD)',
+              angle: -90,
+              position: 'insideLeft',
+              offset: -16,
+              fontSize: 10,
+              fill: '#666666',
+            }}
+          />
+          <Tooltip
+            labelFormatter={(v: number) => `Batch ${v}`}
+            formatter={(value: number, name: string) => [
+              `$${value.toFixed(2)}`,
+              name === 'cloudCost' ? 'Cloud Cost' :
+                name === 'proverCost' ? 'Prover Cost' :
+                  name === 'l1Cost' ? 'L1 Data Cost' : 'Total Cost'
+            ]}
+            contentStyle={{
+              backgroundColor: 'rgba(255,255,255,0.8)',
+              borderColor: '#ff7300',
+            }}
+            labelStyle={{ color: '#333' }}
+          />
+          <Line
+            type="monotone"
+            dataKey="totalCost"
+            stroke="#ff7300"
+            strokeWidth={2}
+            dot={false}
+            name="Total Cost"
+          />
+        </LineChart>
+      </ResponsiveContainer>
     </>
   );
 };

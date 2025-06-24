@@ -1,6 +1,7 @@
 //! API route definitions
 
 pub mod aggregated;
+/// Batch-level economics and profit endpoints.
 pub mod batch;
 pub mod core;
 pub mod sse;

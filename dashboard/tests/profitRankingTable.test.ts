@@ -30,12 +30,14 @@ describe('ProfitRankingTable', () => {
                 priority_fee: 2e18,
                 base_fee: 1e18,
                 l1_data_cost: 0,
+                batch_count: 5,
               },
               {
                 address: '0xseqB',
                 priority_fee: 1e18,
                 base_fee: 0.5e18,
                 l1_data_cost: 0,
+                batch_count: 3,
               },
             ],
           },
@@ -49,7 +51,7 @@ describe('ProfitRankingTable', () => {
       badRequest: false,
       error: null,
     } as any);
-    vi.spyOn(api, 'fetchL2Fees').mockResolvedValue({
+    vi.spyOn(api, 'fetchBatchL2Fees').mockResolvedValue({
       data: {
         priority_fee: 3e18,
         base_fee: 1.5e18,
@@ -60,12 +62,14 @@ describe('ProfitRankingTable', () => {
             priority_fee: 2e18,
             base_fee: 1e18,
             l1_data_cost: 0,
+            batch_count: 5,
           },
           {
             address: '0xseqB',
             priority_fee: 1e18,
             base_fee: 0.5e18,
             l1_data_cost: 0,
+            batch_count: 3,
           },
         ],
       },
