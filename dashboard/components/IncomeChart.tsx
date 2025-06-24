@@ -37,7 +37,7 @@ export const IncomeChart: React.FC<IncomeChartProps> = ({
   }
 
   const data = feeData.map((b) => {
-    const revenueEth = (b.priority + b.base - (b.l1Cost ?? 0)) / 1e18;
+    const revenueEth = (b.priority + b.base) / 1e18;
     const income = revenueEth * ethPrice;
     return { block: b.block, income };
   });
