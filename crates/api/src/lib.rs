@@ -41,6 +41,7 @@ use utoipa::OpenApi;
         routes::core::sequencer_distribution,
         routes::core::sequencer_blocks,
         routes::aggregated::l2_fees,
+        routes::aggregated::batch_fees,
         routes::aggregated::l2_fee_components,
         routes::aggregated::batch_fee_components,
         routes::aggregated::batch_fee_components_aggregated,

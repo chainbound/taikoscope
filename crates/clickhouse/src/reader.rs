@@ -1626,6 +1626,83 @@ impl ClickhouseReader {
             .collect())
     }
 
+    /// Get the total priority fee for the given range aggregated by batch
+    pub async fn get_batch_priority_fee(
+        &self,
+        proposer: Option<AddressBytes>,
+        range: TimeRange,
+    ) -> Result<Option<u128>> {
+        let rows = self.get_batch_fee_components(proposer, range).await?;
+        let total: u128 = rows.iter().map(|r| r.priority_fee).sum();
+        Ok((total > 0).then_some(total))
+    }
+
+    /// Get the total base fee for the given range aggregated by batch
+    pub async fn get_batch_base_fee(
+        &self,
+        proposer: Option<AddressBytes>,
+        range: TimeRange,
+    ) -> Result<Option<u128>> {
+        let rows = self.get_batch_fee_components(proposer, range).await?;
+        let total: u128 = rows.iter().map(|r| r.base_fee).sum();
+        Ok((total > 0).then_some(total))
+    }
+
+    /// Get the total L1 data cost for the given range aggregated by batch
+    pub async fn get_batch_total_data_cost(
+        &self,
+        proposer: Option<AddressBytes>,
+        range: TimeRange,
+    ) -> Result<Option<u128>> {
+        let rows = self.get_batch_fee_components(proposer, range).await?;
+        let total: u128 = rows.iter().map(|r| r.l1_data_cost.unwrap_or(0)).sum();
+        Ok((total > 0).then_some(total))
+    }
+
+    /// Get aggregated batch fees grouped by proposer for the given range
+    pub async fn get_batch_fees_by_proposer(
+        &self,
+        range: TimeRange,
+    ) -> Result<Vec<SequencerFeeRow>> {
+        #[derive(Row, Deserialize)]
+        struct RawRow {
+            proposer: AddressBytes,
+            priority_fee: u128,
+            base_fee: u128,
+            l1_data_cost: Option<u128>,
+        }
+
+        let query = format!(
+            "SELECT b.proposer_addr AS proposer, \
+                    sum(h.sum_priority_fee) AS priority_fee, \
+                    sum(h.sum_base_fee) AS base_fee, \
+                    toNullable(sum(dc.cost)) AS l1_data_cost \
+             FROM {db}.batches b \
+             INNER JOIN {db}.l1_head_events l1 \
+               ON b.l1_block_number = l1.l1_block_number \
+             LEFT JOIN {db}.l2_head_events h \
+               ON h.l2_block_number BETWEEN if(b.last_l2_block_number = 0 AND b.batch_size > 0, 0, b.last_l2_block_number - b.batch_size + 1) AND b.last_l2_block_number \
+             LEFT JOIN {db}.l1_data_costs dc \
+               ON h.l2_block_number = dc.l2_block_number \
+             WHERE l1.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
+             GROUP BY b.proposer_addr \
+             ORDER BY priority_fee DESC",
+            interval = range.interval(),
+            db = self.db_name,
+        );
+
+        let rows = self.execute::<RawRow>(&query).await?;
+        Ok(rows
+            .into_iter()
+            .map(|r| SequencerFeeRow {
+                sequencer: r.proposer,
+                priority_fee: r.priority_fee,
+                base_fee: r.base_fee,
+                l1_data_cost: r.l1_data_cost,
+            })
+            .collect())
+    }
+
     /// Get the transactions per second for each L2 block within the given range
     pub async fn get_l2_tps(
         &self,
@@ -2030,6 +2107,59 @@ mod tests {
             rows,
             vec![BatchFeeComponentRow {
                 batch_id: 1,
+                priority_fee: 10,
+                base_fee: 20,
+                l1_data_cost: Some(5),
+            }]
+        );
+    }
+
+    #[tokio::test]
+    async fn batch_total_fee_helpers_return_expected_values() {
+        let mock = Mock::new();
+        for _ in 0..3 {
+            mock.add(handlers::provide(vec![BatchFeeRow {
+                batch_id: 1,
+                priority_fee: 10,
+                base_fee: 20,
+                l1_data_cost: Some(5),
+            }]));
+        }
+
+        let url = url::Url::parse(mock.url()).unwrap();
+        let reader =
+            ClickhouseReader::new(url, "db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+        let priority =
+            reader.get_batch_priority_fee(None, TimeRange::LastHour).await.unwrap().unwrap();
+        assert_eq!(priority, 10);
+        let base = reader.get_batch_base_fee(None, TimeRange::LastHour).await.unwrap().unwrap();
+        assert_eq!(base, 20);
+        let cost =
+            reader.get_batch_total_data_cost(None, TimeRange::LastHour).await.unwrap().unwrap();
+        assert_eq!(cost, 5);
+    }
+
+    #[tokio::test]
+    async fn batch_fees_by_proposer_returns_expected_rows() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(vec![SeqFeeRow {
+            sequencer: AddressBytes([1u8; 20]),
+            priority_fee: 10,
+            base_fee: 20,
+            l1_data_cost: Some(5),
+        }]));
+
+        let url = url::Url::parse(mock.url()).unwrap();
+        let reader =
+            ClickhouseReader::new(url, "db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+        let rows = reader.get_batch_fees_by_proposer(TimeRange::LastHour).await.unwrap();
+
+        assert_eq!(
+            rows,
+            vec![SequencerFeeRow {
+                sequencer: AddressBytes([1u8; 20]),
                 priority_fee: 10,
                 base_fee: 20,
                 l1_data_cost: Some(5),
