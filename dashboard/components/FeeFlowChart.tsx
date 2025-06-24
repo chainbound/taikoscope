@@ -285,7 +285,8 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
 
     nodes = [
       ...seqData.map((s) => ({
-        name: 'Subsidy',
+        // use a unique name per sequencer so nodes don't get aggregated
+        name: `${s.shortAddress} Subsidy`,
         address: s.address,
         addressLabel: `${s.shortAddress} Subsidy`,
         value: s.subsidyUsd,
