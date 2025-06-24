@@ -372,7 +372,6 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
         tps: d.tps.toFixed(2),
       })),
     urlKey: 'l2-tps',
-    reverseOrder: true,
     supportsPagination: true,
   },
 };
