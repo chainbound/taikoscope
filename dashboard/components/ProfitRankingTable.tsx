@@ -51,8 +51,12 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
     return map;
   }, [feeRes]);
 
-  const [sortBy, setSortBy] = React.useState<'name' | 'blocks' | 'profit'>('profit');
-  const [sortDirection, setSortDirection] = React.useState<'asc' | 'desc'>('desc');
+  const [sortBy, setSortBy] = React.useState<'name' | 'blocks' | 'profit'>(
+    'profit',
+  );
+  const [sortDirection, setSortDirection] = React.useState<'asc' | 'desc'>(
+    'desc',
+  );
 
   const hours = rangeToHours(timeRange);
   const MONTH_HOURS = 30 * 24;
@@ -77,7 +81,6 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
     const profit = revenueEth * ethPrice - costPerSeq;
     return { name: seq.name, address: addr, blocks: seq.value, profit };
   });
-
 
   const sorted = React.useMemo(() => {
     const data = [...rows];
@@ -135,7 +138,6 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
                   </span>
                 )}
               </th>
-              <th className="px-2 py-1 text-left">Address</th>
               <th
                 className="px-2 py-1 text-left cursor-pointer select-none"
                 onClick={() => handleSort('blocks')}
@@ -166,8 +168,9 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
                 key={row.name}
                 className="border-t border-gray-200 dark:border-gray-700"
               >
-                <td className="px-2 py-1">{row.name}</td>
-                <td className="px-2 py-1">{addressLink(row.address)}</td>
+                <td className="px-2 py-1">
+                  {addressLink(row.address, row.name)}
+                </td>
                 <td className="px-2 py-1">{row.blocks.toLocaleString()}</td>
                 <td className="px-2 py-1">
                   {row.profit != null ? `$${formatProfit(row.profit)}` : 'N/A'}

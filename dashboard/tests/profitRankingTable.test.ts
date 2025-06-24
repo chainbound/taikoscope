@@ -14,8 +14,8 @@ describe('ProfitRankingTable', () => {
         data: {
           data: [
             { name: 'SeqA', address: '0xseqA', value: 10, tps: null },
-            { name: 'SeqB', address: '0xseqB', value: 5, tps: null }
-          ]
+            { name: 'SeqB', address: '0xseqB', value: 5, tps: null },
+          ],
         },
       } as any)
       .mockReturnValueOnce({
@@ -44,7 +44,7 @@ describe('ProfitRankingTable', () => {
     vi.spyOn(api, 'fetchSequencerDistribution').mockResolvedValue({
       data: [
         { name: 'SeqA', address: '0xseqA', value: 10, tps: null },
-        { name: 'SeqB', address: '0xseqB', value: 5, tps: null }
+        { name: 'SeqB', address: '0xseqB', value: 5, tps: null },
       ],
       badRequest: false,
       error: null,
