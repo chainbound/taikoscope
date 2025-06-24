@@ -10,6 +10,7 @@ import {
 } from 'recharts';
 import useSWR from 'swr';
 import { useEthPrice } from '../services/priceService';
+import { formatEth } from '../utils';
 import { fetchBatchFeeComponents } from '../services/apiService';
 import { TimeRange, BatchFeeComponent } from '../types';
 
@@ -38,9 +39,9 @@ export const IncomeChart: React.FC<IncomeChartProps> = ({
   }
 
   const data = feeData.map((b) => {
-    const revenueEth = (b.priority + b.base) / 1e18;
-    const income = revenueEth * ethPrice;
-    return { batch: b.batch, income };
+    const incomeEth = (b.priority + b.base) / 1e18;
+    const incomeUsd = incomeEth * ethPrice;
+    return { batch: b.batch, incomeEth, incomeUsd };
   });
 
   return (
@@ -70,9 +71,9 @@ export const IncomeChart: React.FC<IncomeChartProps> = ({
             stroke="#666666"
             fontSize={12}
             domain={['auto', 'auto']}
-            tickFormatter={(v: number) => `$${v.toLocaleString()}`}
+            tickFormatter={(v: number) => formatEth(v * 1e18)}
             label={{
-              value: 'Income (USD)',
+              value: 'Income (ETH)',
               angle: -90,
               position: 'insideLeft',
               offset: -16,
@@ -82,7 +83,9 @@ export const IncomeChart: React.FC<IncomeChartProps> = ({
           />
           <Tooltip
             labelFormatter={(v: number) => `Batch ${v}`}
-            formatter={(value: number) => [`$${value.toFixed(2)}`, 'Income']}
+            formatter={(value: number, _name: string, { payload }: any) =>
+              [`${formatEth(value * 1e18)} ($${payload.incomeUsd.toFixed(2)})`, 'Income']
+            }
             contentStyle={{
               backgroundColor: 'rgba(255,255,255,0.8)',
               borderColor: '#4E79A7',
@@ -91,7 +94,7 @@ export const IncomeChart: React.FC<IncomeChartProps> = ({
           />
           <Line
             type="monotone"
-            dataKey="income"
+            dataKey="incomeEth"
             stroke="#4E79A7"
             strokeWidth={2}
             dot={false}

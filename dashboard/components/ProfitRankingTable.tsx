@@ -8,7 +8,7 @@ import {
 } from '../services/apiService';
 import * as apiService from '../services/apiService';
 import { getSequencerAddress } from '../sequencerConfig';
-import { addressLink } from '../utils';
+import { addressLink, formatEth } from '../utils';
 import { useEthPrice } from '../services/priceService';
 import { rangeToHours } from '../utils/timeRange';
 
@@ -83,7 +83,8 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
 
   const hours = rangeToHours(timeRange);
   const MONTH_HOURS = 30 * 24;
-  const costPerSeq = ((cloudCost + proverCost) / MONTH_HOURS) * hours;
+  const costPerSeqUsd = ((cloudCost + proverCost) / MONTH_HOURS) * hours;
+  const costPerSeqEth = ethPrice ? costPerSeqUsd / ethPrice : 0;
 
   const rows = sequencers.map((seq) => {
     const addr = seq.address || getSequencerAddress(seq.name) || '';
@@ -95,34 +96,50 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
         address: addr,
         blocks: seq.value,
         batches: batchCount,
-        revenue: null as number | null,
-        cost: costPerSeq,
-        profit: null as number | null,
+        revenueEth: null as number | null,
+        revenueUsd: null as number | null,
+        costEth: costPerSeqEth,
+        costUsd: costPerSeqUsd,
+        profitEth: null as number | null,
+        profitUsd: null as number | null,
       };
     }
     const revenueEth =
       ((fees.priority_fee ?? 0) + (fees.base_fee ?? 0) * 0.75) / 1e18;
     const l1CostEth = (fees.l1_data_cost ?? 0) / 1e18;
-    const revenue = revenueEth * ethPrice;
+    const revenueUsd = revenueEth * ethPrice;
     const l1CostUsd = l1CostEth * ethPrice;
-    const cost = costPerSeq + l1CostUsd;
-    const profit = revenue - cost;
+    const costEth = costPerSeqEth + l1CostEth;
+    const costUsd = costPerSeqUsd + l1CostUsd;
+    const profitEth = revenueEth - costEth;
+    const profitUsd = revenueUsd - costUsd;
     return {
       name: seq.name,
       address: addr,
       blocks: seq.value,
       batches: batchCount,
-      revenue,
-      cost,
-      profit,
+      revenueEth,
+      revenueUsd,
+      costEth,
+      costUsd,
+      profitEth,
+      profitUsd,
     };
   });
 
   const sorted = React.useMemo(() => {
     const data = [...rows];
     data.sort((a, b) => {
-      const aVal = a[sortBy];
-      const bVal = b[sortBy];
+      const key =
+        sortBy === 'revenue'
+          ? 'revenueEth'
+          : sortBy === 'cost'
+            ? 'costEth'
+            : sortBy === 'profit'
+              ? 'profitEth'
+              : sortBy;
+      const aVal = (a as any)[key];
+      const bVal = (b as any)[key];
       let cmp = 0;
       // Handle numeric columns (blocks, revenue, cost and profit) including null values
       if (
@@ -208,7 +225,7 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
                 className="px-2 py-1 text-left cursor-pointer select-none"
                 onClick={() => handleSort('revenue')}
               >
-                Revenue (USD)
+                Revenue (ETH)
                 {sortBy === 'revenue' && (
                   <span className="ml-1">
                     {sortDirection === 'asc' ? '↑' : '↓'}
@@ -219,7 +236,7 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
                 className="px-2 py-1 text-left cursor-pointer select-none"
                 onClick={() => handleSort('cost')}
               >
-                Cost (USD)
+                Cost (ETH)
                 {sortBy === 'cost' && (
                   <span className="ml-1">
                     {sortDirection === 'asc' ? '↑' : '↓'}
@@ -230,7 +247,7 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
                 className="px-2 py-1 text-left cursor-pointer select-none"
                 onClick={() => handleSort('profit')}
               >
-                Profit (USD)
+                Profit (ETH)
                 {sortBy === 'profit' && (
                   <span className="ml-1">
                     {sortDirection === 'asc' ? '↑' : '↓'}
@@ -250,12 +267,27 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
                 <td className="px-2 py-1">
                   {row.batches != null ? row.batches.toLocaleString() : 'N/A'}
                 </td>
-                <td className="px-2 py-1">
-                  {row.revenue != null ? `$${formatUsd(row.revenue)}` : 'N/A'}
+                <td
+                  className="px-2 py-1"
+                  title={row.revenueUsd != null ? `$${formatUsd(row.revenueUsd)}` : undefined}
+                >
+                  {row.revenueEth != null
+                    ? formatEth(row.revenueEth * 1e18)
+                    : 'N/A'}
                 </td>
-                <td className="px-2 py-1">${formatUsd(row.cost)}</td>
-                <td className="px-2 py-1">
-                  {row.profit != null ? `$${formatUsd(row.profit)}` : 'N/A'}
+                <td
+                  className="px-2 py-1"
+                  title={`$${formatUsd(row.costUsd)}`}
+                >
+                  {formatEth(row.costEth * 1e18)}
+                </td>
+                <td
+                  className="px-2 py-1"
+                  title={row.profitUsd != null ? `$${formatUsd(row.profitUsd)}` : undefined}
+                >
+                  {row.profitEth != null
+                    ? formatEth(row.profitEth * 1e18)
+                    : 'N/A'}
                 </td>
               </tr>
             ))}

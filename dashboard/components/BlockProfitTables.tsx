@@ -4,6 +4,7 @@ import { fetchBatchFeeComponents } from '../services/apiService';
 import { useEthPrice } from '../services/priceService';
 import { TimeRange } from '../types';
 import { rangeToHours } from '../utils/timeRange';
+import { formatEth } from '../utils';
 
 interface BlockProfitTablesProps {
   timeRange: TimeRange;
@@ -33,10 +34,11 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
   const batchCount = batchData.length;
   const HOURS_IN_MONTH = 30 * 24;
   const hours = rangeToHours(timeRange);
-  const costPerBatch =
+  const costPerBatchUsd =
     batchCount > 0 ? ((cloudCost + proverCost) / HOURS_IN_MONTH) * hours / batchCount : 0;
+  const costPerBatchEth = ethPrice ? costPerBatchUsd / ethPrice : 0;
 
-  const calcProfit = (wei: number) => (wei / 1e18) * ethPrice - costPerBatch;
+  const calcProfitEth = (wei: number) => wei / 1e18 - costPerBatchEth;
 
   const profits = batchData.map((b) => ({
     batch: b.batch,
@@ -53,14 +55,19 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
           <thead>
             <tr>
               <th className="px-2 py-1 text-left">Batch</th>
-              <th className="px-2 py-1 text-left">Profit (USD)</th>
+              <th className="px-2 py-1 text-left">Profit (ETH)</th>
             </tr>
           </thead>
           <tbody>
             {items?.map((b) => (
               <tr key={b.batch} className="border-t border-gray-200 dark:border-gray-700">
                 <td className="px-2 py-1">{b.batch}</td>
-                <td className="px-2 py-1">${formatUsd(calcProfit(b.profit))}</td>
+                <td
+                  className="px-2 py-1"
+                  title={`$${formatUsd(calcProfitEth(b.profit) * ethPrice)}`}
+                >
+                  {formatEth(calcProfitEth(b.profit) * 1e18)}
+                </td>
               </tr>
             ))}
           </tbody>

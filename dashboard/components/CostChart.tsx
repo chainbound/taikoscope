@@ -13,6 +13,7 @@ import { fetchBatchFeeComponents } from '../services/apiService';
 import { TimeRange, BatchFeeComponent } from '../types';
 import { rangeToHours } from '../utils/timeRange';
 import { useEthPrice } from '../services/priceService';
+import { formatEth } from '../utils';
 
 interface CostChartProps {
   timeRange: TimeRange;
@@ -44,12 +45,15 @@ export const CostChart: React.FC<CostChartProps> = ({
 
   const hours = rangeToHours(timeRange);
   const HOURS_IN_MONTH = 30 * 24;
-  const baseCost = ((cloudCost + proverCost) / HOURS_IN_MONTH) * hours;
-  const baseCostPerBatch = baseCost / feeData.length;
+  const baseCostUsd = ((cloudCost + proverCost) / HOURS_IN_MONTH) * hours;
+  const baseCostEth = ethPrice ? baseCostUsd / ethPrice : 0;
+  const baseCostPerBatchEth = baseCostEth / feeData.length;
 
   const data = feeData.map((b) => {
-    const l1CostUsd = ((b.l1Cost ?? 0) / 1e18) * ethPrice;
-    return { batch: b.batch, cost: baseCostPerBatch + l1CostUsd };
+    const l1CostEth = (b.l1Cost ?? 0) / 1e18;
+    const costEth = baseCostPerBatchEth + l1CostEth;
+    const costUsd = costEth * ethPrice;
+    return { batch: b.batch, costEth, costUsd };
   });
 
   return (
@@ -79,9 +83,9 @@ export const CostChart: React.FC<CostChartProps> = ({
           stroke="#666666"
           fontSize={12}
           domain={['auto', 'auto']}
-          tickFormatter={(v: number) => `$${v.toLocaleString()}`}
+          tickFormatter={(v: number) => formatEth(v * 1e18)}
           label={{
-            value: 'Cost (USD)',
+            value: 'Cost (ETH)',
             angle: -90,
             position: 'insideLeft',
             offset: -16,
@@ -91,7 +95,9 @@ export const CostChart: React.FC<CostChartProps> = ({
         />
         <Tooltip
           labelFormatter={(v: number) => `Batch ${v}`}
-          formatter={(value: number) => [`$${value.toFixed(2)}`, 'Cost']}
+          formatter={(value: number, _name: string, { payload }: any) =>
+            [`${formatEth(value * 1e18)} ($${payload.costUsd.toFixed(2)})`, 'Cost']
+          }
           contentStyle={{
             backgroundColor: 'rgba(255,255,255,0.8)',
             borderColor: '#E573B5',
@@ -100,7 +106,7 @@ export const CostChart: React.FC<CostChartProps> = ({
         />
         <Line
           type="monotone"
-          dataKey="cost"
+          dataKey="costEth"
           stroke="#E573B5"
           strokeWidth={2}
           dot={false}

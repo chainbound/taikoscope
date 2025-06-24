@@ -40,8 +40,9 @@ describe('ProfitRankingTable', () => {
             ],
           },
         },
-        } as any)
+      } as any)
       .mockReturnValueOnce({ data: new Map([['0xseqa', 1], ['0xseqb', 1]]) } as any);
+
     vi.spyOn(api, 'fetchSequencerDistribution').mockResolvedValue({
       data: [
         { name: 'SeqA', address: '0xseqA', value: 10, tps: null },
@@ -49,8 +50,7 @@ describe('ProfitRankingTable', () => {
       ],
       badRequest: false,
       error: null,
-        } as any)
-      .mockReturnValueOnce({ data: new Map([['0xseqa', 1]]) } as any);
+    } as any);
     vi.spyOn(api, 'fetchL2Fees').mockResolvedValue({
       data: {
         priority_fee: 3e18,
@@ -91,10 +91,10 @@ describe('ProfitRankingTable', () => {
     const secondSeqIdx = html.indexOf('0xseqB');
     expect(firstSeqIdx).toBeGreaterThan(-1);
     expect(secondSeqIdx).toBeGreaterThan(firstSeqIdx);
-    expect(html.includes('Revenue (USD)')).toBe(true);
+    expect(html.includes('Revenue (ETH)')).toBe(true);
     expect(html.includes('Batches')).toBe(true);
-    expect(html.includes('Cost (USD)')).toBe(true);
-    expect(html.includes('Profit (USD)')).toBe(true);
+    expect(html.includes('Cost (ETH)')).toBe(true);
+    expect(html.includes('Profit (ETH)')).toBe(true);
     expect(html.includes('↓')).toBe(true);
   });
 
@@ -159,6 +159,6 @@ describe('ProfitRankingTable', () => {
         proverCost: 0,
       }),
     );
-    expect(html.includes('$50.00')).toBe(true);
+    expect(html.includes('title="$50.00"')).toBe(true);
   });
 });
