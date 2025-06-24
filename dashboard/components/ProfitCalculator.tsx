@@ -40,7 +40,7 @@ export const ProfitCalculator: React.FC<ProfitCalculatorProps> = ({
 
   const totalFee = priority + base - l1DataCost;
 
-  const { data: ethPrice = 0, error: ethPriceError } = useEthPrice();
+  const { data: ethPrice = 0, error: _ethPriceError } = useEthPrice();
 
   const HOURS_IN_MONTH = 30 * 24;
   const hours = rangeToHours(timeRange);
@@ -89,6 +89,9 @@ export const ProfitCalculator: React.FC<ProfitCalculatorProps> = ({
           />
         </label>
       </div>
+      <p className="mt-4 text-sm">
+        Profit ({formatTimeRangeLabel(timeRange)}): {formatProfit(profit)}
+      </p>
     </div>
   );
 };

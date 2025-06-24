@@ -2,8 +2,8 @@
 
 use crate::{
     helpers::{
-        aggregate_block_transactions, aggregate_l2_block_times, aggregate_l2_fee_components,
-        aggregate_l2_gas_used, bucket_size_from_range,
+        aggregate_batch_fee_components, aggregate_block_transactions, aggregate_l2_block_times,
+        aggregate_l2_fee_components, aggregate_l2_gas_used, bucket_size_from_range,
     },
     state::{ApiState, MAX_BLOCK_TRANSACTIONS_LIMIT},
     validation::{
@@ -362,6 +362,107 @@ pub async fn l2_fee_components_aggregated(
     let blocks = aggregate_l2_fee_components(blocks, bucket);
 
     Ok(Json(FeeComponentsResponse { blocks }))
+}
+
+#[utoipa::path(
+    get,
+    path = "/batch-fee-components",
+    params(
+        RangeQuery
+    ),
+    responses(
+        (status = 200, description = "Fee components per batch", body = BatchFeeComponentsResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
+    ),
+    tag = "taikoscope"
+)]
+/// Get detailed fee components per batch showing priority fee, base fee, and L1 data cost
+pub async fn batch_fee_components(
+    Query(params): Query<RangeQuery>,
+    State(state): State<ApiState>,
+) -> Result<Json<BatchFeeComponentsResponse>, ErrorResponse> {
+    validate_time_range(&params.time_range)?;
+
+    let has_time_range = has_time_range_params(&params.time_range);
+    validate_range_exclusivity(has_time_range, false)?;
+
+    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
+    let address = if let Some(addr) = params.address.as_ref() {
+        match addr.parse::<Address>() {
+            Ok(a) => Some(AddressBytes::from(a)),
+            Err(e) => {
+                tracing::warn!(error = %e, "Failed to parse address");
+                return Err(ErrorResponse::new(
+                    "invalid-params",
+                    "Bad Request",
+                    StatusCode::BAD_REQUEST,
+                    e.to_string(),
+                ));
+            }
+        }
+    } else {
+        None
+    };
+
+    let batches =
+        state.client.get_batch_fee_components(address, time_range).await.map_err(|e| {
+            tracing::error!(error = %e, "Failed to get batch fee components");
+            ErrorResponse::database_error()
+        })?;
+
+    Ok(Json(BatchFeeComponentsResponse { batches }))
+}
+
+#[utoipa::path(
+    get,
+    path = "/batch-fee-components/aggregated",
+    params(
+        RangeQuery
+    ),
+    responses(
+        (status = 200, description = "Aggregated batch fee components", body = BatchFeeComponentsResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
+    ),
+    tag = "taikoscope"
+)]
+/// Get aggregated fee components per batch with automatic bucketing based on time range
+pub async fn batch_fee_components_aggregated(
+    Query(params): Query<RangeQuery>,
+    State(state): State<ApiState>,
+) -> Result<Json<BatchFeeComponentsResponse>, ErrorResponse> {
+    validate_time_range(&params.time_range)?;
+
+    let has_time_range = has_time_range_params(&params.time_range);
+    validate_range_exclusivity(has_time_range, false)?;
+
+    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
+    let address = if let Some(addr) = params.address.as_ref() {
+        match addr.parse::<Address>() {
+            Ok(a) => Some(AddressBytes::from(a)),
+            Err(e) => {
+                tracing::warn!(error = %e, "Failed to parse address");
+                return Err(ErrorResponse::new(
+                    "invalid-params",
+                    "Bad Request",
+                    StatusCode::BAD_REQUEST,
+                    e.to_string(),
+                ));
+            }
+        }
+    } else {
+        None
+    };
+
+    let batches =
+        state.client.get_batch_fee_components(address, time_range).await.map_err(|e| {
+            tracing::error!(error = %e, "Failed to get batch fee components");
+            ErrorResponse::database_error()
+        })?;
+
+    let bucket = bucket_size_from_range(&time_range);
+    let batches = aggregate_batch_fee_components(batches, bucket);
+
+    Ok(Json(BatchFeeComponentsResponse { batches }))
 }
 
 #[utoipa::path(

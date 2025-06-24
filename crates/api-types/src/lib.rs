@@ -5,9 +5,9 @@
 //! depend on them without pulling in the rest of the server implementation.
 
 use clickhouse_lib::{
-    BatchBlobCountRow, BatchPostingTimeRow, BatchProveTimeRow, BatchVerifyTimeRow,
-    BlockFeeComponentRow, ForcedInclusionProcessedRow, L1BlockTimeRow, L1DataCostRow,
-    L2BlockTimeRow, L2GasUsedRow, L2ReorgRow, L2TpsRow, SlashingEventRow,
+    BatchBlobCountRow, BatchFeeComponentRow, BatchPostingTimeRow, BatchProveTimeRow,
+    BatchVerifyTimeRow, BlockFeeComponentRow, ForcedInclusionProcessedRow, L1BlockTimeRow,
+    L1DataCostRow, L2BlockTimeRow, L2GasUsedRow, L2ReorgRow, L2TpsRow, SlashingEventRow,
 };
 
 use axum::{Json, http::StatusCode, response::IntoResponse};
@@ -243,6 +243,13 @@ pub struct L1DataCostResponse {
 pub struct FeeComponentsResponse {
     /// Fee components per block
     pub blocks: Vec<BlockFeeComponentRow>,
+}
+
+/// Fee components for each batch
+#[derive(Debug, Serialize, ToSchema)]
+pub struct BatchFeeComponentsResponse {
+    /// Fee components per batch
+    pub batches: Vec<BatchFeeComponentRow>,
 }
 
 /// TPS values for each L2 block.

@@ -42,6 +42,8 @@ use utoipa::OpenApi;
         routes::core::sequencer_blocks,
         routes::aggregated::l2_fees,
         routes::aggregated::l2_fee_components,
+        routes::aggregated::batch_fee_components,
+        routes::aggregated::batch_fee_components_aggregated,
         routes::aggregated::dashboard_data,
         routes::core::l1_data_cost
     ),
@@ -86,7 +88,9 @@ use utoipa::OpenApi;
             PreconfDataResponse,
             L2FeesResponse,
             FeeComponentsResponse,
+            BatchFeeComponentsResponse,
             SequencerFeeRow,
+            clickhouse_lib::BatchFeeComponentRow,
             DashboardDataResponse,
             api_types::ErrorResponse,
             L1DataCostResponse
