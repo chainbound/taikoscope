@@ -355,7 +355,27 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     ].filter((l) => l.value > 0);
   }
 
-  const data = { nodes, links };
+  // Remove nodes that have no remaining links after filtering
+  const usedIndices = new Set<number>();
+  links.forEach((l) => {
+    usedIndices.add(l.source);
+    usedIndices.add(l.target);
+  });
+  const indexMap = new Map<number, number>();
+  const filteredNodes = nodes.filter((_, idx) => {
+    if (usedIndices.has(idx)) {
+      indexMap.set(idx, indexMap.size);
+      return true;
+    }
+    return false;
+  });
+  const remappedLinks = links.map((l) => ({
+    ...l,
+    source: indexMap.get(l.source) as number,
+    target: indexMap.get(l.target) as number,
+  }));
+
+  const data = { nodes: filteredNodes, links: remappedLinks };
 
   const formatTooltipValue = (value: number, itemData?: any) => {
     const usd = formatUsd(value);
