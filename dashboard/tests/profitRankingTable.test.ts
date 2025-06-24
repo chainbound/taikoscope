@@ -85,6 +85,9 @@ describe('ProfitRankingTable', () => {
     );
     expect(html.includes('Sequencer Profit Ranking')).toBe(true);
     expect(html.includes('2,750')).toBe(true);
+    expect(html.includes('Revenue (USD)')).toBe(true);
+    expect(html.includes('Cost (USD)')).toBe(true);
+    expect(html.includes('0.00')).toBe(true);
     const firstSeqIdx = html.indexOf('SeqA');
     const secondSeqIdx = html.indexOf('SeqB');
     expect(firstSeqIdx).toBeGreaterThan(-1);

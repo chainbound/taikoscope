@@ -50,7 +50,9 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
     return map;
   }, [feeRes]);
 
-  const [sortBy, setSortBy] = React.useState<'name' | 'blocks' | 'profit'>('profit');
+  const [sortBy, setSortBy] = React.useState<
+    'name' | 'blocks' | 'revenue' | 'cost' | 'profit'
+  >('profit');
   const [sortDirection, setSortDirection] = React.useState<'asc' | 'desc'>('desc');
 
   const hours = rangeToHours(timeRange);
@@ -64,6 +66,8 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
       return {
         name: seq.name,
         blocks: seq.value,
+        revenue: null as number | null,
+        cost: costPerSeq,
         profit: null as number | null,
       };
     }
@@ -72,8 +76,9 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
         (fees.base_fee ?? 0) * 0.75 -
         (fees.l1_data_cost ?? 0)) /
       1e18;
-    const profit = revenueEth * ethPrice - costPerSeq;
-    return { name: seq.name, blocks: seq.value, profit };
+    const revenue = revenueEth * ethPrice;
+    const profit = revenue - costPerSeq;
+    return { name: seq.name, blocks: seq.value, revenue, cost: costPerSeq, profit };
   });
 
 
@@ -83,8 +88,8 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
       const aVal = a[sortBy];
       const bVal = b[sortBy];
       let cmp = 0;
-      // Handle numeric columns (blocks and profit) including null values
-      if (sortBy === 'blocks' || sortBy === 'profit') {
+      // Handle numeric columns including null values
+      if (sortBy === 'blocks' || sortBy === 'revenue' || sortBy === 'cost' || sortBy === 'profit') {
         const safeA = (typeof aVal === 'number' ? aVal : null) ?? -Infinity;
         const safeB = (typeof bVal === 'number' ? bVal : null) ?? -Infinity;
         cmp = safeA - safeB;
@@ -106,7 +111,9 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
     );
   }
 
-  const handleSort = (column: 'name' | 'blocks' | 'profit') => {
+  const handleSort = (
+    column: 'name' | 'blocks' | 'revenue' | 'cost' | 'profit',
+  ) => {
     if (sortBy === column) {
       setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'));
     } else {
@@ -146,6 +153,28 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
               </th>
               <th
                 className="px-2 py-1 text-left cursor-pointer select-none"
+                onClick={() => handleSort('revenue')}
+              >
+                Revenue (USD)
+                {sortBy === 'revenue' && (
+                  <span className="ml-1">
+                    {sortDirection === 'asc' ? '↑' : '↓'}
+                  </span>
+                )}
+              </th>
+              <th
+                className="px-2 py-1 text-left cursor-pointer select-none"
+                onClick={() => handleSort('cost')}
+              >
+                Cost (USD)
+                {sortBy === 'cost' && (
+                  <span className="ml-1">
+                    {sortDirection === 'asc' ? '↑' : '↓'}
+                  </span>
+                )}
+              </th>
+              <th
+                className="px-2 py-1 text-left cursor-pointer select-none"
                 onClick={() => handleSort('profit')}
               >
                 Profit (USD)
@@ -165,6 +194,10 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
               >
                 <td className="px-2 py-1">{row.name}</td>
                 <td className="px-2 py-1">{row.blocks.toLocaleString()}</td>
+                <td className="px-2 py-1">
+                  {row.revenue != null ? `$${formatProfit(row.revenue)}` : 'N/A'}
+                </td>
+                <td className="px-2 py-1">{`$${formatProfit(row.cost)}`}</td>
                 <td className="px-2 py-1">
                   {row.profit != null ? `$${formatProfit(row.profit)}` : 'N/A'}
                 </td>
