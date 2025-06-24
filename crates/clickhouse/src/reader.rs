@@ -1593,6 +1593,7 @@ impl ClickhouseReader {
             l1_data_cost: Option<u128>,
         }
 
+        let filter = self.reorg_filter("h");
         let mut query = format!(
             "SELECT b.batch_id, \
                     sum(h.sum_priority_fee) AS priority_fee, \
@@ -1605,8 +1606,10 @@ impl ClickhouseReader {
                ON h.l2_block_number BETWEEN if(b.last_l2_block_number = 0 AND b.batch_size > 0, 0, b.last_l2_block_number - b.batch_size + 1) AND b.last_l2_block_number \
              LEFT JOIN {db}.l1_data_costs dc \
                ON h.l2_block_number = dc.l2_block_number \
-             WHERE l1.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})",
+             WHERE l1.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
+               AND {filter}",
             interval = range.interval(),
+            filter = filter,
             db = self.db_name,
         );
         if let Some(addr) = proposer {
@@ -1672,6 +1675,7 @@ impl ClickhouseReader {
             l1_data_cost: Option<u128>,
         }
 
+        let filter = self.reorg_filter("h");
         let query = format!(
             "SELECT b.proposer_addr AS proposer, \
                     sum(h.sum_priority_fee) AS priority_fee, \
@@ -1685,9 +1689,11 @@ impl ClickhouseReader {
              LEFT JOIN {db}.l1_data_costs dc \
                ON h.l2_block_number = dc.l2_block_number \
              WHERE l1.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
+               AND {filter} \
              GROUP BY b.proposer_addr \
              ORDER BY priority_fee DESC",
             interval = range.interval(),
+            filter = filter,
             db = self.db_name,
         );
 
