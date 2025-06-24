@@ -1073,7 +1073,7 @@ impl ClickhouseReader {
 
         let query = format!(
             "SELECT batch_id, ts, \
-                    toUInt64OrNull(toString(toInt128(ts) - toInt128(prev_ts))) AS ms_since_prev_batch \
+                    if(ts > prev_ts, CAST(ts - prev_ts AS UInt64), NULL) AS ms_since_prev_batch \
              FROM ( \
                  SELECT b.batch_id AS batch_id, \
                         toUInt64(l1_events.block_ts * 1000) AS ts, \
@@ -1124,7 +1124,7 @@ impl ClickhouseReader {
 
         let mut query = format!(
             "SELECT batch_id, ts, \
-                    toUInt64OrNull(toString(toInt128(ts) - toInt128(prev_ts))) AS ms_since_prev_batch \
+                    if(ts > prev_ts, CAST(ts - prev_ts AS UInt64), NULL) AS ms_since_prev_batch \
              FROM ( \
                  SELECT b.batch_id AS batch_id, \
                         toUInt64(l1_events.block_ts * 1000) AS ts, \
