@@ -43,6 +43,7 @@ pub fn router(state: ApiState) -> Router {
         .route("/block-transactions", get(block_transactions))
         .route("/block-transactions/aggregated", get(block_transactions_aggregated))
         .route("/l2-fees", get(l2_fees))
+        .route("/batch-fees", get(batch_fees))
         .route("/l2-fee-components", get(l2_fee_components))
         .route("/l2-fee-components/aggregated", get(l2_fee_components_aggregated))
         .route("/batch-fee-components", get(batch_fee_components))

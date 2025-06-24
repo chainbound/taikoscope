@@ -267,6 +267,72 @@ pub async fn l2_fees(
 
 #[utoipa::path(
     get,
+    path = "/batch-fees",
+    params(
+        RangeQuery
+    ),
+    responses(
+        (status = 200, description = "Priority and base fees per batch", body = L2FeesResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
+    ),
+    tag = "taikoscope"
+)]
+/// Get batch fee breakdown including priority fees, base fees, and L1 data costs by proposer
+pub async fn batch_fees(
+    Query(params): Query<RangeQuery>,
+    State(state): State<ApiState>,
+) -> Result<Json<L2FeesResponse>, ErrorResponse> {
+    validate_time_range(&params.time_range)?;
+
+    let has_time_range = has_time_range_params(&params.time_range);
+    validate_range_exclusivity(has_time_range, false)?;
+
+    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
+    let address = if let Some(addr) = params.address.as_ref() {
+        match addr.parse::<Address>() {
+            Ok(a) => Some(AddressBytes::from(a)),
+            Err(e) => {
+                tracing::warn!(error = %e, "Failed to parse address");
+                return Err(ErrorResponse::new(
+                    "invalid-params",
+                    "Bad Request",
+                    StatusCode::BAD_REQUEST,
+                    e.to_string(),
+                ));
+            }
+        }
+    } else {
+        None
+    };
+
+    let (priority_fee, base_fee, l1_data_cost, rows) = tokio::try_join!(
+        state.client.get_batch_priority_fee(address, time_range),
+        state.client.get_batch_base_fee(address, time_range),
+        state.client.get_batch_total_data_cost(address, time_range),
+        state.client.get_batch_fees_by_proposer(time_range)
+    )
+    .map_err(|e| {
+        tracing::error!(error = %e, "Failed to get batch fees");
+        ErrorResponse::database_error()
+    })?;
+
+    let sequencers: Vec<SequencerFeeRow> = rows
+        .into_iter()
+        .filter(|r| if let Some(target) = address { r.sequencer == target } else { true })
+        .map(|r| SequencerFeeRow {
+            address: format!("0x{}", encode(r.sequencer)),
+            priority_fee: r.priority_fee,
+            base_fee: r.base_fee,
+            l1_data_cost: r.l1_data_cost,
+        })
+        .collect();
+
+    tracing::info!(count = sequencers.len(), "Returning batch fees and breakdown");
+    Ok(Json(L2FeesResponse { priority_fee, base_fee, l1_data_cost, sequencers }))
+}
+
+#[utoipa::path(
+    get,
     path = "/l2-fee-components",
     params(
         RangeQuery
