@@ -12,6 +12,7 @@ import useSWR from 'swr';
 import { fetchFeeComponents } from '../services/apiService';
 import { TimeRange, FeeComponent } from '../types';
 import { rangeToHours } from '../utils/timeRange';
+import { useEthPrice } from '../services/priceService';
 
 interface CostChartProps {
   timeRange: TimeRange;
@@ -29,6 +30,7 @@ export const CostChart: React.FC<CostChartProps> = ({
   const { data: feeRes } = useSWR(['feeComponents', timeRange, address], () =>
     fetchFeeComponents(timeRange, address),
   );
+  const { data: ethPrice = 0, error: ethPriceError } = useEthPrice();
   const feeData: FeeComponent[] | null = feeRes?.data ?? null;
 
   if (!feeData || feeData.length === 0) {
@@ -41,17 +43,24 @@ export const CostChart: React.FC<CostChartProps> = ({
 
   const hours = rangeToHours(timeRange);
   const HOURS_IN_MONTH = 30 * 24;
-  const totalCost = ((cloudCost + proverCost) / HOURS_IN_MONTH) * hours;
-  const costPerBlock = totalCost / feeData.length;
+  const baseCost = ((cloudCost + proverCost) / HOURS_IN_MONTH) * hours;
+  const baseCostPerBlock = baseCost / feeData.length;
 
-  const data = feeData.map((b) => ({ block: b.block, cost: costPerBlock }));
+  const data = feeData.map((b) => {
+    const l1CostUsd = ((b.l1Cost ?? 0) / 1e18) * ethPrice;
+    return { block: b.block, cost: baseCostPerBlock + l1CostUsd };
+  });
 
   return (
-    <ResponsiveContainer width="100%" height={240}>
-      <LineChart
-        data={data}
-        margin={{ top: 5, right: 20, left: 20, bottom: 40 }}
-      >
+    <>
+      {ethPriceError && (
+        <div className="text-red-500 text-xs mb-1">ETH price unavailable</div>
+      )}
+      <ResponsiveContainer width="100%" height={240}>
+        <LineChart
+          data={data}
+          margin={{ top: 5, right: 20, left: 20, bottom: 40 }}
+        >
         <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
         <XAxis
           dataKey="block"
@@ -98,5 +107,6 @@ export const CostChart: React.FC<CostChartProps> = ({
         />
       </LineChart>
     </ResponsiveContainer>
+    </>
   );
 };
