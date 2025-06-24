@@ -125,6 +125,14 @@ struct BlobRow {
     blob_count: u8,
 }
 
+#[derive(Serialize, Row)]
+struct BatchFeeRow {
+    batch_id: u64,
+    priority_fee: u128,
+    base_fee: u128,
+    l1_data_cost: Option<u128>,
+}
+
 #[tokio::test]
 async fn l2_head_block_integration() {
     let mock = Mock::new();
@@ -380,6 +388,38 @@ async fn block_profits_integration() {
     assert_eq!(resp.status(), StatusCode::OK);
     let body: serde_json::Value = resp.json().await.unwrap();
     assert_eq!(body, serde_json::json!({ "blocks": [ { "block": 2, "profit": -6 } ] }));
+
+    server.abort();
+}
+
+#[tokio::test]
+async fn batch_fee_components_integration() {
+    let mock = Mock::new();
+    mock.add(handlers::provide(vec![BatchFeeRow {
+        batch_id: 1,
+        priority_fee: 10,
+        base_fee: 20,
+        l1_data_cost: Some(5),
+    }]));
+
+    let url = Url::parse(mock.url()).unwrap();
+    let client =
+        ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+    let (addr, server) = spawn_server(client).await;
+    wait_for_server(addr).await;
+
+    let resp = reqwest::get(format!(
+        "http://{addr}/{API_VERSION}/batch-fee-components?created[gte]=0&created[lte]=3600000"
+    ))
+    .await
+    .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body: serde_json::Value = resp.json().await.unwrap();
+    assert_eq!(
+        body,
+        serde_json::json!({ "batches": [ { "batch_id": 1, "priority_fee": 10, "base_fee": 20, "l1_data_cost": 5 } ] })
+    );
 
     server.abort();
 }

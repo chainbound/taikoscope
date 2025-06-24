@@ -13,10 +13,11 @@ use url::Url;
 
 use crate::{
     models::{
-        BatchBlobCountRow, BatchPostingTimeRow, BatchProveTimeRow, BatchVerifyTimeRow,
-        BlockFeeComponentRow, BlockTransactionRow, ForcedInclusionProcessedRow, L1BlockTimeRow,
-        L1DataCostRow, L2BlockTimeRow, L2GasUsedRow, L2ReorgRow, L2TpsRow, PreconfData,
-        SequencerBlockRow, SequencerDistributionRow, SequencerFeeRow, SlashingEventRow,
+        BatchBlobCountRow, BatchFeeComponentRow, BatchPostingTimeRow, BatchProveTimeRow,
+        BatchVerifyTimeRow, BlockFeeComponentRow, BlockTransactionRow, ForcedInclusionProcessedRow,
+        L1BlockTimeRow, L1DataCostRow, L2BlockTimeRow, L2GasUsedRow, L2ReorgRow, L2TpsRow,
+        PreconfData, SequencerBlockRow, SequencerDistributionRow, SequencerFeeRow,
+        SlashingEventRow,
     },
     types::AddressBytes,
 };
@@ -1578,6 +1579,53 @@ impl ClickhouseReader {
             .collect())
     }
 
+    /// Get priority fee, base fee and L1 data cost for each batch
+    pub async fn get_batch_fee_components(
+        &self,
+        proposer: Option<AddressBytes>,
+        range: TimeRange,
+    ) -> Result<Vec<BatchFeeComponentRow>> {
+        #[derive(Row, Deserialize)]
+        struct RawRow {
+            batch_id: u64,
+            priority_fee: u128,
+            base_fee: u128,
+            l1_data_cost: Option<u128>,
+        }
+
+        let mut query = format!(
+            "SELECT b.batch_id, \
+                    sum(h.sum_priority_fee) AS priority_fee, \
+                    sum(h.sum_base_fee) AS base_fee, \
+                    toNullable(sum(dc.cost)) AS l1_data_cost \
+             FROM {db}.batches b \
+             INNER JOIN {db}.l1_head_events l1 \
+               ON b.l1_block_number = l1.l1_block_number \
+             LEFT JOIN {db}.l2_head_events h \
+               ON h.l2_block_number BETWEEN if(b.last_l2_block_number = 0 AND b.batch_size > 0, 0, b.last_l2_block_number - b.batch_size + 1) AND b.last_l2_block_number \
+             LEFT JOIN {db}.l1_data_costs dc \
+               ON h.l2_block_number = dc.l2_block_number \
+             WHERE l1.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})",
+            interval = range.interval(),
+            db = self.db_name,
+        );
+        if let Some(addr) = proposer {
+            query.push_str(&format!(" AND b.proposer_addr = unhex('{}')", encode(addr)));
+        }
+        query.push_str(" GROUP BY b.batch_id ORDER BY b.batch_id ASC");
+
+        let rows = self.execute::<RawRow>(&query).await?;
+        Ok(rows
+            .into_iter()
+            .map(|r| BatchFeeComponentRow {
+                batch_id: r.batch_id,
+                priority_fee: r.priority_fee,
+                base_fee: r.base_fee,
+                l1_data_cost: r.l1_data_cost,
+            })
+            .collect())
+    }
+
     /// Get the transactions per second for each L2 block within the given range
     pub async fn get_l2_tps(
         &self,
@@ -1952,5 +2000,40 @@ mod tests {
         assert!(!query.contains("hLEFT"), "Query should not contain 'hLEFT'");
         assert!(!query.contains("dcON"), "Query should not contain 'dcON'");
         assert!(!query.contains("numberWHERE"), "Query should not contain 'numberWHERE'");
+    }
+
+    #[derive(Row, serde::Serialize)]
+    struct BatchFeeRow {
+        batch_id: u64,
+        priority_fee: u128,
+        base_fee: u128,
+        l1_data_cost: Option<u128>,
+    }
+
+    #[tokio::test]
+    async fn batch_fee_components_returns_expected_rows() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(vec![BatchFeeRow {
+            batch_id: 1,
+            priority_fee: 10,
+            base_fee: 20,
+            l1_data_cost: Some(5),
+        }]));
+
+        let url = url::Url::parse(mock.url()).unwrap();
+        let reader =
+            ClickhouseReader::new(url, "db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+        let rows = reader.get_batch_fee_components(None, TimeRange::LastHour).await.unwrap();
+
+        assert_eq!(
+            rows,
+            vec![BatchFeeComponentRow {
+                batch_id: 1,
+                priority_fee: 10,
+                base_fee: 20,
+                l1_data_cost: Some(5),
+            }]
+        );
     }
 }

@@ -299,6 +299,19 @@ pub struct SequencerFeeRow {
     pub l1_data_cost: Option<u128>,
 }
 
+/// Row representing the fee components for a batch
+#[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
+pub struct BatchFeeComponentRow {
+    /// Batch ID
+    pub batch_id: u64,
+    /// Total priority fee for the batch
+    pub priority_fee: u128,
+    /// Total base fee for the batch
+    pub base_fee: u128,
+    /// L1 data posting cost associated with the batch, if available
+    pub l1_data_cost: Option<u128>,
+}
+
 /// Row representing the transactions per second for an L2 block
 #[derive(Debug, Serialize, Deserialize, PartialEq, ToSchema)]
 pub struct L2TpsRow {

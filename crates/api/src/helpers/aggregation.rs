@@ -2,7 +2,9 @@
 
 use api_types::BlockTransactionsItem;
 
-use clickhouse_lib::{BlockFeeComponentRow, L2BlockTimeRow, L2GasUsedRow, TimeRange};
+use clickhouse_lib::{
+    BatchFeeComponentRow, BlockFeeComponentRow, L2BlockTimeRow, L2GasUsedRow, TimeRange,
+};
 use std::collections::BTreeMap;
 
 /// Determine bucket size based on time range
@@ -90,6 +92,34 @@ pub fn aggregate_l2_fee_components(
             });
             BlockFeeComponentRow {
                 l2_block_number: g * bucket,
+                priority_fee: sum_priority,
+                base_fee: sum_base,
+                l1_data_cost: any.then_some(sum_l1),
+            }
+        })
+        .collect()
+}
+
+/// Aggregate batch fee components by bucket size
+pub fn aggregate_batch_fee_components(
+    rows: Vec<BatchFeeComponentRow>,
+    bucket: u64,
+) -> Vec<BatchFeeComponentRow> {
+    let bucket = bucket.max(1);
+    let mut groups: BTreeMap<u64, Vec<BatchFeeComponentRow>> = BTreeMap::new();
+    for row in rows {
+        groups.entry(row.batch_id / bucket).or_default().push(row);
+    }
+    groups
+        .into_iter()
+        .map(|(g, rs)| {
+            let sum_priority: u128 = rs.iter().map(|r| r.priority_fee).sum();
+            let sum_base: u128 = rs.iter().map(|r| r.base_fee).sum();
+            let (sum_l1, any): (u128, bool) = rs.iter().fold((0, false), |(s, a), r| {
+                (s + r.l1_data_cost.unwrap_or(0), a || r.l1_data_cost.is_some())
+            });
+            BatchFeeComponentRow {
+                batch_id: g * bucket,
                 priority_fee: sum_priority,
                 base_fee: sum_base,
                 l1_data_cost: any.then_some(sum_l1),
