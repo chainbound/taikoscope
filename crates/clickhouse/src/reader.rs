@@ -747,6 +747,55 @@ impl ClickhouseReader {
             .collect())
     }
 
+    /// Get transactions per block for the specified block range.
+    pub async fn get_block_transactions_block_range(
+        &self,
+        start_block: Option<u64>,
+        end_block: Option<u64>,
+        sequencer: Option<AddressBytes>,
+    ) -> Result<Vec<BlockTransactionRow>> {
+        #[derive(Row, Deserialize)]
+        struct RawRow {
+            sequencer: AddressBytes,
+            l2_block_number: u64,
+            block_time: u64,
+            sum_tx: u32,
+        }
+
+        let mut query = format!(
+            "SELECT sequencer, h.l2_block_number, h.block_ts AS block_time, sum_tx \
+             FROM {db}.l2_head_events h \
+             WHERE {filter}",
+            filter = self.reorg_filter("h"),
+            db = self.db_name,
+        );
+
+        if let Some(start) = start_block {
+            query.push_str(&format!(" AND h.l2_block_number >= {}", start));
+        }
+
+        if let Some(end) = end_block {
+            query.push_str(&format!(" AND h.l2_block_number <= {}", end));
+        }
+
+        if let Some(addr) = sequencer {
+            query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
+        }
+
+        query.push_str(" ORDER BY l2_block_number ASC");
+
+        let rows = self.execute::<RawRow>(&query).await?;
+        Ok(rows
+            .into_iter()
+            .map(|r| BlockTransactionRow {
+                sequencer: r.sequencer,
+                l2_block_number: r.l2_block_number,
+                block_time: Utc.timestamp_opt(r.block_time as i64, 0).unwrap(),
+                sum_tx: r.sum_tx,
+            })
+            .collect())
+    }
+
     /// Get L2 block times since the given cutoff with cursor-based pagination.
     /// Results are returned in descending order by block number.
     pub async fn get_l2_block_times_paginated(
@@ -1360,6 +1409,62 @@ impl ClickhouseReader {
             .collect())
     }
 
+    /// Get the time between consecutive L2 blocks for the specified block range
+    pub async fn get_l2_block_times_block_range(
+        &self,
+        sequencer: Option<AddressBytes>,
+        start_block: Option<u64>,
+        end_block: Option<u64>,
+    ) -> Result<Vec<L2BlockTimeRow>> {
+        #[derive(Row, Deserialize)]
+        struct RawRow {
+            l2_block_number: u64,
+            block_time: u64,
+            ms_since_prev_block: Option<u64>,
+        }
+
+        let mut query = format!(
+            "SELECT h.l2_block_number, \
+                    h.block_ts AS block_time, \
+                    toUInt64OrNull(toString(\
+                        (toUnixTimestamp64Milli(h.inserted_at) - \
+                         lagInFrame(toUnixTimestamp64Milli(h.inserted_at)) OVER (ORDER BY \
+                         h.l2_block_number))\
+                    )) AS ms_since_prev_block \
+             FROM {db}.l2_head_events h \
+             WHERE {filter}",
+            filter = self.reorg_filter("h"),
+            db = self.db_name,
+        );
+
+        if let Some(start) = start_block {
+            query.push_str(&format!(" AND h.l2_block_number >= {}", start));
+        }
+
+        if let Some(end) = end_block {
+            query.push_str(&format!(" AND h.l2_block_number <= {}", end));
+        }
+
+        if let Some(addr) = sequencer {
+            query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
+        }
+
+        query.push_str(" ORDER BY l2_block_number ASC");
+
+        let rows = self.execute::<RawRow>(&query).await?;
+        Ok(rows
+            .into_iter()
+            .filter_map(|r| {
+                let dt = Utc.timestamp_opt(r.block_time as i64, 0).single()?;
+                r.ms_since_prev_block.map(|ms| L2BlockTimeRow {
+                    l2_block_number: r.l2_block_number,
+                    block_time: dt,
+                    ms_since_prev_block: Some(ms),
+                })
+            })
+            .collect())
+    }
+
     /// Get the average number of L2 transactions per second for the given range
     pub async fn get_avg_l2_tps(
         &self,
@@ -1427,6 +1532,56 @@ impl ClickhouseReader {
         if let Some(addr) = sequencer {
             query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
         }
+        query.push_str(" ORDER BY l2_block_number ASC");
+
+        let rows = self.execute::<RawRow>(&query).await?;
+        Ok(rows
+            .into_iter()
+            .map(|r| {
+                let dt = Utc.timestamp_opt(r.block_time as i64, 0).unwrap();
+                L2GasUsedRow {
+                    l2_block_number: r.l2_block_number,
+                    block_time: dt,
+                    gas_used: r.gas_used,
+                }
+            })
+            .collect())
+    }
+
+    /// Get the gas used for each L2 block within the specified block range
+    pub async fn get_l2_gas_used_block_range(
+        &self,
+        sequencer: Option<AddressBytes>,
+        start_block: Option<u64>,
+        end_block: Option<u64>,
+    ) -> Result<Vec<L2GasUsedRow>> {
+        #[derive(Row, Deserialize)]
+        struct RawRow {
+            l2_block_number: u64,
+            block_time: u64,
+            gas_used: u64,
+        }
+
+        let mut query = format!(
+            "SELECT h.l2_block_number, h.block_ts AS block_time, toUInt64(sum_gas_used) AS gas_used \
+             FROM {db}.l2_head_events h \
+             WHERE {filter}",
+            filter = self.reorg_filter("h"),
+            db = self.db_name,
+        );
+
+        if let Some(start) = start_block {
+            query.push_str(&format!(" AND h.l2_block_number >= {}", start));
+        }
+
+        if let Some(end) = end_block {
+            query.push_str(&format!(" AND h.l2_block_number <= {}", end));
+        }
+
+        if let Some(addr) = sequencer {
+            query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
+        }
+
         query.push_str(" ORDER BY l2_block_number ASC");
 
         let rows = self.execute::<RawRow>(&query).await?;
@@ -1757,6 +1912,61 @@ impl ClickhouseReader {
                     l2_block_number: r.l2_block_number,
                     tps: r.sum_tx as f64 / (ms as f64 / 1000.0),
                 })
+            })
+            .collect())
+    }
+
+    /// Get the transactions per second for each L2 block within the specified block range
+    pub async fn get_l2_tps_block_range(
+        &self,
+        sequencer: Option<AddressBytes>,
+        start_block: Option<u64>,
+        end_block: Option<u64>,
+    ) -> Result<Vec<L2TpsRow>> {
+        #[derive(Row, Deserialize)]
+        struct RawRow {
+            l2_block_number: u64,
+            sum_tx: u32,
+            ms_since_prev_block: Option<u64>,
+        }
+
+        let mut query = format!(
+            "SELECT h.l2_block_number, sum_tx, \
+                    toUInt64OrNull(toString((h.block_ts - lagInFrame(h.block_ts) OVER (ORDER BY h.l2_block_number)) * 1000)) \
+                        AS ms_since_prev_block \
+             FROM {db}.l2_head_events h \
+             WHERE {filter}",
+            filter = self.reorg_filter("h"),
+            db = self.db_name,
+        );
+
+        if let Some(start) = start_block {
+            query.push_str(&format!(" AND h.l2_block_number >= {}", start));
+        }
+
+        if let Some(end) = end_block {
+            query.push_str(&format!(" AND h.l2_block_number <= {}", end));
+        }
+
+        if let Some(addr) = sequencer {
+            query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
+        }
+
+        query.push_str(" ORDER BY l2_block_number ASC");
+
+        let rows = self.execute::<RawRow>(&query).await?;
+        Ok(rows
+            .into_iter()
+            .filter_map(|r| {
+                let ms = r.ms_since_prev_block?;
+                if ms == 0 {
+                    None
+                } else {
+                    Some(L2TpsRow {
+                        l2_block_number: r.l2_block_number,
+                        tps: r.sum_tx as f64 / (ms as f64 / 1000.0),
+                    })
+                }
             })
             .collect())
     }
