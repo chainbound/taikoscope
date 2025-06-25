@@ -36,6 +36,8 @@ export interface MainDashboardData {
   blobsPerBatch: any[];
   priorityFee: number | null;
   baseFee: number | null;
+  proveCost: number | null;
+  verifyCost: number | null;
   badRequestResults: any[];
 }
 
@@ -117,6 +119,8 @@ export const fetchMainDashboardData = async (
     blobsPerBatch: batchBlobCountsRes.data || [],
     priorityFee: data?.priority_fee ?? null,
     baseFee: data?.base_fee ?? null,
+    proveCost: data?.prove_cost ?? null,
+    verifyCost: data?.verify_cost ?? null,
     badRequestResults: allResults,
   };
 };

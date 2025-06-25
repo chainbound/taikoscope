@@ -20,19 +20,26 @@ describe('metricsCreator', () => {
       forcedInclusions: 3,
       priorityFee: 40e18,
       baseFee: 2e18,
+      proveCost: 5e18,
+      verifyCost: 6e18,
       l1DataCost: 3e18,
       profit: 39e18,
       l2Block: 100,
       l1Block: 50,
     });
 
-    expect(metrics).toHaveLength(17);
+    expect(metrics).toHaveLength(19);
     expect(metrics[0].value).toBe('1.23');
 
     const proveMetric = metrics.find((m) => m.title === 'Avg. Prove Time');
     const verifyMetric = metrics.find((m) => m.title === 'Avg. Verify Time');
     expect(proveMetric?.value).toBe('2.00s');
     expect(verifyMetric?.value).toBe('3.00s');
+
+    const proveCostMetric = metrics.find((m) => m.title === 'Prove Cost');
+    const verifyCostMetric = metrics.find((m) => m.title === 'Verify Cost');
+    expect(proveCostMetric?.value).toBe('5.00 ETH');
+    expect(verifyCostMetric?.value).toBe('6.00 ETH');
 
     const current = metrics.find((m) => m.title === 'Current Sequencer');
     const next = metrics.find((m) => m.title === 'Next Sequencer');
@@ -62,6 +69,8 @@ describe('metricsCreator', () => {
       forcedInclusions: null,
       priorityFee: null,
       baseFee: null,
+      proveCost: null,
+      verifyCost: null,
       l1DataCost: null,
       profit: null,
       l2Block: null,
