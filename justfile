@@ -18,7 +18,7 @@ dev:
 
 # start the API server for local development
 dev-api:
-    ENV_FILE=dev.env cargo run --bin api-server
+    ENV_FILE=hekla.env cargo run --bin api-server
 
 # start the Taikoscope binary with Masaya testnet config
 masaya:
