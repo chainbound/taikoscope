@@ -34,7 +34,7 @@ export const MetricsGrid: React.FC<MetricsGridProps> = ({
   const displayedGroupOrder = groupOrder;
   const { data: ethPrice = 0 } = useEthPrice();
   const regularGrid =
-    'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4 md:gap-6';
+    'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5 2xl:grid-cols-8 gap-4 md:gap-6';
   const economicsGrid =
     'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-2 gap-4 md:gap-6';
   const chartsGrid = 'grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mt-4';
