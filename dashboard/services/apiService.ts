@@ -969,8 +969,8 @@ export interface DashboardDataResponse {
   l2_reorgs: number;
   slashings: number;
   forced_inclusions: number;
-  l2_block: number | null;
-  l1_block: number | null;
+  l2_head_block: number | null;
+  l1_head_block: number | null;
   priority_fee: number | null;
   base_fee: number | null;
   cloud_cost: number | null;

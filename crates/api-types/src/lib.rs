@@ -399,9 +399,9 @@ pub struct DashboardDataResponse {
     /// Number of forced inclusion events in the selected range.
     pub forced_inclusions: usize,
     /// Number of the most recent L2 block.
-    pub l2_block: Option<u64>,
+    pub l2_head_block: Option<u64>,
     /// Number of the most recent L1 block.
-    pub l1_block: Option<u64>,
+    pub l1_head_block: Option<u64>,
     /// Sum of priority fees for the range.
     pub priority_fee: Option<u128>,
     /// Sum of base fees for the range.

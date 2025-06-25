@@ -573,8 +573,8 @@ pub async fn dashboard_data(
         reorgs,
         slashings,
         forced_inclusions,
-        l2_block,
-        l1_block,
+        l2_head_block,
+        l1_head_block,
         priority_fee,
         base_fee,
     ) = tokio::try_join!(
@@ -608,8 +608,8 @@ pub async fn dashboard_data(
     let cost = hourly_rate * hours;
 
     tracing::info!(
-        l2_block,
-        l1_block,
+        l2_head_block,
+        l1_head_block,
         reorgs = reorgs.len(),
         slashings = slashings.len(),
         forced_inclusions = forced_inclusions.len(),
@@ -626,8 +626,8 @@ pub async fn dashboard_data(
         l2_reorgs: reorgs.len(),
         slashings: slashings.len(),
         forced_inclusions: forced_inclusions.len(),
-        l2_block,
-        l1_block,
+        l2_head_block,
+        l1_head_block,
         priority_fee,
         base_fee,
         cloud_cost: Some(cost),
