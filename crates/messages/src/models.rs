@@ -275,6 +275,50 @@ pub struct L1DataCostInsertRow {
     pub cost: u128,
 }
 
+/// Row representing the prover cost for a batch
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ProveCostRow {
+    /// L1 block number
+    pub l1_block_number: u64,
+    /// Batch ID
+    pub batch_id: u64,
+    /// Cost in wei for proving the batch
+    pub cost: u128,
+}
+
+/// Row used for inserting prover cost
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ProveCostInsertRow {
+    /// L1 block number
+    pub l1_block_number: u64,
+    /// Batch ID
+    pub batch_id: u64,
+    /// Cost in wei for proving the batch
+    pub cost: u128,
+}
+
+/// Row representing the verifier cost for a batch
+#[derive(Debug, Serialize, Deserialize)]
+pub struct VerifyCostRow {
+    /// L1 block number
+    pub l1_block_number: u64,
+    /// Batch ID
+    pub batch_id: u64,
+    /// Cost in wei for verifying the batch
+    pub cost: u128,
+}
+
+/// Row used for inserting verifier cost
+#[derive(Debug, Serialize, Deserialize)]
+pub struct VerifyCostInsertRow {
+    /// L1 block number
+    pub l1_block_number: u64,
+    /// Batch ID
+    pub batch_id: u64,
+    /// Cost in wei for verifying the batch
+    pub cost: u128,
+}
+
 /// Row representing the fee components for an L2 block
 #[derive(Debug, Serialize, Deserialize)]
 pub struct BlockFeeComponentRow {

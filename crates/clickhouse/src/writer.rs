@@ -152,7 +152,8 @@ use crate::{
     L1Header,
     models::{
         BatchBlockRow, BatchRow, ForcedInclusionProcessedRow, L1DataCostInsertRow, L1HeadEvent,
-        L2HeadEvent, L2ReorgInsertRow, PreconfData, ProvedBatchRow, VerifiedBatchRow,
+        L2HeadEvent, L2ReorgInsertRow, PreconfData, ProveCostInsertRow, ProvedBatchRow,
+        VerifiedBatchRow, VerifyCostInsertRow,
     },
     schema::{TABLE_SCHEMAS, TABLES, TableSchema, VIEWS},
     types::{AddressBytes, HashBytes},
@@ -339,6 +340,36 @@ impl ClickhouseWriter {
         let client = self.base.clone();
         let row = L1DataCostInsertRow { l1_block_number, l2_block_number, cost };
         let mut insert = client.insert(&format!("{}.l1_data_costs", self.db_name))?;
+        insert.write(&row).await?;
+        insert.end().await?;
+        Ok(())
+    }
+
+    /// Insert prover cost for a batch
+    pub async fn insert_prove_cost(
+        &self,
+        l1_block_number: u64,
+        batch_id: u64,
+        cost: u128,
+    ) -> Result<()> {
+        let client = self.base.clone();
+        let row = ProveCostInsertRow { l1_block_number, batch_id, cost };
+        let mut insert = client.insert(&format!("{}.prove_costs", self.db_name))?;
+        insert.write(&row).await?;
+        insert.end().await?;
+        Ok(())
+    }
+
+    /// Insert verifier cost for a batch
+    pub async fn insert_verify_cost(
+        &self,
+        l1_block_number: u64,
+        batch_id: u64,
+        cost: u128,
+    ) -> Result<()> {
+        let client = self.base.clone();
+        let row = VerifyCostInsertRow { l1_block_number, batch_id, cost };
+        let mut insert = client.insert(&format!("{}.verify_costs", self.db_name))?;
         insert.write(&row).await?;
         insert.end().await?;
         Ok(())
@@ -713,6 +744,34 @@ mod tests {
             rows,
             vec![L1DataCostInsertRow { l1_block_number: 10, l2_block_number: 11, cost: 42 }]
         );
+    }
+
+    #[tokio::test]
+    async fn insert_prove_cost_writes_expected_row() {
+        let mock = Mock::new();
+        let ctl = mock.add(handlers::record::<ProveCostInsertRow>());
+
+        let url = Url::parse(mock.url()).unwrap();
+        let writer = ClickhouseWriter::new(url, "db".to_owned(), "user".into(), "pass".into());
+
+        writer.insert_prove_cost(8, 9, 55).await.unwrap();
+
+        let rows: Vec<ProveCostInsertRow> = ctl.collect().await;
+        assert_eq!(rows, vec![ProveCostInsertRow { l1_block_number: 8, batch_id: 9, cost: 55 }]);
+    }
+
+    #[tokio::test]
+    async fn insert_verify_cost_writes_expected_row() {
+        let mock = Mock::new();
+        let ctl = mock.add(handlers::record::<VerifyCostInsertRow>());
+
+        let url = Url::parse(mock.url()).unwrap();
+        let writer = ClickhouseWriter::new(url, "db".to_owned(), "user".into(), "pass".into());
+
+        writer.insert_verify_cost(8, 10, 66).await.unwrap();
+
+        let rows: Vec<VerifyCostInsertRow> = ctl.collect().await;
+        assert_eq!(rows, vec![VerifyCostInsertRow { l1_block_number: 8, batch_id: 10, cost: 66 }]);
     }
 
     #[test]

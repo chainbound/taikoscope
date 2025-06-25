@@ -24,6 +24,8 @@ pub const TABLES: &[&str] = &[
     "verified_batches",
     "slashing_events",
     "l1_data_costs",
+    "prove_costs",
+    "verify_costs",
 ];
 
 /// Names of all materialized views
@@ -138,5 +140,21 @@ pub const TABLE_SCHEMAS: &[TableSchema] = &[
                  cost UInt128,
                  inserted_at DateTime64(3) DEFAULT now64()",
         order_by: "l1_block_number",
+    },
+    TableSchema {
+        name: "prove_costs",
+        columns: "l1_block_number UInt64,
+                 batch_id UInt64,
+                 cost UInt128,
+                 inserted_at DateTime64(3) DEFAULT now64()",
+        order_by: "l1_block_number, batch_id",
+    },
+    TableSchema {
+        name: "verify_costs",
+        columns: "l1_block_number UInt64,
+                 batch_id UInt64,
+                 cost UInt128,
+                 inserted_at DateTime64(3) DEFAULT now64()",
+        order_by: "l1_block_number, batch_id",
     },
 ];
