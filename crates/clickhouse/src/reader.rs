@@ -922,7 +922,8 @@ impl ClickhouseReader {
 
         let mut query = format!(
             "SELECT h.l2_block_number, sum_tx, \
-                    toUInt64OrNull(toString((h.block_ts - lagInFrame(h.block_ts) OVER (ORDER BY h.l2_block_number)) * 1000)) AS ms_since_prev_block \
+                    toUInt64OrNull(toString((toUnixTimestamp64Milli(h.inserted_at) - \
+                        lagInFrame(toUnixTimestamp64Milli(h.inserted_at)) OVER (ORDER BY h.l2_block_number)))) AS ms_since_prev_block \
              FROM {db}.l2_head_events h \
              WHERE h.block_ts >= {since} \
                AND {filter}",
@@ -2021,7 +2022,8 @@ impl ClickhouseReader {
 
         let mut query = format!(
             "SELECT h.l2_block_number, sum_tx, \
-                    toUInt64OrNull(toString((h.block_ts - lagInFrame(h.block_ts) OVER (ORDER BY h.l2_block_number)) * 1000)) \
+                    toUInt64OrNull(toString((toUnixTimestamp64Milli(h.inserted_at) - \
+                        lagInFrame(toUnixTimestamp64Milli(h.inserted_at)) OVER (ORDER BY h.l2_block_number)))) \
                         AS ms_since_prev_block \
              FROM {db}.l2_head_events h \
              WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
@@ -2067,7 +2069,8 @@ impl ClickhouseReader {
 
         let mut query = format!(
             "SELECT h.l2_block_number, sum_tx, \
-                    toUInt64OrNull(toString((h.block_ts - lagInFrame(h.block_ts) OVER (ORDER BY h.l2_block_number)) * 1000)) \
+                    toUInt64OrNull(toString((toUnixTimestamp64Milli(h.inserted_at) - \
+                        lagInFrame(toUnixTimestamp64Milli(h.inserted_at)) OVER (ORDER BY h.l2_block_number)))) \
                         AS ms_since_prev_block \
              FROM {db}.l2_head_events h \
              WHERE {filter}",
