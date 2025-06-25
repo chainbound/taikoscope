@@ -107,7 +107,7 @@ struct BlockNumRow {
 #[derive(Serialize, Row)]
 struct BlockTimeRow {
     minute: u64,
-    block_number: u64,
+    l1_block_number: u64,
 }
 
 #[derive(Serialize, Row)]
@@ -253,7 +253,7 @@ async fn l1_head_block_integration() {
 #[tokio::test]
 async fn l1_block_times_success_and_invalid() {
     let mock = Mock::new();
-    mock.add(handlers::provide(vec![BlockTimeRow { minute: 1, block_number: 2 }]));
+    mock.add(handlers::provide(vec![BlockTimeRow { minute: 1, l1_block_number: 2 }]));
 
     let url = Url::parse(mock.url()).unwrap();
     let client =
@@ -269,7 +269,7 @@ async fn l1_block_times_success_and_invalid() {
     .unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
     let body: serde_json::Value = resp.json().await.unwrap();
-    assert_eq!(body, serde_json::json!({ "blocks": [ { "minute": 1, "block_number": 2 } ] }));
+    assert_eq!(body, serde_json::json!({ "blocks": [ { "minute": 1, "l1_block_number": 2 } ] }));
 
     let resp = reqwest::get(
         format!("http://{addr}/{API_VERSION}/l1-block-times?created[gte]=10&created[lte]=5"),

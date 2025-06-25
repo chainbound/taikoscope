@@ -237,7 +237,7 @@ pub struct L1BlockTimeRow {
     /// Minute timestamp (unix seconds)
     pub minute: u64,
     /// Highest L1 block number within that minute
-    pub block_number: u64,
+    pub l1_block_number: u64,
 }
 
 /// Row representing the time between consecutive L2 blocks

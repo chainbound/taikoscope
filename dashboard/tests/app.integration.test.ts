@@ -102,14 +102,14 @@ const responses: Record<string, Record<string, unknown>> = {
   },
   [`/v1/l1-block-times?${q1h}`]: {
     blocks: [
-      { block_number: 50, minute: 1 },
-      { block_number: 52, minute: 2 },
+      { l1_block_number: 50, minute: 1 },
+      { l1_block_number: 52, minute: 2 },
     ],
   },
   [`/v1/l1-block-times?${q15m}`]: {
     blocks: [
-      { block_number: 50, minute: 1 },
-      { block_number: 52, minute: 2 },
+      { l1_block_number: 50, minute: 1 },
+      { l1_block_number: 52, minute: 2 },
     ],
   },
   [`/v1/prove-times?${q1h}&limit=50`]: {
