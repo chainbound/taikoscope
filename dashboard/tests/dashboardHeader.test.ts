@@ -38,11 +38,11 @@ describe('DashboardHeader', () => {
     expect(html.includes('Refresh')).toBe(true);
     expect(html.includes('Status')).toBe(true);
     expect(html.includes('All Sequencers')).toBe(true);
-    expect(html.includes('Economics')).toBe(false);
+    expect(html.includes('Economics')).toBe(true);
     expect(html.includes('Dark Mode')).toBe(true);
   });
 
-  it('hides sequencer selector in economics view', () => {
+  it('shows sequencer selector in economics view', () => {
     const html = renderToStaticMarkup(
       React.createElement(
         ThemeProvider,
@@ -68,7 +68,7 @@ describe('DashboardHeader', () => {
         ),
       ),
     );
-    expect(html.includes('All Sequencers')).toBe(false);
+    expect(html.includes('All Sequencers')).toBe(true);
     expect(html.includes('Dark Mode')).toBe(true);
   });
 });

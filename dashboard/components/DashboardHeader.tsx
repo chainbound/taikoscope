@@ -58,7 +58,6 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   const { navigateToDashboard, updateSearchParams } = useRouterNavigation();
   const { errorMessage } = useErrorHandler();
   const [searchParams] = useSearchParams();
-  const isEconomicsView = searchParams.get('view') === 'economics';
   React.useEffect(() => {
     if (errorMessage) {
       showToast(errorMessage);
@@ -117,13 +116,11 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
           lastRefresh={lastRefresh}
           onRefresh={onManualRefresh}
         />
-        {!isEconomicsView && (
-          <SequencerSelector
-            sequencers={sequencers}
-            value={selectedSequencer}
-            onChange={onSequencerChange}
-          />
-        )}
+        <SequencerSelector
+          sequencers={sequencers}
+          value={selectedSequencer}
+          onChange={onSequencerChange}
+        />
         <ThemeToggle />
         {/* Export button removed as per request */}
       </div>
