@@ -17,6 +17,8 @@ const metrics = createMetrics({
   l1Block: 50,
   priorityFee: 41e18,
   baseFee: 1e18,
+  proveCost: 9e18,
+  verifyCost: 11e18,
   l1DataCost: 2e18,
   profit: 40e18,
 });
@@ -42,6 +44,8 @@ const metricsAllNull = createMetrics({
   nextOperator: null,
   priorityFee: null,
   baseFee: null,
+  proveCost: null,
+  verifyCost: null,
   l1DataCost: null,
   profit: null,
 });
@@ -78,12 +82,16 @@ describe('helpers', () => {
     expect(metrics[13].group).toBe('Network Economics');
     expect(metrics[14].value).toBe('2.00 ETH');
     expect(metrics[14].group).toBe('Network Economics');
-    expect(metrics[15].value).toBe('100');
-    expect(metrics[15].link).toContain('/block/100');
-    expect(metrics[15].group).toBe('Block Information');
-    expect(metrics[16].value).toBe('50');
-    expect(metrics[16].link).toContain('/block/50');
-    expect(metrics[16].group).toBe('Block Information');
+    expect(metrics[15].value).toBe('9.00 ETH');
+    expect(metrics[15].group).toBe('Network Economics');
+    expect(metrics[16].value).toBe('11.0 ETH');
+    expect(metrics[16].group).toBe('Network Economics');
+    expect(metrics[17].value).toBe('100');
+    expect(metrics[17].link).toContain('/block/100');
+    expect(metrics[17].group).toBe('Block Information');
+    expect(metrics[18].value).toBe('50');
+    expect(metrics[18].link).toContain('/block/50');
+    expect(metrics[18].group).toBe('Block Information');
   });
 
   it('detects bad requests', () => {
@@ -112,8 +120,10 @@ describe('helpers', () => {
     expect(metricsAllNull[12].group).toBe('Network Economics');
     expect(metricsAllNull[13].group).toBe('Network Economics');
     expect(metricsAllNull[14].group).toBe('Network Economics');
-    expect(metricsAllNull[15].group).toBe('Block Information');
-    expect(metricsAllNull[16].group).toBe('Block Information');
+    expect(metricsAllNull[15].group).toBe('Network Economics');
+    expect(metricsAllNull[16].group).toBe('Network Economics');
+    expect(metricsAllNull[17].group).toBe('Block Information');
+    expect(metricsAllNull[18].group).toBe('Block Information');
   });
 
   it('handles all successful requests', () => {
