@@ -30,7 +30,10 @@ pub fn router(state: ApiState, allowed_origins: Vec<String>) -> Router {
             let allowed = Arc::clone(&allowed);
             move |origin: &HeaderValue, _| match origin.to_str() {
                 Ok(origin) => {
-                    allowed.iter().any(|o| o == origin) || origin.ends_with(".vercel.app")
+                    allowed.iter().any(|o| o == origin) ||
+                        origin.ends_with(".vercel.app") ||
+                        origin.starts_with("http://localhost:") ||
+                        origin.starts_with("http://127.0.0.1:")
                 }
                 Err(_) => false,
             }
@@ -154,6 +157,32 @@ mod tests {
         let (status, _, cors) = send_request(app, "https://example.com").await;
         assert_eq!(status, StatusCode::OK);
         assert_eq!(cors.as_deref(), Some("https://example.com"));
+    }
+
+    #[tokio::test]
+    async fn allows_localhost_origin() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(vec![MaxRow { block_ts: 1 }]));
+        let app = build_app(
+            mock.url(),
+            config::DEFAULT_ALLOWED_ORIGINS.split(',').map(|s| s.to_owned()).collect(),
+        );
+        let (status, _, cors) = send_request(app, "http://localhost:5173").await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(cors.as_deref(), Some("http://localhost:5173"));
+    }
+
+    #[tokio::test]
+    async fn allows_127_0_0_1_origin() {
+        let mock = Mock::new();
+        mock.add(handlers::provide(vec![MaxRow { block_ts: 1 }]));
+        let app = build_app(
+            mock.url(),
+            config::DEFAULT_ALLOWED_ORIGINS.split(',').map(|s| s.to_owned()).collect(),
+        );
+        let (status, _, cors) = send_request(app, "http://127.0.0.1:3001").await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(cors.as_deref(), Some("http://127.0.0.1:3001"));
     }
 
     #[tokio::test]
