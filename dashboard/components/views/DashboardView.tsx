@@ -10,6 +10,7 @@ import { ChartCard } from '../ChartCard';
 import { TAIKO_PINK } from '../../theme';
 import { TimeRange, MetricData } from '../../types';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { getSequencerAddress } from '../sequencerConfig';
 
 const SequencerPieChart = lazy(() =>
   import('../SequencerPieChart').then((m) => ({
@@ -82,6 +83,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const isEconomicsView = searchParams.get('view') === 'economics';
+  const selectedAddress = selectedSequencer
+    ? getSequencerAddress(selectedSequencer)
+    : undefined;
   // Default monthly costs in USD
   const [cloudCost, setCloudCost] = useState(1000);
   const [proverCost, setProverCost] = useState(1000);
@@ -304,7 +308,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               timeRange={timeRange}
               cloudCost={cloudCost}
               proverCost={proverCost}
-              address={selectedSequencer || undefined}
+              address={selectedAddress}
             />
             <ProfitCalculator
               timeRange={timeRange}
@@ -318,7 +322,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 timeRange={timeRange}
                 cloudCost={cloudCost}
                 proverCost={proverCost}
-                address={selectedSequencer || undefined}
+                address={selectedAddress}
               />
             </div>
             <ProfitRankingTable
@@ -330,7 +334,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               timeRange={timeRange}
               cloudCost={cloudCost}
               proverCost={proverCost}
-              address={selectedSequencer || undefined}
+              address={selectedAddress}
             />
           </>
         )}
