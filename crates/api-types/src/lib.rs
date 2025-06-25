@@ -7,7 +7,8 @@
 use clickhouse_lib::{
     BatchBlobCountRow, BatchPostingTimeRow, BatchProveTimeRow, BatchVerifyTimeRow,
     BlockFeeComponentRow, ForcedInclusionProcessedRow, L1BlockTimeRow, L1DataCostRow,
-    L2BlockTimeRow, L2GasUsedRow, L2ReorgRow, L2TpsRow, SlashingEventRow,
+    L2BlockTimeRow, L2GasUsedRow, L2ReorgRow, L2TpsRow, ProveCostRow, SlashingEventRow,
+    VerifyCostRow,
 };
 
 use axum::{Json, http::StatusCode, response::IntoResponse};
@@ -238,6 +239,20 @@ pub struct L1DataCostResponse {
     pub blocks: Vec<L1DataCostRow>,
 }
 
+/// Prover cost per batch.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct ProveCostResponse {
+    /// Cost information for each proved batch.
+    pub batches: Vec<ProveCostRow>,
+}
+
+/// Verifier cost per batch.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct VerifyCostResponse {
+    /// Cost information for each verified batch.
+    pub batches: Vec<VerifyCostRow>,
+}
+
 /// Fee components for each L2 block
 #[derive(Debug, Serialize, ToSchema)]
 pub struct FeeComponentsResponse {
@@ -439,6 +454,10 @@ pub struct DashboardDataResponse {
     pub priority_fee: Option<u128>,
     /// Sum of base fees for the range.
     pub base_fee: Option<u128>,
+    /// Total prover cost for the range.
+    pub prove_cost: Option<u128>,
+    /// Total verifier cost for the range.
+    pub verify_cost: Option<u128>,
     /// Estimated infrastructure cost in USD for the requested range.
     pub cloud_cost: Option<f64>,
 }

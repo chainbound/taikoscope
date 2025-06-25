@@ -599,6 +599,8 @@ pub async fn dashboard_data(
         l1_head_block,
         priority_fee,
         base_fee,
+        prove_cost,
+        verify_cost,
     ) = tokio::try_join!(
         state.client.get_l2_block_cadence(address, time_range),
         state.client.get_batch_posting_cadence(time_range),
@@ -612,7 +614,9 @@ pub async fn dashboard_data(
         state.client.get_last_l2_block_number(),
         state.client.get_last_l1_block_number(),
         state.client.get_l2_priority_fee(address, time_range),
-        state.client.get_l2_base_fee(address, time_range)
+        state.client.get_l2_base_fee(address, time_range),
+        state.client.get_total_prove_cost(address, time_range),
+        state.client.get_total_verify_cost(address, time_range)
     )
     .map_err(|e| {
         tracing::error!(error = %e, "Failed to get dashboard data");
@@ -652,6 +656,8 @@ pub async fn dashboard_data(
         l1_head_block,
         priority_fee,
         base_fee,
+        prove_cost,
+        verify_cost,
         cloud_cost: Some(cost),
     }))
 }

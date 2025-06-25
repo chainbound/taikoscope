@@ -13,8 +13,9 @@ use api_types::{
     ActiveGatewaysResponse, AvgBlobsPerBatchResponse, BatchPostingTimesResponse, BlockProfitItem,
     BlockProfitsResponse, ErrorResponse, EthPriceResponse, L1BlockTimesResponse,
     L1DataCostResponse, L1HeadBlockResponse, L1HeadResponse, L2HeadBlockResponse, L2HeadResponse,
-    ProveTimesResponse, SequencerBlocksItem, SequencerBlocksResponse, SequencerDistributionItem,
-    SequencerDistributionResponse, VerifyTimesResponse,
+    ProveCostResponse, ProveTimesResponse, SequencerBlocksItem, SequencerBlocksResponse,
+    SequencerDistributionItem, SequencerDistributionResponse, VerifyCostResponse,
+    VerifyTimesResponse,
 };
 use axum::{
     Json,
@@ -506,6 +507,94 @@ pub async fn l1_data_cost(
     };
     tracing::info!(count = rows.len(), "Returning L1 data cost");
     Ok(Json(L1DataCostResponse { blocks: rows }))
+}
+
+#[utoipa::path(
+    get,
+    path = "/prove-cost",
+    params(
+        PaginatedQuery
+    ),
+    responses(
+        (status = 200, description = "Prover cost", body = ProveCostResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
+    ),
+    tag = "taikoscope"
+)]
+/// Get prover cost information for the specified time range
+pub async fn prove_cost(
+    Query(params): Query<PaginatedQuery>,
+    State(state): State<ApiState>,
+) -> Result<Json<ProveCostResponse>, ErrorResponse> {
+    validate_time_range(&params.common.time_range)?;
+    let limit = validate_pagination(
+        params.starting_after.as_ref(),
+        params.ending_before.as_ref(),
+        params.limit.as_ref(),
+        MAX_TABLE_LIMIT,
+    )?;
+    let has_time_range = has_time_range_params(&params.common.time_range);
+    let has_slot_range = params.starting_after.is_some() || params.ending_before.is_some();
+    validate_range_exclusivity(has_time_range, has_slot_range)?;
+
+    let since = resolve_time_range_since(&params.common.range, &params.common.time_range);
+    let rows = match state
+        .client
+        .get_prove_costs_paginated(since, limit, params.starting_after, params.ending_before)
+        .await
+    {
+        Ok(r) => r,
+        Err(e) => {
+            tracing::error!("Failed to get prove cost: {}", e);
+            return Err(ErrorResponse::database_error());
+        }
+    };
+    tracing::info!(count = rows.len(), "Returning prove cost");
+    Ok(Json(ProveCostResponse { batches: rows }))
+}
+
+#[utoipa::path(
+    get,
+    path = "/verify-cost",
+    params(
+        PaginatedQuery
+    ),
+    responses(
+        (status = 200, description = "Verifier cost", body = VerifyCostResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
+    ),
+    tag = "taikoscope"
+)]
+/// Get verifier cost information for the specified time range
+pub async fn verify_cost(
+    Query(params): Query<PaginatedQuery>,
+    State(state): State<ApiState>,
+) -> Result<Json<VerifyCostResponse>, ErrorResponse> {
+    validate_time_range(&params.common.time_range)?;
+    let limit = validate_pagination(
+        params.starting_after.as_ref(),
+        params.ending_before.as_ref(),
+        params.limit.as_ref(),
+        MAX_TABLE_LIMIT,
+    )?;
+    let has_time_range = has_time_range_params(&params.common.time_range);
+    let has_slot_range = params.starting_after.is_some() || params.ending_before.is_some();
+    validate_range_exclusivity(has_time_range, has_slot_range)?;
+
+    let since = resolve_time_range_since(&params.common.range, &params.common.time_range);
+    let rows = match state
+        .client
+        .get_verify_costs_paginated(since, limit, params.starting_after, params.ending_before)
+        .await
+    {
+        Ok(r) => r,
+        Err(e) => {
+            tracing::error!("Failed to get verify cost: {}", e);
+            return Err(ErrorResponse::database_error());
+        }
+    };
+    tracing::info!(count = rows.len(), "Returning verify cost");
+    Ok(Json(VerifyCostResponse { batches: rows }))
 }
 
 #[utoipa::path(
