@@ -18,6 +18,8 @@ describe('EconomicsChart', () => {
         timeRange: '1h',
         cloudCost: 100,
         proverCost: 100,
+        proveCost: 0,
+        verifyCost: 0,
       }),
     );
 
