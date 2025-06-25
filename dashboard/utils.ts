@@ -61,7 +61,8 @@ export const addressLink = (
 
 export const formatDecimal = (value: number): string => {
   const decimals = Math.abs(value) >= 10 ? 1 : 2;
-  return value.toFixed(decimals);
+  const fixed = value.toFixed(decimals);
+  return Number(fixed).toFixed(decimals);
 };
 
 export const formatSeconds = (seconds: number): string => {
