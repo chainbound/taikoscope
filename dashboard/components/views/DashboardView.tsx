@@ -2,9 +2,7 @@ import React, { useCallback, lazy, useState } from 'react';
 import { ErrorDisplay } from '../layout/ErrorDisplay';
 import { MetricsGrid } from '../layout/MetricsGrid';
 import { ProfitCalculator } from '../ProfitCalculator';
-import { IncomeChart } from '../IncomeChart';
-import { CostChart } from '../CostChart';
-import { ProfitabilityChart } from '../ProfitabilityChart';
+import { EconomicsChart } from '../EconomicsChart';
 import { ProfitRankingTable } from '../ProfitRankingTable';
 import { BlockProfitTables } from '../BlockProfitTables';
 import { FeeFlowChart } from '../FeeFlowChart';
@@ -116,10 +114,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const skeletonGroupCounts: Record<string, number> = isEconomicsView
     ? { 'Network Economics': 3 }
     : {
-      'Network Performance': 3,
-      'Network Health': 5,
-      Sequencers: 3,
-    };
+        'Network Performance': 3,
+        'Network Health': 5,
+        Sequencers: 3,
+      };
 
   const displayGroupName = useCallback(
     (group: string): string => {
@@ -315,29 +313,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               onCloudCostChange={setCloudCost}
               onProverCostChange={setProverCost}
             />
-            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-              <div>
-                <IncomeChart
-                  timeRange={timeRange}
-                  address={selectedSequencer || undefined}
-                />
-              </div>
-              <div>
-                <CostChart
-                  timeRange={timeRange}
-                  cloudCost={cloudCost}
-                  proverCost={proverCost}
-                  address={selectedSequencer || undefined}
-                />
-              </div>
-              <div>
-                <ProfitabilityChart
-                  timeRange={timeRange}
-                  cloudCost={cloudCost}
-                  proverCost={proverCost}
-                  address={selectedSequencer || undefined}
-                />
-              </div>
+            <div className="mt-6">
+              <EconomicsChart
+                timeRange={timeRange}
+                cloudCost={cloudCost}
+                proverCost={proverCost}
+                address={selectedSequencer || undefined}
+              />
             </div>
             <ProfitRankingTable
               timeRange={timeRange}
