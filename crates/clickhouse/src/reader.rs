@@ -16,8 +16,8 @@ use crate::{
         BatchBlobCountRow, BatchFeeComponentRow, BatchPostingTimeRow, BatchProveTimeRow,
         BatchVerifyTimeRow, BlockFeeComponentRow, BlockTransactionRow, ForcedInclusionProcessedRow,
         L1BlockTimeRow, L1DataCostRow, L2BlockTimeRow, L2GasUsedRow, L2ReorgRow, L2TpsRow,
-        PreconfData, SequencerBlockRow, SequencerDistributionRow, SequencerFeeRow,
-        SlashingEventRow,
+        PreconfData, ProveCostRow, SequencerBlockRow, SequencerDistributionRow, SequencerFeeRow,
+        SlashingEventRow, VerifyCostRow,
     },
     types::AddressBytes,
 };
@@ -1874,6 +1874,136 @@ impl ClickhouseReader {
                 l1_data_cost: r.l1_data_cost,
             })
             .collect())
+    }
+
+    /// Get prover cost since the given cutoff time with cursor-based pagination
+    /// Results are returned in descending order by batch id
+    pub async fn get_prove_costs_paginated(
+        &self,
+        since: DateTime<Utc>,
+        limit: u64,
+        starting_after: Option<u64>,
+        ending_before: Option<u64>,
+    ) -> Result<Vec<ProveCostRow>> {
+        let mut query = format!(
+            "SELECT pc.l1_block_number, pc.batch_id, pc.cost \
+             FROM {db}.prove_costs pc \
+             INNER JOIN {db}.l1_head_events h \
+               ON pc.l1_block_number = h.l1_block_number \
+             WHERE h.block_ts >= {since}",
+            since = since.timestamp(),
+            db = self.db_name,
+        );
+        if let Some(start) = starting_after {
+            query.push_str(&format!(" AND pc.batch_id < {}", start));
+        }
+        if let Some(end) = ending_before {
+            query.push_str(&format!(" AND pc.batch_id > {}", end));
+        }
+        query.push_str(" ORDER BY pc.batch_id DESC");
+        query.push_str(&format!(" LIMIT {}", limit));
+
+        let rows = self.execute::<ProveCostRow>(&query).await?;
+        Ok(rows)
+    }
+
+    /// Get verifier cost since the given cutoff time with cursor-based pagination
+    /// Results are returned in descending order by batch id
+    pub async fn get_verify_costs_paginated(
+        &self,
+        since: DateTime<Utc>,
+        limit: u64,
+        starting_after: Option<u64>,
+        ending_before: Option<u64>,
+    ) -> Result<Vec<VerifyCostRow>> {
+        let mut query = format!(
+            "SELECT vc.l1_block_number, vc.batch_id, vc.cost \
+             FROM {db}.verify_costs vc \
+             INNER JOIN {db}.l1_head_events h \
+               ON vc.l1_block_number = h.l1_block_number \
+             WHERE h.block_ts >= {since}",
+            since = since.timestamp(),
+            db = self.db_name,
+        );
+        if let Some(start) = starting_after {
+            query.push_str(&format!(" AND vc.batch_id < {}", start));
+        }
+        if let Some(end) = ending_before {
+            query.push_str(&format!(" AND vc.batch_id > {}", end));
+        }
+        query.push_str(" ORDER BY vc.batch_id DESC");
+        query.push_str(&format!(" LIMIT {}", limit));
+
+        let rows = self.execute::<VerifyCostRow>(&query).await?;
+        Ok(rows)
+    }
+
+    /// Get the total prover cost for the given range
+    pub async fn get_total_prove_cost(
+        &self,
+        sequencer: Option<AddressBytes>,
+        range: TimeRange,
+    ) -> Result<Option<u128>> {
+        #[derive(Row, Deserialize)]
+        struct SumRow {
+            total: u128,
+        }
+
+        let mut query = format!(
+            "SELECT sum(pc.cost) AS total \
+             FROM {db}.prove_costs pc \
+             INNER JOIN {db}.batch_blocks bb ON pc.batch_id = bb.batch_id \
+             INNER JOIN {db}.l2_head_events h ON bb.l2_block_number = h.l2_block_number \
+             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
+               AND {filter}",
+            interval = range.interval(),
+            filter = self.reorg_filter("h"),
+            db = self.db_name,
+        );
+        if let Some(addr) = sequencer {
+            query.push_str(&format!(" AND h.sequencer = unhex('{}')", encode(addr)));
+        }
+
+        let rows = self.execute::<SumRow>(&query).await?;
+        let row = match rows.into_iter().next() {
+            Some(r) => r,
+            None => return Ok(None),
+        };
+        Ok(Some(row.total))
+    }
+
+    /// Get the total verifier cost for the given range
+    pub async fn get_total_verify_cost(
+        &self,
+        sequencer: Option<AddressBytes>,
+        range: TimeRange,
+    ) -> Result<Option<u128>> {
+        #[derive(Row, Deserialize)]
+        struct SumRow {
+            total: u128,
+        }
+
+        let mut query = format!(
+            "SELECT sum(vc.cost) AS total \
+             FROM {db}.verify_costs vc \
+             INNER JOIN {db}.batch_blocks bb ON vc.batch_id = bb.batch_id \
+             INNER JOIN {db}.l2_head_events h ON bb.l2_block_number = h.l2_block_number \
+             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
+               AND {filter}",
+            interval = range.interval(),
+            filter = self.reorg_filter("h"),
+            db = self.db_name,
+        );
+        if let Some(addr) = sequencer {
+            query.push_str(&format!(" AND h.sequencer = unhex('{}')", encode(addr)));
+        }
+
+        let rows = self.execute::<SumRow>(&query).await?;
+        let row = match rows.into_iter().next() {
+            Some(r) => r,
+            None => return Ok(None),
+        };
+        Ok(Some(row.total))
     }
 
     /// Get the transactions per second for each L2 block within the given range
