@@ -652,7 +652,7 @@ mod tests {
                 password: "pass".into(),
             },
             nats: NatsOpts {
-                nats_url,
+                nats_url: Some(nats_url),
                 username: Some("natsuser".into()),
                 password: Some("natspass".into()),
             },

@@ -27,7 +27,7 @@ pub struct ClickhouseOpts {
 pub struct NatsOpts {
     /// Nats server URL
     #[clap(long = "nats-url", env = "NATS_URL")]
-    pub nats_url: Url,
+    pub nats_url: Option<Url>,
     /// Nats username
     #[clap(id = "nats_username", long = "nats-username", env = "NATS_USERNAME")]
     pub username: Option<String>,
