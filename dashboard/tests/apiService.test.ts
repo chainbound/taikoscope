@@ -7,6 +7,7 @@ import {
   fetchL2BlockTimes,
   fetchBlockTransactions,
   fetchAvgL2Tps,
+  fetchDashboardData,
 } from '../services/apiService.ts';
 
 const originalFetch = globalThis.fetch;
@@ -134,6 +135,24 @@ describe('apiService', () => {
     expect(res.badRequest).toBe(true);
     expect(res.error).toStrictEqual({});
     expect(res.data).toBeNull();
+  });
+
+  it('fetchDashboardData returns prove and verify cost', async () => {
+    globalThis.fetch = mockFetch({ prove_cost: 10, verify_cost: 20 });
+    const res = await fetchDashboardData('1h');
+    expect(res.badRequest).toBe(false);
+    expect(res.error).toBeNull();
+    expect(res.data?.prove_cost).toBe(10);
+    expect(res.data?.verify_cost).toBe(20);
+  });
+
+  it('fetchDashboardData 15m returns prove and verify cost', async () => {
+    globalThis.fetch = mockFetch({ prove_cost: 11, verify_cost: 21 });
+    const res = await fetchDashboardData('15m');
+    expect(res.badRequest).toBe(false);
+    expect(res.error).toBeNull();
+    expect(res.data?.prove_cost).toBe(11);
+    expect(res.data?.verify_cost).toBe(21);
   });
 
   it('retries failed fetches and then throws', async () => {

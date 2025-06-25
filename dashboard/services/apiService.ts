@@ -983,6 +983,8 @@ export interface DashboardDataResponse {
   l1_head_block: number | null;
   priority_fee: number | null;
   base_fee: number | null;
+  prove_cost: number | null;
+  verify_cost: number | null;
   cloud_cost: number | null;
 }
 
@@ -993,5 +995,10 @@ export const fetchDashboardData = async (
   const url =
     `${API_BASE}/dashboard-data?${timeRangeToQuery(range)}` +
     (address ? `&address=${address}` : '');
-  return fetchJson<DashboardDataResponse>(url);
+  const res = await fetchJson<DashboardDataResponse>(url);
+  return {
+    data: res.data ?? null,
+    badRequest: res.badRequest,
+    error: res.error,
+  };
 };
