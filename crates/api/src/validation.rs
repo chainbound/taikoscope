@@ -27,6 +27,23 @@ pub struct TimeRangeParams {
     pub created_lte: Option<u64>,
 }
 
+/// Base block range filtering parameters
+#[derive(Debug, Deserialize, ToSchema, IntoParams)]
+pub struct BlockRangeParams {
+    /// Filter for block numbers greater than this value (exclusive)
+    #[serde(rename = "block[gt]", deserialize_with = "crate::validation::de_u64_opt", default)]
+    pub block_gt: Option<u64>,
+    /// Filter for block numbers greater than or equal to this value (inclusive)
+    #[serde(rename = "block[gte]", deserialize_with = "crate::validation::de_u64_opt", default)]
+    pub block_gte: Option<u64>,
+    /// Filter for block numbers less than this value (exclusive)
+    #[serde(rename = "block[lt]", deserialize_with = "crate::validation::de_u64_opt", default)]
+    pub block_lt: Option<u64>,
+    /// Filter for block numbers less than or equal to this value (inclusive)
+    #[serde(rename = "block[lte]", deserialize_with = "crate::validation::de_u64_opt", default)]
+    pub block_lte: Option<u64>,
+}
+
 /// Common query parameters for most endpoints
 #[derive(Debug, Deserialize, ToSchema, IntoParams)]
 pub struct CommonQuery {
@@ -120,6 +137,44 @@ pub fn validate_time_range(params: &TimeRangeParams) -> Result<(), ErrorResponse
     Ok(())
 }
 
+/// Validate block range parameters for logical consistency
+pub fn validate_block_range(params: &BlockRangeParams) -> Result<(), ErrorResponse> {
+    if let (Some(_), Some(_)) = (params.block_gt, params.block_gte) {
+        return Err(ErrorResponse::new(
+            "invalid-params",
+            "Bad Request",
+            StatusCode::BAD_REQUEST,
+            "block[gt] and block[gte] cannot be used together",
+        ));
+    }
+
+    if let (Some(_), Some(_)) = (params.block_lt, params.block_lte) {
+        return Err(ErrorResponse::new(
+            "invalid-params",
+            "Bad Request",
+            StatusCode::BAD_REQUEST,
+            "block[lt] and block[lte] cannot be used together",
+        ));
+    }
+
+    let lower_bound = params.block_gt.map(|v| v + 1).or(params.block_gte);
+    let upper_bound = params.block_lt.or(params.block_lte);
+
+    if let (Some(lower), Some(upper)) = (lower_bound, upper_bound) {
+        let is_inclusive = params.block_lte.is_some();
+        if (is_inclusive && lower > upper) || (!is_inclusive && lower >= upper) {
+            return Err(ErrorResponse::new(
+                "invalid-params",
+                "Bad Request",
+                StatusCode::BAD_REQUEST,
+                "Invalid block range: start block must be before end block",
+            ));
+        }
+    }
+
+    Ok(())
+}
+
 /// Validate pagination parameters
 pub fn validate_pagination(
     starting_after: Option<&u64>,
@@ -163,6 +218,14 @@ pub const fn has_time_range_params(params: &TimeRangeParams) -> bool {
         params.created_gte.is_some() ||
         params.created_lt.is_some() ||
         params.created_lte.is_some()
+}
+
+/// Check if `BlockRangeParams` has any values set
+pub const fn has_block_range_params(params: &BlockRangeParams) -> bool {
+    params.block_gt.is_some() ||
+        params.block_gte.is_some() ||
+        params.block_lt.is_some() ||
+        params.block_lte.is_some()
 }
 
 /// Convert a range string to `ChronoDuration` (e.g., "15m", "1h", "24h", "7d")
@@ -432,6 +495,62 @@ mod tests {
             created_lte: None,
         };
         assert!(has_time_range_params(&with_gt));
+    }
+
+    #[test]
+    fn test_block_range_validation_mutually_exclusive_gt_gte() {
+        let params = BlockRangeParams {
+            block_gt: Some(10),
+            block_gte: Some(20),
+            block_lt: None,
+            block_lte: None,
+        };
+
+        let result = validate_block_range(&params);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.detail.contains("block[gt] and block[gte] cannot be used together"));
+    }
+
+    #[test]
+    fn test_block_range_validation_invalid_range() {
+        let params = BlockRangeParams {
+            block_gt: Some(200),
+            block_gte: None,
+            block_lt: Some(100),
+            block_lte: None,
+        };
+
+        let result = validate_block_range(&params);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_block_range_validation_valid_range() {
+        let params = BlockRangeParams {
+            block_gt: Some(100),
+            block_gte: None,
+            block_lt: Some(200),
+            block_lte: None,
+        };
+
+        let result = validate_block_range(&params);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_has_block_range_params() {
+        let empty_params =
+            BlockRangeParams { block_gt: None, block_gte: None, block_lt: None, block_lte: None };
+        assert!(!has_block_range_params(&empty_params));
+
+        let with_gt = BlockRangeParams {
+            block_gt: Some(1),
+            block_gte: None,
+            block_lt: None,
+            block_lte: None,
+        };
+        assert!(has_block_range_params(&with_gt));
     }
 
     #[test]
