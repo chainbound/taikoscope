@@ -70,6 +70,20 @@ pub struct PaginatedQuery {
     pub ending_before: Option<u64>,
 }
 
+/// Query parameters that combine block range filters with pagination
+#[derive(Debug, Deserialize, ToSchema, IntoParams)]
+pub struct BlockPaginatedQuery {
+    /// Block range filtering parameters
+    #[serde(flatten)]
+    pub block_range: BlockRangeParams,
+    /// Maximum number of items to return
+    pub limit: Option<u64>,
+    /// Return items after this cursor (exclusive)
+    pub starting_after: Option<u64>,
+    /// Return items before this cursor (exclusive)
+    pub ending_before: Option<u64>,
+}
+
 /// Query parameters for block profit ranking endpoints
 #[derive(Debug, Deserialize, ToSchema, IntoParams)]
 pub struct ProfitQuery {
@@ -526,12 +540,53 @@ mod tests {
     }
 
     #[test]
+    fn test_block_range_validation_invalid_range_gte_lte() {
+        let params = BlockRangeParams {
+            block_gt: None,
+            block_gte: Some(200),
+            block_lt: None,
+            block_lte: Some(100),
+        };
+
+        let result = validate_block_range(&params);
+        assert!(result.is_err());
+    }
+
+    #[test]
     fn test_block_range_validation_valid_range() {
         let params = BlockRangeParams {
             block_gt: Some(100),
             block_gte: None,
             block_lt: Some(200),
             block_lte: None,
+        };
+
+        let result = validate_block_range(&params);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_block_range_validation_mutually_exclusive_lt_lte() {
+        let params = BlockRangeParams {
+            block_gt: None,
+            block_gte: None,
+            block_lt: Some(50),
+            block_lte: Some(100),
+        };
+
+        let result = validate_block_range(&params);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.detail.contains("block[lt] and block[lte] cannot be used together"));
+    }
+
+    #[test]
+    fn test_block_range_validation_equal_boundary_with_lte() {
+        let params = BlockRangeParams {
+            block_gt: None,
+            block_gte: Some(100),
+            block_lt: None,
+            block_lte: Some(100),
         };
 
         let result = validate_block_range(&params);

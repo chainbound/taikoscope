@@ -53,6 +53,7 @@ use utoipa::OpenApi;
         schemas(
             validation::CommonQuery,
             validation::PaginatedQuery,
+            validation::BlockPaginatedQuery,
             validation::TimeRangeParams,
             validation::BlockRangeParams,
             L2HeadResponse,
