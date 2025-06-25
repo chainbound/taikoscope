@@ -470,11 +470,22 @@ pub async fn batch_fee_components(
         None
     };
 
-    let batches =
-        state.client.get_batch_fee_components(address, time_range).await.map_err(|e| {
-            tracing::error!(error = %e, "Failed to get batch fee components");
-            ErrorResponse::database_error()
-        })?;
+    let rows = state.client.get_batch_fee_components(address, time_range).await.map_err(|e| {
+        tracing::error!(error = %e, "Failed to get batch fee components");
+        ErrorResponse::database_error()
+    })?;
+
+    let batches: Vec<BatchFeeComponentRow> = rows
+        .into_iter()
+        .map(|r| BatchFeeComponentRow {
+            batch_id: r.batch_id,
+            l1_block_number: r.l1_block_number,
+            sequencer: format!("0x{}", encode(r.sequencer)),
+            priority_fee: r.priority_fee,
+            base_fee: r.base_fee,
+            l1_data_cost: r.l1_data_cost,
+        })
+        .collect();
 
     Ok(Json(BatchFeeComponentsResponse { batches }))
 }
@@ -519,11 +530,22 @@ pub async fn batch_fee_components_aggregated(
         None
     };
 
-    let batches =
-        state.client.get_batch_fee_components(address, time_range).await.map_err(|e| {
-            tracing::error!(error = %e, "Failed to get batch fee components");
-            ErrorResponse::database_error()
-        })?;
+    let rows = state.client.get_batch_fee_components(address, time_range).await.map_err(|e| {
+        tracing::error!(error = %e, "Failed to get batch fee components");
+        ErrorResponse::database_error()
+    })?;
+
+    let batches: Vec<BatchFeeComponentRow> = rows
+        .into_iter()
+        .map(|r| BatchFeeComponentRow {
+            batch_id: r.batch_id,
+            l1_block_number: r.l1_block_number,
+            sequencer: format!("0x{}", encode(r.sequencer)),
+            priority_fee: r.priority_fee,
+            base_fee: r.base_fee,
+            l1_data_cost: r.l1_data_cost,
+        })
+        .collect();
 
     let bucket = bucket_size_from_range(&time_range);
     let batches = aggregate_batch_fee_components(batches, bucket);

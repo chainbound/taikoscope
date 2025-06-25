@@ -94,7 +94,6 @@ use utoipa::OpenApi;
             FeeComponentsResponse,
             BatchFeeComponentsResponse,
             SequencerFeeRow,
-            clickhouse_lib::BatchFeeComponentRow,
             DashboardDataResponse,
             EthPriceResponse,
             api_types::ErrorResponse,

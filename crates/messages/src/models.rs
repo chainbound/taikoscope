@@ -306,6 +306,8 @@ pub struct SequencerFeeRow {
 pub struct BatchFeeComponentRow {
     /// Batch ID
     pub batch_id: u64,
+    /// Sequencer address that proposed the batch
+    pub sequencer: AddressBytes,
     /// Total priority fee for the batch
     pub priority_fee: u128,
     /// Total base fee for the batch
