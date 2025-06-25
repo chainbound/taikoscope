@@ -381,3 +381,51 @@ pub async fn blobs_per_batch(
     tracing::info!(count = batches.len(), "Returning blobs per batch");
     Ok(Json(BatchBlobsResponse { batches }))
 }
+
+#[utoipa::path(
+    get,
+    path = "/batch-blocks",
+    params(
+        PaginatedQuery
+    ),
+    responses(
+        (status = 200, description = "Batch block mappings", body = BatchBlocksResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
+    ),
+    tag = "taikoscope"
+)]
+/// Get the first L2 block number for each batch in the range
+pub async fn batch_blocks(
+    Query(params): Query<PaginatedQuery>,
+    State(state): State<ApiState>,
+) -> Result<Json<BatchBlocksResponse>, ErrorResponse> {
+    validate_time_range(&params.common.time_range)?;
+    let limit = validate_pagination(
+        params.starting_after.as_ref(),
+        params.ending_before.as_ref(),
+        params.limit.as_ref(),
+        MAX_TABLE_LIMIT,
+    )?;
+    let has_time_range = has_time_range_params(&params.common.time_range);
+    let has_slot_range = params.starting_after.is_some() || params.ending_before.is_some();
+    validate_range_exclusivity(has_time_range, has_slot_range)?;
+
+    let since = resolve_time_range_since(&params.common.range, &params.common.time_range);
+    let rows = match state
+        .client
+        .get_batch_first_blocks_paginated(since, limit, params.starting_after, params.ending_before)
+        .await
+    {
+        Ok(rows) => rows,
+        Err(e) => {
+            tracing::error!(error = %e, "Failed to get batch blocks");
+            return Err(ErrorResponse::database_error());
+        }
+    };
+    let batches: Vec<BatchBlockItem> = rows
+        .into_iter()
+        .map(|r| BatchBlockItem { batch: r.batch_id, block: r.l2_block_number })
+        .collect();
+    tracing::info!(count = batches.len(), "Returning batch blocks");
+    Ok(Json(BatchBlocksResponse { batches }))
+}

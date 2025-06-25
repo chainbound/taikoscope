@@ -13,11 +13,11 @@ use url::Url;
 
 use crate::{
     models::{
-        BatchBlobCountRow, BatchFeeComponentRow, BatchPostingTimeRow, BatchProveTimeRow,
-        BatchVerifyTimeRow, BlockFeeComponentRow, BlockTransactionRow, ForcedInclusionProcessedRow,
-        L1BlockTimeRow, L1DataCostRow, L2BlockTimeRow, L2GasUsedRow, L2ReorgRow, L2TpsRow,
-        PreconfData, SequencerBlockRow, SequencerDistributionRow, SequencerFeeRow,
-        SlashingEventRow,
+        BatchBlobCountRow, BatchBlockRow, BatchFeeComponentRow, BatchPostingTimeRow,
+        BatchProveTimeRow, BatchVerifyTimeRow, BlockFeeComponentRow, BlockTransactionRow,
+        ForcedInclusionProcessedRow, L1BlockTimeRow, L1DataCostRow, L2BlockTimeRow, L2GasUsedRow,
+        L2ReorgRow, L2TpsRow, PreconfData, SequencerBlockRow, SequencerDistributionRow,
+        SequencerFeeRow, SlashingEventRow,
     },
     types::AddressBytes,
 };
@@ -1965,6 +1965,37 @@ impl ClickhouseReader {
         };
 
         if row.avg.is_nan() { Ok(None) } else { Ok(Some(row.avg)) }
+    }
+
+    /// Get the first L2 block number for each batch since the cutoff time with cursor-based
+    /// pagination. Results are returned in descending order by batch id.
+    pub async fn get_batch_first_blocks_paginated(
+        &self,
+        since: DateTime<Utc>,
+        limit: u64,
+        starting_after: Option<u64>,
+        ending_before: Option<u64>,
+    ) -> Result<Vec<BatchBlockRow>> {
+        let mut query = format!(
+            "SELECT bb.batch_id, min(bb.l2_block_number) AS l2_block_number \
+             FROM {db}.batch_blocks bb \
+             INNER JOIN {db}.batches b ON bb.batch_id = b.batch_id \
+             INNER JOIN {db}.l1_head_events l1 ON b.l1_block_number = l1.l1_block_number \
+             WHERE l1.block_ts >= {since}",
+            since = since.timestamp(),
+            db = self.db_name,
+        );
+        if let Some(start) = starting_after {
+            query.push_str(&format!(" AND bb.batch_id < {}", start));
+        }
+        if let Some(end) = ending_before {
+            query.push_str(&format!(" AND bb.batch_id > {}", end));
+        }
+        query.push_str(" GROUP BY bb.batch_id ORDER BY bb.batch_id DESC");
+        query.push_str(&format!(" LIMIT {}", limit));
+
+        let rows = self.execute::<BatchBlockRow>(&query).await?;
+        Ok(rows)
     }
 }
 

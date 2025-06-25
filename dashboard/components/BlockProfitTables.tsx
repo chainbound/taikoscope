@@ -2,7 +2,7 @@ import React from 'react';
 import useSWR from 'swr';
 import {
   fetchBatchFeeComponents,
-  fetchBatchBlobCounts,
+  fetchBatchBlocks,
 } from '../services/apiService';
 import { useEthPrice } from '../services/priceService';
 import { TimeRange } from '../types';
@@ -36,18 +36,18 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
     ['batchFeeComponents', timeRange, address],
     () => fetchBatchFeeComponents(timeRange, address),
   );
-  const { data: blobRes } = useSWR(['batchBlobCounts', timeRange], () =>
-    fetchBatchBlobCounts(timeRange),
+  const { data: blockRes } = useSWR(['batchBlocks', timeRange], () =>
+    fetchBatchBlocks(timeRange, 1000),
   );
   const batchData = feeRes?.data ?? [];
   const batchCount = batchData.length;
   const batchBlockMap = React.useMemo(() => {
     const map = new Map<number, number>();
-    blobRes?.data?.forEach((b) => {
+    blockRes?.data?.forEach((b) => {
       map.set(b.batch, b.block);
     });
     return map;
-  }, [blobRes]);
+  }, [blockRes]);
   const HOURS_IN_MONTH = 30 * 24;
   const hours = rangeToHours(timeRange);
   const costPerBatchUsd =

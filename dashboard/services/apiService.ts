@@ -738,6 +738,40 @@ export const fetchBatchBlobCounts = async (
   };
 };
 
+export interface BatchBlock {
+  block: number;
+  batch: number;
+}
+
+export const fetchBatchBlocks = async (
+  range: TimeRange,
+  limit = 50,
+  startingAfter?: number,
+  endingBefore?: number,
+): Promise<RequestResult<BatchBlock[]>> => {
+  let url = `${API_BASE}/batch-blocks?`;
+  if (startingAfter === undefined && endingBefore === undefined) {
+    url += `${timeRangeToQuery(range)}&limit=${limit}`;
+  } else {
+    url += `limit=${limit}`;
+  }
+  if (startingAfter !== undefined) {
+    url += `&starting_after=${startingAfter}`;
+  } else if (endingBefore !== undefined) {
+    url += `&ending_before=${endingBefore}`;
+  }
+  const res = await fetchJson<{
+    batches: { batch_id: number; l2_block_number: number }[];
+  }>(url);
+  return {
+    data: res.data
+      ? res.data.batches.map((b) => ({ batch: b.batch_id, block: b.l2_block_number }))
+      : null,
+    badRequest: res.badRequest,
+    error: res.error,
+  };
+};
+
 export const fetchAvgBlobsPerBatch = async (
   range: TimeRange,
 ): Promise<RequestResult<number>> => {
