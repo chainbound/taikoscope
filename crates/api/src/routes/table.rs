@@ -3,22 +3,21 @@
 use crate::{
     state::{ApiState, MAX_TABLE_LIMIT},
     validation::{
-        PaginatedQuery, has_time_range_params, resolve_time_range_since, validate_pagination,
+        BlockPaginatedQuery, PaginatedQuery, has_block_range_params, has_time_range_params,
+        resolve_time_range_since, validate_block_range, validate_pagination,
         validate_range_exclusivity, validate_time_range,
     },
 };
-use alloy_primitives::Address;
 use api_types::*;
 use axum::{
     Json,
     extract::{Query, State},
-    http::StatusCode,
 };
-use clickhouse_lib::AddressBytes;
+
 use hex::encode;
 
 // Legacy type aliases for backward compatibility
-type BlockTransactionsQuery = PaginatedQuery;
+type BlockTransactionsQuery = BlockPaginatedQuery;
 
 #[utoipa::path(
     get,
@@ -68,7 +67,7 @@ pub async fn reorgs(
     get,
     path = "/l2-tps",
     params(
-        PaginatedQuery
+        BlockPaginatedQuery
     ),
     responses(
         (status = 200, description = "L2 TPS", body = L2TpsResponse),
@@ -78,48 +77,40 @@ pub async fn reorgs(
 )]
 /// Get paginated L2 transactions per second data
 pub async fn l2_tps(
-    Query(params): Query<PaginatedQuery>,
+    Query(params): Query<BlockPaginatedQuery>,
     State(state): State<ApiState>,
 ) -> Result<Json<L2TpsResponse>, ErrorResponse> {
-    validate_time_range(&params.common.time_range)?;
+    validate_block_range(&params.block_range)?;
     let limit = validate_pagination(
         params.starting_after.as_ref(),
         params.ending_before.as_ref(),
         params.limit.as_ref(),
         MAX_TABLE_LIMIT,
     )?;
-    let has_time_range = has_time_range_params(&params.common.time_range);
+    let has_block_range = has_block_range_params(&params.block_range);
     let has_slot_range = params.starting_after.is_some() || params.ending_before.is_some();
-    validate_range_exclusivity(has_time_range, has_slot_range)?;
+    validate_range_exclusivity(has_block_range, has_slot_range)?;
 
-    let since = resolve_time_range_since(&params.common.range, &params.common.time_range);
-    let address = if let Some(addr) = params.common.address.as_ref() {
-        match addr.parse::<Address>() {
-            Ok(a) => Some(AddressBytes::from(a)),
-            Err(e) => {
-                tracing::warn!(error = %e, "Failed to parse address");
-                return Err(ErrorResponse::new(
-                    "invalid-params",
-                    "Bad Request",
-                    StatusCode::BAD_REQUEST,
-                    e.to_string(),
-                ));
-            }
-        }
-    } else {
-        None
-    };
-    let blocks = match state
-        .client
-        .get_l2_tps_paginated(since, limit, params.starting_after, params.ending_before, address)
-        .await
-    {
+    let start_block = params.block_range.block_gt.map(|v| v + 1).or(params.block_range.block_gte);
+    let end_block = params.block_range.block_lt.or(params.block_range.block_lte);
+
+    let mut blocks = match state.client.get_l2_tps_block_range(None, start_block, end_block).await {
         Ok(rows) => rows,
         Err(e) => {
             tracing::error!("Failed to get L2 TPS: {}", e);
             return Err(ErrorResponse::database_error());
         }
     };
+    if let Some(start) = params.starting_after {
+        blocks.retain(|b| b.l2_block_number < start);
+    }
+    if let Some(end) = params.ending_before {
+        blocks.retain(|b| b.l2_block_number > end);
+    }
+    blocks.sort_by(|a, b| b.l2_block_number.cmp(&a.l2_block_number));
+    if blocks.len() > limit as usize {
+        blocks.truncate(limit as usize);
+    }
     tracing::info!(count = blocks.len(), "Returning L2 TPS");
     Ok(Json(L2TpsResponse { blocks }))
 }
@@ -128,7 +119,7 @@ pub async fn l2_tps(
     get,
     path = "/l2-block-times",
     params(
-        PaginatedQuery
+        BlockPaginatedQuery
     ),
     responses(
         (status = 200, description = "Paginated L2 block times", body = L2BlockTimesResponse),
@@ -138,55 +129,42 @@ pub async fn l2_tps(
 )]
 /// Get paginated L2 block timing information
 pub async fn l2_block_times(
-    Query(params): Query<PaginatedQuery>,
+    Query(params): Query<BlockPaginatedQuery>,
     State(state): State<ApiState>,
 ) -> Result<Json<L2BlockTimesResponse>, ErrorResponse> {
-    validate_time_range(&params.common.time_range)?;
+    validate_block_range(&params.block_range)?;
     let limit = validate_pagination(
         params.starting_after.as_ref(),
         params.ending_before.as_ref(),
         params.limit.as_ref(),
         MAX_TABLE_LIMIT,
     )?;
-    let has_time_range = has_time_range_params(&params.common.time_range);
+    let has_block_range = has_block_range_params(&params.block_range);
     let has_slot_range = params.starting_after.is_some() || params.ending_before.is_some();
-    validate_range_exclusivity(has_time_range, has_slot_range)?;
+    validate_range_exclusivity(has_block_range, has_slot_range)?;
 
-    let since = resolve_time_range_since(&params.common.range, &params.common.time_range);
-    let address = if let Some(addr) = params.common.address.as_ref() {
-        match addr.parse::<Address>() {
-            Ok(a) => Some(AddressBytes::from(a)),
+    let start_block = params.block_range.block_gt.map(|v| v + 1).or(params.block_range.block_gte);
+    let end_block = params.block_range.block_lt.or(params.block_range.block_lte);
+
+    let mut rows =
+        match state.client.get_l2_block_times_block_range(None, start_block, end_block).await {
+            Ok(r) => r,
             Err(e) => {
-                tracing::warn!(error = %e, "Failed to parse address");
-                return Err(ErrorResponse::new(
-                    "invalid-params",
-                    "Bad Request",
-                    StatusCode::BAD_REQUEST,
-                    e.to_string(),
-                ));
+                tracing::error!(error = %e, "Failed to get L2 block times");
+                return Err(ErrorResponse::database_error());
             }
-        }
-    } else {
-        None
-    };
+        };
 
-    let rows = match state
-        .client
-        .get_l2_block_times_paginated(
-            since,
-            limit,
-            params.starting_after,
-            params.ending_before,
-            address,
-        )
-        .await
-    {
-        Ok(r) => r,
-        Err(e) => {
-            tracing::error!(error = %e, "Failed to get L2 block times");
-            return Err(ErrorResponse::database_error());
-        }
-    };
+    if let Some(start) = params.starting_after {
+        rows.retain(|b| b.l2_block_number < start);
+    }
+    if let Some(end) = params.ending_before {
+        rows.retain(|b| b.l2_block_number > end);
+    }
+    rows.sort_by(|a, b| b.l2_block_number.cmp(&a.l2_block_number));
+    if rows.len() > limit as usize {
+        rows.truncate(limit as usize);
+    }
 
     tracing::info!(count = rows.len(), "Returning table L2 block times");
     Ok(Json(L2BlockTimesResponse { blocks: rows }))
@@ -196,7 +174,7 @@ pub async fn l2_block_times(
     get,
     path = "/l2-gas-used",
     params(
-        PaginatedQuery
+        BlockPaginatedQuery
     ),
     responses(
         (status = 200, description = "Paginated L2 gas used", body = L2GasUsedResponse),
@@ -206,55 +184,42 @@ pub async fn l2_block_times(
 )]
 /// Get paginated L2 gas usage information per block
 pub async fn l2_gas_used(
-    Query(params): Query<PaginatedQuery>,
+    Query(params): Query<BlockPaginatedQuery>,
     State(state): State<ApiState>,
 ) -> Result<Json<L2GasUsedResponse>, ErrorResponse> {
-    validate_time_range(&params.common.time_range)?;
+    validate_block_range(&params.block_range)?;
     let limit = validate_pagination(
         params.starting_after.as_ref(),
         params.ending_before.as_ref(),
         params.limit.as_ref(),
         MAX_TABLE_LIMIT,
     )?;
-    let has_time_range = has_time_range_params(&params.common.time_range);
+    let has_block_range = has_block_range_params(&params.block_range);
     let has_slot_range = params.starting_after.is_some() || params.ending_before.is_some();
-    validate_range_exclusivity(has_time_range, has_slot_range)?;
+    validate_range_exclusivity(has_block_range, has_slot_range)?;
 
-    let since = resolve_time_range_since(&params.common.range, &params.common.time_range);
-    let address = if let Some(addr) = params.common.address.as_ref() {
-        match addr.parse::<Address>() {
-            Ok(a) => Some(AddressBytes::from(a)),
+    let start_block = params.block_range.block_gt.map(|v| v + 1).or(params.block_range.block_gte);
+    let end_block = params.block_range.block_lt.or(params.block_range.block_lte);
+
+    let mut rows =
+        match state.client.get_l2_gas_used_block_range(None, start_block, end_block).await {
+            Ok(r) => r,
             Err(e) => {
-                tracing::warn!(error = %e, "Failed to parse address");
-                return Err(ErrorResponse::new(
-                    "invalid-params",
-                    "Bad Request",
-                    StatusCode::BAD_REQUEST,
-                    e.to_string(),
-                ));
+                tracing::error!("Failed to get L2 gas used: {}", e);
+                return Err(ErrorResponse::database_error());
             }
-        }
-    } else {
-        None
-    };
+        };
 
-    let rows = match state
-        .client
-        .get_l2_gas_used_paginated(
-            since,
-            limit,
-            params.starting_after,
-            params.ending_before,
-            address,
-        )
-        .await
-    {
-        Ok(r) => r,
-        Err(e) => {
-            tracing::error!("Failed to get L2 gas used: {}", e);
-            return Err(ErrorResponse::database_error());
-        }
-    };
+    if let Some(start) = params.starting_after {
+        rows.retain(|b| b.l2_block_number < start);
+    }
+    if let Some(end) = params.ending_before {
+        rows.retain(|b| b.l2_block_number > end);
+    }
+    rows.sort_by(|a, b| b.l2_block_number.cmp(&a.l2_block_number));
+    if rows.len() > limit as usize {
+        rows.truncate(limit as usize);
+    }
 
     tracing::info!(count = rows.len(), "Returning table L2 gas used");
     Ok(Json(L2GasUsedResponse { blocks: rows }))
@@ -277,52 +242,39 @@ pub async fn block_transactions(
     Query(params): Query<BlockTransactionsQuery>,
     State(state): State<ApiState>,
 ) -> Result<Json<BlockTransactionsResponse>, ErrorResponse> {
-    validate_time_range(&params.common.time_range)?;
+    validate_block_range(&params.block_range)?;
     let limit = validate_pagination(
         params.starting_after.as_ref(),
         params.ending_before.as_ref(),
         params.limit.as_ref(),
         MAX_TABLE_LIMIT,
     )?;
-    let has_time_range = has_time_range_params(&params.common.time_range);
+    let has_block_range = has_block_range_params(&params.block_range);
     let has_slot_range = params.starting_after.is_some() || params.ending_before.is_some();
-    validate_range_exclusivity(has_time_range, has_slot_range)?;
+    validate_range_exclusivity(has_block_range, has_slot_range)?;
 
-    let since = resolve_time_range_since(&params.common.range, &params.common.time_range);
-    let address = if let Some(addr) = params.common.address.as_ref() {
-        match addr.parse::<Address>() {
-            Ok(a) => Some(AddressBytes::from(a)),
+    let start_block = params.block_range.block_gt.map(|v| v + 1).or(params.block_range.block_gte);
+    let end_block = params.block_range.block_lt.or(params.block_range.block_lte);
+
+    let mut rows =
+        match state.client.get_block_transactions_block_range(start_block, end_block, None).await {
+            Ok(r) => r,
             Err(e) => {
-                tracing::warn!(error = %e, "Failed to parse address");
-                return Err(ErrorResponse::new(
-                    "invalid-params",
-                    "Bad Request",
-                    StatusCode::BAD_REQUEST,
-                    e.to_string(),
-                ));
+                tracing::error!(error = %e, "Failed to get block transactions");
+                return Err(ErrorResponse::database_error());
             }
-        }
-    } else {
-        None
-    };
+        };
 
-    let rows = match state
-        .client
-        .get_block_transactions_paginated(
-            since,
-            limit,
-            params.starting_after,
-            params.ending_before,
-            address,
-        )
-        .await
-    {
-        Ok(r) => r,
-        Err(e) => {
-            tracing::error!(error = %e, "Failed to get block transactions");
-            return Err(ErrorResponse::database_error());
-        }
-    };
+    if let Some(start) = params.starting_after {
+        rows.retain(|b| b.l2_block_number < start);
+    }
+    if let Some(end) = params.ending_before {
+        rows.retain(|b| b.l2_block_number > end);
+    }
+    rows.sort_by(|a, b| b.l2_block_number.cmp(&a.l2_block_number));
+    if rows.len() > limit as usize {
+        rows.truncate(limit as usize);
+    }
 
     let blocks: Vec<BlockTransactionsItem> = rows
         .into_iter()
