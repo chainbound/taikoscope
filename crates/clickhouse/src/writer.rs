@@ -377,7 +377,7 @@ impl ClickhouseWriter {
         insert.end().await?;
 
         // Insert batch-block mappings
-        let l2_block_numbers = batch_row.l2_block_numbers();
+        let l2_block_numbers = batch.block_numbers_proposed();
         self.insert_batch_blocks(batch_row.batch_id, l2_block_numbers).await?;
 
         Ok(())
