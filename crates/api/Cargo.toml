@@ -25,6 +25,8 @@ tower-http.workspace = true
 futures.workspace = true
 utoipa.workspace = true
 utoipa-swagger-ui.workspace = true
+network = { path = "../network" }
+reqwest.workspace = true
 
 [dev-dependencies]
 tower = "0.5"

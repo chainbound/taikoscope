@@ -14,7 +14,7 @@ function mockFetch(price: number, ok = true) {
   return vi.fn(async () => ({
     ok,
     status: ok ? 200 : 500,
-    json: async () => ({ ethereum: { usd: price } }),
+    json: async () => ({ price }),
   })) as unknown as typeof fetch;
 }
 

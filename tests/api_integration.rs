@@ -11,6 +11,7 @@ use tokio::{
     time::{Instant, sleep},
 };
 use url::Url;
+use mockito;
 
 use api::{ApiState, DEFAULT_MAX_REQUESTS, DEFAULT_RATE_PERIOD};
 use axum::{extract::connect_info::IntoMakeServiceWithConnectInfo, serve};
@@ -421,5 +422,76 @@ async fn batch_fee_components_integration() {
         serde_json::json!({ "batches": [ { "batch_id": 1, "priority_fee": 10, "base_fee": 20, "l1_data_cost": 5 } ] })
     );
 
+    server.abort();
+}
+
+#[tokio::test]
+async fn eth_price_cached() {
+    let ck = Mock::new();
+    ck.add(handlers::provide(vec![MaxRow { block_ts: 1 }]));
+
+    let url = Url::parse(ck.url()).unwrap();
+    let client =
+        ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+    let mut price_server = mockito::Server::new_async().await;
+    let mock = price_server
+        .mock("GET", "/")
+        .with_status(200)
+        .with_header("content-type", "application/json")
+        .with_body("{\"ethereum\":{\"usd\":123.45}}")
+        .expect(1)
+        .create_async()
+        .await;
+
+    std::env::set_var("ETH_PRICE_URL", price_server.url());
+
+    let (addr, server) = spawn_server(client).await;
+    wait_for_server(addr).await;
+
+    let url = format!("http://{addr}/{API_VERSION}/eth-price");
+    let resp1 = reqwest::get(&url).await.unwrap();
+    assert_eq!(resp1.status(), StatusCode::OK);
+    let body: serde_json::Value = resp1.json().await.unwrap();
+    assert_eq!(body, serde_json::json!({ "price": 123.45 }));
+
+    let resp2 = reqwest::get(&url).await.unwrap();
+    assert_eq!(resp2.status(), StatusCode::OK);
+
+    mock.assert_async().await;
+    std::env::remove_var("ETH_PRICE_URL");
+    server.abort();
+}
+
+#[tokio::test]
+async fn eth_price_handles_429() {
+    let ck = Mock::new();
+    ck.add(handlers::provide(vec![MaxRow { block_ts: 1 }]));
+
+    let url = Url::parse(ck.url()).unwrap();
+    let client =
+        ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+    let mut price_server = mockito::Server::new_async().await;
+    let mock = price_server
+        .mock("GET", "/")
+        .with_status(429)
+        .expect(1)
+        .create_async()
+        .await;
+
+    std::env::set_var("ETH_PRICE_URL", price_server.url());
+
+    let (addr, server) = spawn_server(client).await;
+    wait_for_server(addr).await;
+
+    let url = format!("http://{addr}/{API_VERSION}/eth-price");
+    let resp = reqwest::get(url).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::SERVICE_UNAVAILABLE);
+    let body: serde_json::Value = resp.json().await.unwrap();
+    assert_eq!(body["type"], "price-error");
+
+    mock.assert_async().await;
+    std::env::remove_var("ETH_PRICE_URL");
     server.abort();
 }

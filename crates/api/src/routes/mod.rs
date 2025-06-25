@@ -50,7 +50,8 @@ pub fn router(state: ApiState) -> Router {
         .route("/batch-fee-components/aggregated", get(batch_fee_components_aggregated))
         .route("/dashboard-data", get(dashboard_data))
         .route("/l1-data-cost", get(l1_data_cost))
-        .route("/block-profits", get(block_profits));
+        .route("/block-profits", get(block_profits))
+        .route("/eth-price", get(eth_price));
 
     Router::new()
         .merge(SwaggerUi::new("/swagger-ui").url("/api-doc/openapi.json", ApiDoc::openapi()))

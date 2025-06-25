@@ -409,3 +409,10 @@ pub struct DashboardDataResponse {
     /// Estimated infrastructure cost in USD for the requested range.
     pub cloud_cost: Option<f64>,
 }
+
+/// Current ETH price in USD.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct EthPriceResponse {
+    /// Price of ETH in USD.
+    pub price: f64,
+}

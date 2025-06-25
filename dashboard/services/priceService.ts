@@ -1,10 +1,10 @@
 import useSWR from 'swr';
 import { useEffect } from 'react';
+import { API_BASE } from './apiService';
 import { showToast } from '../utils/toast';
 
 const CACHE_KEY = 'ethPrice';
-const API_URL =
-  'https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd';
+const API_URL = `${API_BASE}/eth-price`;
 
 export const getEthPrice = async (): Promise<number> => {
   let res: Response;
@@ -20,7 +20,7 @@ export const getEthPrice = async (): Promise<number> => {
   }
 
   const data = await res.json();
-  const price = data?.ethereum?.usd;
+  const price = data?.price;
   if (typeof price !== 'number') {
     showToast('Failed to fetch ETH price');
     throw new Error('Invalid ETH price response format');
