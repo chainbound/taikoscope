@@ -29,7 +29,8 @@ const SankeyNode = ({ x, y, width, height, payload }: any) => {
     payload.name === 'Cloud Cost' ||
     payload.name === 'Prover Cost' ||
     payload.name === 'L1 Data Cost' ||
-    payload.name === 'Subsidy';
+    payload.name === 'Subsidy' ||
+    (typeof payload.name === 'string' && payload.name.includes('Subsidy'));
   const isProfitNode = payload.name === 'Profit' || payload.profitNode;
   const isPinkNode =
     payload.name === 'Taiko DAO' ||
@@ -86,7 +87,9 @@ const SankeyLink = ({
     payload.target.name === 'Cloud Cost' ||
     payload.target.name === 'Prover Cost' ||
     payload.target.name === 'L1 Data Cost' ||
-    payload.target.name === 'Subsidy';
+    payload.target.name === 'Subsidy' ||
+    (typeof payload.target.name === 'string' &&
+      payload.target.name.includes('Subsidy'));
   const isProfit =
     payload.target.name === 'Profit' || payload.target.profitNode;
 
