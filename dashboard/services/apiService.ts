@@ -307,7 +307,7 @@ export const fetchProveTimes = async (
   if (startingAfter === undefined && endingBefore === undefined) {
     url += `${timeRangeToQuery(range)}&limit=${limit}`;
   } else {
-    url += `limit=${limit}`;
+    url += `${rangeToQuery(range)}&limit=${limit}`;
   }
   if (startingAfter !== undefined) {
     url += `&starting_after=${startingAfter}`;
@@ -340,7 +340,7 @@ export const fetchVerifyTimes = async (
   if (startingAfter === undefined && endingBefore === undefined) {
     url += `${timeRangeToQuery(range)}&limit=${limit}`;
   } else {
-    url += `limit=${limit}`;
+    url += `${rangeToQuery(range)}&limit=${limit}`;
   }
   if (startingAfter !== undefined) {
     url += `&starting_after=${startingAfter}`;
@@ -407,7 +407,7 @@ export const fetchL2BlockTimes = async (
   if (startingAfter === undefined && endingBefore === undefined) {
     url += `${timeRangeToQuery(range)}&limit=${limit}`;
   } else {
-    url += `limit=${limit}`;
+    url += `${rangeToQuery(range)}&limit=${limit}`;
   }
   if (startingAfter !== undefined) {
     url += `&starting_after=${startingAfter}`;
@@ -476,7 +476,7 @@ export const fetchBatchPostingTimes = async (
   if (startingAfter === undefined && endingBefore === undefined) {
     url += `${timeRangeToQuery(range)}&limit=${limit}`;
   } else {
-    url += `limit=${limit}`;
+    url += `${rangeToQuery(range)}&limit=${limit}`;
   }
   if (startingAfter !== undefined) {
     url += `&starting_after=${startingAfter}`;
@@ -509,7 +509,7 @@ export const fetchL2GasUsed = async (
   if (startingAfter === undefined && endingBefore === undefined) {
     url += `${timeRangeToQuery(range)}&limit=${limit}`;
   } else {
-    url += `limit=${limit}`;
+    url += `${rangeToQuery(range)}&limit=${limit}`;
   }
   if (startingAfter !== undefined) {
     url += `&starting_after=${startingAfter}`;
@@ -613,7 +613,7 @@ export const fetchBlockTransactions = async (
   if (startingAfter === undefined && endingBefore === undefined) {
     url += `${timeRangeToQuery(range)}&limit=${limit}`;
   } else {
-    url += `limit=${limit}`;
+    url += `${rangeToQuery(range)}&limit=${limit}`;
   }
 
   // For unlimited fetching, we ignore pagination parameters to get all data
@@ -711,7 +711,7 @@ export const fetchBatchBlobCounts = async (
   if (startingAfter === undefined && endingBefore === undefined) {
     url += `${timeRangeToQuery(range)}&limit=${limit}`;
   } else {
-    url += `limit=${limit}`;
+    url += `${rangeToQuery(range)}&limit=${limit}`;
   }
   if (startingAfter !== undefined) {
     url += `&starting_after=${startingAfter}`;
@@ -887,7 +887,7 @@ export const fetchL1DataCost = async (
   if (startingAfter === undefined && endingBefore === undefined) {
     url += `${timeRangeToQuery(range)}&limit=${limit}`;
   } else {
-    url += `limit=${limit}`;
+    url += `${rangeToQuery(range)}&limit=${limit}`;
   }
   if (startingAfter !== undefined) {
     url += `&starting_after=${startingAfter}`;
@@ -917,7 +917,7 @@ export const fetchL2Tps = async (
   if (startingAfter === undefined && endingBefore === undefined) {
     url += `${timeRangeToQuery(range)}&limit=${limit}`;
   } else {
-    url += `limit=${limit}`;
+    url += `${rangeToQuery(range)}&limit=${limit}`;
   }
   if (startingAfter !== undefined) {
     url += `&starting_after=${startingAfter}`;
