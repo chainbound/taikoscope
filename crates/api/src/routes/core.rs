@@ -11,9 +11,9 @@ use crate::{
 use alloy_primitives::Address;
 use api_types::{
     ActiveGatewaysResponse, AvgBlobsPerBatchResponse, BatchPostingTimesResponse, BlockProfitItem,
-    BlockProfitsResponse, ErrorResponse, L1BlockTimesResponse, L1DataCostResponse,
-    L1HeadBlockResponse, L1HeadResponse, L2HeadBlockResponse, L2HeadResponse, ProveTimesResponse,
-    SequencerBlocksItem, SequencerBlocksResponse, SequencerDistributionItem,
+    BlockProfitsResponse, ErrorResponse, EthPriceResponse, L1BlockTimesResponse,
+    L1DataCostResponse, L1HeadBlockResponse, L1HeadResponse, L2HeadBlockResponse, L2HeadResponse,
+    ProveTimesResponse, SequencerBlocksItem, SequencerBlocksResponse, SequencerDistributionItem,
     SequencerDistributionResponse, VerifyTimesResponse,
 };
 use axum::{
@@ -571,4 +571,31 @@ pub async fn block_profits(
     blocks.truncate(limit as usize);
     tracing::info!(count = blocks.len(), "Returning block profits");
     Ok(Json(BlockProfitsResponse { blocks }))
+}
+
+#[utoipa::path(
+    get,
+    path = "/eth-price",
+    responses(
+        (status = 200, description = "Current ETH price", body = EthPriceResponse),
+        (status = 503, description = "Price fetch error", body = ErrorResponse)
+    ),
+    tag = "taikoscope"
+)]
+/// Get the current ETH price in USD
+pub async fn eth_price(
+    State(state): State<ApiState>,
+) -> Result<Json<EthPriceResponse>, ErrorResponse> {
+    match state.eth_price().await {
+        Ok(price) => Ok(Json(EthPriceResponse { price })),
+        Err(e) => {
+            tracing::error!(error = %e, "Failed to fetch ETH price");
+            Err(ErrorResponse::new(
+                "price-error",
+                "Failed to fetch ETH price",
+                StatusCode::SERVICE_UNAVAILABLE,
+                e.to_string(),
+            ))
+        }
+    }
 }

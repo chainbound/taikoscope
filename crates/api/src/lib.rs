@@ -46,7 +46,8 @@ use utoipa::OpenApi;
         routes::aggregated::batch_fee_components,
         routes::aggregated::batch_fee_components_aggregated,
         routes::aggregated::dashboard_data,
-        routes::core::l1_data_cost
+        routes::core::l1_data_cost,
+        routes::core::eth_price
     ),
     components(
         schemas(
@@ -93,6 +94,7 @@ use utoipa::OpenApi;
             SequencerFeeRow,
             clickhouse_lib::BatchFeeComponentRow,
             DashboardDataResponse,
+            EthPriceResponse,
             api_types::ErrorResponse,
             L1DataCostResponse
         )
