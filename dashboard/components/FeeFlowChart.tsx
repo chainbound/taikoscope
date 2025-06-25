@@ -6,6 +6,7 @@ import { TAIKO_PINK } from '../theme';
 const NODE_GREEN = '#22c55e';
 import useSWR from 'swr';
 import { fetchL2Fees } from '../services/apiService';
+import { getSequencerName } from '../sequencerConfig';
 import { useEthPrice } from '../services/priceService';
 import { TimeRange } from '../types';
 import { rangeToHours } from '../utils/timeRange';
@@ -176,7 +177,11 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     const actualL1CostWei = ethPrice
       ? (actualL1Cost / ethPrice) * WEI_TO_ETH
       : 0;
-    const shortAddress = f.address.slice(0, 7);
+    const name = getSequencerName(f.address);
+    const shortAddress =
+      name.toLowerCase() === f.address.toLowerCase()
+        ? f.address.slice(0, 7)
+        : name;
     return {
       address: f.address,
       shortAddress,

@@ -262,7 +262,7 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
                 key={row.address}
                 className="border-t border-gray-200 dark:border-gray-700"
               >
-                <td className="px-2 py-1">{addressLink(row.address)}</td>
+                <td className="px-2 py-1">{addressLink(row.address, row.name)}</td>
                 <td className="px-2 py-1">{row.blocks.toLocaleString()}</td>
                 <td className="px-2 py-1">
                   {row.batches != null ? row.batches.toLocaleString() : 'N/A'}
