@@ -1,10 +1,13 @@
 import React from 'react';
 import useSWR from 'swr';
-import { fetchBatchFeeComponents } from '../services/apiService';
+import {
+  fetchBatchFeeComponents,
+  fetchBatchBlobCounts,
+} from '../services/apiService';
 import { useEthPrice } from '../services/priceService';
 import { TimeRange } from '../types';
 import { rangeToHours } from '../utils/timeRange';
-import { formatEth } from '../utils';
+import { formatEth, blockLink } from '../utils';
 
 interface BlockProfitTablesProps {
   timeRange: TimeRange;
@@ -16,7 +19,10 @@ interface BlockProfitTablesProps {
 const formatUsd = (value: number): string => {
   const abs = Math.abs(value);
   if (abs >= 1000) return Math.trunc(value).toLocaleString();
-  return value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return value.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 };
 
 export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
@@ -30,12 +36,24 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
     ['batchFeeComponents', timeRange, address],
     () => fetchBatchFeeComponents(timeRange, address),
   );
+  const { data: blobRes } = useSWR(['batchBlobCounts', timeRange], () =>
+    fetchBatchBlobCounts(timeRange),
+  );
   const batchData = feeRes?.data ?? [];
   const batchCount = batchData.length;
+  const batchBlockMap = React.useMemo(() => {
+    const map = new Map<number, number>();
+    blobRes?.data?.forEach((b) => {
+      map.set(b.batch, b.block);
+    });
+    return map;
+  }, [blobRes]);
   const HOURS_IN_MONTH = 30 * 24;
   const hours = rangeToHours(timeRange);
   const costPerBatchUsd =
-    batchCount > 0 ? ((cloudCost + proverCost) / HOURS_IN_MONTH) * hours / batchCount : 0;
+    batchCount > 0
+      ? (((cloudCost + proverCost) / HOURS_IN_MONTH) * hours) / batchCount
+      : 0;
   const costPerBatchEth = ethPrice ? costPerBatchUsd / ethPrice : 0;
 
   const calcProfitEth = (wei: number) => wei / 1e18 - costPerBatchEth;
@@ -44,10 +62,17 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
     batch: b.batch,
     profit: b.priority + b.base - (b.l1Cost ?? 0),
   }));
-  const topBatches = [...profits].sort((a, b) => b.profit - a.profit).slice(0, 5);
-  const bottomBatches = [...profits].sort((a, b) => a.profit - b.profit).slice(0, 5);
+  const topBatches = [...profits]
+    .sort((a, b) => b.profit - a.profit)
+    .slice(0, 5);
+  const bottomBatches = [...profits]
+    .sort((a, b) => a.profit - b.profit)
+    .slice(0, 5);
 
-  const renderTable = (title: string, items: { batch: number; profit: number }[] | null) => (
+  const renderTable = (
+    title: string,
+    items: { batch: number; profit: number }[] | null,
+  ) => (
     <div>
       <h3 className="text-lg font-semibold mb-2">{title}</h3>
       <div className="overflow-x-auto">
@@ -60,8 +85,18 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
           </thead>
           <tbody>
             {items?.map((b) => (
-              <tr key={b.batch} className="border-t border-gray-200 dark:border-gray-700">
-                <td className="px-2 py-1">{b.batch}</td>
+              <tr
+                key={b.batch}
+                className="border-t border-gray-200 dark:border-gray-700"
+              >
+                <td className="px-2 py-1">
+                  {batchBlockMap.has(b.batch)
+                    ? blockLink(
+                        batchBlockMap.get(b.batch)!,
+                        b.batch.toLocaleString(),
+                      )
+                    : b.batch}
+                </td>
                 <td
                   className="px-2 py-1"
                   title={`$${formatUsd(calcProfitEth(b.profit) * ethPrice)}`}
