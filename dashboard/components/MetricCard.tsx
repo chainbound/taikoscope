@@ -9,6 +9,7 @@ interface MetricCardProps {
   description?: React.ReactNode;
   className?: string;
   onMore?: () => void;
+  tooltip?: string;
 }
 
 export const MetricCard: React.FC<MetricCardProps> = ({
@@ -18,6 +19,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
   description,
   className,
   onMore,
+  tooltip,
 }) => {
   // Check if value looks like an Ethereum address (0x followed by 40 hex characters)
   const isAddress = /^0x[a-fA-F0-9]{40}$/.test(value);
@@ -43,6 +45,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
       </div>
       <p
         className={`mt-1 font-semibold text-gray-900 dark:text-gray-100 ${isAddress ? 'text-base break-all' : `text-2xl${isShortValue ? '' : ' whitespace-nowrap overflow-hidden text-ellipsis'}`}`}
+        title={tooltip}
       >
         {link ? (
           <a
