@@ -115,6 +115,17 @@ export const parseEthValue = (value: string): number => {
   return /gwei/i.test(value) ? amount / 1e9 : amount;
 };
 
+export const formatUsd = (value: number): string => {
+  const abs = Math.abs(value);
+  if (abs >= 1000) {
+    return Math.trunc(value).toLocaleString();
+  }
+  return value.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+};
+
 export const formatTime = (ms: number): string =>
   new Date(ms).toLocaleTimeString([], {
     hour: '2-digit',

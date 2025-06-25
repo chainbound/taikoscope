@@ -3,6 +3,8 @@ import { MetricCard } from '../MetricCard';
 import { MetricCardSkeleton } from '../MetricCardSkeleton';
 import { MetricData, TimeRange } from '../../types';
 import { formatTimeRangeDisplay } from '../../utils/timeRange';
+import { parseEthValue, formatUsd } from '../../utils';
+import { useEthPrice } from '../../services/priceService';
 
 interface MetricsGridProps {
   isLoading: boolean;
@@ -30,6 +32,7 @@ export const MetricsGrid: React.FC<MetricsGridProps> = ({
   timeRange,
 }) => {
   const displayedGroupOrder = groupOrder;
+  const { data: ethPrice = 0 } = useEthPrice();
   const regularGrid =
     'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4 md:gap-6';
   const economicsGrid =
@@ -78,19 +81,26 @@ export const MetricsGrid: React.FC<MetricsGridProps> = ({
                 </h2>
               )}
               <div className={economicsView ? economicsGrid : regularGrid}>
-                {groupedMetrics[group].map((m, idx) => (
-                  <MetricCard
-                    key={`${group}-${idx}`}
-                    title={m.title}
-                    value={m.value}
-                    link={m.link}
-                    onMore={
-                      typeof m.title === 'string'
-                        ? onMetricAction(m.title)
-                        : undefined
-                    }
-                  />
-                ))}
+                {groupedMetrics[group].map((m, idx) => {
+                  const tooltip =
+                    economicsView && /ETH/i.test(m.value)
+                      ? `$${formatUsd(parseEthValue(m.value) * ethPrice)}`
+                      : undefined;
+                  return (
+                    <MetricCard
+                      key={`${group}-${idx}`}
+                      title={m.title}
+                      value={m.value}
+                      link={m.link}
+                      onMore={
+                        typeof m.title === 'string'
+                          ? onMetricAction(m.title)
+                          : undefined
+                      }
+                      tooltip={tooltip}
+                    />
+                  );
+                })}
               </div>
               {groupedCharts?.[group] && groupedCharts[group].length > 0 && (
                 <div className={chartsGrid}>{groupedCharts[group].map((c, i) => (
