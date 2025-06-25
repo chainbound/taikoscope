@@ -28,7 +28,6 @@ const NETWORK_NAME =
   rawNetworkName.charAt(0).toUpperCase() +
   rawNetworkName.slice(1).toLowerCase();
 const SHOW_CUSTOM_TIME_PICKER = rawNetworkName.toLowerCase() !== 'hekla';
-const SHOW_ECONOMICS_BUTTON = rawNetworkName.toLowerCase() === 'hekla';
 const DASHBOARD_TITLE = `Taikoscope ${NETWORK_NAME}`;
 
 interface DashboardHeaderProps {
@@ -81,22 +80,20 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
         </h1>
       </div>
       <div className="flex flex-wrap items-center gap-2 mt-4 md:mt-0 justify-center md:justify-end">
-        {SHOW_ECONOMICS_BUTTON && (
-          <button
-            onClick={() => {
-              const params = new URLSearchParams(searchParams);
-              if (params.get('view') === 'economics') {
-                navigateToDashboard(true);
-                return;
-              }
-              updateSearchParams({ view: 'economics', table: null });
-            }}
-            className="text-sm hover:underline"
-            style={{ color: TAIKO_PINK }}
-          >
-            Economics
-          </button>
-        )}
+        <button
+          onClick={() => {
+            const params = new URLSearchParams(searchParams);
+            if (params.get('view') === 'economics') {
+              navigateToDashboard(true);
+              return;
+            }
+            updateSearchParams({ view: 'economics', table: null });
+          }}
+          className="text-sm hover:underline"
+          style={{ color: TAIKO_PINK }}
+        >
+          Economics
+        </button>
         <a
           href="https://status.taiko.xyz/"
           target="_blank"
