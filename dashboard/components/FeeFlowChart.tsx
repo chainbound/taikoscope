@@ -2,6 +2,7 @@ import React from 'react';
 import { ResponsiveContainer, Sankey, Tooltip } from 'recharts';
 import { formatEth } from '../utils';
 import { TAIKO_PINK } from '../theme';
+import { useTheme } from '../contexts/ThemeContext';
 
 const NODE_GREEN = '#22c55e';
 import useSWR from 'swr';
@@ -26,6 +27,8 @@ const formatUsd = (value: number) => `$${value.toFixed(2)}`;
 
 // Simple node component that renders label with currency-aware value
 const SankeyNode = ({ x, y, width, height, payload }: any) => {
+  const { theme } = useTheme();
+  const labelColor = theme === 'dark' ? '#f8fafc' : '#374151';
   const isCostNode =
     payload.name === 'Cloud Cost' ||
     payload.name === 'Prover Cost' ||
@@ -64,7 +67,7 @@ const SankeyNode = ({ x, y, width, height, payload }: any) => {
           textAnchor="start"
           dominantBaseline="middle"
           fontSize={12}
-          fill="#374151"
+          fill={labelColor}
         >
           {label}
         </text>
