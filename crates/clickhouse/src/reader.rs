@@ -1588,6 +1588,7 @@ impl ClickhouseReader {
         #[derive(Row, Deserialize)]
         struct RawRow {
             batch_id: u64,
+            first_l2_block_number: u64,
             priority_fee: u128,
             base_fee: u128,
             l1_data_cost: Option<u128>,
@@ -1596,6 +1597,7 @@ impl ClickhouseReader {
         let filter = self.reorg_filter("h");
         let mut query = format!(
             "SELECT bb.batch_id, \
+                    min(bb.l2_block_number) AS first_l2_block_number, \
                     sum(h.sum_priority_fee) AS priority_fee, \
                     sum(h.sum_base_fee) AS base_fee, \
                     toNullable(sum(dc.cost)) AS l1_data_cost \
@@ -1624,6 +1626,7 @@ impl ClickhouseReader {
             .into_iter()
             .map(|r| BatchFeeComponentRow {
                 batch_id: r.batch_id,
+                first_l2_block_number: r.first_l2_block_number,
                 priority_fee: r.priority_fee,
                 base_fee: r.base_fee,
                 l1_data_cost: r.l1_data_cost,
@@ -2092,6 +2095,7 @@ mod tests {
     #[derive(Row, serde::Serialize)]
     struct BatchFeeRow {
         batch_id: u64,
+        l2_block_number: u64,
         priority_fee: u128,
         base_fee: u128,
         l1_data_cost: Option<u128>,
@@ -2102,6 +2106,7 @@ mod tests {
         let mock = Mock::new();
         mock.add(handlers::provide(vec![BatchFeeRow {
             batch_id: 1,
+            l2_block_number: 42,
             priority_fee: 10,
             base_fee: 20,
             l1_data_cost: Some(5),
@@ -2117,6 +2122,7 @@ mod tests {
             rows,
             vec![BatchFeeComponentRow {
                 batch_id: 1,
+                first_l2_block_number: 42,
                 priority_fee: 10,
                 base_fee: 20,
                 l1_data_cost: Some(5),
@@ -2130,6 +2136,7 @@ mod tests {
         for _ in 0..3 {
             mock.add(handlers::provide(vec![BatchFeeRow {
                 batch_id: 1,
+                l2_block_number: 42,
                 priority_fee: 10,
                 base_fee: 20,
                 l1_data_cost: Some(5),

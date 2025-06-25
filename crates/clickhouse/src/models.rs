@@ -313,6 +313,8 @@ pub struct SequencerFeeRow {
 pub struct BatchFeeComponentRow {
     /// Batch ID
     pub batch_id: u64,
+    /// First L2 block number in the batch
+    pub first_l2_block_number: u64,
     /// Total priority fee for the batch
     pub priority_fee: u128,
     /// Total base fee for the batch

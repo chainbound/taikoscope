@@ -16,7 +16,10 @@ interface BlockProfitTablesProps {
 const formatUsd = (value: number): string => {
   const abs = Math.abs(value);
   if (abs >= 1000) return Math.trunc(value).toLocaleString();
-  return value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return value.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 };
 
 export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
@@ -35,18 +38,28 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
   const HOURS_IN_MONTH = 30 * 24;
   const hours = rangeToHours(timeRange);
   const costPerBatch =
-    batchCount > 0 ? ((cloudCost + proverCost) / HOURS_IN_MONTH) * hours / batchCount : 0;
+    batchCount > 0
+      ? (((cloudCost + proverCost) / HOURS_IN_MONTH) * hours) / batchCount
+      : 0;
 
   const calcProfit = (wei: number) => (wei / 1e18) * ethPrice - costPerBatch;
 
   const profits = batchData.map((b) => ({
     batch: b.batch,
+    block: b.block,
     profit: b.priority + b.base - (b.l1Cost ?? 0),
   }));
-  const topBatches = [...profits].sort((a, b) => b.profit - a.profit).slice(0, 5);
-  const bottomBatches = [...profits].sort((a, b) => a.profit - b.profit).slice(0, 5);
+  const topBatches = [...profits]
+    .sort((a, b) => b.profit - a.profit)
+    .slice(0, 5);
+  const bottomBatches = [...profits]
+    .sort((a, b) => a.profit - b.profit)
+    .slice(0, 5);
 
-  const renderTable = (title: string, items: { batch: number; profit: number }[] | null) => (
+  const renderTable = (
+    title: string,
+    items: { batch: number; block: number; profit: number }[] | null,
+  ) => (
     <div>
       <h3 className="text-lg font-semibold mb-2">{title}</h3>
       <div className="overflow-x-auto">
@@ -59,9 +72,14 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
           </thead>
           <tbody>
             {items?.map((b) => (
-              <tr key={b.batch} className="border-t border-gray-200 dark:border-gray-700">
-                <td className="px-2 py-1">{blockLink(b.batch)}</td>
-                <td className="px-2 py-1">${formatUsd(calcProfit(b.profit))}</td>
+              <tr
+                key={b.batch}
+                className="border-t border-gray-200 dark:border-gray-700"
+              >
+                <td className="px-2 py-1">{blockLink(b.block)}</td>
+                <td className="px-2 py-1">
+                  ${formatUsd(calcProfit(b.profit))}
+                </td>
               </tr>
             ))}
           </tbody>

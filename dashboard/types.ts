@@ -59,6 +59,7 @@ export interface FeeComponent {
 
 export interface BatchFeeComponent {
   batch: number;
+  block: number;
   priority: number;
   base: number;
   l1Cost: number | null;
