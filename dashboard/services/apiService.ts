@@ -252,10 +252,10 @@ export const fetchL1HeadBlock = async (
   range: TimeRange,
 ): Promise<RequestResult<number>> => {
   const url = `${API_BASE}/l1-block-times?${timeRangeToQuery(range)}`;
-  const res = await fetchJson<{ blocks: { block_number: number }[] }>(url);
+  const res = await fetchJson<{ blocks: { l1_block_number: number }[] }>(url);
   const value =
     res.data && res.data.blocks.length > 0
-      ? res.data.blocks[res.data.blocks.length - 1].block_number
+      ? res.data.blocks[res.data.blocks.length - 1].l1_block_number
       : null;
   return { data: value, badRequest: res.badRequest, error: res.error };
 };
@@ -368,7 +368,7 @@ export const fetchL1BlockTimes = async (
 ): Promise<RequestResult<TimeSeriesData[]>> => {
   const url = `${API_BASE}/l1-block-times?${timeRangeToQuery(range)}`;
   const res = await fetchJson<{
-    blocks: { minute: number; block_number: number }[];
+    blocks: { minute: number; l1_block_number: number }[];
   }>(url);
   if (!res.data) {
     return { data: null, badRequest: res.badRequest, error: res.error };
@@ -376,7 +376,7 @@ export const fetchL1BlockTimes = async (
 
   const blocks = res.data.blocks.map((b) => ({
     ts: b.minute * 1000,
-    block: b.block_number,
+    block: b.l1_block_number,
   }));
 
   const data = blocks

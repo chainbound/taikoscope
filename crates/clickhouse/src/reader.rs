@@ -1301,11 +1301,11 @@ impl ClickhouseReader {
     pub async fn get_l1_block_times(&self, range: TimeRange) -> Result<Vec<L1BlockTimeRow>> {
         let query = format!(
             "SELECT toUInt64(toStartOfMinute(fromUnixTimestamp64Milli(block_ts * 1000))) AS minute, \
-                    max(l1_block_number) AS block_number \
+                    max(l1_block_number) AS l1_block_number \
              FROM {db}.l1_head_events \
-             WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
-             GROUP BY minute \
-             ORDER BY minute",
+              WHERE block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
+              GROUP BY minute \
+              ORDER BY minute",
             interval = range.interval(),
             db = self.db_name,
         );
