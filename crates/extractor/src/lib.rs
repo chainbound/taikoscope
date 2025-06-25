@@ -43,11 +43,15 @@ pub struct Extractor {
 pub type BatchProposedStream =
     Pin<Box<dyn Stream<Item = (BatchProposed, alloy::primitives::B256)> + Send>>;
 /// Stream of batches proved events
-pub type BatchesProvedStream =
-    Pin<Box<dyn Stream<Item = (chainio::ITaikoInbox::BatchesProved, u64)> + Send>>;
+pub type BatchesProvedStream = Pin<
+    Box<
+        dyn Stream<Item = (chainio::ITaikoInbox::BatchesProved, u64, alloy::primitives::B256)>
+            + Send,
+    >,
+>;
 /// Stream of batches verified events
 pub type BatchesVerifiedStream =
-    Pin<Box<dyn Stream<Item = (chainio::BatchesVerified, u64)> + Send>>;
+    Pin<Box<dyn Stream<Item = (chainio::BatchesVerified, u64, alloy::primitives::B256)> + Send>>;
 /// Stream of forced inclusion processed events
 pub type ForcedInclusionStream = Pin<Box<dyn Stream<Item = ForcedInclusionProcessed> + Send>>;
 
@@ -246,9 +250,10 @@ impl Extractor {
                 while let Some(log) = log_stream.next().await {
                     match log.log_decode::<BatchesProved>() {
                         Ok(decoded) => {
-                            // Include the block number in the tuple
                             let l1_block_number = log.block_number.unwrap_or(0);
-                            if tx.send((decoded.data().clone(), l1_block_number)).is_err() {
+                            let tx_hash = log.transaction_hash.unwrap_or_default();
+                            if tx.send((decoded.data().clone(), l1_block_number, tx_hash)).is_err()
+                            {
                                 error!(
                                     "BatchesProved receiver dropped. Stopping BatchesProved event task."
                                 );
@@ -361,9 +366,9 @@ impl Extractor {
                 while let Some(log) = log_stream.next().await {
                     match decode_batches_verified(&log) {
                         Ok(verified) => {
-                            // Include the block number in the tuple
                             let l1_block_number = log.block_number.unwrap_or(0);
-                            if tx.send((verified, l1_block_number)).is_err() {
+                            let tx_hash = log.transaction_hash.unwrap_or_default();
+                            if tx.send((verified, l1_block_number, tx_hash)).is_err() {
                                 error!(
                                     "BatchesVerified receiver dropped. Stopping BatchesVerified event task."
                                 );

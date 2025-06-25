@@ -591,8 +591,8 @@ impl Driver {
     }
 
     /// Store batches that have been proved on L1.
-    async fn handle_batches_proved(&self, proved_data: (BatchesProved, u64)) {
-        let (proved, l1_block_number) = proved_data;
+    async fn handle_batches_proved(&self, proved_data: (BatchesProved, u64, B256)) {
+        let (proved, l1_block_number, _tx_hash) = proved_data;
         if let Err(e) = self.clickhouse.insert_proved_batch(&proved, l1_block_number).await {
             tracing::error!(batch_ids = ?proved.batch_ids_proved(), err = %e, "Failed to insert proved batch");
         } else {
@@ -601,8 +601,8 @@ impl Driver {
     }
 
     /// Store batches that have been verified on L1.
-    async fn handle_batches_verified(&self, verified_data: (chainio::BatchesVerified, u64)) {
-        let (verified, l1_block_number) = verified_data;
+    async fn handle_batches_verified(&self, verified_data: (chainio::BatchesVerified, u64, B256)) {
+        let (verified, l1_block_number, _tx_hash) = verified_data;
         if let Err(e) = self.clickhouse.insert_verified_batch(&verified, l1_block_number).await {
             tracing::error!(batch_id = ?verified.batch_id, err = %e, "Failed to insert verified batch");
         } else {
@@ -805,7 +805,7 @@ mod tests {
             transitions: vec![transition],
         };
 
-        driver.handle_batches_proved((proved, 10)).await;
+        driver.handle_batches_proved((proved, 10, B256::ZERO)).await;
 
         let rows: Vec<ProvedBatchRow> = ctl.collect().await;
         assert_eq!(
@@ -838,7 +838,7 @@ mod tests {
 
         let verified = chainio::BatchesVerified { batch_id: 3, block_hash: [9u8; 32] };
 
-        driver.handle_batches_verified((verified, 12)).await;
+        driver.handle_batches_verified((verified, 12, B256::ZERO)).await;
 
         let rows: Vec<VerifiedBatchRow> = ctl.collect().await;
         assert_eq!(
