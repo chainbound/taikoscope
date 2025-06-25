@@ -22,6 +22,20 @@ pub struct ClickhouseOpts {
     pub password: String,
 }
 
+/// Nats client configuration options
+#[derive(Debug, Clone, Parser)]
+pub struct NatsOpts {
+    /// Nats server URL
+    #[clap(long = "nats-url", env = "NATS_URL")]
+    pub nats_url: Option<Url>,
+    /// Nats username
+    #[clap(id = "nats_username", long = "nats-username", env = "NATS_USERNAME")]
+    pub username: Option<String>,
+    /// Nats password
+    #[clap(id = "nats_password", long = "nats-password", env = "NATS_PASSWORD")]
+    pub password: Option<String>,
+}
+
 /// RPC endpoint configuration options
 #[derive(Debug, Clone, Parser)]
 pub struct RpcOpts {
@@ -142,6 +156,10 @@ pub struct Opts {
     #[clap(flatten)]
     pub clickhouse: ClickhouseOpts,
 
+    /// Nats client configuration
+    #[clap(flatten)]
+    pub nats: NatsOpts,
+
     /// RPC endpoint configuration
     #[clap(flatten)]
     pub rpc: RpcOpts,
@@ -187,6 +205,12 @@ mod tests {
             "user",
             "--password",
             "pass",
+            "--nats-url",
+            "nats://localhost:4222",
+            "--nats-username",
+            "natsuser",
+            "--nats-password",
+            "natspass",
             "--l1-url",
             "http://l1",
             "--l2-url",

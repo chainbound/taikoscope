@@ -702,7 +702,9 @@ mod tests {
         ProvedBatchRow, VerifiedBatchRow,
     };
     use clickhouse_rs::test::{Mock, handlers};
-    use config::{ApiOpts, ClickhouseOpts, InstatusOpts, Opts, RpcOpts, TaikoAddressOpts};
+    use config::{
+        ApiOpts, ClickhouseOpts, InstatusOpts, NatsOpts, Opts, RpcOpts, TaikoAddressOpts,
+    };
 
     use alloy_primitives::{Address, B256};
     use futures::future;
@@ -723,13 +725,18 @@ mod tests {
         (url, handle)
     }
 
-    fn make_opts(url: Url, l1_url: Url, l2_url: Url) -> Opts {
+    fn make_opts(url: Url, nats_url: Url, l1_url: Url, l2_url: Url) -> Opts {
         Opts {
             clickhouse: ClickhouseOpts {
                 url,
                 db: "test".into(),
                 username: "user".into(),
                 password: "pass".into(),
+            },
+            nats: NatsOpts {
+                nats_url: Some(nats_url),
+                username: Some("natsuser".into()),
+                password: Some("natspass".into()),
             },
             rpc: RpcOpts { l1_url, l2_url, public_url: None },
             api: ApiOpts {
@@ -769,7 +776,8 @@ mod tests {
         let url = Url::parse(mock.url()).unwrap();
         let (l1_url, l1_handle) = start_ws_server().await;
         let (l2_url, l2_handle) = start_ws_server().await;
-        let opts = make_opts(url, l1_url.clone(), l2_url.clone());
+        let nats_url = Url::parse("nats://localhost:4222").unwrap();
+        let opts = make_opts(url, nats_url, l1_url.clone(), l2_url.clone());
 
         let driver = Driver::new_with_migrations(opts.clone(), false).await.unwrap();
         l1_handle.abort();
@@ -787,10 +795,13 @@ mod tests {
         let url = Url::parse(mock.url()).unwrap();
         let (l1_url, l1_handle) = start_ws_server().await;
         let (l2_url, l2_handle) = start_ws_server().await;
-        let mut driver =
-            Driver::new_with_migrations(make_opts(url, l1_url.clone(), l2_url.clone()), false)
-                .await
-                .unwrap();
+        let nats_url = Url::parse("nats://localhost:4222").unwrap();
+        let mut driver = Driver::new_with_migrations(
+            make_opts(url, nats_url, l1_url.clone(), l2_url.clone()),
+            false,
+        )
+        .await
+        .unwrap();
         l1_handle.abort();
         l2_handle.abort();
 
@@ -836,10 +847,13 @@ mod tests {
         let url = Url::parse(mock.url()).unwrap();
         let (l1_url, l1_handle) = start_ws_server().await;
         let (l2_url, l2_handle) = start_ws_server().await;
-        let driver =
-            Driver::new_with_migrations(make_opts(url, l1_url.clone(), l2_url.clone()), false)
-                .await
-                .unwrap();
+        let nats_url = Url::parse("nats://localhost:4222").unwrap();
+        let driver = Driver::new_with_migrations(
+            make_opts(url, nats_url, l1_url.clone(), l2_url.clone()),
+            false,
+        )
+        .await
+        .unwrap();
         l1_handle.abort();
         l2_handle.abort();
 
@@ -869,10 +883,13 @@ mod tests {
         let url = Url::parse(mock.url()).unwrap();
         let (l1_url, l1_handle) = start_ws_server().await;
         let (l2_url, l2_handle) = start_ws_server().await;
-        let driver =
-            Driver::new_with_migrations(make_opts(url, l1_url.clone(), l2_url.clone()), false)
-                .await
-                .unwrap();
+        let nats_url = Url::parse("nats://localhost:4222").unwrap();
+        let driver = Driver::new_with_migrations(
+            make_opts(url, nats_url, l1_url.clone(), l2_url.clone()),
+            false,
+        )
+        .await
+        .unwrap();
         l1_handle.abort();
         l2_handle.abort();
 
@@ -911,10 +928,13 @@ mod tests {
         let url = Url::parse(mock.url()).unwrap();
         let (l1_url, l1_handle) = start_ws_server().await;
         let (l2_url, l2_handle) = start_ws_server().await;
-        let driver =
-            Driver::new_with_migrations(make_opts(url, l1_url.clone(), l2_url.clone()), false)
-                .await
-                .unwrap();
+        let nats_url = Url::parse("nats://localhost:4222").unwrap();
+        let driver = Driver::new_with_migrations(
+            make_opts(url, nats_url, l1_url.clone(), l2_url.clone()),
+            false,
+        )
+        .await
+        .unwrap();
         l1_handle.abort();
         l2_handle.abort();
 
