@@ -164,15 +164,17 @@ export const TableRoute: React.FC = () => {
 
         // Calculate pagination cursors from original data before reversing
         const originalData = data;
+
+        const getCursor = (item: Record<string, unknown>) =>
+          (item as { value?: number }).value ??
+          (item as { l2_block_number?: number }).l2_block_number ??
+          (item as { block?: number }).block ??
+          (item as { batch?: number }).batch;
+
         const nextCursor =
-          originalData.length > 0
-            ? (originalData[originalData.length - 1].value ??
-              originalData[originalData.length - 1].l2_block_number)
-            : undefined;
+          originalData.length > 0 ? getCursor(originalData[originalData.length - 1]) : undefined;
         const prevCursor =
-          originalData.length > 0
-            ? (originalData[0].value ?? originalData[0].l2_block_number)
-            : undefined;
+          originalData.length > 0 ? getCursor(originalData[0]) : undefined;
 
         if (config.reverseOrder) {
           data = [...data].reverse();
