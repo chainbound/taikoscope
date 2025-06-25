@@ -86,6 +86,7 @@ describe('dataFetcher', () => {
       fetchL2HeadBlock: ok(2),
       fetchL1HeadBlock: ok(3),
       fetchSequencerDistribution: ok([{ name: 'foo', address: '0xfoo', value: 1, tps: null }]),
+      fetchDashboardData: ok({ prove_cost: 5, verify_cost: 6 }),
     });
 
     const res = await fetchEconomicsData('1h', null);
@@ -94,8 +95,10 @@ describe('dataFetcher', () => {
     expect(res.l2Block).toBe(2);
     expect(res.l1Block).toBe(3);
     expect(res.l1DataCost).toBe(4);
+    expect(res.proveCost).toBe(5);
+    expect(res.verifyCost).toBe(6);
     expect(res.sequencerDist[0].name).toBe('foo');
-    expect(res.badRequestResults).toHaveLength(4);
+    expect(res.badRequestResults).toHaveLength(5);
   });
 
   it('resets isTimeRangeChanging on fetch error', async () => {

@@ -43,6 +43,8 @@ export interface EconomicsData {
   priorityFee: number | null;
   baseFee: number | null;
   l1DataCost: number | null;
+  proveCost: number | null;
+  verifyCost: number | null;
   l2Block: number | null;
   l1Block: number | null;
   sequencerDist: {
@@ -126,7 +128,8 @@ export const fetchEconomicsData = async (
   selectedSequencer: string | null,
 ): Promise<EconomicsData> => {
   const normalizedRange = normalizeTimeRange(timeRange);
-  const [l2FeesRes, l2BlockRes, l1BlockRes, sequencerDistRes] = await Promise.all([
+  const [dashboardRes, l2FeesRes, l2BlockRes, l1BlockRes, sequencerDistRes] = await Promise.all([
+    fetchDashboardData(normalizedRange),
     fetchL2Fees(
       normalizedRange,
       selectedSequencer ? getSequencerAddress(selectedSequencer) : undefined,
@@ -140,9 +143,11 @@ export const fetchEconomicsData = async (
     priorityFee: l2FeesRes.data?.priority_fee ?? null,
     baseFee: l2FeesRes.data?.base_fee ?? null,
     l1DataCost: l2FeesRes.data?.l1_data_cost ?? null,
+    proveCost: dashboardRes.data?.prove_cost ?? null,
+    verifyCost: dashboardRes.data?.verify_cost ?? null,
     l2Block: l2BlockRes.data,
     l1Block: l1BlockRes.data,
     sequencerDist: sequencerDistRes.data || [],
-    badRequestResults: [l2FeesRes, l2BlockRes, l1BlockRes, sequencerDistRes],
+    badRequestResults: [dashboardRes, l2FeesRes, l2BlockRes, l1BlockRes, sequencerDistRes],
   };
 };

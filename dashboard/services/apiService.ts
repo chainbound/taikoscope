@@ -983,6 +983,8 @@ export interface DashboardDataResponse {
   l1_head_block: number | null;
   priority_fee: number | null;
   base_fee: number | null;
+  prove_cost: number | null;
+  verify_cost: number | null;
   cloud_cost: number | null;
 }
 
