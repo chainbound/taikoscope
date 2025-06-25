@@ -54,6 +54,7 @@ use utoipa::OpenApi;
             validation::CommonQuery,
             validation::PaginatedQuery,
             validation::TimeRangeParams,
+            validation::BlockRangeParams,
             L2HeadResponse,
             L1HeadResponse,
             L2HeadBlockResponse,
