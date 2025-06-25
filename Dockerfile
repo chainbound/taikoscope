@@ -17,13 +17,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     cmake \
     && rm -rf /var/lib/apt/lists/*
 
-RUN --mount=type=cache,target=/usr/local/cargo/registry \
-    --mount=type=cache,target=/usr/local/cargo/git \
-    cargo install --locked sccache cargo-chef && \
+RUN cargo install --locked sccache cargo-chef && \
     rm -rf /usr/local/cargo/registry /usr/local/cargo/git
 
-ENV RUSTC_WRAPPER=sccache SCCACHE_DIR=/sccache \
-    CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
+ENV RUSTC_WRAPPER=sccache SCCACHE_DIR=/sccache
 
 FROM base AS planner
 
@@ -32,8 +29,6 @@ WORKDIR /app
 COPY . .
 
 RUN --mount=type=cache,target=$SCCACHE_DIR,sharing=locked \
-    --mount=type=cache,target=/usr/local/cargo/registry \
-    --mount=type=cache,target=/usr/local/cargo/git \
     cargo chef prepare --recipe-path recipe.json
 
 FROM base AS builder
@@ -45,13 +40,9 @@ COPY --from=planner /app/recipe.json recipe.json
 ARG TARGETARCH
 
 RUN --mount=type=cache,target=$SCCACHE_DIR,sharing=locked \
-    --mount=type=cache,target=/usr/local/cargo/registry \
-    --mount=type=cache,target=/usr/local/cargo/git \
     cargo chef cook --release --recipe-path recipe.json
 COPY . .
 RUN --mount=type=cache,target=$SCCACHE_DIR,sharing=locked \
-    --mount=type=cache,target=/usr/local/cargo/registry \
-    --mount=type=cache,target=/usr/local/cargo/git \
     if [ "$TARGETARCH" = "arm64" ]; then \
     echo "Building for arm64 with JEMALLOC_SYS_WITH_LG_PAGE=16"; \
     # Force jemalloc to use 64 KiB pages on ARM
@@ -61,7 +52,6 @@ RUN --mount=type=cache,target=$SCCACHE_DIR,sharing=locked \
     echo "Building for $TARGETARCH"; \
     cargo build --profile release; \
     fi
-RUN strip target/release/taikoscope
 
 FROM debian:bookworm-slim AS runtime
 
@@ -89,9 +79,6 @@ RUN mkdir -p /var/run/tailscale /var/cache/tailscale /var/lib/tailscale
 # Copy startup script
 COPY start.sh /app/start.sh
 RUN chmod +x /app/start.sh
-
-# Expose the HTTP port
-EXPOSE 3000
 
 # Add taikoscope user
 RUN chmod +x taikoscope && \
