@@ -120,6 +120,16 @@ just deploy-remote-hekla        # deploy the extractor/driver
 just deploy-api-remote-hekla    # deploy the API server
 ```
 
+To deploy the Hekla dashboard:
+
+```bash
+git switch hekla
+git pull --rebase origin main
+git push origin hekla
+```
+
+Vercel automatically builds and deploys the dashboard after the push.
+
 ## License
 
 Licensed under the MIT license. See [`LICENSE`](LICENSE) for details.
