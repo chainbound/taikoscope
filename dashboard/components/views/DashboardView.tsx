@@ -154,6 +154,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         'Avg. Prove Time': () => onOpenTable('prove-time', timeRange),
         'Avg. Verify Time': () => onOpenTable('verify-time', timeRange),
         'L1 Data Cost': () => onOpenTable('l1-data-cost', timeRange),
+        'Prove Cost': () => onOpenTable('prove-cost', timeRange),
+        'Verify Cost': () => onOpenTable('verify-cost', timeRange),
       };
       return actions[title];
     },

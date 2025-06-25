@@ -21,11 +21,19 @@ import {
   fetchL2GasUsed,
   fetchL2GasUsedAggregated,
   fetchL1DataCost,
+  fetchProveCost,
+  fetchVerifyCost,
   fetchSequencerDistribution,
   fetchL2Tps,
 } from '../services/apiService';
 import { getSequencerName } from '../sequencerConfig';
-import { bytesToHex, blockLink, addressLink, formatDateTime, formatEth } from '../utils';
+import {
+  bytesToHex,
+  blockLink,
+  addressLink,
+  formatDateTime,
+  formatEth,
+} from '../utils';
 import { TAIKO_PINK } from '../theme';
 import React from 'react';
 
@@ -336,6 +344,40 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
         cost: formatEth(d.cost),
       })),
     urlKey: 'l1-data-cost',
+    supportsPagination: true,
+  },
+
+  'prove-cost': {
+    title: 'Prove Cost',
+    description: 'Cost to prove each batch.',
+    fetcher: fetchProveCost,
+    columns: [
+      { key: 'batch', label: 'Batch' },
+      { key: 'cost', label: 'Cost' },
+    ],
+    mapData: (data) =>
+      (data as { batch: number; cost: number }[]).map((d) => ({
+        batch: d.batch.toLocaleString(),
+        cost: formatEth(d.cost),
+      })),
+    urlKey: 'prove-cost',
+    supportsPagination: true,
+  },
+
+  'verify-cost': {
+    title: 'Verify Cost',
+    description: 'Cost to verify each batch.',
+    fetcher: fetchVerifyCost,
+    columns: [
+      { key: 'batch', label: 'Batch' },
+      { key: 'cost', label: 'Cost' },
+    ],
+    mapData: (data) =>
+      (data as { batch: number; cost: number }[]).map((d) => ({
+        batch: d.batch.toLocaleString(),
+        cost: formatEth(d.cost),
+      })),
+    urlKey: 'verify-cost',
     supportsPagination: true,
   },
 
