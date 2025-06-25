@@ -877,6 +877,16 @@ export interface L1DataCostItem {
   cost: number;
 }
 
+export interface ProveCostItem {
+  batch: number;
+  cost: number;
+}
+
+export interface VerifyCostItem {
+  batch: number;
+  cost: number;
+}
+
 export const fetchL1DataCost = async (
   range: TimeRange,
   limit = 50,
@@ -900,6 +910,64 @@ export const fetchL1DataCost = async (
   return {
     data: res.data
       ? res.data.blocks.map((b) => ({ block: b.l1_block_number, cost: b.cost }))
+      : null,
+    badRequest: res.badRequest,
+    error: res.error,
+  };
+};
+
+export const fetchProveCost = async (
+  range: TimeRange,
+  limit = 50,
+  startingAfter?: number,
+  endingBefore?: number,
+): Promise<RequestResult<ProveCostItem[]>> => {
+  let url = `${API_BASE}/prove-cost?`;
+  if (startingAfter === undefined && endingBefore === undefined) {
+    url += `${timeRangeToQuery(range)}&limit=${limit}`;
+  } else {
+    url += `${rangeToQuery(range)}&limit=${limit}`;
+  }
+  if (startingAfter !== undefined) {
+    url += `&starting_after=${startingAfter}`;
+  } else if (endingBefore !== undefined) {
+    url += `&ending_before=${endingBefore}`;
+  }
+  const res = await fetchJson<{
+    batches: { batch_id: number; cost: number }[];
+  }>(url);
+  return {
+    data: res.data
+      ? res.data.batches.map((b) => ({ batch: b.batch_id, cost: b.cost }))
+      : null,
+    badRequest: res.badRequest,
+    error: res.error,
+  };
+};
+
+export const fetchVerifyCost = async (
+  range: TimeRange,
+  limit = 50,
+  startingAfter?: number,
+  endingBefore?: number,
+): Promise<RequestResult<VerifyCostItem[]>> => {
+  let url = `${API_BASE}/verify-cost?`;
+  if (startingAfter === undefined && endingBefore === undefined) {
+    url += `${timeRangeToQuery(range)}&limit=${limit}`;
+  } else {
+    url += `${rangeToQuery(range)}&limit=${limit}`;
+  }
+  if (startingAfter !== undefined) {
+    url += `&starting_after=${startingAfter}`;
+  } else if (endingBefore !== undefined) {
+    url += `&ending_before=${endingBefore}`;
+  }
+  const res = await fetchJson<{
+    batches: { batch_id: number; cost: number }[];
+  }>(url);
+  return {
+    data: res.data
+      ? res.data.batches.map((b) => ({ batch: b.batch_id, cost: b.cost }))
       : null,
     badRequest: res.badRequest,
     error: res.error,
