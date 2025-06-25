@@ -12,11 +12,11 @@ export const useBlockData = () => {
   const updateBlockHeads = useCallback(async () => {
     try {
       const res = await fetchDashboardData('1h');
-      if (res.data?.l1_block != null) {
-        setL1HeadBlock(res.data.l1_block.toLocaleString());
+      if (res.data?.l1_head_block != null) {
+        setL1HeadBlock(res.data.l1_head_block.toLocaleString());
       }
-      if (res.data?.l2_block != null) {
-        setL2HeadBlock(res.data.l2_block.toLocaleString());
+      if (res.data?.l2_head_block != null) {
+        setL2HeadBlock(res.data.l2_head_block.toLocaleString());
       }
       if (res.data?.preconf_data?.candidates) {
         setCandidates(res.data.preconf_data.candidates);
