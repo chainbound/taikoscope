@@ -26,9 +26,7 @@ const WEI_TO_ETH = 1e18;
 const formatUsd = (value: number) => `$${value.toFixed(2)}`;
 
 // Simple node component that renders label with currency-aware value
-const SankeyNode = ({ x, y, width, height, payload }: any) => {
-  const { theme } = useTheme();
-  const textColor = theme === 'dark' ? darkTheme.foreground : lightTheme.foreground;
+const createSankeyNode = (textColor: string) => ({ x, y, width, height, payload }: any) => {
   const isCostNode =
     payload.name === 'Cloud Cost' ||
     payload.name === 'Prover Cost' ||
@@ -117,6 +115,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
   address,
 }) => {
   const { theme } = useTheme();
+  const textColor = theme === 'dark' ? darkTheme.foreground : lightTheme.foreground;
   const { data: feeRes } = useSWR(['l2FeesFlow', timeRange, address], () =>
     fetchL2Fees(timeRange, address),
   );
@@ -458,7 +457,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
       <ResponsiveContainer width="100%" height="100%">
         <Sankey
           data={data}
-          node={SankeyNode}
+          node={createSankeyNode(textColor)}
           nodePadding={10}
           nodeWidth={10}
           margin={{ top: 10, right: 120, bottom: 10, left: 10 }}
