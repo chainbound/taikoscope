@@ -1776,7 +1776,9 @@ impl ClickhouseReader {
         if let Some(addr) = proposer {
             query.push_str(&format!(" AND b.proposer_addr = unhex('{}')", encode(addr)));
         }
-        query.push_str(" GROUP BY bb.batch_id, b.l1_block_number ORDER BY bb.batch_id ASC");
+        query.push_str(
+            " GROUP BY bb.batch_id, b.l1_block_number, b.proposer_addr ORDER BY bb.batch_id ASC",
+        );
 
         let rows = self.execute::<RawRow>(&query).await?;
         Ok(rows
