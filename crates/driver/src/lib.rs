@@ -592,21 +592,103 @@ impl Driver {
 
     /// Store batches that have been proved on L1.
     async fn handle_batches_proved(&self, proved_data: (BatchesProved, u64, B256)) {
-        let (proved, l1_block_number, _tx_hash) = proved_data;
+        let (proved, l1_block_number, tx_hash) = proved_data;
         if let Err(e) = self.clickhouse.insert_proved_batch(&proved, l1_block_number).await {
-            tracing::error!(batch_ids = ?proved.batch_ids_proved(), err = %e, "Failed to insert proved batch");
+            tracing::error!(
+                batch_ids = ?proved.batch_ids_proved(),
+                err = %e,
+                "Failed to insert proved batch"
+            );
         } else {
             info!(batch_ids = ?proved.batch_ids_proved(), "Inserted proved batch");
+        }
+
+        if tx_hash.is_zero() {
+            tracing::debug!("Skipping prove cost calculation for zero transaction hash");
+            return;
+        }
+
+        match self.extractor.get_receipt(tx_hash).await {
+            Ok(receipt) => {
+                let cost = primitives::l1_data_cost::cost_from_receipt(&receipt);
+                for batch_id in proved.batch_ids_proved() {
+                    if let Err(e) =
+                        self.clickhouse.insert_prove_cost(l1_block_number, *batch_id, cost).await
+                    {
+                        tracing::error!(
+                            l1_block_number,
+                            batch_id,
+                            tx_hash = ?tx_hash,
+                            err = %e,
+                            "Failed to insert prove cost"
+                        );
+                    } else {
+                        info!(
+                            l1_block_number,
+                            batch_id,
+                            tx_hash = ?tx_hash,
+                            cost,
+                            "Inserted prove cost"
+                        );
+                    }
+                }
+            }
+            Err(e) => {
+                tracing::error!(
+                    tx_hash = ?tx_hash,
+                    err = %e,
+                    "Failed to fetch receipt for batch prove transaction"
+                );
+            }
         }
     }
 
     /// Store batches that have been verified on L1.
     async fn handle_batches_verified(&self, verified_data: (chainio::BatchesVerified, u64, B256)) {
-        let (verified, l1_block_number, _tx_hash) = verified_data;
+        let (verified, l1_block_number, tx_hash) = verified_data;
         if let Err(e) = self.clickhouse.insert_verified_batch(&verified, l1_block_number).await {
             tracing::error!(batch_id = ?verified.batch_id, err = %e, "Failed to insert verified batch");
         } else {
             info!(batch_id = ?verified.batch_id, "Inserted verified batch");
+        }
+
+        if tx_hash.is_zero() {
+            tracing::debug!("Skipping verify cost calculation for zero transaction hash");
+            return;
+        }
+
+        match self.extractor.get_receipt(tx_hash).await {
+            Ok(receipt) => {
+                let cost = primitives::l1_data_cost::cost_from_receipt(&receipt);
+                if let Err(e) = self
+                    .clickhouse
+                    .insert_verify_cost(l1_block_number, verified.batch_id, cost)
+                    .await
+                {
+                    tracing::error!(
+                        l1_block_number,
+                        batch_id = ?verified.batch_id,
+                        tx_hash = ?tx_hash,
+                        err = %e,
+                        "Failed to insert verify cost"
+                    );
+                } else {
+                    info!(
+                        l1_block_number,
+                        batch_id = ?verified.batch_id,
+                        tx_hash = ?tx_hash,
+                        cost,
+                        "Inserted verify cost"
+                    );
+                }
+            }
+            Err(e) => {
+                tracing::error!(
+                    tx_hash = ?tx_hash,
+                    err = %e,
+                    "Failed to fetch receipt for batch verify transaction"
+                );
+            }
         }
     }
 }
