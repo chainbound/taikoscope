@@ -1,7 +1,8 @@
 import React from 'react';
 import { ResponsiveContainer, Sankey, Tooltip } from 'recharts';
 import { formatEth } from '../utils';
-import { TAIKO_PINK } from '../theme';
+import { TAIKO_PINK, lightTheme, darkTheme } from '../theme';
+import { useTheme } from '../contexts/ThemeContext';
 
 const NODE_GREEN = '#22c55e';
 import useSWR from 'swr';
@@ -26,6 +27,8 @@ const formatUsd = (value: number) => `$${value.toFixed(2)}`;
 
 // Simple node component that renders label with currency-aware value
 const SankeyNode = ({ x, y, width, height, payload }: any) => {
+  const { theme } = useTheme();
+  const textColor = theme === 'dark' ? darkTheme.foreground : lightTheme.foreground;
   const isCostNode =
     payload.name === 'Cloud Cost' ||
     payload.name === 'Prover Cost' ||
@@ -64,7 +67,7 @@ const SankeyNode = ({ x, y, width, height, payload }: any) => {
           textAnchor="start"
           dominantBaseline="middle"
           fontSize={12}
-          fill="#374151"
+          fill={textColor}
         >
           {label}
         </text>
@@ -113,6 +116,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
   proverCost,
   address,
 }) => {
+  const { theme } = useTheme();
   const { data: feeRes } = useSWR(['l2FeesFlow', timeRange, address], () =>
     fetchL2Fees(timeRange, address),
   );
@@ -419,11 +423,11 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
       const targetLabel = formatLabel(targetNode);
 
       return (
-        <div className="bg-white p-2 border border-gray-200 rounded shadow-sm">
+        <div className="bg-white dark:bg-gray-800 p-2 border border-gray-200 dark:border-gray-700 rounded shadow-sm">
           <p className="text-sm font-medium">
             {sourceLabel} → {targetLabel}
           </p>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-gray-600 dark:text-gray-300">
             {formatTooltipValue(value, itemData)}
           </p>
         </div>
@@ -440,9 +444,9 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
       return itemData.addressLabel ?? itemData.address ?? itemData.name;
     })();
     return (
-      <div className="bg-white p-2 border border-gray-200 rounded shadow-sm">
+      <div className="bg-white dark:bg-gray-800 p-2 border border-gray-200 dark:border-gray-700 rounded shadow-sm">
         <p className="text-sm font-medium">{nodeLabel}</p>
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-gray-600 dark:text-gray-300">
           {formatTooltipValue(value, itemData)}
         </p>
       </div>
@@ -466,8 +470,8 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
             content={tooltipContent}
             trigger="hover"
             contentStyle={{
-              backgroundColor: 'white',
-              border: '1px solid #e5e7eb',
+              backgroundColor: theme === 'dark' ? '#1e293b' : 'white',
+              border: theme === 'dark' ? '1px solid #334155' : '1px solid #e5e7eb',
               borderRadius: '0.375rem',
             }}
           />
