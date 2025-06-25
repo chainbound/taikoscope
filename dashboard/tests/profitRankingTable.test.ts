@@ -41,7 +41,12 @@ describe('ProfitRankingTable', () => {
           },
         },
       } as any)
-      .mockReturnValueOnce({ data: new Map([['0xseqa', 1], ['0xseqb', 1]]) } as any);
+      .mockReturnValueOnce({
+        data: new Map([
+          ['0xseqa', 1],
+          ['0xseqb', 1],
+        ]),
+      } as any);
 
     vi.spyOn(api, 'fetchSequencerDistribution').mockResolvedValue({
       data: [
@@ -95,6 +100,7 @@ describe('ProfitRankingTable', () => {
     expect(html.includes('Batches')).toBe(true);
     expect(html.includes('Cost (ETH)')).toBe(true);
     expect(html.includes('Profit (ETH)')).toBe(true);
+    expect(html.includes('Income/Cost')).toBe(true);
     expect(html.includes('↓')).toBe(true);
   });
 
@@ -102,9 +108,7 @@ describe('ProfitRankingTable', () => {
     vi.mocked(swr.default)
       .mockReturnValueOnce({
         data: {
-          data: [
-            { name: 'SeqA', address: '0xseqA', value: 1, tps: null },
-          ],
+          data: [{ name: 'SeqA', address: '0xseqA', value: 1, tps: null }],
         },
       } as any)
       .mockReturnValueOnce({
