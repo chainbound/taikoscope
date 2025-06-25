@@ -178,10 +178,10 @@ export const fetchL2ReorgEvents = async (
   return {
     data: res.data?.events
       ? res.data.events.map((e) => ({
-        l2_block_number: e.l2_block_number,
-        depth: e.depth,
-        timestamp: Date.parse(e.inserted_at),
-      }))
+          l2_block_number: e.l2_block_number,
+          depth: e.depth,
+          timestamp: Date.parse(e.inserted_at),
+        }))
       : null,
     badRequest: res.badRequest,
     error: res.error,
@@ -320,10 +320,10 @@ export const fetchProveTimes = async (
   return {
     data: res.data
       ? res.data.batches.map((b) => ({
-        name: b.batch_id.toString(),
-        value: b.seconds_to_prove,
-        timestamp: 0,
-      }))
+          name: b.batch_id.toString(),
+          value: b.seconds_to_prove,
+          timestamp: 0,
+        }))
       : null,
     badRequest: res.badRequest,
     error: res.error,
@@ -353,10 +353,10 @@ export const fetchVerifyTimes = async (
   return {
     data: res.data
       ? res.data.batches.map((b) => ({
-        name: b.batch_id.toString(),
-        value: b.seconds_to_verify,
-        timestamp: 0,
-      }))
+          name: b.batch_id.toString(),
+          value: b.seconds_to_verify,
+          timestamp: 0,
+        }))
       : null,
     badRequest: res.badRequest,
     error: res.error,
@@ -525,10 +525,10 @@ export const fetchL2GasUsed = async (
   return {
     data: res.data
       ? res.data.blocks.map((b) => ({
-        value: b.l2_block_number,
-        timestamp: b.gas_used,
-        blockTime: new Date(b.block_time).getTime(),
-      }))
+          value: b.l2_block_number,
+          timestamp: b.gas_used,
+          blockTime: new Date(b.block_time).getTime(),
+        }))
       : null,
     badRequest: res.badRequest,
     error: res.error,
@@ -548,10 +548,10 @@ export const fetchL2GasUsedAggregated = async (
   return {
     data: res.data
       ? res.data.blocks.map((b) => ({
-        value: b.l2_block_number,
-        timestamp: b.gas_used,
-        blockTime: new Date(b.block_time).getTime(),
-      }))
+          value: b.l2_block_number,
+          timestamp: b.gas_used,
+          blockTime: new Date(b.block_time).getTime(),
+        }))
       : null,
     badRequest: res.badRequest,
     error: res.error,
@@ -568,11 +568,11 @@ export const fetchSequencerDistribution = async (
   return {
     data: res.data
       ? res.data.sequencers.map((s) => ({
-        name: getSequencerName(s.address),
-        address: s.address,
-        value: s.blocks,
-        tps: s.tps,
-      }))
+          name: getSequencerName(s.address),
+          address: s.address,
+          value: s.blocks,
+          tps: s.tps,
+        }))
       : null,
     badRequest: res.badRequest,
     error: res.error,
@@ -639,11 +639,11 @@ export const fetchBlockTransactions = async (
   return {
     data: res.data?.blocks
       ? res.data.blocks.map((b) => ({
-        block: b.block,
-        txs: b.txs,
-        sequencer: getSequencerName(b.sequencer),
-        blockTime: new Date(b.block_time).getTime(),
-      }))
+          block: b.block,
+          txs: b.txs,
+          sequencer: getSequencerName(b.sequencer),
+          blockTime: new Date(b.block_time).getTime(),
+        }))
       : null,
     badRequest: res.badRequest,
     error: res.error,
@@ -684,11 +684,11 @@ export const fetchBlockTransactionsAggregated = async (
   return {
     data: res.data?.blocks
       ? res.data.blocks.map((b) => ({
-        block: b.block,
-        txs: b.txs,
-        sequencer: getSequencerName(b.sequencer),
-        blockTime: new Date(b.block_time).getTime(),
-      }))
+          block: b.block,
+          txs: b.txs,
+          sequencer: getSequencerName(b.sequencer),
+          blockTime: new Date(b.block_time).getTime(),
+        }))
       : null,
     badRequest: res.badRequest,
     error: res.error,
@@ -728,16 +728,15 @@ export const fetchBatchBlobCounts = async (
   return {
     data: res.data
       ? res.data.batches.map((b) => ({
-        block: b.l1_block_number ?? b.batch_id, // Fallback to batch_id for backward compatibility
-        batch: b.batch_id,
-        blobs: b.blob_count,
-      }))
+          block: b.l1_block_number ?? b.batch_id, // Fallback to batch_id for backward compatibility
+          batch: b.batch_id,
+          blobs: b.blob_count,
+        }))
       : null,
     badRequest: res.badRequest,
     error: res.error,
   };
 };
-
 
 export const fetchAvgBlobsPerBatch = async (
   range: TimeRange,
@@ -805,6 +804,7 @@ export interface FeeComponent {
 export interface BatchFeeComponent {
   batch: number;
   l1Block: number;
+  sequencer: string;
   priority: number;
   base: number;
   l1Cost: number | null;
@@ -828,11 +828,11 @@ export const fetchFeeComponents = async (
   return {
     data: res.data
       ? res.data.blocks.map((b) => ({
-        block: b.l2_block_number,
-        priority: b.priority_fee,
-        base: b.base_fee,
-        l1Cost: b.l1_data_cost ?? null,
-      }))
+          block: b.l2_block_number,
+          priority: b.priority_fee,
+          base: b.base_fee,
+          l1Cost: b.l1_data_cost ?? null,
+        }))
       : null,
     badRequest: res.badRequest,
     error: res.error,
@@ -850,6 +850,7 @@ export const fetchBatchFeeComponents = async (
     batches: {
       batch_id: number;
       l1_block_number: number;
+      sequencer: string;
       priority_fee: number;
       base_fee: number;
       l1_data_cost: number | null;
@@ -860,6 +861,7 @@ export const fetchBatchFeeComponents = async (
       ? res.data.batches.map((b) => ({
           batch: b.batch_id,
           l1Block: b.l1_block_number,
+          sequencer: getSequencerName(b.sequencer),
           priority: b.priority_fee,
           base: b.base_fee,
           l1Cost: b.l1_data_cost ?? null,
@@ -955,9 +957,13 @@ export const fetchBlockProfits = async (
   const url =
     `${API_BASE}/block-profits?${timeRangeToQuery(range)}&order=${order}&limit=${limit}` +
     (address ? `&address=${address}` : '');
-  const res = await fetchJson<{ blocks: { block: number; profit: number }[] }>(url);
+  const res = await fetchJson<{ blocks: { block: number; profit: number }[] }>(
+    url,
+  );
   return {
-    data: res.data ? res.data.blocks.map((b) => ({ block: b.block, profit: b.profit })) : null,
+    data: res.data
+      ? res.data.blocks.map((b) => ({ block: b.block, profit: b.profit }))
+      : null,
     badRequest: res.badRequest,
     error: res.error,
   };

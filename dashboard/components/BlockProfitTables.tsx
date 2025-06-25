@@ -48,6 +48,7 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
   const profits = batchData.map((b) => ({
     batch: b.batch,
     l1Block: b.l1Block,
+    sequencer: b.sequencer,
     profit: b.priority + b.base - (b.l1Cost ?? 0),
   }));
   const topBatches = [...profits]
@@ -59,7 +60,9 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
 
   const renderTable = (
     title: string,
-    items: { batch: number; l1Block: number; profit: number }[] | null,
+    items:
+      | { batch: number; l1Block: number; sequencer: string; profit: number }[]
+      | null,
   ) => (
     <div>
       <h3 className="text-lg font-semibold mb-2">{title}</h3>
@@ -68,6 +71,7 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
           <thead>
             <tr>
               <th className="px-2 py-1 text-left">Batch</th>
+              <th className="px-2 py-1 text-left">Sequencer</th>
               <th className="px-2 py-1 text-left">Profit (ETH)</th>
             </tr>
           </thead>
@@ -80,6 +84,7 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
                 <td className="px-2 py-1">
                   {l1BlockLink(b.l1Block ?? 0, b.batch.toLocaleString())}
                 </td>
+                <td className="px-2 py-1">{b.sequencer}</td>
                 <td
                   className="px-2 py-1"
                   title={`$${formatUsd(calcProfitEth(b.profit) * ethPrice)}`}

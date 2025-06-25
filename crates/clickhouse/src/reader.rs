@@ -1744,6 +1744,7 @@ impl ClickhouseReader {
         struct RawRow {
             batch_id: u64,
             l1_block_number: u64,
+            proposer: AddressBytes,
             priority_fee: u128,
             base_fee: u128,
             l1_data_cost: Option<u128>,
@@ -1753,6 +1754,7 @@ impl ClickhouseReader {
         let mut query = format!(
             "SELECT bb.batch_id, \
                     b.l1_block_number AS l1_block_number, \
+                    b.proposer_addr AS proposer, \
                     sum(h.sum_priority_fee) AS priority_fee, \
                     sum(h.sum_base_fee) AS base_fee, \
                     toNullable(sum(dc.cost)) AS l1_data_cost \
@@ -1782,6 +1784,7 @@ impl ClickhouseReader {
             .map(|r| BatchFeeComponentRow {
                 batch_id: r.batch_id,
                 l1_block_number: r.l1_block_number,
+                sequencer: r.proposer,
                 priority_fee: r.priority_fee,
                 base_fee: r.base_fee,
                 l1_data_cost: r.l1_data_cost,
@@ -2306,6 +2309,7 @@ mod tests {
     struct BatchFeeRow {
         batch_id: u64,
         l1_block_number: u64,
+        proposer: AddressBytes,
         priority_fee: u128,
         base_fee: u128,
         l1_data_cost: Option<u128>,
@@ -2317,6 +2321,7 @@ mod tests {
         mock.add(handlers::provide(vec![BatchFeeRow {
             batch_id: 1,
             l1_block_number: 10,
+            proposer: AddressBytes([1u8; 20]),
             priority_fee: 10,
             base_fee: 20,
             l1_data_cost: Some(5),
@@ -2333,6 +2338,7 @@ mod tests {
             vec![BatchFeeComponentRow {
                 batch_id: 1,
                 l1_block_number: 10,
+                sequencer: AddressBytes([1u8; 20]),
                 priority_fee: 10,
                 base_fee: 20,
                 l1_data_cost: Some(5),
@@ -2347,6 +2353,7 @@ mod tests {
             mock.add(handlers::provide(vec![BatchFeeRow {
                 batch_id: 1,
                 l1_block_number: 10,
+                proposer: AddressBytes([1u8; 20]),
                 priority_fee: 10,
                 base_fee: 20,
                 l1_data_cost: Some(5),

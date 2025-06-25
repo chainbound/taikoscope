@@ -5,9 +5,9 @@
 //! depend on them without pulling in the rest of the server implementation.
 
 use clickhouse_lib::{
-    BatchBlobCountRow, BatchFeeComponentRow, BatchPostingTimeRow, BatchProveTimeRow,
-    BatchVerifyTimeRow, BlockFeeComponentRow, ForcedInclusionProcessedRow, L1BlockTimeRow,
-    L1DataCostRow, L2BlockTimeRow, L2GasUsedRow, L2ReorgRow, L2TpsRow, SlashingEventRow,
+    BatchBlobCountRow, BatchPostingTimeRow, BatchProveTimeRow, BatchVerifyTimeRow,
+    BlockFeeComponentRow, ForcedInclusionProcessedRow, L1BlockTimeRow, L1DataCostRow,
+    L2BlockTimeRow, L2GasUsedRow, L2ReorgRow, L2TpsRow, SlashingEventRow,
 };
 
 use axum::{Json, http::StatusCode, response::IntoResponse};
@@ -243,6 +243,23 @@ pub struct L1DataCostResponse {
 pub struct FeeComponentsResponse {
     /// Fee components per block
     pub blocks: Vec<BlockFeeComponentRow>,
+}
+
+/// Fee components for a batch
+#[derive(Debug, Serialize, ToSchema)]
+pub struct BatchFeeComponentRow {
+    /// Batch ID
+    pub batch_id: u64,
+    /// L1 block number that included the batch
+    pub l1_block_number: u64,
+    /// Sequencer address that proposed the batch
+    pub sequencer: String,
+    /// Total priority fee for the batch
+    pub priority_fee: u128,
+    /// Total base fee for the batch
+    pub base_fee: u128,
+    /// L1 data posting cost associated with the batch, if available
+    pub l1_data_cost: Option<u128>,
 }
 
 /// Fee components for each batch

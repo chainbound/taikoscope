@@ -2,9 +2,8 @@
 
 use api_types::BlockTransactionsItem;
 
-use clickhouse_lib::{
-    BatchFeeComponentRow, BlockFeeComponentRow, L2BlockTimeRow, L2GasUsedRow, TimeRange,
-};
+use api_types::BatchFeeComponentRow;
+use clickhouse_lib::{BlockFeeComponentRow, L2BlockTimeRow, L2GasUsedRow, TimeRange};
 use std::collections::BTreeMap;
 
 /// Determine bucket size based on time range
@@ -119,9 +118,11 @@ pub fn aggregate_batch_fee_components(
                 (s + r.l1_data_cost.unwrap_or(0), a || r.l1_data_cost.is_some())
             });
             let last_l1 = rs.last().map(|r| r.l1_block_number).unwrap_or_default();
+            let last_seq = rs.last().map(|r| r.sequencer.clone()).unwrap_or_default();
             BatchFeeComponentRow {
                 batch_id: g * bucket,
                 l1_block_number: last_l1,
+                sequencer: last_seq,
                 priority_fee: sum_priority,
                 base_fee: sum_base,
                 l1_data_cost: any.then_some(sum_l1),
