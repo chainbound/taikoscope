@@ -45,9 +45,8 @@ describe('getEthPrice', () => {
   it('handles fetch failure', async () => {
     globalThis.fetch = mockFetch(0, false);
     const spy = vi.spyOn(toast, 'showToast').mockImplementation(() => {});
-    await expect(getEthPrice()).rejects.toThrow(
-      'Failed to fetch ETH price: 500',
-    );
+    const price = await getEthPrice();
+    expect(price).toBe(0);
     expect(spy).toHaveBeenCalled();
     spy.mockRestore();
   });
@@ -63,8 +62,7 @@ describe('getEthPrice', () => {
 
   it('handles invalid response format', async () => {
     globalThis.fetch = mockFetchWithInvalidResponse();
-    await expect(getEthPrice()).rejects.toThrow(
-      'Invalid ETH price response format',
-    );
+    const price = await getEthPrice();
+    expect(price).toBe(0);
   });
 });

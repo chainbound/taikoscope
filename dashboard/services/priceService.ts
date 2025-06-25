@@ -16,17 +16,21 @@ export const getEthPrice = async (): Promise<number> => {
   }
   if (!res.ok) {
     showToast('Failed to fetch ETH price');
-    throw new Error(`Failed to fetch ETH price: ${res.status}`);
+    return 0;
   }
 
-  const data = await res.json();
-  const price = data?.price;
-  if (typeof price !== 'number') {
+  try {
+    const data = await res.json();
+    const price = data?.price;
+    if (typeof price !== 'number') {
+      showToast('Failed to fetch ETH price');
+      return 0;
+    }
+    return price;
+  } catch {
     showToast('Failed to fetch ETH price');
-    throw new Error('Invalid ETH price response format');
+    return 0;
   }
-
-  return price;
 };
 
 export const useEthPrice = () => {
@@ -34,25 +38,25 @@ export const useEthPrice = () => {
     typeof localStorage === 'undefined'
       ? undefined
       : (() => {
-        const cached = localStorage.getItem(CACHE_KEY);
-        if (cached) {
-          try {
-            const { price, timestamp } = JSON.parse(cached) as {
-              price: number;
-              timestamp: number;
-            };
-            if (
-              Date.now() - timestamp < 3600_000 &&
-              typeof price === 'number'
-            ) {
-              return price;
+          const cached = localStorage.getItem(CACHE_KEY);
+          if (cached) {
+            try {
+              const { price, timestamp } = JSON.parse(cached) as {
+                price: number;
+                timestamp: number;
+              };
+              if (
+                Date.now() - timestamp < 3600_000 &&
+                typeof price === 'number'
+              ) {
+                return price;
+              }
+            } catch {
+              // ignore malformed cache
             }
-          } catch {
-            // ignore malformed cache
           }
-        }
-        return undefined;
-      })();
+          return undefined;
+        })();
 
   const swr = useSWR<number>('ethPrice', getEthPrice, {
     revalidateOnFocus: false,
@@ -60,7 +64,11 @@ export const useEthPrice = () => {
   });
 
   useEffect(() => {
-    if (typeof localStorage !== 'undefined' && swr.data !== undefined) {
+    if (
+      typeof localStorage !== 'undefined' &&
+      swr.data !== undefined &&
+      swr.data !== 0
+    ) {
       try {
         localStorage.setItem(
           CACHE_KEY,
