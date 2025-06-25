@@ -21,6 +21,8 @@ describe('ProfitabilityChart', () => {
         timeRange: '1h',
         cloudCost: 1000,
         proverCost: 1000,
+        proveCost: 0,
+        verifyCost: 0,
       })
     );
 
