@@ -33,7 +33,7 @@ export const blockLink = (
     text ?? block.toLocaleString(),
   );
 
-export const l1BlockLink = (block: number): React.ReactElement =>
+export const l1BlockLink = (block: number, text?: string | number): React.ReactElement =>
   React.createElement(
     'a',
     {
@@ -43,7 +43,7 @@ export const l1BlockLink = (block: number): React.ReactElement =>
       className: 'font-semibold hover:underline',
       style: { color: TAIKO_PINK },
     },
-    block.toLocaleString(),
+    text ?? block.toLocaleString(),
   );
 
 export const addressLink = (

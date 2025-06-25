@@ -349,16 +349,16 @@ pub struct BatchBlobsResponse {
     pub batches: Vec<BatchBlobCountRow>,
 }
 
-/// Mapping entry of a batch to its first L2 block number.
+/// Mapping entry of a batch to its corresponding L1 block number.
 #[derive(Debug, Serialize, ToSchema)]
 pub struct BatchBlockItem {
     /// Batch ID
     pub batch: u64,
-    /// First L2 block number in the batch
+    /// L1 block number that included the batch
     pub block: u64,
 }
 
-/// Mapping of batches to their first L2 block number.
+/// Mapping of batches to their corresponding L1 block number.
 #[derive(Debug, Serialize, ToSchema)]
 pub struct BatchBlocksResponse {
     /// Mapping entries for each batch.

@@ -1,13 +1,10 @@
 import React from 'react';
 import useSWR from 'swr';
-import {
-  fetchBatchFeeComponents,
-  fetchBatchBlocks,
-} from '../services/apiService';
+import { fetchBatchFeeComponents } from '../services/apiService';
 import { useEthPrice } from '../services/priceService';
 import { TimeRange } from '../types';
 import { rangeToHours } from '../utils/timeRange';
-import { formatEth, blockLink } from '../utils';
+import { formatEth, l1BlockLink } from '../utils';
 
 interface BlockProfitTablesProps {
   timeRange: TimeRange;
@@ -36,18 +33,8 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
     ['batchFeeComponents', timeRange, address],
     () => fetchBatchFeeComponents(timeRange, address),
   );
-  const { data: blockRes } = useSWR(['batchBlocks', timeRange], () =>
-    fetchBatchBlocks(timeRange, 1000),
-  );
   const batchData = feeRes?.data ?? [];
   const batchCount = batchData.length;
-  const batchBlockMap = React.useMemo(() => {
-    const map = new Map<number, number>();
-    blockRes?.data?.forEach((b) => {
-      map.set(b.batch, b.block);
-    });
-    return map;
-  }, [blockRes]);
   const HOURS_IN_MONTH = 30 * 24;
   const hours = rangeToHours(timeRange);
   const costPerBatchUsd =
@@ -60,6 +47,7 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
 
   const profits = batchData.map((b) => ({
     batch: b.batch,
+    l1Block: b.l1Block,
     profit: b.priority + b.base - (b.l1Cost ?? 0),
   }));
   const topBatches = [...profits]
@@ -71,7 +59,7 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
 
   const renderTable = (
     title: string,
-    items: { batch: number; profit: number }[] | null,
+    items: { batch: number; l1Block: number; profit: number }[] | null,
   ) => (
     <div>
       <h3 className="text-lg font-semibold mb-2">{title}</h3>
@@ -90,12 +78,7 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
                 className="border-t border-gray-200 dark:border-gray-700"
               >
                 <td className="px-2 py-1">
-                  {batchBlockMap.has(b.batch)
-                    ? blockLink(
-                        batchBlockMap.get(b.batch)!,
-                        b.batch.toLocaleString(),
-                      )
-                    : b.batch}
+                  {l1BlockLink(b.l1Block ?? 0, b.batch.toLocaleString())}
                 </td>
                 <td
                   className="px-2 py-1"

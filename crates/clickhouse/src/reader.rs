@@ -13,11 +13,11 @@ use url::Url;
 
 use crate::{
     models::{
-        BatchBlobCountRow, BatchBlockRow, BatchFeeComponentRow, BatchPostingTimeRow,
-        BatchProveTimeRow, BatchVerifyTimeRow, BlockFeeComponentRow, BlockTransactionRow,
-        ForcedInclusionProcessedRow, L1BlockTimeRow, L1DataCostRow, L2BlockTimeRow, L2GasUsedRow,
-        L2ReorgRow, L2TpsRow, PreconfData, SequencerBlockRow, SequencerDistributionRow,
-        SequencerFeeRow, SlashingEventRow,
+        BatchBlobCountRow, BatchFeeComponentRow, BatchPostingTimeRow, BatchProveTimeRow,
+        BatchVerifyTimeRow, BlockFeeComponentRow, BlockTransactionRow, ForcedInclusionProcessedRow,
+        L1BlockTimeRow, L1DataCostRow, L2BlockTimeRow, L2GasUsedRow, L2ReorgRow, L2TpsRow,
+        PreconfData, SequencerBlockRow, SequencerDistributionRow, SequencerFeeRow,
+        SlashingEventRow,
     },
     types::AddressBytes,
 };
@@ -1588,6 +1588,7 @@ impl ClickhouseReader {
         #[derive(Row, Deserialize)]
         struct RawRow {
             batch_id: u64,
+            l1_block_number: u64,
             priority_fee: u128,
             base_fee: u128,
             l1_data_cost: Option<u128>,
@@ -1596,6 +1597,7 @@ impl ClickhouseReader {
         let filter = self.reorg_filter("h");
         let mut query = format!(
             "SELECT bb.batch_id, \
+                    b.l1_block_number AS l1_block_number, \
                     sum(h.sum_priority_fee) AS priority_fee, \
                     sum(h.sum_base_fee) AS base_fee, \
                     toNullable(sum(dc.cost)) AS l1_data_cost \
@@ -1617,13 +1619,14 @@ impl ClickhouseReader {
         if let Some(addr) = proposer {
             query.push_str(&format!(" AND b.proposer_addr = unhex('{}')", encode(addr)));
         }
-        query.push_str(" GROUP BY bb.batch_id ORDER BY bb.batch_id ASC");
+        query.push_str(" GROUP BY bb.batch_id, b.l1_block_number ORDER BY bb.batch_id ASC");
 
         let rows = self.execute::<RawRow>(&query).await?;
         Ok(rows
             .into_iter()
             .map(|r| BatchFeeComponentRow {
                 batch_id: r.batch_id,
+                l1_block_number: r.l1_block_number,
                 priority_fee: r.priority_fee,
                 base_fee: r.base_fee,
                 l1_data_cost: r.l1_data_cost,
@@ -1966,37 +1969,6 @@ impl ClickhouseReader {
 
         if row.avg.is_nan() { Ok(None) } else { Ok(Some(row.avg)) }
     }
-
-    /// Get the first L2 block number for each batch since the cutoff time with cursor-based
-    /// pagination. Results are returned in descending order by batch id.
-    pub async fn get_batch_first_blocks_paginated(
-        &self,
-        since: DateTime<Utc>,
-        limit: u64,
-        starting_after: Option<u64>,
-        ending_before: Option<u64>,
-    ) -> Result<Vec<BatchBlockRow>> {
-        let mut query = format!(
-            "SELECT bb.batch_id, min(bb.l2_block_number) AS l2_block_number \
-             FROM {db}.batch_blocks bb \
-             INNER JOIN {db}.batches b ON bb.batch_id = b.batch_id \
-             INNER JOIN {db}.l1_head_events l1 ON b.l1_block_number = l1.l1_block_number \
-             WHERE l1.block_ts >= {since}",
-            since = since.timestamp(),
-            db = self.db_name,
-        );
-        if let Some(start) = starting_after {
-            query.push_str(&format!(" AND bb.batch_id < {}", start));
-        }
-        if let Some(end) = ending_before {
-            query.push_str(&format!(" AND bb.batch_id > {}", end));
-        }
-        query.push_str(" GROUP BY bb.batch_id ORDER BY bb.batch_id DESC");
-        query.push_str(&format!(" LIMIT {}", limit));
-
-        let rows = self.execute::<BatchBlockRow>(&query).await?;
-        Ok(rows)
-    }
 }
 
 #[cfg(test)]
@@ -2123,6 +2095,7 @@ mod tests {
     #[derive(Row, serde::Serialize)]
     struct BatchFeeRow {
         batch_id: u64,
+        l1_block_number: u64,
         priority_fee: u128,
         base_fee: u128,
         l1_data_cost: Option<u128>,
@@ -2133,6 +2106,7 @@ mod tests {
         let mock = Mock::new();
         mock.add(handlers::provide(vec![BatchFeeRow {
             batch_id: 1,
+            l1_block_number: 10,
             priority_fee: 10,
             base_fee: 20,
             l1_data_cost: Some(5),
@@ -2148,6 +2122,7 @@ mod tests {
             rows,
             vec![BatchFeeComponentRow {
                 batch_id: 1,
+                l1_block_number: 10,
                 priority_fee: 10,
                 base_fee: 20,
                 l1_data_cost: Some(5),
@@ -2161,6 +2136,7 @@ mod tests {
         for _ in 0..3 {
             mock.add(handlers::provide(vec![BatchFeeRow {
                 batch_id: 1,
+                l1_block_number: 10,
                 priority_fee: 10,
                 base_fee: 20,
                 l1_data_cost: Some(5),
