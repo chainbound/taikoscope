@@ -20,7 +20,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN cargo install --locked sccache cargo-chef && \
     rm -rf /usr/local/cargo/registry /usr/local/cargo/git
 
-ENV RUSTC_WRAPPER=sccache SCCACHE_DIR=/sccache
+ENV RUSTC_WRAPPER=sccache \
+    SCCACHE_DIR=/sccache \
+    CARGO_HOME=/usr/local/cargo
 
 FROM base AS planner
 
@@ -40,9 +42,13 @@ COPY --from=planner /app/recipe.json recipe.json
 ARG TARGETARCH
 
 RUN --mount=type=cache,target=$SCCACHE_DIR,sharing=locked \
+    --mount=type=cache,target=$CARGO_HOME/registry \
+    --mount=type=cache,target=$CARGO_HOME/git \
     cargo chef cook --release --recipe-path recipe.json
 COPY . .
 RUN --mount=type=cache,target=$SCCACHE_DIR,sharing=locked \
+    --mount=type=cache,target=$CARGO_HOME/registry \
+    --mount=type=cache,target=$CARGO_HOME/git \
     if [ "$TARGETARCH" = "arm64" ]; then \
     echo "Building for arm64 with JEMALLOC_SYS_WITH_LG_PAGE=16"; \
     # Force jemalloc to use 64 KiB pages on ARM
