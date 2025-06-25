@@ -164,3 +164,176 @@ async fn batch_posting_times_endpoint_returns_items_with_pagination() {
 
     server.abort();
 }
+
+#[tokio::test]
+async fn l2_block_times_endpoint_supports_block_range() {
+    #[derive(Serialize, Row)]
+    struct RawRow {
+        l2_block_number: u64,
+        block_time: u64,
+        ms_since_prev_block: Option<u64>,
+    }
+
+    let mock = Mock::new();
+    mock.add(handlers::provide(vec![RawRow {
+        l2_block_number: 5,
+        block_time: 1000,
+        ms_since_prev_block: Some(500),
+    }]));
+
+    let url = Url::parse(mock.url()).unwrap();
+    let client =
+        ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+    let (addr, server) = spawn_server(client).await;
+    wait_for_server(addr).await;
+
+    let resp = reqwest::get(format!(
+        "http://{addr}/{API_VERSION}/l2-block-times?block[gte]=5&block[lte]=5&limit=10"
+    ))
+    .await
+    .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body: serde_json::Value = resp.json().await.unwrap();
+    let expected = serde_json::json!({
+        "blocks": [
+            {
+                "l2_block_number": 5,
+                "block_time": Utc.timestamp_opt(1000, 0).single().unwrap().to_rfc3339(),
+                "ms_since_prev_block": 500
+            }
+        ]
+    });
+    assert_eq!(body, expected);
+
+    server.abort();
+}
+
+#[tokio::test]
+async fn l2_gas_used_endpoint_supports_block_range() {
+    #[derive(Serialize, Row)]
+    struct RawRow {
+        l2_block_number: u64,
+        block_time: u64,
+        gas_used: u64,
+    }
+
+    let mock = Mock::new();
+    mock.add(handlers::provide(vec![RawRow {
+        l2_block_number: 5,
+        block_time: 1000,
+        gas_used: 42,
+    }]));
+
+    let url = Url::parse(mock.url()).unwrap();
+    let client =
+        ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+    let (addr, server) = spawn_server(client).await;
+    wait_for_server(addr).await;
+
+    let resp = reqwest::get(format!(
+        "http://{addr}/{API_VERSION}/l2-gas-used?block[gte]=5&block[lte]=5&limit=10"
+    ))
+    .await
+    .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body: serde_json::Value = resp.json().await.unwrap();
+    let expected = serde_json::json!({
+        "blocks": [
+            {
+                "l2_block_number": 5,
+                "block_time": Utc.timestamp_opt(1000, 0).single().unwrap().to_rfc3339(),
+                "gas_used": 42
+            }
+        ]
+    });
+    assert_eq!(body, expected);
+
+    server.abort();
+}
+
+#[tokio::test]
+async fn l2_tps_endpoint_supports_block_range() {
+    #[derive(Serialize, Row)]
+    struct RawRow {
+        l2_block_number: u64,
+        sum_tx: u32,
+        ms_since_prev_block: Option<u64>,
+    }
+
+    let mock = Mock::new();
+    mock.add(handlers::provide(vec![RawRow {
+        l2_block_number: 5,
+        sum_tx: 20,
+        ms_since_prev_block: Some(1000),
+    }]));
+
+    let url = Url::parse(mock.url()).unwrap();
+    let client =
+        ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+    let (addr, server) = spawn_server(client).await;
+    wait_for_server(addr).await;
+
+    let resp = reqwest::get(format!(
+        "http://{addr}/{API_VERSION}/l2-tps?block[gte]=5&block[lte]=5&limit=10"
+    ))
+    .await
+    .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body: serde_json::Value = resp.json().await.unwrap();
+    let expected = serde_json::json!({
+        "blocks": [ { "l2_block_number": 5, "tps": 20.0 } ]
+    });
+    assert_eq!(body, expected);
+
+    server.abort();
+}
+
+#[tokio::test]
+async fn block_transactions_endpoint_supports_block_range() {
+    #[derive(Serialize, Row)]
+    struct RawRow {
+        sequencer: AddressBytes,
+        l2_block_number: u64,
+        block_time: u64,
+        sum_tx: u32,
+    }
+
+    let mock = Mock::new();
+    mock.add(handlers::provide(vec![RawRow {
+        sequencer: AddressBytes([1u8; 20]),
+        l2_block_number: 5,
+        block_time: 1000,
+        sum_tx: 3,
+    }]));
+
+    let url = Url::parse(mock.url()).unwrap();
+    let client =
+        ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+    let (addr, server) = spawn_server(client).await;
+    wait_for_server(addr).await;
+
+    let resp = reqwest::get(format!(
+        "http://{addr}/{API_VERSION}/block-transactions?block[gte]=5&block[lte]=5&limit=10"
+    ))
+    .await
+    .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body: serde_json::Value = resp.json().await.unwrap();
+    let expected = serde_json::json!({
+        "blocks": [
+            {
+                "block": 5,
+                "txs": 3,
+                "sequencer": format!("0x{}", hex::encode([1u8; 20])),
+                "block_time": Utc.timestamp_opt(1000, 0).single().unwrap().to_rfc3339()
+            }
+        ]
+    });
+    assert_eq!(body, expected);
+
+    server.abort();
+}
