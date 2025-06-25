@@ -12,7 +12,7 @@ interface SequencerPieChartProps {
 // Updated colors as per request
 const SEQUENCER_COLORS: { [key: string]: string } = {
   Nethermind: '#0288d1',
-  Titan: '#00d992',
+  Gattaca: '#00d992',
   Chainbound: '#ffc837',
 };
 
