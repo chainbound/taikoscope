@@ -349,6 +349,22 @@ pub struct BatchBlobsResponse {
     pub batches: Vec<BatchBlobCountRow>,
 }
 
+/// Mapping entry of a batch to its corresponding L1 block number.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct BatchBlockItem {
+    /// Batch ID
+    pub batch: u64,
+    /// L1 block number that included the batch
+    pub block: u64,
+}
+
+/// Mapping of batches to their corresponding L1 block number.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct BatchBlocksResponse {
+    /// Mapping entries for each batch.
+    pub batches: Vec<BatchBlockItem>,
+}
+
 /// Average number of blobs per batch.
 #[derive(Debug, Serialize, ToSchema)]
 pub struct AvgBlobsPerBatchResponse {

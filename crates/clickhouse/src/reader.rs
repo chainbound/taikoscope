@@ -1588,6 +1588,7 @@ impl ClickhouseReader {
         #[derive(Row, Deserialize)]
         struct RawRow {
             batch_id: u64,
+            l1_block_number: u64,
             priority_fee: u128,
             base_fee: u128,
             l1_data_cost: Option<u128>,
@@ -1596,6 +1597,7 @@ impl ClickhouseReader {
         let filter = self.reorg_filter("h");
         let mut query = format!(
             "SELECT bb.batch_id, \
+                    b.l1_block_number AS l1_block_number, \
                     sum(h.sum_priority_fee) AS priority_fee, \
                     sum(h.sum_base_fee) AS base_fee, \
                     toNullable(sum(dc.cost)) AS l1_data_cost \
@@ -1617,13 +1619,14 @@ impl ClickhouseReader {
         if let Some(addr) = proposer {
             query.push_str(&format!(" AND b.proposer_addr = unhex('{}')", encode(addr)));
         }
-        query.push_str(" GROUP BY bb.batch_id ORDER BY bb.batch_id ASC");
+        query.push_str(" GROUP BY bb.batch_id, b.l1_block_number ORDER BY bb.batch_id ASC");
 
         let rows = self.execute::<RawRow>(&query).await?;
         Ok(rows
             .into_iter()
             .map(|r| BatchFeeComponentRow {
                 batch_id: r.batch_id,
+                l1_block_number: r.l1_block_number,
                 priority_fee: r.priority_fee,
                 base_fee: r.base_fee,
                 l1_data_cost: r.l1_data_cost,
@@ -2092,6 +2095,7 @@ mod tests {
     #[derive(Row, serde::Serialize)]
     struct BatchFeeRow {
         batch_id: u64,
+        l1_block_number: u64,
         priority_fee: u128,
         base_fee: u128,
         l1_data_cost: Option<u128>,
@@ -2102,6 +2106,7 @@ mod tests {
         let mock = Mock::new();
         mock.add(handlers::provide(vec![BatchFeeRow {
             batch_id: 1,
+            l1_block_number: 10,
             priority_fee: 10,
             base_fee: 20,
             l1_data_cost: Some(5),
@@ -2117,6 +2122,7 @@ mod tests {
             rows,
             vec![BatchFeeComponentRow {
                 batch_id: 1,
+                l1_block_number: 10,
                 priority_fee: 10,
                 base_fee: 20,
                 l1_data_cost: Some(5),
@@ -2130,6 +2136,7 @@ mod tests {
         for _ in 0..3 {
             mock.add(handlers::provide(vec![BatchFeeRow {
                 batch_id: 1,
+                l1_block_number: 10,
                 priority_fee: 10,
                 base_fee: 20,
                 l1_data_cost: Some(5),

@@ -118,8 +118,10 @@ pub fn aggregate_batch_fee_components(
             let (sum_l1, any): (u128, bool) = rs.iter().fold((0, false), |(s, a), r| {
                 (s + r.l1_data_cost.unwrap_or(0), a || r.l1_data_cost.is_some())
             });
+            let last_l1 = rs.last().map(|r| r.l1_block_number).unwrap_or_default();
             BatchFeeComponentRow {
                 batch_id: g * bucket,
+                l1_block_number: last_l1,
                 priority_fee: sum_priority,
                 base_fee: sum_base,
                 l1_data_cost: any.then_some(sum_l1),

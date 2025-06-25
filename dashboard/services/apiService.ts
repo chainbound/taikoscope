@@ -738,6 +738,7 @@ export const fetchBatchBlobCounts = async (
   };
 };
 
+
 export const fetchAvgBlobsPerBatch = async (
   range: TimeRange,
 ): Promise<RequestResult<number>> => {
@@ -803,6 +804,7 @@ export interface FeeComponent {
 
 export interface BatchFeeComponent {
   batch: number;
+  l1Block: number;
   priority: number;
   base: number;
   l1Cost: number | null;
@@ -842,11 +844,12 @@ export const fetchBatchFeeComponents = async (
   address?: string,
 ): Promise<RequestResult<BatchFeeComponent[]>> => {
   const url =
-    `${API_BASE}/batch-fee-components/aggregated?${timeRangeToQuery(range)}` +
+    `${API_BASE}/batch-fee-components?${timeRangeToQuery(range)}` +
     (address ? `&address=${address}` : '');
   const res = await fetchJson<{
     batches: {
       batch_id: number;
+      l1_block_number: number;
       priority_fee: number;
       base_fee: number;
       l1_data_cost: number | null;
@@ -856,6 +859,7 @@ export const fetchBatchFeeComponents = async (
     data: res.data
       ? res.data.batches.map((b) => ({
           batch: b.batch_id,
+          l1Block: b.l1_block_number,
           priority: b.priority_fee,
           base: b.base_fee,
           l1Cost: b.l1_data_cost ?? null,
