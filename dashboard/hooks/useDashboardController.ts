@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback } from 'react';
 import { useMetricsData } from './useMetricsData';
 import { useChartsData } from './useChartsData';
 import { useBlockData } from './useBlockData';
@@ -27,11 +27,6 @@ export const useDashboardController = () => {
   const { selectedSequencer, setSelectedSequencer, sequencerList } =
     useSequencerHandler({ blockData, metricsData });
 
-  useEffect(() => {
-    if (metricsData.isEconomicsView && selectedSequencer) {
-      setSelectedSequencer(null);
-    }
-  }, [metricsData.isEconomicsView, selectedSequencer, setSelectedSequencer]);
 
   // Table actions
   const {

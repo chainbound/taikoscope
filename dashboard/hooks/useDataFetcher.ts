@@ -46,11 +46,10 @@ export const useDataFetcher = ({
     [tableView, viewParam, isTableRoute],
   );
 
-  const selectedSequencerForFetch = isEconomicsView ? null : selectedSequencer;
+  const selectedSequencerForFetch = selectedSequencer;
 
-  const fetchKey = isTableView
-    ? null
-    : ['metrics', timeRange, selectedSequencerForFetch, isEconomicsView];
+  const fetchKey =
+    isTableView ? null : ['metrics', timeRange, selectedSequencerForFetch, isEconomicsView];
 
   const fetcher = async () => {
     if (isEconomicsView) {
