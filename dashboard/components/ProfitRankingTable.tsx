@@ -16,6 +16,8 @@ interface ProfitRankingTableProps {
   timeRange: TimeRange;
   cloudCost: number;
   proverCost: number;
+  proveCost?: number;
+  verifyCost?: number;
 }
 
 const formatUsd = (value: number): string => {
@@ -33,6 +35,8 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
   timeRange,
   cloudCost,
   proverCost,
+  proveCost = 0,
+  verifyCost = 0,
 }) => {
   const { data: distRes } = useSWR(['profitRankingSeq', timeRange], () =>
     fetchSequencerDistribution(timeRange),
@@ -85,12 +89,14 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
 
   const hours = rangeToHours(timeRange);
   const MONTH_HOURS = 30 * 24;
-  const costPerSeqUsd = ((cloudCost + proverCost) / MONTH_HOURS) * hours;
-  const costPerSeqEth = ethPrice ? costPerSeqUsd / ethPrice : 0;
+  const baseSeqCostUsd = ((cloudCost + proverCost) / MONTH_HOURS) * hours;
 
   const rows = sequencers.map((seq) => {
     const addr = seq.address || getSequencerAddress(seq.name) || '';
     const batchCount = batchCounts?.get(addr.toLowerCase()) ?? null;
+    const costPerSeqUsd =
+      baseSeqCostUsd + (proveCost + verifyCost) * (batchCount ?? 0);
+    const costPerSeqEth = ethPrice ? costPerSeqUsd / ethPrice : 0;
     const fees = feeDataMap.get(addr.toLowerCase());
     if (!fees) {
       return {

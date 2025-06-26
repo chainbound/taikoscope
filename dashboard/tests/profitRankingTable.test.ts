@@ -88,6 +88,8 @@ describe('ProfitRankingTable', () => {
         timeRange: '1h',
         cloudCost: 0,
         proverCost: 0,
+        proveCost: 0,
+        verifyCost: 0,
       }),
     );
     expect(html.includes('Sequencer Profit Ranking')).toBe(true);
@@ -161,8 +163,10 @@ describe('ProfitRankingTable', () => {
         timeRange: '1h',
         cloudCost: 0,
         proverCost: 0,
+        proveCost: 1,
+        verifyCost: 2,
       }),
     );
-    expect(html.includes('title="$50.00"')).toBe(true);
+    expect(html.includes('title="$53.00"')).toBe(true);
   });
 });
