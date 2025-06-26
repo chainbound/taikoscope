@@ -8,7 +8,7 @@ import { BlockProfitTables } from '../BlockProfitTables';
 import { FeeFlowChart } from '../FeeFlowChart';
 import { ChartCard } from '../ChartCard';
 import { TAIKO_PINK } from '../../theme';
-import { TimeRange, MetricData } from '../../types';
+import { TimeRange, MetricData, ChartsData } from '../../types';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 const SequencerPieChart = lazy(() =>
@@ -53,7 +53,7 @@ interface DashboardViewProps {
     errorMessage: string;
     setErrorMessage: (msg: string) => void;
   };
-  chartsData: any;
+  chartsData: ChartsData;
 
   // Loading states
   isLoadingData: boolean;
