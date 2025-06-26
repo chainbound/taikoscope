@@ -134,6 +134,17 @@ struct BatchFeeRow {
     l1_data_cost: Option<u128>,
 }
 
+#[derive(Serialize, Row)]
+struct TotalRow {
+    total: u128,
+}
+
+#[derive(Serialize, Row)]
+struct AggregatedCostRow {
+    proposer: AddressBytes,
+    total_cost: u128,
+}
+
 #[tokio::test]
 async fn l2_head_block_integration() {
     let mock = Mock::new();
@@ -485,6 +496,195 @@ async fn verify_cost_integration() {
         body,
         serde_json::json!({
             "batches": [ { "l1_block_number": 4, "batch_id": 2, "cost": 456 } ]
+        })
+    );
+
+    server.abort();
+}
+
+#[tokio::test]
+async fn l2_fees_integration() {
+    let mock = Mock::new();
+    mock.add(handlers::provide(vec![TotalRow { total: 600 }]));
+    mock.add(handlers::provide(vec![TotalRow { total: 400 }]));
+    mock.add(handlers::provide(vec![TotalRow { total: 10 }]));
+    mock.add(handlers::provide::<clickhouse_lib::SequencerFeeRow>(vec![
+        clickhouse_lib::SequencerFeeRow {
+            sequencer: AddressBytes([1u8; 20]),
+            priority_fee: 600,
+            base_fee: 400,
+            l1_data_cost: Some(10),
+        },
+    ]));
+
+    let url = Url::parse(mock.url()).unwrap();
+    let client =
+        ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+    let (addr, server) = spawn_server(client).await;
+    wait_for_server(addr).await;
+
+    let resp =
+        reqwest::get(format!("http://{addr}/{API_VERSION}/l2-fees?created[gte]=0&created[lte]=3600000"))
+            .await
+            .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body: serde_json::Value = resp.json().await.unwrap();
+    assert_eq!(
+        body,
+        serde_json::json!({
+            "priority_fee": 600,
+            "base_fee": 400,
+            "l1_data_cost": 10,
+            "sequencers": [
+                {
+                    "address": format!("0x{}", hex::encode([1u8; 20])),
+                    "priority_fee": 600,
+                    "base_fee": 400,
+                    "l1_data_cost": 10
+                }
+            ]
+        })
+    );
+
+    server.abort();
+}
+
+#[tokio::test]
+async fn batch_fees_integration() {
+    let mock = Mock::new();
+    mock.add(handlers::provide(vec![TotalRow { total: 10 }]));
+    mock.add(handlers::provide(vec![TotalRow { total: 20 }]));
+    mock.add(handlers::provide(vec![TotalRow { total: 5 }]));
+    mock.add(handlers::provide::<clickhouse_lib::SequencerFeeRow>(vec![
+        clickhouse_lib::SequencerFeeRow {
+            sequencer: AddressBytes([2u8; 20]),
+            priority_fee: 10,
+            base_fee: 20,
+            l1_data_cost: Some(5),
+        },
+    ]));
+
+    let url = Url::parse(mock.url()).unwrap();
+    let client =
+        ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+    let (addr, server) = spawn_server(client).await;
+    wait_for_server(addr).await;
+
+    let resp =
+        reqwest::get(format!("http://{addr}/{API_VERSION}/batch-fees?created[gte]=0&created[lte]=3600000"))
+            .await
+            .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body: serde_json::Value = resp.json().await.unwrap();
+    assert_eq!(
+        body,
+        serde_json::json!({
+            "priority_fee": 10,
+            "base_fee": 20,
+            "l1_data_cost": 5,
+            "sequencers": [
+                {
+                    "address": format!("0x{}", hex::encode([2u8; 20])),
+                    "priority_fee": 10,
+                    "base_fee": 20,
+                    "l1_data_cost": 5
+                }
+            ]
+        })
+    );
+
+    server.abort();
+}
+
+#[tokio::test]
+async fn prove_costs_integration() {
+    let mock = Mock::new();
+    mock.add(handlers::provide(vec![AggregatedCostRow { proposer: AddressBytes([3u8; 20]), total_cost: 123 }]));
+
+    let url = Url::parse(mock.url()).unwrap();
+    let client =
+        ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+    let (addr, server) = spawn_server(client).await;
+    wait_for_server(addr).await;
+
+    let resp = reqwest::get(format!("http://{addr}/{API_VERSION}/prove-costs?created[gte]=0&created[lte]=3600000"))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body: serde_json::Value = resp.json().await.unwrap();
+    assert_eq!(
+        body,
+        serde_json::json!({
+            "proposers": [
+                {
+                    "address": format!("0x{}", hex::encode([3u8; 20])),
+                    "cost": 123
+                }
+            ]
+        })
+    );
+
+    server.abort();
+}
+
+#[tokio::test]
+async fn verify_costs_integration() {
+    let mock = Mock::new();
+    mock.add(handlers::provide(vec![AggregatedCostRow { proposer: AddressBytes([4u8; 20]), total_cost: 456 }]));
+
+    let url = Url::parse(mock.url()).unwrap();
+    let client =
+        ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+    let (addr, server) = spawn_server(client).await;
+    wait_for_server(addr).await;
+
+    let resp = reqwest::get(format!("http://{addr}/{API_VERSION}/verify-costs?created[gte]=0&created[lte]=3600000"))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body: serde_json::Value = resp.json().await.unwrap();
+    assert_eq!(
+        body,
+        serde_json::json!({
+            "proposers": [
+                {
+                    "address": format!("0x{}", hex::encode([4u8; 20])),
+                    "cost": 456
+                }
+            ]
+        })
+    );
+
+    server.abort();
+}
+
+#[tokio::test]
+async fn l1_data_cost_paginated() {
+    let mock = Mock::new();
+    mock.add(handlers::provide(vec![clickhouse_lib::L1DataCostRow { l1_block_number: 1, cost: 789 }]));
+
+    let url = Url::parse(mock.url()).unwrap();
+    let client =
+        ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+    let (addr, server) = spawn_server(client).await;
+    wait_for_server(addr).await;
+
+    let resp = reqwest::get(format!(
+        "http://{addr}/{API_VERSION}/l1-data-cost?starting_after=0&ending_before=2&limit=1"
+    ))
+    .await
+    .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body: serde_json::Value = resp.json().await.unwrap();
+    assert_eq!(
+        body,
+        serde_json::json!({
+            "blocks": [ { "l1_block_number": 1, "cost": 789 } ]
         })
     );
 
