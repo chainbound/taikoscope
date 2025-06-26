@@ -16,6 +16,7 @@ interface FeeFlowChartProps {
   timeRange: TimeRange;
   cloudCost: number;
   proverCost: number;
+  l1ProveCost?: number;
   address?: string;
 }
 
@@ -30,6 +31,7 @@ const createSankeyNode = (textColor: string) => ({ x, y, width, height, payload 
   const isCostNode =
     payload.name === 'Hardware Cost' ||
     payload.name === 'L1 Data Cost' ||
+    payload.name === 'L1 Prove Cost' ||
     payload.name === 'Subsidy' ||
     (typeof payload.name === 'string' && payload.name.includes('Subsidy'));
   const isProfitNode = payload.name === 'Profit' || payload.profitNode;
@@ -89,6 +91,7 @@ const SankeyLink = ({
   const isCost =
     payload.target.name === 'Hardware Cost' ||
     payload.target.name === 'L1 Data Cost' ||
+    payload.target.name === 'L1 Prove Cost' ||
     payload.target.name === 'Subsidy' ||
     (typeof payload.target.name === 'string' &&
       payload.target.name.includes('Subsidy'));
@@ -112,6 +115,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
   timeRange,
   cloudCost,
   proverCost,
+  l1ProveCost = 0,
   address,
 }) => {
   const { theme } = useTheme();
@@ -226,6 +230,10 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
       { name: 'Taiko DAO', value: baseFeeDaoUsd, wei: (baseFee ?? 0) * 0.25 },
     ];
 
+    if (l1ProveCost > 0) {
+      nodes.push({ name: 'L1 Prove Cost', value: l1ProveCost, usd: true });
+    }
+
     links = [
       { source: 1, target: 3, value: priorityFeeUsd }, // Priority Fee → Sequencers
       { source: 2, target: 3, value: baseFeeUsd * 0.75 }, // 75% Base Fee → Sequencers
@@ -246,6 +254,11 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
       { source: 0, target: 5, value: l1Subsidy }, // Subsidy → L1 Data Cost
       { source: 3, target: 6, value: sequencerProfit }, // Sequencers → Profit
     ].filter((l) => l.value > 0);
+
+    if (l1ProveCost > 0) {
+      const proveIndex = nodes.length - 1;
+      links.push({ source: 3, target: proveIndex, value: l1ProveCost });
+    }
   } else {
     const totalActualHardwareCost = seqData.reduce(
       (acc, s) => acc + s.actualHardwareCost,
@@ -300,6 +313,10 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
       { name: 'Taiko DAO', value: baseFeeDaoUsd, wei: (baseFee ?? 0) * 0.25 },
     ];
 
+    if (l1ProveCost > 0) {
+      nodes.push({ name: 'L1 Prove Cost', value: l1ProveCost, usd: true });
+    }
+
     links = [
       ...seqData.map((s, i) => ({
         source: priorityIndex,
@@ -333,6 +350,17 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
         value: s.profit,
       })),
     ].filter((l) => l.value > 0);
+
+    if (l1ProveCost > 0) {
+      const proveIndex = nodes.length - 1;
+      links.push(
+        ...seqData.map((_, i) => ({
+          source: baseIndex + i,
+          target: proveIndex,
+          value: l1ProveCost / seqData.length,
+        })),
+      );
+    }
   }
 
   // Remove nodes that have no remaining links after filtering
