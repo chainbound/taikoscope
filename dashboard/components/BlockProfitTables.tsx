@@ -39,6 +39,14 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
   const HOURS_IN_MONTH = 30 * 24;
   const hours = rangeToHours(timeRange);
 
+  if (batchData.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-full text-gray-500">
+        No data available
+      </div>
+    );
+  }
+
   const operationalCostPerBatchUsd = batchCount > 0
     ? ((cloudCost + proverCost) / HOURS_IN_MONTH) * (hours / batchCount)
     : 0;
