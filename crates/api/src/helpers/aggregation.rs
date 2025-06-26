@@ -114,8 +114,14 @@ pub fn aggregate_batch_fee_components(
         .map(|(g, rs)| {
             let sum_priority: u128 = rs.iter().map(|r| r.priority_fee).sum();
             let sum_base: u128 = rs.iter().map(|r| r.base_fee).sum();
-            let (sum_l1, any): (u128, bool) = rs.iter().fold((0, false), |(s, a), r| {
+            let (sum_l1, any_l1): (u128, bool) = rs.iter().fold((0, false), |(s, a), r| {
                 (s + r.l1_data_cost.unwrap_or(0), a || r.l1_data_cost.is_some())
+            });
+            let (sum_prove, any_prove) = rs.iter().fold((0u128, false), |(s, a), r| {
+                (s + r.amortized_prove_cost.unwrap_or(0), a || r.amortized_prove_cost.is_some())
+            });
+            let (sum_verify, any_verify) = rs.iter().fold((0u128, false), |(s, a), r| {
+                (s + r.amortized_verify_cost.unwrap_or(0), a || r.amortized_verify_cost.is_some())
             });
             let last_l1 = rs.last().map(|r| r.l1_block_number).unwrap_or_default();
             let last_seq = rs.last().map(|r| r.sequencer.clone()).unwrap_or_default();
@@ -125,7 +131,9 @@ pub fn aggregate_batch_fee_components(
                 sequencer: last_seq,
                 priority_fee: sum_priority,
                 base_fee: sum_base,
-                l1_data_cost: any.then_some(sum_l1),
+                l1_data_cost: any_l1.then_some(sum_l1),
+                amortized_prove_cost: any_prove.then_some(sum_prove),
+                amortized_verify_cost: any_verify.then_some(sum_verify),
             }
         })
         .collect()

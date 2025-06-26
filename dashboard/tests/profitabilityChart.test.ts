@@ -10,7 +10,14 @@ import { ProfitabilityChart } from '../components/ProfitabilityChart';
 
 // Helper data with negative profit
 const feeData = [
-  { batch: 1, priority: 0, base: 0, l1Cost: 0 },
+  {
+    batch: 1,
+    priority: 0,
+    base: 0,
+    l1Cost: 0,
+    amortizedProveCost: 0,
+    amortizedVerifyCost: 0,
+  },
 ];
 
 describe('ProfitabilityChart', () => {
@@ -27,8 +34,6 @@ describe('ProfitabilityChart', () => {
         timeRange: '1h',
         cloudCost: 1000,
         proverCost: 1000,
-        proveCost: 0,
-        verifyCost: 0,
       })
     );
 
@@ -48,8 +53,6 @@ describe('ProfitabilityChart', () => {
         timeRange: '1h',
         cloudCost: 1000,
         proverCost: 1000,
-        proveCost: 5,
-        verifyCost: 2,
       })
     );
 

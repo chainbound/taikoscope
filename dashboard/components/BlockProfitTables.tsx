@@ -10,8 +10,6 @@ interface BlockProfitTablesProps {
   timeRange: TimeRange;
   cloudCost: number;
   proverCost: number;
-  proveCost?: number;
-  verifyCost?: number;
   address?: string;
 }
 
@@ -28,8 +26,6 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
   timeRange,
   cloudCost,
   proverCost,
-  proveCost = 0,
-  verifyCost = 0,
   address,
 }) => {
   const { data: ethPrice = 0 } = useEthPrice();
@@ -48,16 +44,17 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
     : 0;
 
   // Prove and verify costs are per batch and should be attributed to each batch
-  const proveVerifyCostPerBatchUsd = proveCost + verifyCost;
-  const totalCostPerBatchUsd = operationalCostPerBatchUsd + proveVerifyCostPerBatchUsd;
+  const totalCostPerBatchUsd = operationalCostPerBatchUsd;
   const costPerBatchEth = ethPrice ? totalCostPerBatchUsd / ethPrice : 0;
 
   const profits = batchData.map((b) => {
     // Calculate revenue in ETH (priority + base - L1 data cost)
     const revenueEth = (b.priority + b.base - (b.l1Cost ?? 0)) / 1e18;
+    const proveEth = (b.amortizedProveCost ?? 0) / 1e18;
+    const verifyEth = (b.amortizedVerifyCost ?? 0) / 1e18;
 
     // Calculate profit as revenue minus all costs
-    const profitEth = revenueEth - costPerBatchEth;
+    const profitEth = revenueEth - (costPerBatchEth + proveEth + verifyEth);
     const profitWei = profitEth * 1e18;
 
     return {

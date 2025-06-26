@@ -567,6 +567,20 @@ pub async fn batch_fee_components(
         ErrorResponse::database_error()
     })?;
 
+    let prove_total =
+        state.client.get_total_prove_cost(address, time_range).await.map_err(|e| {
+            tracing::error!(error = %e, "Failed to get prove cost");
+            ErrorResponse::database_error()
+        })?;
+    let verify_total =
+        state.client.get_total_verify_cost(address, time_range).await.map_err(|e| {
+            tracing::error!(error = %e, "Failed to get verify cost");
+            ErrorResponse::database_error()
+        })?;
+    let count = rows.len() as u128;
+    let amortized_prove = prove_total.and_then(|c| (count > 0).then_some(c / count));
+    let amortized_verify = verify_total.and_then(|c| (count > 0).then_some(c / count));
+
     let batches: Vec<BatchFeeComponentRow> = rows
         .into_iter()
         .map(|r| BatchFeeComponentRow {
@@ -576,6 +590,8 @@ pub async fn batch_fee_components(
             priority_fee: r.priority_fee,
             base_fee: r.base_fee,
             l1_data_cost: r.l1_data_cost,
+            amortized_prove_cost: amortized_prove,
+            amortized_verify_cost: amortized_verify,
         })
         .collect();
 
@@ -627,6 +643,20 @@ pub async fn batch_fee_components_aggregated(
         ErrorResponse::database_error()
     })?;
 
+    let prove_total =
+        state.client.get_total_prove_cost(address, time_range).await.map_err(|e| {
+            tracing::error!(error = %e, "Failed to get prove cost");
+            ErrorResponse::database_error()
+        })?;
+    let verify_total =
+        state.client.get_total_verify_cost(address, time_range).await.map_err(|e| {
+            tracing::error!(error = %e, "Failed to get verify cost");
+            ErrorResponse::database_error()
+        })?;
+    let count = rows.len() as u128;
+    let amortized_prove = prove_total.and_then(|c| (count > 0).then_some(c / count));
+    let amortized_verify = verify_total.and_then(|c| (count > 0).then_some(c / count));
+
     let batches: Vec<BatchFeeComponentRow> = rows
         .into_iter()
         .map(|r| BatchFeeComponentRow {
@@ -636,6 +666,8 @@ pub async fn batch_fee_components_aggregated(
             priority_fee: r.priority_fee,
             base_fee: r.base_fee,
             l1_data_cost: r.l1_data_cost,
+            amortized_prove_cost: amortized_prove,
+            amortized_verify_cost: amortized_verify,
         })
         .collect();
 
