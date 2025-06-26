@@ -96,10 +96,10 @@ describe('ProfitRankingTable', () => {
     const secondSeqIdx = html.indexOf('0xseqB');
     expect(firstSeqIdx).toBeGreaterThan(-1);
     expect(secondSeqIdx).toBeGreaterThan(firstSeqIdx);
-    expect(html.includes('Revenue (ETH)')).toBe(true);
+    expect(html.includes('Revenue')).toBe(true);
     expect(html.includes('Batches')).toBe(true);
-    expect(html.includes('Cost (ETH)')).toBe(true);
-    expect(html.includes('Profit (ETH)')).toBe(true);
+    expect(html.includes('Cost')).toBe(true);
+    expect(html.includes('Profit')).toBe(true);
     expect(html.includes('Income/Cost')).toBe(true);
     expect(html.includes('↓')).toBe(true);
   });

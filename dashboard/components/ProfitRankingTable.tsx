@@ -248,7 +248,7 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
                 className="px-2 py-1 text-left cursor-pointer select-none"
                 onClick={() => handleSort('revenue')}
               >
-                Revenue (ETH)
+                Revenue
                 {sortBy === 'revenue' && (
                   <span className="ml-1">
                     {sortDirection === 'asc' ? '↑' : '↓'}
@@ -259,7 +259,7 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
                 className="px-2 py-1 text-left cursor-pointer select-none"
                 onClick={() => handleSort('cost')}
               >
-                Cost (ETH)
+                Cost
                 {sortBy === 'cost' && (
                   <span className="ml-1">
                     {sortDirection === 'asc' ? '↑' : '↓'}
@@ -270,7 +270,7 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
                 className="px-2 py-1 text-left cursor-pointer select-none"
                 onClick={() => handleSort('profit')}
               >
-                Profit (ETH)
+                Profit
                 {sortBy === 'profit' && (
                   <span className="ml-1">
                     {sortDirection === 'asc' ? '↑' : '↓'}
