@@ -41,6 +41,9 @@ describe('metricsCreator', () => {
     expect(proveCostMetric?.value).toBe('5.00 ETH');
     expect(verifyCostMetric?.value).toBe('6.00 ETH');
 
+    const profitMetric = metrics.find((m) => m.title === 'Profit');
+    expect(profitMetric?.value).toBe('39.0 ETH');
+
     const current = metrics.find((m) => m.title === 'Current Sequencer');
     const next = metrics.find((m) => m.title === 'Next Sequencer');
     expect(current?.value).toBe('Chainbound A');

@@ -48,12 +48,16 @@ export const useDataFetcher = ({
 
   const selectedSequencerForFetch = selectedSequencer;
 
-  const fetchKey =
-    isTableView ? null : ['metrics', timeRange, selectedSequencerForFetch, isEconomicsView];
+  const fetchKey = isTableView
+    ? null
+    : ['metrics', timeRange, selectedSequencerForFetch, isEconomicsView];
 
   const fetcher = async () => {
     if (isEconomicsView) {
-      const data = await fetchEconomicsData(timeRange, selectedSequencerForFetch);
+      const data = await fetchEconomicsData(
+        timeRange,
+        selectedSequencerForFetch,
+      );
       const anyBadRequest = hasBadRequest(data.badRequestResults);
 
       const metricsInput: MetricInputData = {
@@ -71,14 +75,20 @@ export const useDataFetcher = ({
         priorityFee: data.priorityFee,
         baseFee: data.baseFee,
         l1DataCost: data.l1DataCost,
+        proveCost: data.proveCost,
+        verifyCost: data.verifyCost,
         profit:
           data.priorityFee != null &&
           data.baseFee != null &&
-          data.l1DataCost != null
-            ? data.priorityFee + data.baseFee - data.l1DataCost
+          data.l1DataCost != null &&
+          data.proveCost != null &&
+          data.verifyCost != null
+            ? data.priorityFee +
+              data.baseFee -
+              data.l1DataCost -
+              data.proveCost -
+              data.verifyCost
             : null,
-        proveCost: null,
-        verifyCost: null,
         l2Block: data.l2Block,
         l1Block: data.l1Block,
       };
@@ -92,7 +102,10 @@ export const useDataFetcher = ({
       };
     }
 
-    const data = await fetchMainDashboardData(timeRange, selectedSequencerForFetch);
+    const data = await fetchMainDashboardData(
+      timeRange,
+      selectedSequencerForFetch,
+    );
 
     const anyBadRequest = hasBadRequest(data.badRequestResults);
     const activeGateways = data.preconfData
