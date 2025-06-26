@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { fetchDashboardData } from '../services/apiService';
-import { MetricData } from '../types';
+import { MetricData, BlockDataState } from '../types';
 import { TAIKOSCAN_BASE } from '../utils';
 
-export const useBlockData = () => {
+export const useBlockData = (): BlockDataState => {
   const [l2HeadBlock, setL2HeadBlock] = useState<string>('0');
   const [l1HeadBlock, setL1HeadBlock] = useState<string>('0');
   const [candidates, setCandidates] = useState<string[]>([]);

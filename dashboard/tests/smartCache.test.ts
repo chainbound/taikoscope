@@ -27,12 +27,12 @@ describe('SmartCache', () => {
   it('evicts least recently used item', async () => {
     const cache = new SmartCache<number>(2, 1000);
     cache.set('a', 1);
-    await wait(1);
+    await wait(5);
     cache.set('b', 2);
-    await wait(1);
+    await wait(5);
     // Access 'a' so 'b' becomes least recently used
     cache.get('a');
-    await wait(1);
+    await wait(5);
     cache.set('c', 3);
     expect(cache.has('b')).toBe(false);
     expect(cache.has('a')).toBe(true);

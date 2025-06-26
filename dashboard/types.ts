@@ -14,6 +14,7 @@ export interface PieChartDataItem {
 }
 
 import type { ReactNode } from 'react';
+import type { BlockTransaction, BatchBlobCount } from './services/apiService';
 
 export interface MetricData {
   title: ReactNode;
@@ -69,4 +70,50 @@ export interface BatchFeeComponent {
 export interface BlockProfit {
   block: number;
   profit: number;
+}
+
+export interface ChartsDataUpdate {
+  proveTimes?: TimeSeriesData[];
+  verifyTimes?: TimeSeriesData[];
+  l2Times?: TimeSeriesData[];
+  l2Gas?: TimeSeriesData[];
+  txPerBlock?: BlockTransaction[];
+  blobsPerBatch?: BatchBlobCount[];
+  sequencerDist?: PieChartDataItem[];
+}
+
+export interface ChartsData {
+  secondsToProveData: TimeSeriesData[];
+  secondsToVerifyData: TimeSeriesData[];
+  l2BlockTimeData: TimeSeriesData[];
+  l2GasUsedData: TimeSeriesData[];
+  blockTxData: BlockTransaction[];
+  batchBlobCounts: BatchBlobCount[];
+  sequencerDistribution: PieChartDataItem[];
+  updateChartsData: (data: ChartsDataUpdate) => void;
+}
+
+export interface MetricsDataState {
+  metrics: MetricData[];
+  setMetrics: (metrics: MetricData[]) => void;
+  loadingMetrics: boolean;
+  setLoadingMetrics: (v: boolean) => void;
+  errorMessage: string;
+  setErrorMessage: (msg: string) => void;
+  isEconomicsView: boolean;
+}
+
+export interface BlockDataState {
+  l2HeadBlock: string;
+  l1HeadBlock: string;
+  candidates: string[];
+  updateBlockHeads: () => Promise<void>;
+  updateMetricsWithBlockHeads: (metrics: MetricData[]) => MetricData[];
+}
+
+export interface RefreshTimerState {
+  refreshRate: number;
+  setRefreshRate: (rate: number) => void;
+  lastRefresh: number;
+  updateLastRefresh: () => void;
 }
