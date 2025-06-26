@@ -322,6 +322,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               cloudCost={cloudCost}
               proverCost={proverCost}
               l1ProveCost={l1ProveCostUsd}
+              l1VerifyCost={verifyCostUsd}
               address={selectedSequencer || undefined}
             />
             <ProfitCalculator

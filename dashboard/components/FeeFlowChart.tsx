@@ -17,6 +17,7 @@ interface FeeFlowChartProps {
   cloudCost: number;
   proverCost: number;
   l1ProveCost?: number;
+  l1VerifyCost?: number;
   address?: string;
 }
 
@@ -34,6 +35,7 @@ const createSankeyNode =
       payload.name === 'Hardware Cost' ||
       payload.name === 'L1 Data Cost' ||
       payload.name === 'L1 Prove Cost' ||
+      payload.name === 'L1 Verify Cost' ||
       payload.name === 'Subsidy' ||
       (typeof payload.name === 'string' && payload.name.includes('Subsidy'));
     const isProfitNode = payload.name === 'Profit' || payload.profitNode;
@@ -94,6 +96,7 @@ const SankeyLink = ({
     payload.target.name === 'Hardware Cost' ||
     payload.target.name === 'L1 Data Cost' ||
     payload.target.name === 'L1 Prove Cost' ||
+    payload.target.name === 'L1 Verify Cost' ||
     payload.target.name === 'Subsidy' ||
     (typeof payload.target.name === 'string' &&
       payload.target.name.includes('Subsidy'));
@@ -118,6 +121,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
   cloudCost,
   proverCost,
   l1ProveCost = 0,
+  l1VerifyCost = 0,
   address,
 }) => {
   const { theme } = useTheme();
@@ -151,6 +155,9 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
   const hours = rangeToHours(timeRange);
   const hardwareCostPerSeq = ((cloudCost + proverCost) / MONTH_HOURS) * hours;
   const totalHardwareCost = hardwareCostPerSeq;
+  const seqCount = sequencerFees.length || 1;
+  const proveCostPerSeq = l1ProveCost / seqCount;
+  const verifyCostPerSeq = l1VerifyCost / seqCount;
 
   const seqData = sequencerFees.map((f) => {
     const priorityWei = f.priority_fee ?? 0;
@@ -163,8 +170,9 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     const revenue = priorityUsd + baseUsd;
     const revenueWei = priorityWei + baseWei;
 
-    const rawProfit = revenue - hardwareCostPerSeq - l1CostUsd;
-    const profit = Math.max(0, rawProfit);
+    const rawProfit =
+      revenue - hardwareCostPerSeq - l1CostUsd - proveCostPerSeq - verifyCostPerSeq;
+    const profit = rawProfit;
     let remaining = revenue;
     const actualHardwareCost = Math.min(hardwareCostPerSeq, remaining);
     remaining -= actualHardwareCost;
@@ -212,10 +220,12 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     const maxL1FromRevenue = Math.max(0, sequencerRevenue - totalHardwareCost);
     const actualL1Cost = Math.min(l1DataCostTotalUsd, maxL1FromRevenue);
     const l1Subsidy = l1DataCostTotalUsd - actualL1Cost;
-    const sequencerProfit = Math.max(
-      0,
-      sequencerRevenue - totalHardwareCost - actualL1Cost,
-    );
+    const sequencerProfit =
+      sequencerRevenue -
+      totalHardwareCost -
+      actualL1Cost -
+      l1ProveCost -
+      l1VerifyCost;
     const sequencerRevenueWei = (priorityFee ?? 0) + (baseFee ?? 0) * 0.75;
     const sequencerProfitWei = ethPrice
       ? (sequencerProfit / ethPrice) * WEI_TO_ETH
@@ -240,11 +250,22 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
         usd: true,
       });
     }
+    if (l1VerifyCost > 0) {
+      const verifyIndex = 6 + (l1ProveCost > 0 ? 1 : 0);
+      nodes.splice(verifyIndex, 0, {
+        name: 'L1 Verify Cost',
+        value: l1VerifyCost,
+        usd: true,
+      });
+    }
+
+    const profitIndex = nodes.findIndex((n) => n.name === 'Profit');
+    const daoIndex = nodes.findIndex((n) => n.name === 'Taiko DAO');
 
     links = [
       { source: 1, target: 3, value: priorityFeeUsd }, // Priority Fee → Sequencers
       { source: 2, target: 3, value: baseFeeUsd * 0.75 }, // 75% Base Fee → Sequencers
-      { source: 2, target: 8, value: baseFeeDaoUsd }, // 25% Base Fee → Taiko DAO
+      { source: 2, target: daoIndex, value: baseFeeDaoUsd }, // 25% Base Fee → Taiko DAO
       {
         source: 3,
         target: 4,
@@ -259,12 +280,16 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
         ),
       }, // Sequencers → L1 Data Cost
       { source: 0, target: 5, value: l1Subsidy }, // Subsidy → L1 Data Cost
-      { source: 3, target: 7, value: sequencerProfit }, // Sequencers → Profit
+      { source: 3, target: profitIndex, value: sequencerProfit }, // Sequencers → Profit
     ].filter((l) => l.value > 0);
 
     if (l1ProveCost > 0) {
       const proveIndex = 6;
       links.push({ source: 3, target: proveIndex, value: l1ProveCost });
+    }
+    if (l1VerifyCost > 0) {
+      const verifyIndex = 6 + (l1ProveCost > 0 ? 1 : 0);
+      links.push({ source: 3, target: verifyIndex, value: l1VerifyCost });
     }
   } else {
     const totalActualHardwareCost = seqData.reduce(
@@ -329,6 +354,16 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
       profitStartIndex += 1;
       daoIndex += 1;
     }
+    if (l1VerifyCost > 0) {
+      const verifyIndex = l1Index + 1 + (l1ProveCost > 0 ? 1 : 0);
+      nodes.splice(verifyIndex, 0, {
+        name: 'L1 Verify Cost',
+        value: l1VerifyCost,
+        usd: true,
+      });
+      profitStartIndex += 1;
+      daoIndex += 1;
+    }
 
     links = [
       ...seqData.map((s, i) => ({
@@ -371,6 +406,16 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
           source: baseIndex + i,
           target: proveIndex,
           value: l1ProveCost / seqData.length,
+        })),
+      );
+    }
+    if (l1VerifyCost > 0) {
+      const verifyIndex = l1Index + 1 + (l1ProveCost > 0 ? 1 : 0);
+      links.push(
+        ...seqData.map((_, i) => ({
+          source: baseIndex + i,
+          target: verifyIndex,
+          value: l1VerifyCost / seqData.length,
         })),
       );
     }
