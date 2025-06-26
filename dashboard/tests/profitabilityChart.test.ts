@@ -28,4 +28,21 @@ describe('ProfitabilityChart', () => {
 
     expect(html).toContain('recharts-responsive-container');
   });
+
+  it('renders with non-zero prove and verify cost', () => {
+    vi.mocked(swr.default).mockReturnValue({ data: { data: feeData } } as any);
+    vi.spyOn(priceService, 'useEthPrice').mockReturnValue({ data: 1 } as any);
+
+    const html = renderToStaticMarkup(
+      React.createElement(ProfitabilityChart, {
+        timeRange: '1h',
+        cloudCost: 1000,
+        proverCost: 1000,
+        proveCost: 5,
+        verifyCost: 2,
+      })
+    );
+
+    expect(html).toContain('recharts-responsive-container');
+  });
 });
