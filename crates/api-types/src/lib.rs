@@ -361,6 +361,22 @@ pub struct BlockProfitsResponse {
     pub blocks: Vec<BlockProfitItem>,
 }
 
+/// Aggregated cost attributed to a proposer.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct ProposerCostItem {
+    /// Proposer address.
+    pub address: String,
+    /// Total cost in wei.
+    pub cost: u128,
+}
+
+/// Aggregated cost results grouped by proposer.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct ProposerCostsResponse {
+    /// Cost entries for each proposer.
+    pub proposers: Vec<ProposerCostItem>,
+}
+
 /// Aggregated L2 fees for a sequencer.
 #[derive(Debug, Serialize, ToSchema)]
 pub struct SequencerFeeRow {

@@ -887,6 +887,11 @@ export interface VerifyCostItem {
   cost: number;
 }
 
+export interface SequencerCostItem {
+  address: string;
+  cost: number;
+}
+
 export const fetchL1DataCost = async (
   range: TimeRange,
   limit = 50,
@@ -969,6 +974,30 @@ export const fetchVerifyCost = async (
     data: res.data
       ? res.data.batches.map((b) => ({ batch: b.batch_id, cost: b.cost }))
       : null,
+    badRequest: res.badRequest,
+    error: res.error,
+  };
+};
+
+export const fetchProveCostsByProposer = async (
+  range: TimeRange,
+): Promise<RequestResult<SequencerCostItem[]>> => {
+  const url = `${API_BASE}/prove-costs?${timeRangeToQuery(range)}`;
+  const res = await fetchJson<{ proposers: SequencerCostItem[] }>(url);
+  return {
+    data: res.data?.proposers ?? null,
+    badRequest: res.badRequest,
+    error: res.error,
+  };
+};
+
+export const fetchVerifyCostsByProposer = async (
+  range: TimeRange,
+): Promise<RequestResult<SequencerCostItem[]>> => {
+  const url = `${API_BASE}/verify-costs?${timeRangeToQuery(range)}`;
+  const res = await fetchJson<{ proposers: SequencerCostItem[] }>(url);
+  return {
+    data: res.data?.proposers ?? null,
     badRequest: res.badRequest,
     error: res.error,
   };

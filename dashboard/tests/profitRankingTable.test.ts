@@ -23,6 +23,8 @@ describe('ProfitRankingTable', () => {
           ],
         } as RequestResult<SequencerDistributionDataItem[]>,
       } as unknown as ReturnType<typeof swr.default>)
+      .mockReturnValueOnce({ data: new Map() } as unknown as ReturnType<typeof swr.default>)
+      .mockReturnValueOnce({ data: new Map() } as unknown as ReturnType<typeof swr.default>)
       .mockReturnValueOnce({
         data: {
           data: {
@@ -84,6 +86,16 @@ describe('ProfitRankingTable', () => {
       badRequest: false,
       error: null,
     } as RequestResult<L2FeesResponse>);
+    vi.spyOn(api, 'fetchProveCostsByProposer').mockResolvedValue({
+      data: [],
+      badRequest: false,
+      error: null,
+    } as RequestResult<api.SequencerCostItem[]>);
+    vi.spyOn(api, 'fetchVerifyCostsByProposer').mockResolvedValue({
+      data: [],
+      badRequest: false,
+      error: null,
+    } as RequestResult<api.SequencerCostItem[]>);
     vi.spyOn(priceService, 'useEthPrice').mockReturnValue({
       data: 1000,
     } as unknown as ReturnType<typeof priceService.useEthPrice>);
@@ -115,6 +127,12 @@ describe('ProfitRankingTable', () => {
         data: {
           data: [{ name: 'SeqA', address: '0xseqA', value: 1, tps: null }],
         } as RequestResult<SequencerDistributionDataItem[]>,
+      } as unknown as ReturnType<typeof swr.default>)
+      .mockReturnValueOnce({
+        data: new Map([['0xseqa', 1e16]]),
+      } as unknown as ReturnType<typeof swr.default>)
+      .mockReturnValueOnce({
+        data: new Map([['0xseqa', 2e16]]),
       } as unknown as ReturnType<typeof swr.default>)
       .mockReturnValueOnce({
         data: {
@@ -159,6 +177,16 @@ describe('ProfitRankingTable', () => {
       badRequest: false,
       error: null,
     } as RequestResult<L2FeesResponse>);
+    vi.spyOn(api, 'fetchProveCostsByProposer').mockResolvedValue({
+      data: [{ address: '0xseqA', cost: 1e16 }],
+      badRequest: false,
+      error: null,
+    } as RequestResult<api.SequencerCostItem[]>);
+    vi.spyOn(api, 'fetchVerifyCostsByProposer').mockResolvedValue({
+      data: [{ address: '0xseqA', cost: 2e16 }],
+      badRequest: false,
+      error: null,
+    } as RequestResult<api.SequencerCostItem[]>);
     vi.spyOn(priceService, 'useEthPrice').mockReturnValue({
       data: 100,
     } as unknown as ReturnType<typeof priceService.useEthPrice>);
