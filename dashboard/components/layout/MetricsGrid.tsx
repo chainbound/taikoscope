@@ -56,9 +56,23 @@ export const MetricsGrid: React.FC<MetricsGridProps> = ({
           isLoading ? (
             <React.Fragment key={group}>
               {group !== 'Other' && (
-                <h2 className="mt-6 mb-2 text-lg font-semibold">
-                  {displayGroupName(group)}
-                </h2>
+                <>
+                  {group === 'Network Economics' && (
+                    <p className="mt-6 text-sm text-gray-600 dark:text-gray-400">
+                      Only batches that have been verified are included to avoid
+                      showing profits that are too high.
+                    </p>
+                  )}
+                  <h2
+                    className={
+                      group === 'Network Economics'
+                        ? 'mt-1 mb-2 text-lg font-semibold'
+                        : 'mt-6 mb-2 text-lg font-semibold'
+                    }
+                  >
+                    {displayGroupName(group)}
+                  </h2>
+                </>
               )}
               <div className={economicsView ? economicsGrid : regularGrid}>
                 {Array.from({ length: skeletonGroupCounts[group] }).map(
@@ -76,9 +90,23 @@ export const MetricsGrid: React.FC<MetricsGridProps> = ({
           ) : groupedMetrics[group] && groupedMetrics[group].length > 0 ? (
             <React.Fragment key={group}>
               {group !== 'Other' && (
-                <h2 className="mt-6 mb-2 text-lg font-semibold">
-                  {displayGroupName(group)}
-                </h2>
+                <>
+                  {group === 'Network Economics' && (
+                    <p className="mt-6 text-sm text-gray-600 dark:text-gray-400">
+                      Only batches that have been verified are included to avoid
+                      showing profits that are too high.
+                    </p>
+                  )}
+                  <h2
+                    className={
+                      group === 'Network Economics'
+                        ? 'mt-1 mb-2 text-lg font-semibold'
+                        : 'mt-6 mb-2 text-lg font-semibold'
+                    }
+                  >
+                    {displayGroupName(group)}
+                  </h2>
+                </>
               )}
               <div className={economicsView ? economicsGrid : regularGrid}>
                 {groupedMetrics[group].map((m, idx) => {
