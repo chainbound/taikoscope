@@ -350,6 +350,10 @@ pub struct SequencerFeeRow {
     pub base_fee: u128,
     /// Total L1 data posting cost attributed to the sequencer
     pub l1_data_cost: Option<u128>,
+    /// Total proving cost attributed to the sequencer
+    pub prove_cost: Option<u128>,
+    /// Total verifying cost attributed to the sequencer
+    pub verify_cost: Option<u128>,
 }
 
 /// Row representing the fee components for a batch

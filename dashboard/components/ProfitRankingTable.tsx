@@ -110,12 +110,16 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
     const addr = seq.address || getSequencerAddress(seq.name) || '';
     const batchCount = batchCounts?.get(addr.toLowerCase()) ?? null;
     const fees = feeDataMap.get(addr.toLowerCase());
-    const proveExtra = (proveCosts?.get(addr.toLowerCase()) ?? 0) / 1e18;
-    const verifyExtra = (verifyCosts?.get(addr.toLowerCase()) ?? 0) / 1e18;
-    const aggregated = proveCosts && verifyCosts;
+    const proveRaw = fees?.prove_cost ?? proveCosts?.get(addr.toLowerCase());
+    const verifyRaw = fees?.verify_cost ?? verifyCosts?.get(addr.toLowerCase());
+    const hasCosts = proveRaw != null && verifyRaw != null;
     const fallbackUsd = batchCount ? (proveCost + verifyCost) * batchCount : 0;
-    const extraEth = aggregated ? proveExtra + verifyExtra : ethPrice ? fallbackUsd / ethPrice : 0;
-    const extraUsd = aggregated ? extraEth * ethPrice : fallbackUsd;
+    const extraEth = hasCosts
+      ? ((proveRaw ?? 0) + (verifyRaw ?? 0)) / 1e18
+      : ethPrice
+        ? fallbackUsd / ethPrice
+        : 0;
+    const extraUsd = hasCosts ? extraEth * ethPrice : fallbackUsd;
     if (!fees) {
       return {
         name: seq.name,
