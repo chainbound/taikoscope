@@ -20,7 +20,6 @@ interface ProfitabilityChartProps {
   cloudCost: number;
   proverCost: number;
   proveCost?: number;
-  verifyCost?: number;
   address?: string;
 }
 
@@ -29,7 +28,6 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
   cloudCost,
   proverCost,
   proveCost = 0,
-  verifyCost = 0,
   address,
 }) => {
   const { data: feeRes } = useSWR(
@@ -51,8 +49,7 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
   const HOURS_IN_MONTH = 30 * 24;
   const costPerBatchUsd =
     ((cloudCost + proverCost) / HOURS_IN_MONTH) * (hours / feeData.length) +
-    proveCost +
-    verifyCost;
+    proveCost;
   const costPerBatchEth = ethPrice ? costPerBatchUsd / ethPrice : 0;
 
   const data = feeData.map((b) => {

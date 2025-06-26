@@ -17,7 +17,6 @@ interface ProfitRankingTableProps {
   cloudCost: number;
   proverCost: number;
   proveCost?: number;
-  verifyCost?: number;
 }
 
 const formatUsd = (value: number): string => {
@@ -36,7 +35,6 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
   cloudCost,
   proverCost,
   proveCost = 0,
-  verifyCost = 0,
 }) => {
   const { data: distRes } = useSWR(['profitRankingSeq', timeRange], () =>
     fetchSequencerDistribution(timeRange),
@@ -97,7 +95,7 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
     const batchCount = batchCounts?.get(addr.toLowerCase()) ?? null;
     const fees = feeDataMap.get(addr.toLowerCase());
     if (!fees) {
-      const extraUsd = batchCount ? (proveCost + verifyCost) * batchCount : 0;
+      const extraUsd = batchCount ? proveCost * batchCount : 0;
       const extraEth = ethPrice ? extraUsd / ethPrice : 0;
       return {
         name: seq.name,
@@ -118,7 +116,7 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
     const l1CostEth = (fees.l1_data_cost ?? 0) / 1e18;
     const revenueUsd = revenueEth * ethPrice;
     const l1CostUsd = l1CostEth * ethPrice;
-    const extraUsd = batchCount ? (proveCost + verifyCost) * batchCount : 0;
+    const extraUsd = batchCount ? proveCost * batchCount : 0;
     const extraEth = ethPrice ? extraUsd / ethPrice : 0;
     const costEth = costPerSeqEth + l1CostEth + extraEth;
     const costUsd = costPerSeqUsd + l1CostUsd + extraUsd;

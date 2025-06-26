@@ -21,7 +21,6 @@ describe('BlockProfitTables', () => {
         cloudCost: 100,
         proverCost: 100,
         proveCost: 5,
-        verifyCost: 2,
       }),
     );
 

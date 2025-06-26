@@ -11,7 +11,6 @@ interface BlockProfitTablesProps {
   cloudCost: number;
   proverCost: number;
   proveCost?: number;
-  verifyCost?: number;
   address?: string;
 }
 
@@ -29,7 +28,6 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
   cloudCost,
   proverCost,
   proveCost = 0,
-  verifyCost = 0,
   address,
 }) => {
   const { data: ethPrice = 0 } = useEthPrice();
@@ -45,8 +43,7 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
     batchCount > 0
       ?
       ((cloudCost + proverCost) / HOURS_IN_MONTH) * (hours / batchCount) +
-      proveCost +
-      verifyCost
+      proveCost
       : 0;
   const costPerBatchEth = ethPrice ? costPerBatchUsd / ethPrice : 0;
 

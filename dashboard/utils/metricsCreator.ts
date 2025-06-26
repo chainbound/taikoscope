@@ -27,7 +27,6 @@ export interface MetricInputData {
   l1DataCost?: number | null;
   profit?: number | null;
   proveCost?: number | null;
-  verifyCost?: number | null;
 }
 
 export const createMetrics = (data: MetricInputData): MetricData[] => [
@@ -135,13 +134,8 @@ export const createMetrics = (data: MetricInputData): MetricData[] => [
     group: 'Network Economics',
   },
   {
-    title: 'Prove Cost',
+    title: 'L1 Prove Cost',
     value: data.proveCost != null ? formatEth(data.proveCost) : 'N/A',
-    group: 'Network Economics',
-  },
-  {
-    title: 'Verify Cost',
-    value: data.verifyCost != null ? formatEth(data.verifyCost) : 'N/A',
     group: 'Network Economics',
   },
   {

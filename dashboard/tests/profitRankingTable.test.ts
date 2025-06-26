@@ -162,9 +162,8 @@ describe('ProfitRankingTable', () => {
         cloudCost: 0,
         proverCost: 0,
         proveCost: 1,
-        verifyCost: 2,
       }),
     );
-    expect(html.includes('title="$53.00"')).toBe(true);
+    expect(html.includes('title="$51.00"')).toBe(true);
   });
 });

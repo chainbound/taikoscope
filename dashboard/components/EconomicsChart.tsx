@@ -20,7 +20,6 @@ interface EconomicsChartProps {
   cloudCost: number;
   proverCost: number;
   proveCost?: number;
-  verifyCost?: number;
   address?: string;
 }
 
@@ -29,7 +28,6 @@ export const EconomicsChart: React.FC<EconomicsChartProps> = ({
   cloudCost,
   proverCost,
   proveCost = 0,
-  verifyCost = 0,
   address,
 }) => {
   const { data: feeRes } = useSWR(
@@ -50,7 +48,7 @@ export const EconomicsChart: React.FC<EconomicsChartProps> = ({
   const hours = rangeToHours(timeRange);
   const HOURS_IN_MONTH = 30 * 24;
   const baseCostUsd = ((cloudCost + proverCost) / HOURS_IN_MONTH) * hours;
-  const baseCostPerBatchUsd = baseCostUsd / feeData.length + proveCost + verifyCost;
+  const baseCostPerBatchUsd = baseCostUsd / feeData.length + proveCost;
   const baseCostPerBatchEth = ethPrice ? baseCostPerBatchUsd / ethPrice : 0;
 
   const data = feeData.map((b) => {

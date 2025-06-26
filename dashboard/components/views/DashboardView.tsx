@@ -88,12 +88,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [cloudCost, setCloudCost] = useState(1000);
   const [proverCost, setProverCost] = useState(1000);
   const { data: ethPrice = 0 } = useEthPrice();
-  const proveCostUsd = React.useMemo(() => {
-    const eth = parseEthValue(findMetricValue(metricsData.metrics, 'Prove Cost'));
-    return eth * ethPrice;
-  }, [metricsData.metrics, ethPrice]);
-  const verifyCostUsd = React.useMemo(() => {
-    const eth = parseEthValue(findMetricValue(metricsData.metrics, 'Verify Cost'));
+  const l1ProveCostUsd = React.useMemo(() => {
+    const eth = parseEthValue(findMetricValue(metricsData.metrics, 'L1 Prove Cost'));
     return eth * ethPrice;
   }, [metricsData.metrics, ethPrice]);
 
@@ -165,8 +161,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         'Avg. Prove Time': () => onOpenTable('prove-time', timeRange),
         'Avg. Verify Time': () => onOpenTable('verify-time', timeRange),
         'L1 Data Cost': () => onOpenTable('l1-data-cost', timeRange),
-        'Prove Cost': () => onOpenTable('prove-cost', timeRange),
-        'Verify Cost': () => onOpenTable('verify-cost', timeRange),
+        'L1 Prove Cost': () => onOpenTable('prove-cost', timeRange),
       };
       return actions[title];
     },
@@ -331,8 +326,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 timeRange={timeRange}
                 cloudCost={cloudCost}
                 proverCost={proverCost}
-                proveCost={proveCostUsd}
-                verifyCost={verifyCostUsd}
+                proveCost={l1ProveCostUsd}
                 address={selectedSequencer || undefined}
               />
             </div>
@@ -340,15 +334,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               timeRange={timeRange}
               cloudCost={cloudCost}
               proverCost={proverCost}
-              proveCost={proveCostUsd}
-              verifyCost={verifyCostUsd}
+              proveCost={l1ProveCostUsd}
             />
             <BlockProfitTables
               timeRange={timeRange}
               cloudCost={cloudCost}
               proverCost={proverCost}
-              proveCost={proveCostUsd}
-              verifyCost={verifyCostUsd}
+              proveCost={l1ProveCostUsd}
               address={selectedSequencer || undefined}
             />
           </>

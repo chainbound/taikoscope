@@ -348,7 +348,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
   },
 
   'prove-cost': {
-    title: 'Prove Cost',
+    title: 'L1 Prove Cost',
     description: 'Cost to prove each batch.',
     fetcher: fetchProveCost,
     columns: [
