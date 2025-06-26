@@ -1762,6 +1762,8 @@ impl ClickhouseReader {
              FROM {db}.batch_blocks bb \
              INNER JOIN {db}.batches b \
                ON bb.batch_id = b.batch_id \
+             INNER JOIN {db}.verified_batches vb \
+               ON b.batch_id = vb.batch_id AND b.l1_block_number = vb.l1_block_number \
              INNER JOIN {db}.l1_head_events l1 \
                ON b.l1_block_number = l1.l1_block_number \
              LEFT JOIN {db}.l2_head_events h \
@@ -1910,6 +1912,8 @@ impl ClickhouseReader {
              FROM {db}.batch_blocks bb \
              INNER JOIN {db}.batches b \
                ON bb.batch_id = b.batch_id \
+             INNER JOIN {db}.verified_batches vb \
+               ON b.batch_id = vb.batch_id AND b.l1_block_number = vb.l1_block_number \
              INNER JOIN {db}.l1_head_events l1 \
                ON b.l1_block_number = l1.l1_block_number \
              LEFT JOIN {db}.l2_head_events h \

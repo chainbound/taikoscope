@@ -1,4 +1,6 @@
 //! Incident crate: Instatus integration and helpers.
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::cognitive_complexity)]
 /// Base monitor implementation
 pub mod base_monitor;
 /// Instatus client

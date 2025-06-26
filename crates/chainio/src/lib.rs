@@ -1,4 +1,6 @@
 //! `ChainIO` is a library for interacting with on-chain contracts.
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::cognitive_complexity)]
 pub mod taiko;
 
 use ITaikoInbox::{BatchProposed, BatchesProved, ITaikoInboxInstance, Transition};

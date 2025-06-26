@@ -1,4 +1,6 @@
 //! Helper utilities to launch the Taikoscope API server.
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::cognitive_complexity)]
 
 use std::{net::SocketAddr, sync::Arc, time::Duration};
 

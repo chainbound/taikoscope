@@ -23,6 +23,7 @@ pub fn spawn_public_rpc_monitor(url: Url) -> tokio::task::JoinHandle<()> {
     })
 }
 
+#[allow(clippy::cognitive_complexity)]
 async fn check_once(client: &Client, url: &Url) {
     let first = check_syncing(client, url).await;
     let negative = match first {

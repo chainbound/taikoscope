@@ -1,4 +1,6 @@
 //! Taikoscope Extractor
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::cognitive_complexity)]
 use chainio::{
     self, DefaultProvider,
     ITaikoInbox::{BatchProposed, BatchesProved, BatchesVerified as InboxBatchesVerified},
