@@ -770,6 +770,8 @@ export interface SequencerFee {
   priority_fee: number;
   base_fee: number;
   l1_data_cost: number | null;
+  prove_cost: number | null;
+  verify_cost: number | null;
 }
 
 export interface L2FeesResponse {

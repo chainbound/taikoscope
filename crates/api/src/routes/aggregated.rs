@@ -260,6 +260,8 @@ pub async fn l2_fees(
             priority_fee: r.priority_fee,
             base_fee: r.base_fee,
             l1_data_cost: r.l1_data_cost,
+            prove_cost: r.prove_cost,
+            verify_cost: r.verify_cost,
         })
         .collect();
 
@@ -333,6 +335,8 @@ pub async fn batch_fees(
             priority_fee: r.priority_fee,
             base_fee: r.base_fee,
             l1_data_cost: r.l1_data_cost,
+            prove_cost: r.prove_cost,
+            verify_cost: r.verify_cost,
         })
         .collect();
 

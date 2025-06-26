@@ -525,6 +525,8 @@ async fn l2_fees_integration() {
             priority_fee: 600,
             base_fee: 400,
             l1_data_cost: Some(10),
+            prove_cost: Some(5),
+            verify_cost: Some(6),
         },
     ]));
 
@@ -547,12 +549,16 @@ async fn l2_fees_integration() {
             "priority_fee": 600,
             "base_fee": 400,
             "l1_data_cost": 10,
+            "prove_cost": 5,
+            "verify_cost": 6,
             "sequencers": [
                 {
                     "address": format!("0x{}", hex::encode([1u8; 20])),
                     "priority_fee": 600,
                     "base_fee": 400,
-                    "l1_data_cost": 10
+                    "l1_data_cost": 10,
+                    "prove_cost": 5,
+                    "verify_cost": 6
                 }
             ]
         })
@@ -573,6 +579,8 @@ async fn batch_fees_integration() {
             priority_fee: 10,
             base_fee: 20,
             l1_data_cost: Some(5),
+            prove_cost: Some(1),
+            verify_cost: Some(2),
         },
     ]));
 
@@ -595,12 +603,16 @@ async fn batch_fees_integration() {
             "priority_fee": 10,
             "base_fee": 20,
             "l1_data_cost": 5,
+            "prove_cost": 1,
+            "verify_cost": 2,
             "sequencers": [
                 {
                     "address": format!("0x{}", hex::encode([2u8; 20])),
                     "priority_fee": 10,
                     "base_fee": 20,
-                    "l1_data_cost": 5
+                    "l1_data_cost": 5,
+                    "prove_cost": 1,
+                    "verify_cost": 2
                 }
             ]
         })

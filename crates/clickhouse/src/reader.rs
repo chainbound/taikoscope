@@ -2265,16 +2265,26 @@ impl ClickhouseReader {
             priority_fee: u128,
             base_fee: u128,
             l1_data_cost: Option<u128>,
+            prove_cost: Option<u128>,
+            verify_cost: Option<u128>,
         }
 
         let query = format!(
             "SELECT h.sequencer, \
                     sum(sum_priority_fee) AS priority_fee, \
                     sum(sum_base_fee) AS base_fee, \
-                    toNullable(sum(dc.cost)) AS l1_data_cost \
+                    toNullable(sum(dc.cost)) AS l1_data_cost, \
+                    toNullable(sum(pc.cost)) AS prove_cost, \
+                    toNullable(sum(vc.cost)) AS verify_cost \
              FROM {db}.l2_head_events h \
              LEFT JOIN {db}.l1_data_costs dc \
                ON h.l2_block_number = dc.l2_block_number \
+             LEFT JOIN {db}.batch_blocks bb \
+               ON h.l2_block_number = bb.l2_block_number \
+             LEFT JOIN {db}.prove_costs pc \
+               ON bb.batch_id = pc.batch_id \
+             LEFT JOIN {db}.verify_costs vc \
+               ON bb.batch_id = vc.batch_id \
              WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
                AND {filter} \
              GROUP BY h.sequencer \
@@ -2292,6 +2302,8 @@ impl ClickhouseReader {
                 priority_fee: r.priority_fee,
                 base_fee: r.base_fee,
                 l1_data_cost: r.l1_data_cost,
+                prove_cost: r.prove_cost,
+                verify_cost: r.verify_cost,
             })
             .collect())
     }
@@ -2417,6 +2429,8 @@ mod tests {
         priority_fee: u128,
         base_fee: u128,
         l1_data_cost: Option<u128>,
+        prove_cost: Option<u128>,
+        verify_cost: Option<u128>,
     }
 
     #[tokio::test]
@@ -2427,6 +2441,8 @@ mod tests {
             priority_fee: 10,
             base_fee: 20,
             l1_data_cost: Some(5),
+            prove_cost: Some(3),
+            verify_cost: Some(4),
         }]));
 
         let url = url::Url::parse(mock.url()).unwrap();
@@ -2442,6 +2458,8 @@ mod tests {
                 priority_fee: 10,
                 base_fee: 20,
                 l1_data_cost: Some(5),
+                prove_cost: Some(3),
+                verify_cost: Some(4),
             }]
         );
     }
@@ -2458,10 +2476,18 @@ mod tests {
             "SELECT h.sequencer, \
                     sum(sum_priority_fee) AS priority_fee, \
                     sum(sum_base_fee) AS base_fee, \
-                    sum(dc.cost) AS l1_data_cost \
+                    sum(dc.cost) AS l1_data_cost, \
+                    sum(pc.cost) AS prove_cost, \
+                    sum(vc.cost) AS verify_cost \
              FROM {db}.l2_head_events h \
              LEFT JOIN {db}.l1_data_costs dc \
                ON h.l2_block_number = dc.l2_block_number \
+             LEFT JOIN {db}.batch_blocks bb \
+               ON h.l2_block_number = bb.l2_block_number \
+             LEFT JOIN {db}.prove_costs pc \
+               ON bb.batch_id = pc.batch_id \
+             LEFT JOIN {db}.verify_costs vc \
+               ON bb.batch_id = vc.batch_id \
              WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
                AND {filter} \
              GROUP BY h.sequencer \
@@ -2479,6 +2505,18 @@ mod tests {
         assert!(
             query.contains("l1_data_costs dc ON"),
             "Query should have space between 'dc' and 'ON'"
+        );
+        assert!(
+            query.contains("batch_blocks bb LEFT JOIN"),
+            "Query should have space between 'bb' and 'LEFT JOIN'",
+        );
+        assert!(
+            query.contains("prove_costs pc ON"),
+            "Query should have space between 'pc' and 'ON'",
+        );
+        assert!(
+            query.contains("verify_costs vc ON"),
+            "Query should have space between 'vc' and 'ON'",
         );
         assert!(
             query.contains("dc.l2_block_number WHERE"),
@@ -2569,6 +2607,8 @@ mod tests {
             priority_fee: 10,
             base_fee: 20,
             l1_data_cost: Some(5),
+            prove_cost: None,
+            verify_cost: None,
         }]));
 
         let url = url::Url::parse(mock.url()).unwrap();
@@ -2584,6 +2624,8 @@ mod tests {
                 priority_fee: 10,
                 base_fee: 20,
                 l1_data_cost: Some(5),
+                prove_cost: None,
+                verify_cost: None,
             }]
         );
     }
