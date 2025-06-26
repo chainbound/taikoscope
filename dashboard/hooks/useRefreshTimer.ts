@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { loadRefreshRate, saveRefreshRate, isValidRefreshRate } from '../utils';
+import type { RefreshTimerState } from '../types';
 
-export const useRefreshTimer = () => {
+export const useRefreshTimer = (): RefreshTimerState => {
   const [refreshRate, setRefreshRateState] = useState<number>(() =>
     loadRefreshRate(),
   );

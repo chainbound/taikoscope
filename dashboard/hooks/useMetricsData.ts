@@ -1,9 +1,9 @@
 import { useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useErrorHandler } from './useErrorHandler';
-import type { MetricData } from '../types';
+import type { MetricData, MetricsDataState } from '../types';
 
-export const useMetricsData = () => {
+export const useMetricsData = (): MetricsDataState => {
   const [metrics, setMetrics] = useState<MetricData[]>([]);
   const [loadingMetrics, setLoadingMetrics] = useState(true);
   const { errorMessage, setErrorMessage } = useErrorHandler();

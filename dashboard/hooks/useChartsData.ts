@@ -1,8 +1,13 @@
 import { useState, useCallback, useMemo } from 'react';
-import { TimeSeriesData, PieChartDataItem } from '../types';
+import {
+  TimeSeriesData,
+  PieChartDataItem,
+  ChartsData,
+  ChartsDataUpdate,
+} from '../types';
 import type { BlockTransaction, BatchBlobCount } from '../services/apiService';
 
-export const useChartsData = () => {
+export const useChartsData = (): ChartsData => {
   const [secondsToProveData, setSecondsToProveData] = useState<
     TimeSeriesData[]
   >([]);
@@ -16,17 +21,6 @@ export const useChartsData = () => {
   const [sequencerDistribution, setSequencerDistribution] = useState<
     PieChartDataItem[]
   >([]);
-
-  interface ChartsDataUpdate {
-    proveTimes?: TimeSeriesData[];
-    verifyTimes?: TimeSeriesData[];
-    l2Times?: TimeSeriesData[];
-    l2Gas?: TimeSeriesData[];
-    txPerBlock?: BlockTransaction[];
-    blobsPerBatch?: BatchBlobCount[];
-    sequencerDist?: PieChartDataItem[];
-  }
-
   const updateChartsData = useCallback(
     (data: ChartsDataUpdate) => {
       if (data.proveTimes) setSecondsToProveData([...data.proveTimes]);
