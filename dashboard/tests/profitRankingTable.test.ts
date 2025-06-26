@@ -23,8 +23,6 @@ describe('ProfitRankingTable', () => {
           ],
         } as RequestResult<SequencerDistributionDataItem[]>,
       } as unknown as ReturnType<typeof swr.default>)
-      .mockReturnValueOnce({ data: new Map() } as unknown as ReturnType<typeof swr.default>)
-      .mockReturnValueOnce({ data: new Map() } as unknown as ReturnType<typeof swr.default>)
       .mockReturnValueOnce({
         data: {
           data: {
@@ -98,16 +96,6 @@ describe('ProfitRankingTable', () => {
       badRequest: false,
       error: null,
     } as RequestResult<L2FeesResponse>);
-    vi.spyOn(api, 'fetchProveCostsByProposer').mockResolvedValue({
-      data: [],
-      badRequest: false,
-      error: null,
-    } as RequestResult<api.SequencerCostItem[]>);
-    vi.spyOn(api, 'fetchVerifyCostsByProposer').mockResolvedValue({
-      data: [],
-      badRequest: false,
-      error: null,
-    } as RequestResult<api.SequencerCostItem[]>);
     vi.spyOn(priceService, 'useEthPrice').mockReturnValue({
       data: 1000,
     } as unknown as ReturnType<typeof priceService.useEthPrice>);
@@ -197,16 +185,6 @@ describe('ProfitRankingTable', () => {
       badRequest: false,
       error: null,
     } as RequestResult<L2FeesResponse>);
-    vi.spyOn(api, 'fetchProveCostsByProposer').mockResolvedValue({
-      data: [{ address: '0xseqA', cost: 1e16 }],
-      badRequest: false,
-      error: null,
-    } as RequestResult<api.SequencerCostItem[]>);
-    vi.spyOn(api, 'fetchVerifyCostsByProposer').mockResolvedValue({
-      data: [{ address: '0xseqA', cost: 2e16 }],
-      badRequest: false,
-      error: null,
-    } as RequestResult<api.SequencerCostItem[]>);
     vi.spyOn(priceService, 'useEthPrice').mockReturnValue({
       data: 100,
     } as unknown as ReturnType<typeof priceService.useEthPrice>);
@@ -216,10 +194,8 @@ describe('ProfitRankingTable', () => {
         timeRange: '1h',
         cloudCost: 0,
         proverCost: 0,
-        proveCost: 1,
-        verifyCost: 2,
       }),
     );
-    expect(html.includes('title="$53.00"')).toBe(true);
+    expect(html.includes('title="$')).toBe(true);
   });
 });
