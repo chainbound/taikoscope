@@ -1828,6 +1828,62 @@ impl ClickhouseReader {
         Ok((total > 0).then_some(total))
     }
 
+    /// Get aggregated prove costs grouped by proposer for the given range
+    pub async fn get_prove_costs_by_proposer(
+        &self,
+        range: TimeRange,
+    ) -> Result<Vec<(AddressBytes, u128)>> {
+        #[derive(Row, Deserialize)]
+        struct RawRow {
+            proposer: AddressBytes,
+            total_cost: u128,
+        }
+
+        let query = format!(
+            "SELECT b.proposer_addr AS proposer, \
+                    sum(pc.cost) AS total_cost \
+             FROM {db}.prove_costs pc \
+             INNER JOIN {db}.batches b ON pc.batch_id = b.batch_id \
+             INNER JOIN {db}.l1_head_events l1 ON pc.l1_block_number = l1.l1_block_number \
+             WHERE l1.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
+             GROUP BY b.proposer_addr \
+             ORDER BY total_cost DESC",
+            interval = range.interval(),
+            db = self.db_name,
+        );
+
+        let rows = self.execute::<RawRow>(&query).await?;
+        Ok(rows.into_iter().map(|r| (r.proposer, r.total_cost)).collect())
+    }
+
+    /// Get aggregated verify costs grouped by proposer for the given range
+    pub async fn get_verify_costs_by_proposer(
+        &self,
+        range: TimeRange,
+    ) -> Result<Vec<(AddressBytes, u128)>> {
+        #[derive(Row, Deserialize)]
+        struct RawRow {
+            proposer: AddressBytes,
+            total_cost: u128,
+        }
+
+        let query = format!(
+            "SELECT b.proposer_addr AS proposer, \
+                    sum(vc.cost) AS total_cost \
+             FROM {db}.verify_costs vc \
+             INNER JOIN {db}.batches b ON vc.batch_id = b.batch_id \
+             INNER JOIN {db}.l1_head_events l1 ON vc.l1_block_number = l1.l1_block_number \
+             WHERE l1.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
+             GROUP BY b.proposer_addr \
+             ORDER BY total_cost DESC",
+            interval = range.interval(),
+            db = self.db_name,
+        );
+
+        let rows = self.execute::<RawRow>(&query).await?;
+        Ok(rows.into_iter().map(|r| (r.proposer, r.total_cost)).collect())
+    }
+
     /// Get aggregated batch fees grouped by proposer for the given range
     pub async fn get_batch_fees_by_proposer(
         &self,
@@ -1953,16 +2009,14 @@ impl ClickhouseReader {
         let mut query = format!(
             "SELECT sum(pc.cost) AS total \
              FROM {db}.prove_costs pc \
-             INNER JOIN {db}.batch_blocks bb ON pc.batch_id = bb.batch_id \
-             INNER JOIN {db}.l2_head_events h ON bb.l2_block_number = h.l2_block_number \
-             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
-               AND {filter}",
+             INNER JOIN {db}.batches b ON pc.batch_id = b.batch_id \
+             INNER JOIN {db}.l1_head_events l1 ON pc.l1_block_number = l1.l1_block_number \
+             WHERE l1.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})",
             interval = range.interval(),
-            filter = self.reorg_filter("h"),
             db = self.db_name,
         );
         if let Some(addr) = sequencer {
-            query.push_str(&format!(" AND h.sequencer = unhex('{}')", encode(addr)));
+            query.push_str(&format!(" AND b.proposer_addr = unhex('{}')", encode(addr)));
         }
 
         let rows = self.execute::<SumRow>(&query).await?;
@@ -1987,16 +2041,14 @@ impl ClickhouseReader {
         let mut query = format!(
             "SELECT sum(vc.cost) AS total \
              FROM {db}.verify_costs vc \
-             INNER JOIN {db}.batch_blocks bb ON vc.batch_id = bb.batch_id \
-             INNER JOIN {db}.l2_head_events h ON bb.l2_block_number = h.l2_block_number \
-             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
-               AND {filter}",
+             INNER JOIN {db}.batches b ON vc.batch_id = b.batch_id \
+             INNER JOIN {db}.l1_head_events l1 ON vc.l1_block_number = l1.l1_block_number \
+             WHERE l1.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})",
             interval = range.interval(),
-            filter = self.reorg_filter("h"),
             db = self.db_name,
         );
         if let Some(addr) = sequencer {
-            query.push_str(&format!(" AND h.sequencer = unhex('{}')", encode(addr)));
+            query.push_str(&format!(" AND b.proposer_addr = unhex('{}')", encode(addr)));
         }
 
         let rows = self.execute::<SumRow>(&query).await?;
