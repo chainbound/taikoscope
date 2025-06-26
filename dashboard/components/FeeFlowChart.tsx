@@ -87,17 +87,34 @@ const createSankeyNode = (textColor: string) => {
   return SankeyNodeComponent;
 };
 
-const SankeyLink = ({
-  sourceX,
-  sourceY,
-  sourceControlX,
-  targetX,
-  targetY,
-  targetControlX,
-  linkWidth,
-  payload,
-  ...rest
-}: any) => {
+const SankeyLink = (props: any) => {
+  const {
+    sourceX,
+    sourceY,
+    sourceControlX,
+    targetX,
+    targetY,
+    targetControlX,
+    linkWidth,
+    payload,
+    // Remove props that shouldn't be passed to DOM elements
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    sourceRelativeY,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    targetRelativeY,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    index,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    isAnimationActive,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    animationBegin,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    animationDuration,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    animationEasing,
+    ...domProps
+  } = props;
+
   // Guard against NaN values in coordinates
   const safeSourceX = isNaN(sourceX) ? 0 : sourceX;
   const safeSourceY = isNaN(sourceY) ? 0 : sourceY;
@@ -126,7 +143,7 @@ const SankeyLink = ({
       stroke={isCost ? '#ef4444' : isProfit ? NODE_GREEN : '#94a3b8'}
       strokeWidth={safeLinkWidth}
       strokeOpacity={0.2}
-      {...rest}
+      {...domProps}
     />
   );
 };
