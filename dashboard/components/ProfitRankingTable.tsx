@@ -92,12 +92,24 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
   const costPerSeqUsd = ((cloudCost + proverCost) / MONTH_HOURS) * hours;
   const costPerSeqEth = ethPrice ? costPerSeqUsd / ethPrice : 0;
 
+  const totalBatches = React.useMemo(() => {
+    if (!batchCounts) return 0;
+    let sum = 0;
+    for (const v of batchCounts.values()) sum += v;
+    return sum;
+  }, [batchCounts]);
+
+  const perBatchProveUsd = totalBatches > 0 ? proveCost / totalBatches : 0;
+  const perBatchVerifyUsd = totalBatches > 0 ? verifyCost / totalBatches : 0;
+
   const rows = sequencers.map((seq) => {
     const addr = seq.address || getSequencerAddress(seq.name) || '';
     const batchCount = batchCounts?.get(addr.toLowerCase()) ?? null;
     const fees = feeDataMap.get(addr.toLowerCase());
     if (!fees) {
-      const extraUsd = batchCount ? (proveCost + verifyCost) * batchCount : 0;
+      const extraUsd = batchCount
+        ? (perBatchProveUsd + perBatchVerifyUsd) * batchCount
+        : 0;
       const extraEth = ethPrice ? extraUsd / ethPrice : 0;
       return {
         name: seq.name,
@@ -118,7 +130,9 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
     const l1CostEth = (fees.l1_data_cost ?? 0) / 1e18;
     const revenueUsd = revenueEth * ethPrice;
     const l1CostUsd = l1CostEth * ethPrice;
-    const extraUsd = batchCount ? (proveCost + verifyCost) * batchCount : 0;
+    const extraUsd = batchCount
+      ? (perBatchProveUsd + perBatchVerifyUsd) * batchCount
+      : 0;
     const extraEth = ethPrice ? extraUsd / ethPrice : 0;
     const costEth = costPerSeqEth + l1CostEth + extraEth;
     const costUsd = costPerSeqUsd + l1CostUsd + extraUsd;
