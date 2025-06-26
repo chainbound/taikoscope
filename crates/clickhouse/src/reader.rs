@@ -1895,6 +1895,8 @@ impl ClickhouseReader {
             priority_fee: u128,
             base_fee: u128,
             l1_data_cost: Option<u128>,
+            prove_cost: Option<u128>,
+            verify_cost: Option<u128>,
         }
 
         let filter = self.reorg_filter("h");
@@ -1902,7 +1904,9 @@ impl ClickhouseReader {
             "SELECT b.proposer_addr AS proposer, \
                     sum(h.sum_priority_fee) AS priority_fee, \
                     sum(h.sum_base_fee) AS base_fee, \
-                    toNullable(sum(dc.cost)) AS l1_data_cost \
+                    toNullable(sum(dc.cost)) AS l1_data_cost, \
+                    toNullable(sum(pc.cost)) AS prove_cost, \
+                    toNullable(sum(vc.cost)) AS verify_cost \
              FROM {db}.batch_blocks bb \
              INNER JOIN {db}.batches b \
                ON bb.batch_id = b.batch_id \
@@ -1912,6 +1916,10 @@ impl ClickhouseReader {
                ON bb.l2_block_number = h.l2_block_number \
              LEFT JOIN {db}.l1_data_costs dc \
                ON h.l2_block_number = dc.l2_block_number \
+             LEFT JOIN {db}.prove_costs pc \
+               ON bb.batch_id = pc.batch_id \
+             LEFT JOIN {db}.verify_costs vc \
+               ON bb.batch_id = vc.batch_id \
              WHERE l1.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
                AND {filter} \
              GROUP BY b.proposer_addr \
@@ -1929,6 +1937,8 @@ impl ClickhouseReader {
                 priority_fee: r.priority_fee,
                 base_fee: r.base_fee,
                 l1_data_cost: r.l1_data_cost,
+                prove_cost: r.prove_cost,
+                verify_cost: r.verify_cost,
             })
             .collect())
     }
