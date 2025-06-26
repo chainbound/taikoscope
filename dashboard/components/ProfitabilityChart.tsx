@@ -14,6 +14,7 @@ import { fetchBatchFeeComponents } from '../services/apiService';
 import { TimeRange, BatchFeeComponent } from '../types';
 import { rangeToHours } from '../utils/timeRange';
 import { formatEth } from '../utils';
+import { calculateProfit } from '../utils/profit';
 
 interface ProfitabilityChartProps {
   timeRange: TimeRange;
@@ -47,14 +48,17 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
   const HOURS_IN_MONTH = 30 * 24;
   const costPerBatchUsd =
     ((cloudCost + proverCost) / HOURS_IN_MONTH) * (hours / feeData.length);
-  const costPerBatchEth = ethPrice ? costPerBatchUsd / ethPrice : 0;
 
   const data = feeData.map((b) => {
-    const revenueEth = (b.priority + b.base - (b.l1Cost ?? 0)) / 1e18;
-    const proveEth = (b.amortizedProveCost ?? 0) / 1e18;
-    const verifyEth = (b.amortizedVerifyCost ?? 0) / 1e18;
-    const profitEth = revenueEth - (costPerBatchEth + proveEth + verifyEth);
-    const profitUsd = profitEth * ethPrice;
+    const { profitEth, profitUsd } = calculateProfit({
+      priorityWei: b.priority,
+      baseWei: b.base,
+      l1CostWei: b.l1Cost ?? 0,
+      proveCostWei: b.amortizedProveCost ?? 0,
+      verifyCostWei: b.amortizedVerifyCost ?? 0,
+      hardwareCostUsd: costPerBatchUsd,
+      ethPrice,
+    });
     return { batch: b.batch, profitEth, profitUsd };
   });
 
