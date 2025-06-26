@@ -140,12 +140,16 @@ const responses: Record<string, Record<string, unknown>> = {
     priority_fee: 600,
     base_fee: 400,
     l1_data_cost: null,
+    prove_cost: 5,
+    verify_cost: 6,
     sequencers: [],
   },
   [`/v1/l2-fees?${q15m}`]: {
     priority_fee: 600,
     base_fee: 400,
     l1_data_cost: null,
+    prove_cost: 5,
+    verify_cost: 6,
     sequencers: [],
   },
   [`/v1/sequencer-distribution?${q1h}`]: {
@@ -160,6 +164,8 @@ const responses: Record<string, Record<string, unknown>> = {
     priority_fee: 1200,
     base_fee: 800,
     l1_data_cost: null,
+    prove_cost: 10,
+    verify_cost: 12,
     sequencers: [],
   },
 };

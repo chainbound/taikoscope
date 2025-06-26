@@ -31,6 +31,8 @@ describe('ProfitRankingTable', () => {
             priority_fee: 3e18,
             base_fee: 1.5e18,
             l1_data_cost: 0,
+            prove_cost: 0,
+            verify_cost: 0,
             sequencers: [
               {
                 address: '0xseqA',
@@ -68,6 +70,8 @@ describe('ProfitRankingTable', () => {
         priority_fee: 3e18,
         base_fee: 1.5e18,
         l1_data_cost: 0,
+        prove_cost: 0,
+        verify_cost: 0,
         sequencers: [
           {
             address: '0xseqA',
@@ -140,6 +144,8 @@ describe('ProfitRankingTable', () => {
             priority_fee: 1e18,
             base_fee: 0,
             l1_data_cost: 5e17,
+            prove_cost: 0,
+            verify_cost: 0,
             sequencers: [
               {
                 address: '0xseqA',
@@ -165,6 +171,8 @@ describe('ProfitRankingTable', () => {
         priority_fee: 1e18,
         base_fee: 0,
         l1_data_cost: 5e17,
+        prove_cost: 0,
+        verify_cost: 0,
         sequencers: [
           {
             address: '0xseqA',

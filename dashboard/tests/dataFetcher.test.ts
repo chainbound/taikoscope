@@ -90,6 +90,8 @@ describe('dataFetcher', () => {
         priority_fee: 1,
         base_fee: 2,
         l1_data_cost: 4,
+        prove_cost: 5,
+        verify_cost: 6,
         sequencers: [],
       }),
       fetchL2HeadBlock: ok(2),
@@ -97,7 +99,7 @@ describe('dataFetcher', () => {
       fetchSequencerDistribution: ok([
         { name: 'foo', address: '0xfoo', value: 1, tps: null },
       ]),
-      fetchDashboardData: ok({ prove_cost: 5, verify_cost: 6 }),
+      fetchDashboardData: ok({}),
     });
 
     const res = await fetchEconomicsData('1h', null);
@@ -118,6 +120,8 @@ describe('dataFetcher', () => {
         priority_fee: null,
         base_fee: null,
         l1_data_cost: null,
+        prove_cost: null,
+        verify_cost: null,
         sequencers: [],
       }),
       fetchL2HeadBlock: ok(null),

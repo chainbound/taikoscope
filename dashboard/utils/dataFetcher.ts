@@ -147,8 +147,10 @@ export const fetchEconomicsData = async (
     priorityFee: l2FeesRes.data?.priority_fee ?? null,
     baseFee: l2FeesRes.data?.base_fee ?? null,
     l1DataCost: l2FeesRes.data?.l1_data_cost ?? null,
-    proveCost: dashboardRes.data?.prove_cost ?? null,
-    verifyCost: dashboardRes.data?.verify_cost ?? null,
+    proveCost:
+      l2FeesRes.data?.prove_cost ?? dashboardRes.data?.prove_cost ?? null,
+    verifyCost:
+      l2FeesRes.data?.verify_cost ?? dashboardRes.data?.verify_cost ?? null,
     l2Block: l2BlockRes.data,
     l1Block: l1BlockRes.data,
     sequencerDist: sequencerDistRes.data || [],

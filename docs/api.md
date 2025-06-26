@@ -27,7 +27,7 @@ All time range parameters are in milliseconds. Time range parameters cannot be u
 
 ### `/l2-fees`
 
-Returns total priority fee, base fee and optional L1 data cost for the selected address (or all sequencers). The response also includes a `sequencers` array with the fee breakdown for each sequencer.
+Returns total priority fee, base fee, proving cost, verifying cost and optional L1 data cost for the selected address (or all sequencers). The response also includes a `sequencers` array with the fee breakdown for each sequencer.
 
 ### `/prove-cost`
 
