@@ -611,9 +611,13 @@ impl Driver {
         match self.extractor.get_receipt(tx_hash).await {
             Ok(receipt) => {
                 let cost = primitives::l1_data_cost::cost_from_receipt(&receipt);
+                let cost_per_batch =
+                    Self::calculate_cost_per_batch(cost, proved.batch_ids_proved().len());
                 for batch_id in proved.batch_ids_proved() {
-                    if let Err(e) =
-                        self.clickhouse.insert_prove_cost(l1_block_number, *batch_id, cost).await
+                    if let Err(e) = self
+                        .clickhouse
+                        .insert_prove_cost(l1_block_number, *batch_id, cost_per_batch)
+                        .await
                     {
                         tracing::error!(
                             l1_block_number,
@@ -627,7 +631,7 @@ impl Driver {
                             l1_block_number,
                             batch_id,
                             tx_hash = ?tx_hash,
-                            cost,
+                            cost = cost_per_batch,
                             "Inserted prove cost"
                         );
                     }
@@ -690,6 +694,10 @@ impl Driver {
                 );
             }
         }
+    }
+
+    const fn calculate_cost_per_batch(total_cost: u128, num_batches: usize) -> u128 {
+        if num_batches == 0 { 0 } else { total_cost / num_batches as u128 }
     }
 }
 
@@ -951,5 +959,17 @@ mod tests {
                 block_hash: HashBytes::from([9u8; 32]),
             }]
         );
+    }
+
+    #[test]
+    fn calculate_cost_per_batch_even_split() {
+        let cost = Driver::calculate_cost_per_batch(100, 4);
+        assert_eq!(cost, 25);
+    }
+
+    #[test]
+    fn calculate_cost_per_batch_rounds_down() {
+        let cost = Driver::calculate_cost_per_batch(10, 3);
+        assert_eq!(cost, 3);
     }
 }
