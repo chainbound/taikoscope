@@ -4,7 +4,12 @@ import { useRouterNavigation } from '../../hooks/useRouterNavigation';
 import { TableView } from '../views/TableView';
 import { DashboardHeader } from '../DashboardHeader';
 import { TableViewState } from '../../hooks/useTableActions';
-import { TimeRange } from '../../types';
+import {
+  TimeRange,
+  ChartsData,
+  MetricsDataState,
+  RefreshTimerState,
+} from '../../types';
 import { TABLE_CONFIGS } from '../../config/tableConfig';
 import { getSequencerAddress } from '../../sequencerConfig';
 import { useDataFetcher } from '../../hooks/useDataFetcher';
@@ -15,9 +20,9 @@ interface DashboardContextType {
   selectedSequencer: string | null;
   setSelectedSequencer: (seq: string | null) => void;
   sequencerList: string[];
-  chartsData: any;
-  metricsData: any;
-  refreshTimer: any;
+  chartsData: ChartsData;
+  metricsData: MetricsDataState;
+  refreshTimer: RefreshTimerState;
 }
 
 export const TableRoute: React.FC = () => {
@@ -94,8 +99,8 @@ export const TableRoute: React.FC = () => {
           throw new Error(`Unknown table type: ${tableType}`);
         }
 
-        const fetcherArgs: any[] = [];
-        const extraParams: Record<string, any> = {};
+        const fetcherArgs: (string | number | undefined)[] = [];
+        const extraParams: Record<string, string | number | undefined> = {};
 
         const pageStr = searchParams.get('page') ?? '0';
         const page = parseInt(pageStr, 10);

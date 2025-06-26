@@ -2,7 +2,12 @@ import React from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { DashboardView } from '../views/DashboardView';
 import { DashboardHeader } from '../DashboardHeader';
-import { TimeRange } from '../../types';
+import {
+  TimeRange,
+  ChartsData,
+  MetricsDataState,
+  RefreshTimerState,
+} from '../../types';
 
 interface DashboardContextType {
   timeRange: TimeRange;
@@ -10,9 +15,9 @@ interface DashboardContextType {
   selectedSequencer: string | null;
   setSelectedSequencer: (seq: string | null) => void;
   sequencerList: string[];
-  chartsData: any;
-  metricsData: any;
-  refreshTimer: any;
+  chartsData: ChartsData;
+  metricsData: MetricsDataState;
+  refreshTimer: RefreshTimerState;
   isLoadingData: boolean;
   isTimeRangeChanging: boolean;
   handleManualRefresh: () => void;
