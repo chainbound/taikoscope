@@ -364,10 +364,10 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
       { source: 3, target: profitIndex, value: sequencerProfit }, // Sequencers → Profit
     ].filter((l) => l.value > 0);
 
-    if (l1ProveCost > 0) {
+    if (l1ProveCost > 0 && proveIndex >= 0) {
       links.push({ source: 3, target: proveIndex, value: actualProveCost });
     }
-    if (l1VerifyCost > 0) {
+    if (l1VerifyCost > 0 && verifyIndex >= 0) {
       links.push({ source: 3, target: verifyIndex, value: actualVerifyCost });
     }
   } else {
@@ -479,29 +479,56 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
       })),
     ].filter((l) => l.value > 0);
 
-    if (l1ProveCost > 0) {
+    if (l1ProveCost > 0 && proveIndex >= 0) {
       links.push(
         ...seqData.map((s, i) => ({
           source: baseIndex + i,
-          target: proveIndex!,
+          target: proveIndex,
           value: s.actualProveCost,
         })),
       );
     }
-    if (l1VerifyCost > 0) {
+    if (l1VerifyCost > 0 && verifyIndex >= 0) {
       links.push(
         ...seqData.map((s, i) => ({
           source: baseIndex + i,
-          target: verifyIndex!,
+          target: verifyIndex,
           value: s.actualVerifyCost,
         })),
       );
     }
   }
 
+  // Additional safety checks before processing
+  if (!nodes || !links || nodes.length === 0 || links.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-full text-gray-500">
+        Insufficient data for flow chart
+      </div>
+    );
+  }
+
+  // Validate that all link indices are within bounds
+  const maxNodeIndex = nodes.length - 1;
+  const validLinks = links.filter((link) => {
+    const sourceValid = Number.isInteger(link.source) && link.source >= 0 && link.source <= maxNodeIndex;
+    const targetValid = Number.isInteger(link.target) && link.target >= 0 && link.target <= maxNodeIndex;
+    const valueValid = isFinite(link.value) && link.value > 0;
+    return sourceValid && targetValid && valueValid;
+  });
+
+  // If we don't have valid links, don't render the chart
+  if (validLinks.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-full text-gray-500">
+        Unable to create flow chart with current data
+      </div>
+    );
+  }
+
   // Remove nodes that have no remaining links after filtering
   const usedIndices = new Set<number>();
-  links.forEach((l) => {
+  validLinks.forEach((l) => {
     usedIndices.add(l.source);
     usedIndices.add(l.target);
   });
@@ -513,7 +540,17 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     }
     return false;
   });
-  const remappedLinks = links.map((l) => ({
+
+  // Ensure we have nodes after filtering
+  if (filteredNodes.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-full text-gray-500">
+        No valid nodes for flow chart
+      </div>
+    );
+  }
+
+  const remappedLinks = validLinks.map((l) => ({
     ...l,
     source: indexMap.get(l.source) as number,
     target: indexMap.get(l.target) as number,
@@ -532,6 +569,15 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
       value: safeValue(link.value),
     }))
     .filter((link) => link.value > 0 && isFinite(link.value));
+
+  // Final check to ensure we have valid data
+  if (validatedNodes.length === 0 || validatedLinks.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-full text-gray-500">
+        Invalid chart data structure
+      </div>
+    );
+  }
 
   const data = { nodes: validatedNodes, links: validatedLinks };
 
