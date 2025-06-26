@@ -17,6 +17,7 @@ interface FeeFlowChartProps {
   cloudCost: number;
   proverCost: number;
   l1ProveCost?: number;
+  l1VerifyCost?: number;
   address?: string;
 }
 
@@ -34,6 +35,7 @@ const createSankeyNode =
       payload.name === 'Hardware Cost' ||
       payload.name === 'L1 Data Cost' ||
       payload.name === 'L1 Prove Cost' ||
+      payload.name === 'L1 Verify Cost' ||
       payload.name === 'Subsidy' ||
       (typeof payload.name === 'string' && payload.name.includes('Subsidy'));
     const isProfitNode = payload.name === 'Profit' || payload.profitNode;
@@ -94,6 +96,7 @@ const SankeyLink = ({
     payload.target.name === 'Hardware Cost' ||
     payload.target.name === 'L1 Data Cost' ||
     payload.target.name === 'L1 Prove Cost' ||
+    payload.target.name === 'L1 Verify Cost' ||
     payload.target.name === 'Subsidy' ||
     (typeof payload.target.name === 'string' &&
       payload.target.name.includes('Subsidy'));
@@ -118,6 +121,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
   cloudCost,
   proverCost,
   l1ProveCost = 0,
+  l1VerifyCost = 0,
   address,
 }) => {
   const { theme } = useTheme();
@@ -232,19 +236,35 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
       { name: 'Taiko DAO', value: baseFeeDaoUsd, wei: (baseFee ?? 0) * 0.25 },
     ];
 
+    let inserted = 0;
+    let proveIndex = -1;
+    let verifyIndex = -1;
     if (l1ProveCost > 0) {
-      const proveIndex = 6; // insert below L1 Data Cost
+      proveIndex = 6 + inserted;
       nodes.splice(proveIndex, 0, {
         name: 'L1 Prove Cost',
         value: l1ProveCost,
         usd: true,
       });
+      inserted += 1;
     }
+    if (l1VerifyCost > 0) {
+      verifyIndex = 6 + inserted;
+      nodes.splice(verifyIndex, 0, {
+        name: 'L1 Verify Cost',
+        value: l1VerifyCost,
+        usd: true,
+      });
+      inserted += 1;
+    }
+
+    const profitIndex = 6 + inserted;
+    const daoIndex = profitIndex + 1;
 
     links = [
       { source: 1, target: 3, value: priorityFeeUsd }, // Priority Fee → Sequencers
       { source: 2, target: 3, value: baseFeeUsd * 0.75 }, // 75% Base Fee → Sequencers
-      { source: 2, target: 8, value: baseFeeDaoUsd }, // 25% Base Fee → Taiko DAO
+      { source: 2, target: daoIndex, value: baseFeeDaoUsd }, // 25% Base Fee → Taiko DAO
       {
         source: 3,
         target: 4,
@@ -259,12 +279,14 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
         ),
       }, // Sequencers → L1 Data Cost
       { source: 0, target: 5, value: l1Subsidy }, // Subsidy → L1 Data Cost
-      { source: 3, target: 7, value: sequencerProfit }, // Sequencers → Profit
+      { source: 3, target: profitIndex, value: sequencerProfit }, // Sequencers → Profit
     ].filter((l) => l.value > 0);
 
     if (l1ProveCost > 0) {
-      const proveIndex = 6;
       links.push({ source: 3, target: proveIndex, value: l1ProveCost });
+    }
+    if (l1VerifyCost > 0) {
+      links.push({ source: 3, target: verifyIndex, value: l1VerifyCost });
     }
   } else {
     const totalActualHardwareCost = seqData.reduce(
@@ -320,15 +342,29 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
       { name: 'Taiko DAO', value: baseFeeDaoUsd, wei: (baseFee ?? 0) * 0.25 },
     ];
 
+    let insertedCosts = 0;
+    let proveIndex = -1;
+    let verifyIndex = -1;
     if (l1ProveCost > 0) {
-      nodes.splice(l1Index + 1, 0, {
+      proveIndex = l1Index + 1 + insertedCosts;
+      nodes.splice(proveIndex, 0, {
         name: 'L1 Prove Cost',
         value: l1ProveCost,
         usd: true,
       });
-      profitStartIndex += 1;
-      daoIndex += 1;
+      insertedCosts += 1;
     }
+    if (l1VerifyCost > 0) {
+      verifyIndex = l1Index + 1 + insertedCosts;
+      nodes.splice(verifyIndex, 0, {
+        name: 'L1 Verify Cost',
+        value: l1VerifyCost,
+        usd: true,
+      });
+      insertedCosts += 1;
+    }
+    profitStartIndex += insertedCosts;
+    daoIndex += insertedCosts;
 
     links = [
       ...seqData.map((s, i) => ({
@@ -365,12 +401,20 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     ].filter((l) => l.value > 0);
 
     if (l1ProveCost > 0) {
-      const proveIndex = l1Index + 1;
       links.push(
         ...seqData.map((_, i) => ({
           source: baseIndex + i,
-          target: proveIndex,
+          target: proveIndex!,
           value: l1ProveCost / seqData.length,
+        })),
+      );
+    }
+    if (l1VerifyCost > 0) {
+      links.push(
+        ...seqData.map((_, i) => ({
+          source: baseIndex + i,
+          target: verifyIndex!,
+          value: l1VerifyCost / seqData.length,
         })),
       );
     }
