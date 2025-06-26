@@ -1667,15 +1667,22 @@ impl ClickhouseReader {
             total: u128,
         }
 
+        let filter = self.reorg_filter("h");
         let mut query = format!(
             "SELECT sum(c.cost) AS total \
              FROM {db}.l1_data_costs c \
              INNER JOIN {db}.l2_head_events h \
                ON c.l2_block_number = h.l2_block_number \
+             INNER JOIN {db}.batch_blocks bb \
+               ON h.l2_block_number = bb.l2_block_number \
+             INNER JOIN {db}.batches b \
+               ON bb.batch_id = b.batch_id \
+             INNER JOIN {db}.verified_batches vb \
+               ON b.batch_id = vb.batch_id AND b.l1_block_number = vb.l1_block_number \
              WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
                AND {filter}",
             interval = range.interval(),
-            filter = self.reorg_filter("h"),
+            filter = filter,
             db = self.db_name,
         );
         if let Some(addr) = sequencer {
@@ -1846,6 +1853,8 @@ impl ClickhouseReader {
                     sum(pc.cost) AS total_cost \
              FROM {db}.prove_costs pc \
              INNER JOIN {db}.batches b ON pc.batch_id = b.batch_id \
+             INNER JOIN {db}.verified_batches vb \
+               ON b.batch_id = vb.batch_id AND b.l1_block_number = vb.l1_block_number \
              INNER JOIN {db}.l1_head_events l1 ON pc.l1_block_number = l1.l1_block_number \
              WHERE l1.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
              GROUP BY b.proposer_addr \
@@ -1874,6 +1883,8 @@ impl ClickhouseReader {
                     sum(vc.cost) AS total_cost \
              FROM {db}.verify_costs vc \
              INNER JOIN {db}.batches b ON vc.batch_id = b.batch_id \
+             INNER JOIN {db}.verified_batches vb \
+               ON b.batch_id = vb.batch_id AND b.l1_block_number = vb.l1_block_number \
              INNER JOIN {db}.l1_head_events l1 ON vc.l1_block_number = l1.l1_block_number \
              WHERE l1.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
              GROUP BY b.proposer_addr \
@@ -2024,6 +2035,8 @@ impl ClickhouseReader {
             "SELECT sum(pc.cost) AS total \
              FROM {db}.prove_costs pc \
              INNER JOIN {db}.batches b ON pc.batch_id = b.batch_id \
+             INNER JOIN {db}.verified_batches vb \
+               ON b.batch_id = vb.batch_id AND b.l1_block_number = vb.l1_block_number \
              INNER JOIN {db}.l1_head_events l1 ON pc.l1_block_number = l1.l1_block_number \
              WHERE l1.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})",
             interval = range.interval(),
@@ -2056,6 +2069,8 @@ impl ClickhouseReader {
             "SELECT sum(vc.cost) AS total \
              FROM {db}.verify_costs vc \
              INNER JOIN {db}.batches b ON vc.batch_id = b.batch_id \
+             INNER JOIN {db}.verified_batches vb \
+               ON b.batch_id = vb.batch_id AND b.l1_block_number = vb.l1_block_number \
              INNER JOIN {db}.l1_head_events l1 ON vc.l1_block_number = l1.l1_block_number \
              WHERE l1.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})",
             interval = range.interval(),
@@ -2186,17 +2201,24 @@ impl ClickhouseReader {
             total: u128,
         }
 
+        let filter = self.reorg_filter("h");
         let mut query = format!(
             "SELECT sum(sum_priority_fee + sum_base_fee) AS total \
              FROM {db}.l2_head_events h \
+             INNER JOIN {db}.batch_blocks bb \
+               ON h.l2_block_number = bb.l2_block_number \
+             INNER JOIN {db}.batches b \
+               ON bb.batch_id = b.batch_id \
+             INNER JOIN {db}.verified_batches vb \
+               ON b.batch_id = vb.batch_id AND b.l1_block_number = vb.l1_block_number \
              WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
                AND {filter}",
             interval = range.interval(),
-            filter = self.reorg_filter("h"),
+            filter = filter,
             db = self.db_name
         );
         if let Some(addr) = sequencer {
-            query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
+            query.push_str(&format!(" AND h.sequencer = unhex('{}')", encode(addr)));
         }
 
         let rows = self.execute::<SumRow>(&query).await?;
@@ -2218,17 +2240,24 @@ impl ClickhouseReader {
             total: u128,
         }
 
+        let filter = self.reorg_filter("h");
         let mut query = format!(
             "SELECT sum(sum_priority_fee) AS total \
              FROM {db}.l2_head_events h \
+             INNER JOIN {db}.batch_blocks bb \
+               ON h.l2_block_number = bb.l2_block_number \
+             INNER JOIN {db}.batches b \
+               ON bb.batch_id = b.batch_id \
+             INNER JOIN {db}.verified_batches vb \
+               ON b.batch_id = vb.batch_id AND b.l1_block_number = vb.l1_block_number \
              WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
                AND {filter}",
             interval = range.interval(),
-            filter = self.reorg_filter("h"),
+            filter = filter,
             db = self.db_name
         );
         if let Some(addr) = sequencer {
-            query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
+            query.push_str(&format!(" AND h.sequencer = unhex('{}')", encode(addr)));
         }
 
         let rows = self.execute::<SumRow>(&query).await?;
@@ -2250,17 +2279,24 @@ impl ClickhouseReader {
             total: u128,
         }
 
+        let filter = self.reorg_filter("h");
         let mut query = format!(
             "SELECT sum(sum_base_fee) AS total \
              FROM {db}.l2_head_events h \
+             INNER JOIN {db}.batch_blocks bb \
+               ON h.l2_block_number = bb.l2_block_number \
+             INNER JOIN {db}.batches b \
+               ON bb.batch_id = b.batch_id \
+             INNER JOIN {db}.verified_batches vb \
+               ON b.batch_id = vb.batch_id AND b.l1_block_number = vb.l1_block_number \
              WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
                AND {filter}",
             interval = range.interval(),
-            filter = self.reorg_filter("h"),
+            filter = filter,
             db = self.db_name
         );
         if let Some(addr) = sequencer {
-            query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
+            query.push_str(&format!(" AND h.sequencer = unhex('{}')", encode(addr)));
         }
 
         let rows = self.execute::<SumRow>(&query).await?;
@@ -2283,6 +2319,7 @@ impl ClickhouseReader {
             verify_cost: Option<u128>,
         }
 
+        let filter = self.reorg_filter("h");
         let query = format!(
             "SELECT h.sequencer, \
                     sum(sum_priority_fee) AS priority_fee, \
@@ -2295,6 +2332,10 @@ impl ClickhouseReader {
                ON h.l2_block_number = dc.l2_block_number \
              LEFT JOIN {db}.batch_blocks bb \
                ON h.l2_block_number = bb.l2_block_number \
+             LEFT JOIN {db}.batches b \
+               ON bb.batch_id = b.batch_id \
+             INNER JOIN {db}.verified_batches vb \
+               ON b.batch_id = vb.batch_id AND b.l1_block_number = vb.l1_block_number \
              LEFT JOIN {db}.prove_costs pc \
                ON bb.batch_id = pc.batch_id \
              LEFT JOIN {db}.verify_costs vc \
@@ -2304,7 +2345,7 @@ impl ClickhouseReader {
              GROUP BY h.sequencer \
              ORDER BY priority_fee DESC",
             interval = range.interval(),
-            filter = self.reorg_filter("h"),
+            filter = filter,
             db = self.db_name,
         );
 
