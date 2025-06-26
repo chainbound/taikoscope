@@ -9,6 +9,7 @@ import {
 import * as apiService from '../services/apiService';
 import { getSequencerAddress } from '../sequencerConfig';
 import { addressLink, formatEth, formatDecimal } from '../utils';
+import { calculateProfit } from '../utils/profit';
 import { useEthPrice } from '../services/priceService';
 import { rangeToHours } from '../utils/timeRange';
 
@@ -16,8 +17,6 @@ interface ProfitRankingTableProps {
   timeRange: TimeRange;
   cloudCost: number;
   proverCost: number;
-  proveCost?: number;
-  verifyCost?: number;
 }
 
 const formatUsd = (value: number): string => {
@@ -35,8 +34,6 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
   timeRange,
   cloudCost,
   proverCost,
-  proveCost = 0,
-  verifyCost = 0,
 }) => {
   const { data: distRes } = useSWR(['profitRankingSeq', timeRange], () =>
     fetchSequencerDistribution(timeRange),
@@ -45,19 +42,6 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
 
   const { data: ethPrice = 0 } = useEthPrice();
 
-  const { data: proveCosts } = useSWR(['profitRankingProveCosts', timeRange], async () => {
-    const res = await apiService.fetchProveCostsByProposer(timeRange);
-    const map = new Map<string, number>();
-    res.data?.forEach((p) => map.set(p.address.toLowerCase(), p.cost));
-    return map;
-  });
-
-  const { data: verifyCosts } = useSWR(['profitRankingVerifyCosts', timeRange], async () => {
-    const res = await apiService.fetchVerifyCostsByProposer(timeRange);
-    const map = new Map<string, number>();
-    res.data?.forEach((p) => map.set(p.address.toLowerCase(), p.cost));
-    return map;
-  });
 
   const { data: feeRes } = useSWR(['profitRankingFees', timeRange], () =>
     fetchL2Fees(timeRange),
@@ -110,16 +94,10 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
     const addr = seq.address || getSequencerAddress(seq.name) || '';
     const batchCount = batchCounts?.get(addr.toLowerCase()) ?? null;
     const fees = feeDataMap.get(addr.toLowerCase());
-    const proveRaw = fees?.prove_cost ?? proveCosts?.get(addr.toLowerCase());
-    const verifyRaw = fees?.verify_cost ?? verifyCosts?.get(addr.toLowerCase());
-    const hasCosts = proveRaw != null && verifyRaw != null;
-    const fallbackUsd = batchCount ? (proveCost + verifyCost) * batchCount : 0;
-    const extraEth = hasCosts
-      ? ((proveRaw ?? 0) + (verifyRaw ?? 0)) / 1e18
-      : ethPrice
-        ? fallbackUsd / ethPrice
-        : 0;
-    const extraUsd = hasCosts ? extraEth * ethPrice : fallbackUsd;
+    const proveEth = (fees?.prove_cost ?? 0) / 1e18;
+    const verifyEth = (fees?.verify_cost ?? 0) / 1e18;
+    const extraEth = proveEth + verifyEth;
+    const extraUsd = extraEth * ethPrice;
     if (!fees) {
       return {
         name: seq.name,
@@ -142,8 +120,15 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
     const l1CostUsd = l1CostEth * ethPrice;
     const costEth = costPerSeqEth + l1CostEth + extraEth;
     const costUsd = costPerSeqUsd + l1CostUsd + extraUsd;
-    const profitEth = revenueEth - costEth;
-    const profitUsd = revenueUsd - costUsd;
+    const { profitEth, profitUsd } = calculateProfit({
+      priorityFee: fees.priority_fee,
+      baseFee: fees.base_fee,
+      l1DataCost: fees.l1_data_cost,
+      proveCost: fees.prove_cost,
+      verifyCost: fees.verify_cost,
+      hardwareCostUsd: costPerSeqUsd,
+      ethPrice,
+    });
     const ratio = costEth > 0 ? revenueEth / costEth : null;
     return {
       name: seq.name,

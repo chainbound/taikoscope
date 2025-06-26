@@ -5,6 +5,7 @@ import { useEthPrice } from '../services/priceService';
 import { TimeRange } from '../types';
 import { rangeToHours } from '../utils/timeRange';
 import { formatEth, l1BlockLink } from '../utils';
+import { calculateProfit } from '../utils/profit';
 
 interface BlockProfitTablesProps {
   timeRange: TimeRange;
@@ -38,23 +39,20 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
   const HOURS_IN_MONTH = 30 * 24;
   const hours = rangeToHours(timeRange);
 
-  // Calculate operational costs per batch in USD, then convert to ETH
   const operationalCostPerBatchUsd = batchCount > 0
     ? ((cloudCost + proverCost) / HOURS_IN_MONTH) * (hours / batchCount)
     : 0;
 
-  // Prove and verify costs are per batch and should be attributed to each batch
-  const totalCostPerBatchUsd = operationalCostPerBatchUsd;
-  const costPerBatchEth = ethPrice ? totalCostPerBatchUsd / ethPrice : 0;
-
   const profits = batchData.map((b) => {
-    // Calculate revenue in ETH (priority + base - L1 data cost)
-    const revenueEth = (b.priority + b.base - (b.l1Cost ?? 0)) / 1e18;
-    const proveEth = (b.amortizedProveCost ?? 0) / 1e18;
-    const verifyEth = (b.amortizedVerifyCost ?? 0) / 1e18;
-
-    // Calculate profit as revenue minus all costs
-    const profitEth = revenueEth - (costPerBatchEth + proveEth + verifyEth);
+    const { profitEth } = calculateProfit({
+      priorityFee: b.priority,
+      baseFee: b.base,
+      l1DataCost: b.l1Cost ?? 0,
+      proveCost: b.amortizedProveCost ?? 0,
+      verifyCost: b.amortizedVerifyCost ?? 0,
+      hardwareCostUsd: operationalCostPerBatchUsd,
+      ethPrice,
+    });
     const profitWei = profitEth * 1e18;
 
     return {
