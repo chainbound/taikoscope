@@ -15,7 +15,7 @@ export const TAIKOSCAN_BASE =
 export const ETHERSCAN_BASE =
   ((import.meta as any).env.VITE_ETHERSCAN_BASE as string | undefined) ??
   ((import.meta as any).env.ETHERSCAN_BASE as string | undefined) ??
-  'https://etherscan.io';
+  'https://holesky.etherscan.io';
 
 export const blockLink = (
   block: number,
