@@ -1,4 +1,4 @@
-import { TimeRange } from '../types';
+import { TimeRange, type TimeSeriesData } from '../types';
 import { getSequencerAddress } from '../sequencerConfig';
 import { normalizeTimeRange } from './timeRange';
 import {
@@ -13,6 +13,11 @@ import {
   fetchL2Fees,
   fetchL2HeadBlock,
   fetchL1HeadBlock,
+  type PreconfData,
+  type SequencerDistributionDataItem,
+  type BlockTransaction,
+  type BatchBlobCount,
+  type RequestResult,
 } from '../services/apiService';
 
 export interface MainDashboardData {
@@ -21,24 +26,24 @@ export interface MainDashboardData {
   avgProve: number | null;
   avgVerify: number | null;
   avgTps: number | null;
-  preconfData: any;
+  preconfData: PreconfData | null;
   l2Reorgs: number | null;
   slashings: number | null;
   forcedInclusions: number | null;
   l2Block: number | null;
   l1Block: number | null;
-  proveTimes: any[];
-  verifyTimes: any[];
-  l2Times: any[];
-  l2Gas: any[];
-  sequencerDist: any[];
-  txPerBlock: any[];
-  blobsPerBatch: any[];
+  proveTimes: TimeSeriesData[];
+  verifyTimes: TimeSeriesData[];
+  l2Times: TimeSeriesData[];
+  l2Gas: TimeSeriesData[];
+  sequencerDist: SequencerDistributionDataItem[];
+  txPerBlock: BlockTransaction[];
+  blobsPerBatch: BatchBlobCount[];
   priorityFee: number | null;
   baseFee: number | null;
   proveCost: number | null;
   verifyCost: number | null;
-  badRequestResults: any[];
+  badRequestResults: RequestResult<unknown>[];
 }
 
 export interface EconomicsData {
@@ -49,13 +54,8 @@ export interface EconomicsData {
   verifyCost: number | null;
   l2Block: number | null;
   l1Block: number | null;
-  sequencerDist: {
-    name: string;
-    address: string;
-    value: number;
-    tps: number | null;
-  }[];
-  badRequestResults: any[];
+  sequencerDist: SequencerDistributionDataItem[];
+  badRequestResults: RequestResult<unknown>[];
 }
 
 export const fetchMainDashboardData = async (
