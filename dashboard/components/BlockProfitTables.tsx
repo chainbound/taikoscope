@@ -44,9 +44,9 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
   const costPerBatchUsd =
     batchCount > 0
       ?
-          ((cloudCost + proverCost) / HOURS_IN_MONTH) * (hours / batchCount) +
-        proveCost +
-        verifyCost
+      ((cloudCost + proverCost) / HOURS_IN_MONTH) * (hours / batchCount) +
+      proveCost +
+      verifyCost
       : 0;
   const costPerBatchEth = ethPrice ? costPerBatchUsd / ethPrice : 0;
 
@@ -79,7 +79,7 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
             <tr>
               <th className="px-2 py-1 text-left">Batch</th>
               <th className="px-2 py-1 text-left">Sequencer</th>
-              <th className="px-2 py-1 text-left">Profit (ETH)</th>
+              <th className="px-2 py-1 text-left">Profit</th>
             </tr>
           </thead>
           <tbody>

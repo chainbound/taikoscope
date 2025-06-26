@@ -72,54 +72,54 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
           data={data}
           margin={{ top: 5, right: 20, left: 20, bottom: 40 }}
         >
-        <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-        <XAxis
-          dataKey="batch"
-          stroke="#666666"
-          fontSize={12}
-          label={{
-            value: 'Batch',
-            position: 'insideBottom',
-            offset: -10,
-            fontSize: 10,
-            fill: '#666666',
-          }}
-        />
-        <YAxis
-          stroke="#666666"
-          fontSize={12}
-          domain={['auto', 'auto']}
-          tickFormatter={(v: number) => formatEth(v * 1e18)}
-          label={{
-            value: 'Profit (ETH)',
-            angle: -90,
-            position: 'insideLeft',
-            offset: -16,
-            fontSize: 10,
-            fill: '#666666',
-          }}
-        />
-        <Tooltip
-          labelFormatter={(v: number) => `Batch ${v}`}
-          formatter={(value: number, _name: string, { payload }: any) =>
-            [`${formatEth(value * 1e18)} ($${payload.profitUsd.toFixed(2)})`, 'Profit']
-          }
-          contentStyle={{
-            backgroundColor: 'rgba(255,255,255,0.8)',
-            borderColor: '#8884d8',
-          }}
-          labelStyle={{ color: '#333' }}
-        />
-        <Line
-          type="monotone"
-          dataKey="profitEth"
-          stroke="#8884d8"
-          strokeWidth={2}
-          dot={false}
-          name="Profit"
-        />
-      </LineChart>
-    </ResponsiveContainer>
+          <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+          <XAxis
+            dataKey="batch"
+            stroke="#666666"
+            fontSize={12}
+            label={{
+              value: 'Batch',
+              position: 'insideBottom',
+              offset: -10,
+              fontSize: 10,
+              fill: '#666666',
+            }}
+          />
+          <YAxis
+            stroke="#666666"
+            fontSize={12}
+            domain={['auto', 'auto']}
+            tickFormatter={(v: number) => formatEth(v * 1e18)}
+            label={{
+              value: ' (ETH)',
+              angle: -90,
+              position: 'insideLeft',
+              offset: -16,
+              fontSize: 10,
+              fill: '#666666',
+            }}
+          />
+          <Tooltip
+            labelFormatter={(v: number) => `Batch ${v}`}
+            formatter={(value: number, _name: string, { payload }: any) =>
+              [`${formatEth(value * 1e18)} ($${payload.profitUsd.toFixed(2)})`, 'Profit']
+            }
+            contentStyle={{
+              backgroundColor: 'rgba(255,255,255,0.8)',
+              borderColor: '#8884d8',
+            }}
+            labelStyle={{ color: '#333' }}
+          />
+          <Line
+            type="monotone"
+            dataKey="profitEth"
+            stroke="#8884d8"
+            strokeWidth={2}
+            dot={false}
+            name="Profit"
+          />
+        </LineChart>
+      </ResponsiveContainer>
     </>
   );
 };
