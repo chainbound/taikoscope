@@ -28,8 +28,7 @@ const formatUsd = (value: number) => `$${value.toFixed(2)}`;
 // Simple node component that renders label with currency-aware value
 const createSankeyNode = (textColor: string) => ({ x, y, width, height, payload }: any) => {
   const isCostNode =
-    payload.name === 'Cloud Cost' ||
-    payload.name === 'Prover Cost' ||
+    payload.name === 'Hardware Cost' ||
     payload.name === 'L1 Data Cost' ||
     payload.name === 'Subsidy' ||
     (typeof payload.name === 'string' && payload.name.includes('Subsidy'));
@@ -88,8 +87,7 @@ const SankeyLink = ({
   ...rest
 }: any) => {
   const isCost =
-    payload.target.name === 'Cloud Cost' ||
-    payload.target.name === 'Prover Cost' ||
+    payload.target.name === 'Hardware Cost' ||
     payload.target.name === 'L1 Data Cost' ||
     payload.target.name === 'Subsidy' ||
     (typeof payload.target.name === 'string' &&
@@ -144,10 +142,9 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
 
   // Scale operational costs to the selected time range
   const hours = rangeToHours(timeRange);
-  const cloudCostPerSeq = (cloudCost / MONTH_HOURS) * hours;
-  const proverCostPerSeq = (proverCost / MONTH_HOURS) * hours;
-  const totalCloudCost = cloudCostPerSeq;
-  const totalProverCost = proverCostPerSeq;
+  const hardwareCostPerSeq =
+    ((cloudCost + proverCost) / MONTH_HOURS) * hours;
+  const totalHardwareCost = hardwareCostPerSeq;
 
   const seqData = sequencerFees.map((f) => {
     const priorityWei = f.priority_fee ?? 0;
@@ -160,24 +157,18 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     const revenue = priorityUsd + baseUsd;
     const revenueWei = priorityWei + baseWei;
 
-    const rawProfit =
-      revenue - cloudCostPerSeq - proverCostPerSeq - l1CostUsd;
+    const rawProfit = revenue - hardwareCostPerSeq - l1CostUsd;
     const profit = Math.max(0, rawProfit);
     let remaining = revenue;
-    const actualCloudCost = Math.min(cloudCostPerSeq, remaining);
-    remaining -= actualCloudCost;
-    const actualProverCost = Math.min(proverCostPerSeq, remaining);
-    remaining -= actualProverCost;
+    const actualHardwareCost = Math.min(hardwareCostPerSeq, remaining);
+    remaining -= actualHardwareCost;
     const actualL1Cost = Math.min(l1CostUsd, remaining);
     remaining -= actualL1Cost;
     const subsidyUsd = l1CostUsd - actualL1Cost;
     const subsidyWei = ethPrice ? (subsidyUsd / ethPrice) * WEI_TO_ETH : 0;
     const profitWei = ethPrice ? (profit / ethPrice) * WEI_TO_ETH : 0;
-    const actualCloudCostWei = ethPrice
-      ? (actualCloudCost / ethPrice) * WEI_TO_ETH
-      : 0;
-    const actualProverCostWei = ethPrice
-      ? (actualProverCost / ethPrice) * WEI_TO_ETH
+    const actualHardwareCostWei = ethPrice
+      ? (actualHardwareCost / ethPrice) * WEI_TO_ETH
       : 0;
     const actualL1CostWei = ethPrice
       ? (actualL1Cost / ethPrice) * WEI_TO_ETH
@@ -196,14 +187,12 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
       revenueWei,
       profit,
       profitWei,
-      actualCloudCost,
-      actualProverCost,
+      actualHardwareCost,
       actualL1Cost,
       l1CostUsd,
       subsidyUsd,
       subsidyWei,
-      actualCloudCostWei,
-      actualProverCostWei,
+      actualHardwareCostWei,
       actualL1CostWei,
     };
   });
@@ -214,15 +203,12 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
   if (seqData.length === 0) {
     // Fallback: create a single "Sequencers" node to route fees through
     const sequencerRevenue = priorityFeeUsd + baseFeeUsd * 0.75;
-    const maxL1FromRevenue = Math.max(
-      0,
-      sequencerRevenue - totalCloudCost - totalProverCost,
-    );
+    const maxL1FromRevenue = Math.max(0, sequencerRevenue - totalHardwareCost);
     const actualL1Cost = Math.min(l1DataCostTotalUsd, maxL1FromRevenue);
     const l1Subsidy = l1DataCostTotalUsd - actualL1Cost;
     const sequencerProfit = Math.max(
       0,
-      sequencerRevenue - totalCloudCost - totalProverCost - actualL1Cost,
+      sequencerRevenue - totalHardwareCost - actualL1Cost,
     );
     const sequencerRevenueWei = (priorityFee ?? 0) + (baseFee ?? 0) * 0.75;
     const sequencerProfitWei = ethPrice
@@ -234,8 +220,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
       { name: 'Priority Fee', value: priorityFeeUsd, wei: priorityFee ?? 0 },
       { name: 'Base Fee', value: baseFeeUsd, wei: baseFee ?? 0 },
       { name: 'Sequencers', value: sequencerRevenue, wei: sequencerRevenueWei },
-      { name: 'Cloud Cost', value: totalCloudCost, usd: true },
-      { name: 'Prover Cost', value: totalProverCost, usd: true },
+      { name: 'Hardware Cost', value: totalHardwareCost, usd: true },
       { name: 'L1 Data Cost', value: l1DataCostTotalUsd, usd: true },
       { name: 'Profit', value: sequencerProfit, wei: sequencerProfitWei },
       { name: 'Taiko DAO', value: baseFeeDaoUsd, wei: (baseFee ?? 0) * 0.25 },
@@ -244,38 +229,26 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     links = [
       { source: 1, target: 3, value: priorityFeeUsd }, // Priority Fee → Sequencers
       { source: 2, target: 3, value: baseFeeUsd * 0.75 }, // 75% Base Fee → Sequencers
-      { source: 2, target: 8, value: baseFeeDaoUsd }, // 25% Base Fee → Taiko DAO
+      { source: 2, target: 7, value: baseFeeDaoUsd }, // 25% Base Fee → Taiko DAO
       {
-        source: 2,
-        target: 3,
-        value: Math.min(totalCloudCost, sequencerRevenue),
-      }, // Sequencers → Cloud Cost
-      {
-        source: 2,
+        source: 3,
         target: 4,
-        value: Math.min(
-          totalProverCost,
-          Math.max(0, sequencerRevenue - totalCloudCost),
-        ),
-      }, // Sequencers → Prover Cost
+        value: Math.min(totalHardwareCost, sequencerRevenue),
+      }, // Sequencers → Hardware Cost
       {
-        source: 2,
+        source: 3,
         target: 5,
         value: Math.min(
           l1DataCostTotalUsd,
-          Math.max(0, sequencerRevenue - totalCloudCost - totalProverCost),
+          Math.max(0, sequencerRevenue - totalHardwareCost),
         ),
       }, // Sequencers → L1 Data Cost
-      { source: 0, target: 6, value: l1Subsidy }, // Subsidy → L1 Data Cost
-      { source: 3, target: 7, value: sequencerProfit }, // Sequencers → Profit
+      { source: 0, target: 5, value: l1Subsidy }, // Subsidy → L1 Data Cost
+      { source: 3, target: 6, value: sequencerProfit }, // Sequencers → Profit
     ].filter((l) => l.value > 0);
   } else {
-    const totalActualCloudCost = seqData.reduce(
-      (acc, s) => acc + s.actualCloudCost,
-      0,
-    );
-    const totalActualProverCost = seqData.reduce(
-      (acc, s) => acc + s.actualProverCost,
+    const totalActualHardwareCost = seqData.reduce(
+      (acc, s) => acc + s.actualHardwareCost,
       0,
     );
     const totalActualL1Cost = seqData.reduce(
@@ -290,9 +263,8 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     const priorityIndex = subsidyStartIndex + seqData.length;
     const baseFeeIndex = priorityIndex + 1;
     const baseIndex = baseFeeIndex + 1; // first sequencer node index
-    const cloudIndex = baseIndex + seqData.length;
-    const proverIndex = cloudIndex + 1;
-    const l1Index = proverIndex + 1;
+    const hardwareIndex = baseIndex + seqData.length;
+    const l1Index = hardwareIndex + 1;
     const profitStartIndex = l1Index + 1;
     const daoIndex = profitStartIndex + seqData.length;
 
@@ -315,8 +287,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
         wei: s.revenueWei,
         incomeNode: true,
       })),
-      { name: 'Cloud Cost', value: totalActualCloudCost, usd: true },
-      { name: 'Prover Cost', value: totalActualProverCost, usd: true },
+      { name: 'Hardware Cost', value: totalActualHardwareCost, usd: true },
       { name: 'L1 Data Cost', value: totalL1Cost, usd: true },
       ...seqData.map((s) => ({
         name: 'Profit',
@@ -343,13 +314,8 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
       { source: baseFeeIndex, target: daoIndex, value: baseFeeDaoUsd },
       ...seqData.map((s, i) => ({
         source: baseIndex + i,
-        target: cloudIndex,
-        value: s.actualCloudCost,
-      })),
-      ...seqData.map((s, i) => ({
-        source: baseIndex + i,
-        target: proverIndex,
-        value: s.actualProverCost,
+        target: hardwareIndex,
+        value: s.actualHardwareCost,
       })),
       ...seqData.map((s, i) => ({
         source: baseIndex + i,
