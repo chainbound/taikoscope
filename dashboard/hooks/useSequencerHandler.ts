@@ -1,17 +1,18 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { getSequencerName } from '../sequencerConfig';
 import { useSearchParams } from 'react-router-dom';
+import type { MetricData } from '../types';
 
 interface UseSequencerHandlerProps {
   blockData: {
     l1HeadBlock: string;
     l2HeadBlock: string;
     candidates: string[];
-    updateMetricsWithBlockHeads: (metrics: any[]) => any[];
+    updateMetricsWithBlockHeads: (metrics: MetricData[]) => MetricData[];
   };
   metricsData: {
-    metrics: any[];
-    setMetrics: (metrics: any[]) => void;
+    metrics: MetricData[];
+    setMetrics: (metrics: MetricData[]) => void;
   };
 }
 
