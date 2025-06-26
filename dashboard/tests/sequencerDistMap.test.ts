@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import React from 'react';
 import { TABLE_CONFIGS } from '../config/tableConfig';
 
 describe('sequencer-dist mapData', () => {
@@ -11,7 +12,7 @@ describe('sequencer-dist mapData', () => {
 
   it('wraps the sequencer name in a link', () => {
     const rows = mapData([{ name: 'foo', value: 1, tps: 1 }]);
-    const el = rows[0].name as any;
+    const el = rows[0].name as React.ReactElement;
     expect(el.type).toBe('a');
   });
 

@@ -3,6 +3,11 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import * as swr from 'swr';
 vi.mock('swr', () => ({ default: vi.fn() }));
+import type {
+  RequestResult,
+  SequencerDistributionDataItem,
+  L2FeesResponse,
+} from '../services/apiService';
 import * as api from '../services/apiService';
 import * as priceService from '../services/priceService';
 import { ProfitRankingTable } from '../components/ProfitRankingTable';
@@ -16,8 +21,8 @@ describe('ProfitRankingTable', () => {
             { name: 'SeqA', address: '0xseqA', value: 10, tps: null },
             { name: 'SeqB', address: '0xseqB', value: 5, tps: null },
           ],
-        },
-      } as any)
+        } as RequestResult<SequencerDistributionDataItem[]>,
+      } as unknown as ReturnType<typeof swr.default>)
       .mockReturnValueOnce({
         data: {
           data: {
@@ -39,14 +44,14 @@ describe('ProfitRankingTable', () => {
               },
             ],
           },
-        },
-      } as any)
+        } as RequestResult<L2FeesResponse>,
+      } as unknown as ReturnType<typeof swr.default>)
       .mockReturnValueOnce({
         data: new Map([
           ['0xseqa', 1],
           ['0xseqb', 1],
         ]),
-      } as any);
+      } as unknown as ReturnType<typeof swr.default>);
 
     vi.spyOn(api, 'fetchSequencerDistribution').mockResolvedValue({
       data: [
@@ -55,7 +60,7 @@ describe('ProfitRankingTable', () => {
       ],
       badRequest: false,
       error: null,
-    } as any);
+    } as RequestResult<SequencerDistributionDataItem[]>);
     vi.spyOn(api, 'fetchL2Fees').mockResolvedValue({
       data: {
         priority_fee: 3e18,
@@ -78,10 +83,10 @@ describe('ProfitRankingTable', () => {
       },
       badRequest: false,
       error: null,
-    } as any);
+    } as RequestResult<L2FeesResponse>);
     vi.spyOn(priceService, 'useEthPrice').mockReturnValue({
       data: 1000,
-    } as any);
+    } as unknown as ReturnType<typeof priceService.useEthPrice>);
 
     const html = renderToStaticMarkup(
       React.createElement(ProfitRankingTable, {
@@ -109,8 +114,8 @@ describe('ProfitRankingTable', () => {
       .mockReturnValueOnce({
         data: {
           data: [{ name: 'SeqA', address: '0xseqA', value: 1, tps: null }],
-        },
-      } as any)
+        } as RequestResult<SequencerDistributionDataItem[]>,
+      } as unknown as ReturnType<typeof swr.default>)
       .mockReturnValueOnce({
         data: {
           data: {
@@ -126,15 +131,17 @@ describe('ProfitRankingTable', () => {
               },
             ],
           },
-        },
-      } as any)
-      .mockReturnValueOnce({ data: new Map([['0xseqa', 1]]) } as any);
+        } as RequestResult<L2FeesResponse>,
+      } as unknown as ReturnType<typeof swr.default>)
+      .mockReturnValueOnce({
+        data: new Map([['0xseqa', 1]])
+      } as unknown as ReturnType<typeof swr.default>);
 
     vi.spyOn(api, 'fetchSequencerDistribution').mockResolvedValue({
       data: [{ name: 'SeqA', address: '0xseqA', value: 1, tps: null }],
       badRequest: false,
       error: null,
-    } as any);
+    } as RequestResult<SequencerDistributionDataItem[]>);
     vi.spyOn(api, 'fetchL2Fees').mockResolvedValue({
       data: {
         priority_fee: 1e18,
@@ -151,10 +158,10 @@ describe('ProfitRankingTable', () => {
       },
       badRequest: false,
       error: null,
-    } as any);
+    } as RequestResult<L2FeesResponse>);
     vi.spyOn(priceService, 'useEthPrice').mockReturnValue({
       data: 100,
-    } as any);
+    } as unknown as ReturnType<typeof priceService.useEthPrice>);
 
     const html = renderToStaticMarkup(
       React.createElement(ProfitRankingTable, {

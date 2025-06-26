@@ -17,7 +17,12 @@ describe('utils additional', () => {
     const el = blockLink(42);
     const html = renderToStaticMarkup(el);
     expect(html).toContain('href');
-    const props = (el as any).props;
+    const props = el.props as {
+      href: string;
+      target: string;
+      rel: string;
+      children: unknown;
+    };
     expect(props.href.endsWith('/block/42')).toBe(true);
     expect(props.target).toBe('_blank');
     expect(props.rel).toBe('noopener noreferrer');
@@ -26,7 +31,7 @@ describe('utils additional', () => {
 
   it('formats large block numbers with commas', () => {
     const el = blockLink(1234567);
-    const props = (el as any).props;
+    const props = el.props as { children: unknown };
     expect(props.children).toBe('1,234,567');
   });
 
@@ -34,7 +39,12 @@ describe('utils additional', () => {
     const el = addressLink('0xabc', 'foo');
     const html = renderToStaticMarkup(el);
     expect(html).toContain('href');
-    const props = (el as any).props;
+    const props = el.props as {
+      href: string;
+      target: string;
+      rel: string;
+      children: unknown;
+    };
     expect(props.href.endsWith('/address/0xabc')).toBe(true);
     expect(props.children).toBe('foo');
     expect(props.target).toBe('_blank');
@@ -68,10 +78,11 @@ describe('utils additional', () => {
   });
 
   it('loads refresh rate when localStorage is missing', () => {
-    const prev = (globalThis as any).localStorage;
+    const prev = (globalThis as { localStorage?: Storage }).localStorage;
     // Ensure localStorage is undefined
-    delete (globalThis as any).localStorage;
+    delete (globalThis as { localStorage?: Storage }).localStorage;
     expect(loadRefreshRate()).toBe(600000);
-    if (prev !== undefined) (globalThis as any).localStorage = prev;
+    if (prev !== undefined)
+      (globalThis as { localStorage?: Storage }).localStorage = prev;
   });
 });
