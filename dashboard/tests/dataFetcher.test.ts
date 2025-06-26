@@ -99,7 +99,6 @@ describe('dataFetcher', () => {
       fetchSequencerDistribution: ok([
         { name: 'foo', address: '0xfoo', value: 1, tps: null },
       ]),
-      fetchDashboardData: ok({}),
     });
 
     const res = await fetchEconomicsData('1h', null);
@@ -111,7 +110,7 @@ describe('dataFetcher', () => {
     expect(res.proveCost).toBe(5);
     expect(res.verifyCost).toBe(6);
     expect(res.sequencerDist[0].name).toBe('foo');
-    expect(res.badRequestResults).toHaveLength(5);
+    expect(res.badRequestResults).toHaveLength(4);
   });
 
   it('defaults economics costs to null when missing', async () => {
@@ -127,7 +126,6 @@ describe('dataFetcher', () => {
       fetchL2HeadBlock: ok(null),
       fetchL1HeadBlock: ok(null),
       fetchSequencerDistribution: ok(null),
-      fetchDashboardData: ok({}),
     });
 
     const res = await fetchEconomicsData('1h', null);
@@ -136,7 +134,7 @@ describe('dataFetcher', () => {
     expect(res.l1DataCost).toBeNull();
     expect(res.proveCost).toBeNull();
     expect(res.verifyCost).toBeNull();
-    expect(res.badRequestResults).toHaveLength(5);
+    expect(res.badRequestResults).toHaveLength(4);
   });
 
   it('resets isTimeRangeChanging on fetch error', async () => {
