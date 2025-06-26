@@ -186,6 +186,10 @@ pub struct L2FeesResponse {
     pub base_fee: Option<u128>,
     /// Total L1 data posting cost for the range.
     pub l1_data_cost: Option<u128>,
+    /// Total proving cost for the range.
+    pub prove_cost: Option<u128>,
+    /// Total verifying cost for the range.
+    pub verify_cost: Option<u128>,
     /// Fee breakdown for each sequencer.
     pub sequencers: Vec<SequencerFeeRow>,
 }

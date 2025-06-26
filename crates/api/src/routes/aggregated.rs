@@ -235,10 +235,12 @@ pub async fn l2_fees(
         None
     };
 
-    let (priority_fee, base_fee, l1_data_cost, rows) = tokio::try_join!(
+    let (priority_fee, base_fee, l1_data_cost, prove_cost, verify_cost, rows) = tokio::try_join!(
         state.client.get_l2_priority_fee(address, time_range),
         state.client.get_l2_base_fee(address, time_range),
         state.client.get_l1_total_data_cost(address, time_range),
+        state.client.get_total_prove_cost(address, time_range),
+        state.client.get_total_verify_cost(address, time_range),
         state.client.get_l2_fees_by_sequencer(time_range)
     )
     .map_err(|e| {
@@ -262,7 +264,14 @@ pub async fn l2_fees(
         .collect();
 
     tracing::info!(count = sequencers.len(), "Returning L2 fees and breakdown");
-    Ok(Json(L2FeesResponse { priority_fee, base_fee, l1_data_cost, sequencers }))
+    Ok(Json(L2FeesResponse {
+        priority_fee,
+        base_fee,
+        l1_data_cost,
+        prove_cost,
+        verify_cost,
+        sequencers,
+    }))
 }
 
 #[utoipa::path(
@@ -328,7 +337,14 @@ pub async fn batch_fees(
         .collect();
 
     tracing::info!(count = sequencers.len(), "Returning batch fees and breakdown");
-    Ok(Json(L2FeesResponse { priority_fee, base_fee, l1_data_cost, sequencers }))
+    Ok(Json(L2FeesResponse {
+        priority_fee,
+        base_fee,
+        l1_data_cost,
+        prove_cost: None,
+        verify_cost: None,
+        sequencers,
+    }))
 }
 
 #[utoipa::path(
