@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo } from 'react';
 import useSWR from 'swr';
 import { useSearchParams, useLocation } from 'react-router-dom';
-import { TimeRange, MetricData } from '../types';
+import { TimeRange, MetricData, ChartsDataUpdate } from '../types';
 import { TableViewState } from './useTableActions';
 import {
   fetchMainDashboardData,
@@ -14,7 +14,7 @@ interface UseDataFetcherProps {
   timeRange: TimeRange;
   selectedSequencer: string | null;
   tableView: TableViewState | null;
-  updateChartsData: (data: any) => void;
+  updateChartsData: (data: ChartsDataUpdate) => void;
   setMetrics: (metrics: MetricData[]) => void;
   setLoadingMetrics: (v: boolean) => void;
   setErrorMessage: (msg: string) => void;
