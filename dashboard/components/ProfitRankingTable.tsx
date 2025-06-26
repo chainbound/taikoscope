@@ -45,6 +45,20 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
 
   const { data: ethPrice = 0 } = useEthPrice();
 
+  const { data: proveCosts } = useSWR(['profitRankingProveCosts', timeRange], async () => {
+    const res = await apiService.fetchProveCostsByProposer(timeRange);
+    const map = new Map<string, number>();
+    res.data?.forEach((p) => map.set(p.address.toLowerCase(), p.cost));
+    return map;
+  });
+
+  const { data: verifyCosts } = useSWR(['profitRankingVerifyCosts', timeRange], async () => {
+    const res = await apiService.fetchVerifyCostsByProposer(timeRange);
+    const map = new Map<string, number>();
+    res.data?.forEach((p) => map.set(p.address.toLowerCase(), p.cost));
+    return map;
+  });
+
   const { data: feeRes } = useSWR(['profitRankingFees', timeRange], () =>
     fetchL2Fees(timeRange),
   );
@@ -96,9 +110,13 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
     const addr = seq.address || getSequencerAddress(seq.name) || '';
     const batchCount = batchCounts?.get(addr.toLowerCase()) ?? null;
     const fees = feeDataMap.get(addr.toLowerCase());
+    const proveExtra = (proveCosts?.get(addr.toLowerCase()) ?? 0) / 1e18;
+    const verifyExtra = (verifyCosts?.get(addr.toLowerCase()) ?? 0) / 1e18;
+    const aggregated = proveCosts && verifyCosts;
+    const fallbackUsd = batchCount ? (proveCost + verifyCost) * batchCount : 0;
+    const extraEth = aggregated ? proveExtra + verifyExtra : ethPrice ? fallbackUsd / ethPrice : 0;
+    const extraUsd = aggregated ? extraEth * ethPrice : fallbackUsd;
     if (!fees) {
-      const extraUsd = batchCount ? (proveCost + verifyCost) * batchCount : 0;
-      const extraEth = ethPrice ? extraUsd / ethPrice : 0;
       return {
         name: seq.name,
         address: addr,
@@ -118,8 +136,6 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
     const l1CostEth = (fees.l1_data_cost ?? 0) / 1e18;
     const revenueUsd = revenueEth * ethPrice;
     const l1CostUsd = l1CostEth * ethPrice;
-    const extraUsd = batchCount ? (proveCost + verifyCost) * batchCount : 0;
-    const extraEth = ethPrice ? extraUsd / ethPrice : 0;
     const costEth = costPerSeqEth + l1CostEth + extraEth;
     const costUsd = costPerSeqUsd + l1CostUsd + extraUsd;
     const profitEth = revenueEth - costEth;

@@ -333,6 +333,82 @@ pub async fn batch_fees(
 
 #[utoipa::path(
     get,
+    path = "/prove-costs",
+    params(
+        RangeQuery
+    ),
+    responses(
+        (status = 200, description = "Aggregated prover costs", body = ProposerCostsResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
+    ),
+    tag = "taikoscope"
+)]
+/// Get aggregated prover costs grouped by proposer
+pub async fn prove_costs(
+    Query(params): Query<RangeQuery>,
+    State(state): State<ApiState>,
+) -> Result<Json<ProposerCostsResponse>, ErrorResponse> {
+    validate_time_range(&params.time_range)?;
+
+    let has_time_range = has_time_range_params(&params.time_range);
+    validate_range_exclusivity(has_time_range, false)?;
+
+    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
+
+    let rows = state.client.get_prove_costs_by_proposer(time_range).await.map_err(|e| {
+        tracing::error!(error = %e, "Failed to get prover costs");
+        ErrorResponse::database_error()
+    })?;
+
+    let proposers: Vec<ProposerCostItem> = rows
+        .into_iter()
+        .map(|(addr, cost)| ProposerCostItem { address: format!("0x{}", encode(addr)), cost })
+        .collect();
+
+    tracing::info!(count = proposers.len(), "Returning prover costs");
+    Ok(Json(ProposerCostsResponse { proposers }))
+}
+
+#[utoipa::path(
+    get,
+    path = "/verify-costs",
+    params(
+        RangeQuery
+    ),
+    responses(
+        (status = 200, description = "Aggregated verifier costs", body = ProposerCostsResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
+    ),
+    tag = "taikoscope"
+)]
+/// Get aggregated verifier costs grouped by proposer
+pub async fn verify_costs(
+    Query(params): Query<RangeQuery>,
+    State(state): State<ApiState>,
+) -> Result<Json<ProposerCostsResponse>, ErrorResponse> {
+    validate_time_range(&params.time_range)?;
+
+    let has_time_range = has_time_range_params(&params.time_range);
+    validate_range_exclusivity(has_time_range, false)?;
+
+    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
+
+    let rows = state.client.get_verify_costs_by_proposer(time_range).await.map_err(|e| {
+        tracing::error!(error = %e, "Failed to get verifier costs");
+        ErrorResponse::database_error()
+    })?;
+
+    let proposers: Vec<ProposerCostItem> = rows
+        .into_iter()
+        .map(|(addr, cost)| ProposerCostItem { address: format!("0x{}", encode(addr)), cost })
+        .collect();
+
+    tracing::info!(count = proposers.len(), "Returning verifier costs");
+    Ok(Json(ProposerCostsResponse { proposers }))
+}
+
+#[utoipa::path(
+    get,
     path = "/l2-fee-components",
     params(
         RangeQuery
