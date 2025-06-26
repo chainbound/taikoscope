@@ -1,7 +1,13 @@
 import React, { useEffect } from 'react';
 import { useParams, useOutletContext } from 'react-router-dom';
 import { useRouterNavigation } from '../../hooks/useRouterNavigation';
-import { TimeRange } from '../../types';
+import {
+  TimeRange,
+  ChartsData,
+  BlockDataState,
+  MetricsDataState,
+  RefreshTimerState,
+} from '../../types';
 
 interface DashboardContextType {
   timeRange: TimeRange;
@@ -9,10 +15,10 @@ interface DashboardContextType {
   selectedSequencer: string | null;
   setSelectedSequencer: (seq: string | null) => void;
   sequencerList: string[];
-  chartsData: any;
-  blockData: any;
-  metricsData: any;
-  refreshTimer: any;
+  chartsData: ChartsData;
+  blockData: BlockDataState;
+  metricsData: MetricsDataState;
+  refreshTimer: RefreshTimerState;
 }
 
 export const SequencerRoute: React.FC = () => {
