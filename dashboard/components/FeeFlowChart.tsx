@@ -43,10 +43,7 @@ const createSankeyNode = (textColor: string) => {
       payload.name === 'Subsidy' ||
       (typeof payload.name === 'string' && payload.name.includes('Subsidy'));
     const isProfitNode = payload.name === 'Profit' || payload.profitNode;
-    const isPinkNode =
-      payload.name === 'Taiko DAO' ||
-      payload.name === 'Priority Fee' ||
-      payload.name === 'Base Fee';
+    const isPinkNode = payload.name === 'Taiko DAO';
     const hideLabel = payload.hideLabel;
     const addressLabel = payload.addressLabel;
 
