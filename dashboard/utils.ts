@@ -2,19 +2,19 @@ import React from 'react';
 import { TAIKO_PINK } from './theme';
 
 const rawNetworkName =
-  ((import.meta as any).env.VITE_NETWORK_NAME as string | undefined) ??
-  ((import.meta as any).env.NETWORK_NAME as string | undefined);
+  import.meta.env.VITE_NETWORK_NAME ??
+  import.meta.env.NETWORK_NAME;
 
 export const TAIKOSCAN_BASE =
-  ((import.meta as any).env.VITE_TAIKOSCAN_BASE as string | undefined) ??
-  ((import.meta as any).env.TAIKOSCAN_BASE as string | undefined) ??
+  import.meta.env.VITE_TAIKOSCAN_BASE ??
+  import.meta.env.TAIKOSCAN_BASE ??
   (rawNetworkName?.toLowerCase() === 'hekla'
     ? 'https://hekla.taikoscan.io'
     : 'https://cb-blockscout-masaya.vercel.app/blocks');
 
 export const ETHERSCAN_BASE =
-  ((import.meta as any).env.VITE_ETHERSCAN_BASE as string | undefined) ??
-  ((import.meta as any).env.ETHERSCAN_BASE as string | undefined) ??
+  import.meta.env.VITE_ETHERSCAN_BASE ??
+  import.meta.env.ETHERSCAN_BASE ??
   'https://holesky.etherscan.io';
 
 export const blockLink = (
