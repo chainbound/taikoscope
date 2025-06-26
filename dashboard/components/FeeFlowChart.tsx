@@ -1,5 +1,6 @@
 import React from 'react';
 import { ResponsiveContainer, Sankey, Tooltip } from 'recharts';
+import type { TooltipProps } from 'recharts';
 import { formatEth } from '../utils';
 import { TAIKO_PINK, lightTheme, darkTheme } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
@@ -546,10 +547,10 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     return usd;
   };
 
-  const tooltipContent = ({ active, payload }: any) => {
+  const tooltipContent = ({ active, payload }: TooltipProps<number, string>) => {
     if (!active || !payload?.[0]) return null;
 
-    const { value, payload: itemData } = payload[0];
+    const { value = 0, payload: itemData } = payload![0];
 
     if (itemData.source != null && itemData.target != null) {
       const sourceNode = data.nodes[itemData.source] as any;

@@ -8,6 +8,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
+import type { Payload } from 'recharts/types/component/DefaultTooltipContent';
 import useSWR from 'swr';
 import { useEthPrice } from '../services/priceService';
 import { fetchBatchFeeComponents } from '../services/apiService';
@@ -108,7 +109,7 @@ export const EconomicsChart: React.FC<EconomicsChartProps> = ({
           />
           <Tooltip
             labelFormatter={(v: number) => `Batch ${v}`}
-            formatter={(value: number, name: string, { payload }: any) => {
+            formatter={(value: number, name: string, { payload }: Payload<number, string>) => {
               if (name === 'Income')
                 return [
                   `${formatEth(value * 1e18)} ($${payload.incomeUsd.toFixed(2)})`,

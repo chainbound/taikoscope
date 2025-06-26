@@ -8,6 +8,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
+import type { Payload } from 'recharts/types/component/DefaultTooltipContent';
 import useSWR from 'swr';
 import { fetchBatchFeeComponents } from '../services/apiService';
 import { TimeRange, BatchFeeComponent } from '../types';
@@ -97,7 +98,7 @@ export const CostChart: React.FC<CostChartProps> = ({
         />
         <Tooltip
           labelFormatter={(v: number) => `Batch ${v}`}
-          formatter={(value: number, _name: string, { payload }: any) =>
+          formatter={(value: number, _name: string, { payload }: Payload<number, string>) =>
             [`${formatEth(value * 1e18)} ($${payload.costUsd.toFixed(2)})`, 'Cost']
           }
           contentStyle={{
