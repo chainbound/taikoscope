@@ -4,6 +4,7 @@ use clickhouse::{
     Row,
     test::{Mock, handlers},
 };
+use mockito;
 use reqwest::StatusCode;
 use serde::Serialize;
 use tokio::{
@@ -11,7 +12,6 @@ use tokio::{
     time::{Instant, sleep},
 };
 use url::Url;
-use mockito;
 
 use api::{ApiState, DEFAULT_MAX_REQUESTS, DEFAULT_RATE_PERIOD};
 use axum::{extract::connect_info::IntoMakeServiceWithConnectInfo, serve};
@@ -26,10 +26,7 @@ struct MaxRow {
 
 async fn spawn_server(client: ClickhouseReader) -> (SocketAddr, tokio::task::JoinHandle<()>) {
     let state = ApiState::new(client, DEFAULT_MAX_REQUESTS, DEFAULT_RATE_PERIOD);
-    let allowed = config::DEFAULT_ALLOWED_ORIGINS
-        .split(',')
-        .map(|s| s.to_owned())
-        .collect();
+    let allowed = config::DEFAULT_ALLOWED_ORIGINS.split(',').map(|s| s.to_owned()).collect();
     let app = router(state, allowed);
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
@@ -69,6 +66,52 @@ async fn l2_head_integration() {
     let body: serde_json::Value = resp.json().await.unwrap();
     let expected = chrono::Utc.timestamp_opt(ts as i64, 0).single().unwrap().to_rfc3339();
     assert_eq!(body, serde_json::json!({ "last_l2_head_time": expected }));
+
+    server.abort();
+}
+
+#[tokio::test]
+async fn batch_fee_components_filters_unverified() {
+    let mock = Mock::new();
+    mock.add(handlers::provide::<VerifiedBatchRow>(vec![VerifiedBatchRow {
+        l1_block_number: 10,
+        batch_id: 1,
+        block_hash: HashBytes([0u8; 32]),
+    }]));
+    mock.add(handlers::provide(vec![
+        BatchFeeRow { batch_id: 1, priority_fee: 10, base_fee: 20, l1_data_cost: Some(5) },
+        BatchFeeRow { batch_id: 2, priority_fee: 1, base_fee: 2, l1_data_cost: Some(1) },
+    ]));
+
+    let url = Url::parse(mock.url()).unwrap();
+    let client =
+        ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+    let (addr, server) = spawn_server(client).await;
+    wait_for_server(addr).await;
+
+    let resp = reqwest::get(format!(
+        "http://{addr}/{API_VERSION}/batch-fee-components?created[gte]=0&created[lte]=3600000"
+    ))
+    .await
+    .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body: serde_json::Value = resp.json().await.unwrap();
+    assert_eq!(
+        body,
+        serde_json::json!({
+            "batches": [
+                {
+                    "batch_id": 1,
+                    "priority_fee": 10,
+                    "base_fee": 20,
+                    "l1_data_cost": 5,
+                    "amortized_prove_cost": null,
+                    "amortized_verify_cost": null
+                }
+            ]
+        })
+    );
 
     server.abort();
 }
@@ -143,6 +186,13 @@ struct TotalRow {
 struct AggregatedCostRow {
     proposer: AddressBytes,
     total_cost: u128,
+}
+
+#[derive(Serialize, Row)]
+struct VerifiedBatchRow {
+    l1_block_number: u64,
+    batch_id: u64,
+    block_hash: HashBytes,
 }
 
 #[tokio::test]
@@ -252,9 +302,7 @@ async fn l1_head_block_integration() {
     let (addr, server) = spawn_server(client).await;
     wait_for_server(addr).await;
 
-    let resp = reqwest::get(format!("http://{addr}/{API_VERSION}/l1-head-block"))
-        .await
-        .unwrap();
+    let resp = reqwest::get(format!("http://{addr}/{API_VERSION}/l1-head-block")).await.unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
     let body: serde_json::Value = resp.json().await.unwrap();
     assert_eq!(body, serde_json::json!({ "l1_head_block": 3 }));
@@ -274,18 +322,18 @@ async fn l1_block_times_success_and_invalid() {
     let (addr, server) = spawn_server(client).await;
     wait_for_server(addr).await;
 
-    let resp = reqwest::get(
-        format!("http://{addr}/{API_VERSION}/l1-block-times?created[gte]=0&created[lte]=3600000"),
-    )
+    let resp = reqwest::get(format!(
+        "http://{addr}/{API_VERSION}/l1-block-times?created[gte]=0&created[lte]=3600000"
+    ))
     .await
     .unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
     let body: serde_json::Value = resp.json().await.unwrap();
     assert_eq!(body, serde_json::json!({ "blocks": [ { "minute": 1, "l1_block_number": 2 } ] }));
 
-    let resp = reqwest::get(
-        format!("http://{addr}/{API_VERSION}/l1-block-times?created[gte]=10&created[lte]=5"),
-    )
+    let resp = reqwest::get(format!(
+        "http://{addr}/{API_VERSION}/l1-block-times?created[gte]=10&created[lte]=5"
+    ))
     .await
     .unwrap();
     assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
@@ -315,7 +363,10 @@ async fn l2_fee_components_aggregated_integration() {
     .unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
     let body: serde_json::Value = resp.json().await.unwrap();
-    assert_eq!(body, serde_json::json!({ "blocks": [ { "l2_block_number": 0, "priority_fee": 5, "base_fee": 8, "l1_data_cost": 3 } ] }));
+    assert_eq!(
+        body,
+        serde_json::json!({ "blocks": [ { "l2_block_number": 0, "priority_fee": 5, "base_fee": 8, "l1_data_cost": 3 } ] })
+    );
 
     let resp = reqwest::get(
         format!("http://{addr}/{API_VERSION}/l2-fee-components/aggregated?created[gte]=0&created[lte]=3600000&address=zzz"),
@@ -331,16 +382,8 @@ async fn l2_fee_components_aggregated_integration() {
 async fn blobs_per_batch_desc_order() {
     let mock = Mock::new();
     mock.add(handlers::provide(vec![
-        BlobRow {
-            l1_block_number: 5,
-            batch_id: 2,
-            blob_count: 3,
-        },
-        BlobRow {
-            l1_block_number: 4,
-            batch_id: 1,
-            blob_count: 1,
-        },
+        BlobRow { l1_block_number: 5, batch_id: 2, blob_count: 3 },
+        BlobRow { l1_block_number: 4, batch_id: 1, blob_count: 1 },
     ]));
 
     let url = Url::parse(mock.url()).unwrap();
@@ -407,6 +450,11 @@ async fn block_profits_integration() {
 #[tokio::test]
 async fn batch_fee_components_integration() {
     let mock = Mock::new();
+    mock.add(handlers::provide::<VerifiedBatchRow>(vec![VerifiedBatchRow {
+        l1_block_number: 10,
+        batch_id: 1,
+        block_hash: HashBytes([0u8; 32]),
+    }]));
     mock.add(handlers::provide(vec![BatchFeeRow {
         batch_id: 1,
         priority_fee: 10,
@@ -537,10 +585,11 @@ async fn l2_fees_integration() {
     let (addr, server) = spawn_server(client).await;
     wait_for_server(addr).await;
 
-    let resp =
-        reqwest::get(format!("http://{addr}/{API_VERSION}/l2-fees?created[gte]=0&created[lte]=3600000"))
-            .await
-            .unwrap();
+    let resp = reqwest::get(format!(
+        "http://{addr}/{API_VERSION}/l2-fees?created[gte]=0&created[lte]=3600000"
+    ))
+    .await
+    .unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
     let body: serde_json::Value = resp.json().await.unwrap();
     assert_eq!(
@@ -591,10 +640,11 @@ async fn batch_fees_integration() {
     let (addr, server) = spawn_server(client).await;
     wait_for_server(addr).await;
 
-    let resp =
-        reqwest::get(format!("http://{addr}/{API_VERSION}/batch-fees?created[gte]=0&created[lte]=3600000"))
-            .await
-            .unwrap();
+    let resp = reqwest::get(format!(
+        "http://{addr}/{API_VERSION}/batch-fees?created[gte]=0&created[lte]=3600000"
+    ))
+    .await
+    .unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
     let body: serde_json::Value = resp.json().await.unwrap();
     assert_eq!(
@@ -624,7 +674,10 @@ async fn batch_fees_integration() {
 #[tokio::test]
 async fn prove_costs_integration() {
     let mock = Mock::new();
-    mock.add(handlers::provide(vec![AggregatedCostRow { proposer: AddressBytes([3u8; 20]), total_cost: 123 }]));
+    mock.add(handlers::provide(vec![AggregatedCostRow {
+        proposer: AddressBytes([3u8; 20]),
+        total_cost: 123,
+    }]));
 
     let url = Url::parse(mock.url()).unwrap();
     let client =
@@ -633,9 +686,11 @@ async fn prove_costs_integration() {
     let (addr, server) = spawn_server(client).await;
     wait_for_server(addr).await;
 
-    let resp = reqwest::get(format!("http://{addr}/{API_VERSION}/prove-costs?created[gte]=0&created[lte]=3600000"))
-        .await
-        .unwrap();
+    let resp = reqwest::get(format!(
+        "http://{addr}/{API_VERSION}/prove-costs?created[gte]=0&created[lte]=3600000"
+    ))
+    .await
+    .unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
     let body: serde_json::Value = resp.json().await.unwrap();
     assert_eq!(
@@ -656,7 +711,10 @@ async fn prove_costs_integration() {
 #[tokio::test]
 async fn verify_costs_integration() {
     let mock = Mock::new();
-    mock.add(handlers::provide(vec![AggregatedCostRow { proposer: AddressBytes([4u8; 20]), total_cost: 456 }]));
+    mock.add(handlers::provide(vec![AggregatedCostRow {
+        proposer: AddressBytes([4u8; 20]),
+        total_cost: 456,
+    }]));
 
     let url = Url::parse(mock.url()).unwrap();
     let client =
@@ -665,9 +723,11 @@ async fn verify_costs_integration() {
     let (addr, server) = spawn_server(client).await;
     wait_for_server(addr).await;
 
-    let resp = reqwest::get(format!("http://{addr}/{API_VERSION}/verify-costs?created[gte]=0&created[lte]=3600000"))
-        .await
-        .unwrap();
+    let resp = reqwest::get(format!(
+        "http://{addr}/{API_VERSION}/verify-costs?created[gte]=0&created[lte]=3600000"
+    ))
+    .await
+    .unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
     let body: serde_json::Value = resp.json().await.unwrap();
     assert_eq!(
@@ -688,7 +748,10 @@ async fn verify_costs_integration() {
 #[tokio::test]
 async fn l1_data_cost_paginated() {
     let mock = Mock::new();
-    mock.add(handlers::provide(vec![clickhouse_lib::L1DataCostRow { l1_block_number: 1, cost: 789 }]));
+    mock.add(handlers::provide(vec![clickhouse_lib::L1DataCostRow {
+        l1_block_number: 1,
+        cost: 789,
+    }]));
 
     let url = Url::parse(mock.url()).unwrap();
     let client =
@@ -762,12 +825,7 @@ async fn eth_price_handles_429() {
         ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
 
     let mut price_server = mockito::Server::new_async().await;
-    let mock = price_server
-        .mock("GET", "/")
-        .with_status(429)
-        .expect(1)
-        .create_async()
-        .await;
+    let mock = price_server.mock("GET", "/").with_status(429).expect(1).create_async().await;
 
     std::env::set_var("ETH_PRICE_URL", price_server.url());
 
