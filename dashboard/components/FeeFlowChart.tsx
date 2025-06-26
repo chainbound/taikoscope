@@ -83,6 +83,8 @@ const SankeyLink = ({
   targetControlX,
   linkWidth,
   payload,
+  sourceRelativeY,
+  targetRelativeY,
   ...rest
 }: any) => {
   const isCost =
