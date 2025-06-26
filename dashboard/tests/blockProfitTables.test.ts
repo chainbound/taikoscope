@@ -9,7 +9,16 @@ import * as priceService from '../services/priceService';
 import { BlockProfitTables } from '../components/BlockProfitTables';
 
 const feeData = [
-  { batch: 1, l1Block: 1, sequencer: 'SeqA', priority: 1e18, base: 1e18, l1Cost: 0 },
+  {
+    batch: 1,
+    l1Block: 1,
+    sequencer: 'SeqA',
+    priority: 1e18,
+    base: 1e18,
+    l1Cost: 0,
+    amortizedProveCost: 0,
+    amortizedVerifyCost: 0,
+  },
 ];
 
 describe('BlockProfitTables', () => {
@@ -26,8 +35,6 @@ describe('BlockProfitTables', () => {
         timeRange: '1h',
         cloudCost: 100,
         proverCost: 100,
-        proveCost: 5,
-        verifyCost: 2,
       }),
     );
 

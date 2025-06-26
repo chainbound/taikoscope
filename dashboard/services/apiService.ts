@@ -808,6 +808,8 @@ export interface BatchFeeComponent {
   priority: number;
   base: number;
   l1Cost: number | null;
+  amortizedProveCost: number | null;
+  amortizedVerifyCost: number | null;
 }
 
 export const fetchFeeComponents = async (
@@ -854,6 +856,8 @@ export const fetchBatchFeeComponents = async (
       priority_fee: number;
       base_fee: number;
       l1_data_cost: number | null;
+      amortized_prove_cost: number | null;
+      amortized_verify_cost: number | null;
     }[];
   }>(url);
   return {
@@ -865,6 +869,8 @@ export const fetchBatchFeeComponents = async (
           priority: b.priority_fee,
           base: b.base_fee,
           l1Cost: b.l1_data_cost ?? null,
+          amortizedProveCost: b.amortized_prove_cost ?? null,
+          amortizedVerifyCost: b.amortized_verify_cost ?? null,
         }))
       : null,
     badRequest: res.badRequest,

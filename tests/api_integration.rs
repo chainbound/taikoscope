@@ -419,7 +419,18 @@ async fn batch_fee_components_integration() {
     let body: serde_json::Value = resp.json().await.unwrap();
     assert_eq!(
         body,
-        serde_json::json!({ "batches": [ { "batch_id": 1, "priority_fee": 10, "base_fee": 20, "l1_data_cost": 5 } ] })
+        serde_json::json!({
+            "batches": [
+                {
+                    "batch_id": 1,
+                    "priority_fee": 10,
+                    "base_fee": 20,
+                    "l1_data_cost": 5,
+                    "amortized_prove_cost": null,
+                    "amortized_verify_cost": null
+                }
+            ]
+        })
     );
 
     server.abort();

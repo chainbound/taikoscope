@@ -19,8 +19,6 @@ interface ProfitabilityChartProps {
   timeRange: TimeRange;
   cloudCost: number;
   proverCost: number;
-  proveCost?: number;
-  verifyCost?: number;
   address?: string;
 }
 
@@ -28,8 +26,6 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
   timeRange,
   cloudCost,
   proverCost,
-  proveCost = 0,
-  verifyCost = 0,
   address,
 }) => {
   const { data: feeRes } = useSWR(
@@ -50,14 +46,14 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
   const hours = rangeToHours(timeRange);
   const HOURS_IN_MONTH = 30 * 24;
   const costPerBatchUsd =
-    ((cloudCost + proverCost) / HOURS_IN_MONTH) * (hours / feeData.length) +
-    proveCost +
-    verifyCost;
+    ((cloudCost + proverCost) / HOURS_IN_MONTH) * (hours / feeData.length);
   const costPerBatchEth = ethPrice ? costPerBatchUsd / ethPrice : 0;
 
   const data = feeData.map((b) => {
     const revenueEth = (b.priority + b.base - (b.l1Cost ?? 0)) / 1e18;
-    const profitEth = revenueEth - costPerBatchEth;
+    const proveEth = (b.amortizedProveCost ?? 0) / 1e18;
+    const verifyEth = (b.amortizedVerifyCost ?? 0) / 1e18;
+    const profitEth = revenueEth - (costPerBatchEth + proveEth + verifyEth);
     const profitUsd = profitEth * ethPrice;
     return { batch: b.batch, profitEth, profitUsd };
   });

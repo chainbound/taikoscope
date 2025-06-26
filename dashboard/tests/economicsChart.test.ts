@@ -8,7 +8,16 @@ import type { BatchFeeComponent } from '../types';
 import * as priceService from '../services/priceService';
 import { EconomicsChart } from '../components/EconomicsChart';
 
-const feeData = [{ batch: 1, priority: 1, base: 1, l1Cost: 0 }];
+const feeData = [
+  {
+    batch: 1,
+    priority: 1,
+    base: 1,
+    l1Cost: 0,
+    amortizedProveCost: 0,
+    amortizedVerifyCost: 0,
+  },
+];
 
 describe('EconomicsChart', () => {
   it('renders with economics data', () => {
@@ -24,8 +33,6 @@ describe('EconomicsChart', () => {
         timeRange: '1h',
         cloudCost: 100,
         proverCost: 100,
-        proveCost: 5,
-        verifyCost: 2,
       }),
     );
 

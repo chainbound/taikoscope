@@ -9,7 +9,14 @@ import * as priceService from '../services/priceService';
 import { IncomeChart } from '../components/IncomeChart';
 
 const feeData = [
-  { batch: 1, priority: 1, base: 1, l1Cost: 0 },
+  {
+    batch: 1,
+    priority: 1,
+    base: 1,
+    l1Cost: 0,
+    amortizedProveCost: 0,
+    amortizedVerifyCost: 0,
+  },
 ];
 
 describe('IncomeChart', () => {
