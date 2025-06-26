@@ -3,6 +3,7 @@
 //! This crate provides two main components:
 //! - `ClickhouseWriter`: For taikoscope data insertion and database management
 //! - `ClickhouseReader`: For API read-only operations and analytics
+#![allow(clippy::uninlined_format_args)]
 //!
 //! The separation allows taikoscope to control data, migrations, and inserts,
 //! while the API can only read data for serving analytics and dashboards.

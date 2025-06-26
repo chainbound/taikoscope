@@ -1,4 +1,6 @@
 //! Taikoscope Driver
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::cognitive_complexity)]
 
 use std::time::Duration;
 

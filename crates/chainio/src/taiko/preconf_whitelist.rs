@@ -26,7 +26,7 @@ impl TaikoPreconfWhitelist {
             Ok(result) => Ok(result),
             Err(err) => {
                 let decoded_error = try_parse_contract_error::<IPreconfWhitelistErrors>(err)?;
-                Err(SolError::custom(format!("{:?}", decoded_error)).into())
+                Err(SolError::custom(format!("{decoded_error:?}")).into())
             }
         }
     }
@@ -37,7 +37,7 @@ impl TaikoPreconfWhitelist {
             Ok(result) => Ok(result),
             Err(err) => {
                 let decoded_error = try_parse_contract_error::<IPreconfWhitelistErrors>(err)?;
-                Err(SolError::custom(format!("{:?}", decoded_error)).into())
+                Err(SolError::custom(format!("{decoded_error:?}")).into())
             }
         }
     }
@@ -48,7 +48,7 @@ impl TaikoPreconfWhitelist {
             Ok(result) => Ok(result),
             Err(err) => {
                 let decoded_error = try_parse_contract_error::<IPreconfWhitelistErrors>(err)?;
-                Err(SolError::custom(format!("{:?}", decoded_error)).into())
+                Err(SolError::custom(format!("{decoded_error:?}")).into())
             }
         }
     }
@@ -70,7 +70,7 @@ impl TaikoPreconfWhitelist {
                     self.0.isOperator(address).call().await
                 } else {
                     let decoded_error = try_parse_contract_error::<IPreconfWhitelistErrors>(err)?;
-                    Err(SolError::custom(format!("{:?}", decoded_error)).into())
+                    Err(SolError::custom(format!("{decoded_error:?}")).into())
                 }
             }
         }

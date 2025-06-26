@@ -3,6 +3,8 @@
 //! These structs define the JSON responses returned by the API server. They
 //! are provided in a separate crate so that consumers such as the dashboard can
 //! depend on them without pulling in the rest of the server implementation.
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::cognitive_complexity)]
 
 use clickhouse_lib::{
     BatchBlobCountRow, BatchPostingTimeRow, BatchProveTimeRow, BatchVerifyTimeRow,

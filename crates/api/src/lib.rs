@@ -1,4 +1,5 @@
 //! Thin HTTP API for accessing `ClickHouse` data
+#![allow(clippy::uninlined_format_args)]
 
 pub mod helpers;
 pub mod routes;
