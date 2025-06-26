@@ -27,53 +27,55 @@ const WEI_TO_ETH = 1e18;
 const formatUsd = (value: number) => `$${value.toFixed(2)}`;
 
 // Simple node component that renders label with currency-aware value
-const createSankeyNode = (textColor: string) => ({ x, y, width, height, payload }: any) => {
-  const isCostNode =
-    payload.name === 'Hardware Cost' ||
-    payload.name === 'L1 Data Cost' ||
-    payload.name === 'L1 Prove Cost' ||
-    payload.name === 'Subsidy' ||
-    (typeof payload.name === 'string' && payload.name.includes('Subsidy'));
-  const isProfitNode = payload.name === 'Profit' || payload.profitNode;
-  const isPinkNode =
-    payload.name === 'Taiko DAO' ||
-    payload.name === 'Priority Fee' ||
-    payload.name === 'Base Fee';
-  const hideLabel = payload.hideLabel;
-  const addressLabel = payload.addressLabel;
+const createSankeyNode =
+  (textColor: string) =>
+  ({ x, y, width, height, payload }: any) => {
+    const isCostNode =
+      payload.name === 'Hardware Cost' ||
+      payload.name === 'L1 Data Cost' ||
+      payload.name === 'L1 Prove Cost' ||
+      payload.name === 'Subsidy' ||
+      (typeof payload.name === 'string' && payload.name.includes('Subsidy'));
+    const isProfitNode = payload.name === 'Profit' || payload.profitNode;
+    const isPinkNode =
+      payload.name === 'Taiko DAO' ||
+      payload.name === 'Priority Fee' ||
+      payload.name === 'Base Fee';
+    const hideLabel = payload.hideLabel;
+    const addressLabel = payload.addressLabel;
 
-  let label = addressLabel ?? payload.name;
-  if (isProfitNode && addressLabel) {
-    label = `${addressLabel} Profit`;
-  } else if (payload.incomeNode && addressLabel) {
-    label = `${addressLabel} Income`;
-  }
+    let label = addressLabel ?? payload.name;
+    if (isProfitNode && addressLabel) {
+      label = `${addressLabel} Profit`;
+    } else if (payload.incomeNode && addressLabel) {
+      label = `${addressLabel} Income`;
+    }
 
-  return (
-    <g>
-      <rect
-        x={x}
-        y={y}
-        width={width}
-        height={height}
-        fill={isCostNode ? '#ef4444' : isPinkNode ? TAIKO_PINK : NODE_GREEN}
-        fillOpacity={0.8}
-      />
-      {!hideLabel && (
-        <text
-          x={x + width + 6}
-          y={y + height / 2}
-          textAnchor="start"
-          dominantBaseline="middle"
-          fontSize={12}
-          fill={textColor}
-        >
-          {label}
-        </text>
-      )}
-    </g>
-  );
-};
+    return (
+      <g>
+        <rect
+          x={x}
+          y={y}
+          width={width}
+          height={height}
+          fill={isCostNode ? '#ef4444' : isPinkNode ? TAIKO_PINK : NODE_GREEN}
+          fillOpacity={0.8}
+        />
+        {!hideLabel && (
+          <text
+            x={x + width + 6}
+            y={y + height / 2}
+            textAnchor="start"
+            dominantBaseline="middle"
+            fontSize={12}
+            fill={textColor}
+          >
+            {label}
+          </text>
+        )}
+      </g>
+    );
+  };
 
 const SankeyLink = ({
   sourceX,
@@ -119,7 +121,8 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
   address,
 }) => {
   const { theme } = useTheme();
-  const textColor = theme === 'dark' ? darkTheme.foreground : lightTheme.foreground;
+  const textColor =
+    theme === 'dark' ? darkTheme.foreground : lightTheme.foreground;
   const { data: feeRes } = useSWR(['l2FeesFlow', timeRange, address], () =>
     fetchL2Fees(timeRange, address),
   );
@@ -146,8 +149,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
 
   // Scale operational costs to the selected time range
   const hours = rangeToHours(timeRange);
-  const hardwareCostPerSeq =
-    ((cloudCost + proverCost) / MONTH_HOURS) * hours;
+  const hardwareCostPerSeq = ((cloudCost + proverCost) / MONTH_HOURS) * hours;
   const totalHardwareCost = hardwareCostPerSeq;
 
   const seqData = sequencerFees.map((f) => {
@@ -231,13 +233,18 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     ];
 
     if (l1ProveCost > 0) {
-      nodes.push({ name: 'L1 Prove Cost', value: l1ProveCost, usd: true });
+      const proveIndex = 6; // insert below L1 Data Cost
+      nodes.splice(proveIndex, 0, {
+        name: 'L1 Prove Cost',
+        value: l1ProveCost,
+        usd: true,
+      });
     }
 
     links = [
       { source: 1, target: 3, value: priorityFeeUsd }, // Priority Fee → Sequencers
       { source: 2, target: 3, value: baseFeeUsd * 0.75 }, // 75% Base Fee → Sequencers
-      { source: 2, target: 7, value: baseFeeDaoUsd }, // 25% Base Fee → Taiko DAO
+      { source: 2, target: 8, value: baseFeeDaoUsd }, // 25% Base Fee → Taiko DAO
       {
         source: 3,
         target: 4,
@@ -252,11 +259,11 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
         ),
       }, // Sequencers → L1 Data Cost
       { source: 0, target: 5, value: l1Subsidy }, // Subsidy → L1 Data Cost
-      { source: 3, target: 6, value: sequencerProfit }, // Sequencers → Profit
+      { source: 3, target: 7, value: sequencerProfit }, // Sequencers → Profit
     ].filter((l) => l.value > 0);
 
     if (l1ProveCost > 0) {
-      const proveIndex = nodes.length - 1;
+      const proveIndex = 6;
       links.push({ source: 3, target: proveIndex, value: l1ProveCost });
     }
   } else {
@@ -278,8 +285,8 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     const baseIndex = baseFeeIndex + 1; // first sequencer node index
     const hardwareIndex = baseIndex + seqData.length;
     const l1Index = hardwareIndex + 1;
-    const profitStartIndex = l1Index + 1;
-    const daoIndex = profitStartIndex + seqData.length;
+    let profitStartIndex = l1Index + 1;
+    let daoIndex = profitStartIndex + seqData.length;
 
     nodes = [
       ...seqData.map((s) => ({
@@ -314,7 +321,13 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     ];
 
     if (l1ProveCost > 0) {
-      nodes.push({ name: 'L1 Prove Cost', value: l1ProveCost, usd: true });
+      nodes.splice(l1Index + 1, 0, {
+        name: 'L1 Prove Cost',
+        value: l1ProveCost,
+        usd: true,
+      });
+      profitStartIndex += 1;
+      daoIndex += 1;
     }
 
     links = [
@@ -352,7 +365,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     ].filter((l) => l.value > 0);
 
     if (l1ProveCost > 0) {
-      const proveIndex = nodes.length - 1;
+      const proveIndex = l1Index + 1;
       links.push(
         ...seqData.map((_, i) => ({
           source: baseIndex + i,
@@ -466,7 +479,8 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
             trigger="hover"
             contentStyle={{
               backgroundColor: theme === 'dark' ? '#1e293b' : 'white',
-              border: theme === 'dark' ? '1px solid #334155' : '1px solid #e5e7eb',
+              border:
+                theme === 'dark' ? '1px solid #334155' : '1px solid #e5e7eb',
               borderRadius: '0.375rem',
             }}
           />
