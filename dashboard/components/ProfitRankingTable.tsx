@@ -82,7 +82,7 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
 
   const [sortBy, setSortBy] = React.useState<
     'name' | 'blocks' | 'batches' | 'revenue' | 'cost' | 'profit' | 'ratio'
-  >('profit');
+  >('ratio');
   const [sortDirection, setSortDirection] = React.useState<'asc' | 'desc'>(
     'desc',
   );
