@@ -96,6 +96,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     const eth = parseEthValue(findMetricValue(metricsData.metrics, 'Verify Cost'));
     return eth * ethPrice;
   }, [metricsData.metrics, ethPrice]);
+  const l1ProveCostUsd = React.useMemo(
+    () => proveCostUsd + verifyCostUsd,
+    [proveCostUsd, verifyCostUsd],
+  );
 
   const visibleMetrics = React.useMemo(
     () =>
@@ -317,6 +321,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               timeRange={timeRange}
               cloudCost={cloudCost}
               proverCost={proverCost}
+              l1ProveCost={l1ProveCostUsd}
               address={selectedSequencer || undefined}
             />
             <ProfitCalculator
