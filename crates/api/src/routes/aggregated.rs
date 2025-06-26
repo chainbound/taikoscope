@@ -582,8 +582,8 @@ pub async fn batch_fee_components(
             ErrorResponse::database_error()
         })?;
     let count = rows.len() as u128;
-    let amortized_prove = prove_total.and_then(|c| (count > 0).then_some(c / count));
-    let amortized_verify = verify_total.and_then(|c| (count > 0).then_some(c / count));
+    let amortized_prove = if count > 0 { prove_total.map(|c| c / count) } else { None };
+    let amortized_verify = if count > 0 { verify_total.map(|c| c / count) } else { None };
 
     let batches: Vec<BatchFeeComponentRow> = rows
         .into_iter()
@@ -658,8 +658,8 @@ pub async fn batch_fee_components_aggregated(
             ErrorResponse::database_error()
         })?;
     let count = rows.len() as u128;
-    let amortized_prove = prove_total.and_then(|c| (count > 0).then_some(c / count));
-    let amortized_verify = verify_total.and_then(|c| (count > 0).then_some(c / count));
+    let amortized_prove = if count > 0 { prove_total.map(|c| c / count) } else { None };
+    let amortized_verify = if count > 0 { verify_total.map(|c| c / count) } else { None };
 
     let batches: Vec<BatchFeeComponentRow> = rows
         .into_iter()
