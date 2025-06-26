@@ -47,8 +47,12 @@ describe('dataFetcher', () => {
       fetchVerifyTimes: ok([{ name: '2', value: 2, timestamp: 0 }]),
       fetchL2BlockTimesAggregated: ok([{ value: 2, timestamp: 0 }]),
       fetchL2GasUsedAggregated: ok([{ value: 3, timestamp: 0 }]),
-      fetchSequencerDistribution: ok([{ name: 'foo', address: '0xfoo', value: 1 }]),
-      fetchBlockTransactionsAggregated: ok([{ block: 1, txs: 2, sequencer: 'bar' }]),
+      fetchSequencerDistribution: ok([
+        { name: 'foo', address: '0xfoo', value: 1 },
+      ]),
+      fetchBlockTransactionsAggregated: ok([
+        { block: 1, txs: 2, sequencer: 'bar' },
+      ]),
       fetchBatchBlobCounts: ok([{ block: 10, batch: 1, blobs: 2 }]),
     });
 
@@ -82,10 +86,17 @@ describe('dataFetcher', () => {
 
   it('fetches economics data', async () => {
     setAll({
-      fetchL2Fees: ok({ priority_fee: 1, base_fee: 2, l1_data_cost: 4, sequencers: [] }),
+      fetchL2Fees: ok({
+        priority_fee: 1,
+        base_fee: 2,
+        l1_data_cost: 4,
+        sequencers: [],
+      }),
       fetchL2HeadBlock: ok(2),
       fetchL1HeadBlock: ok(3),
-      fetchSequencerDistribution: ok([{ name: 'foo', address: '0xfoo', value: 1, tps: null }]),
+      fetchSequencerDistribution: ok([
+        { name: 'foo', address: '0xfoo', value: 1, tps: null },
+      ]),
       fetchDashboardData: ok({ prove_cost: 5, verify_cost: 6 }),
     });
 
@@ -98,6 +109,29 @@ describe('dataFetcher', () => {
     expect(res.proveCost).toBe(5);
     expect(res.verifyCost).toBe(6);
     expect(res.sequencerDist[0].name).toBe('foo');
+    expect(res.badRequestResults).toHaveLength(5);
+  });
+
+  it('defaults economics costs to null when missing', async () => {
+    setAll({
+      fetchL2Fees: ok({
+        priority_fee: null,
+        base_fee: null,
+        l1_data_cost: null,
+        sequencers: [],
+      }),
+      fetchL2HeadBlock: ok(null),
+      fetchL1HeadBlock: ok(null),
+      fetchSequencerDistribution: ok(null),
+      fetchDashboardData: ok({}),
+    });
+
+    const res = await fetchEconomicsData('1h', null);
+    expect(res.priorityFee).toBeNull();
+    expect(res.baseFee).toBeNull();
+    expect(res.l1DataCost).toBeNull();
+    expect(res.proveCost).toBeNull();
+    expect(res.verifyCost).toBeNull();
     expect(res.badRequestResults).toHaveLength(5);
   });
 
