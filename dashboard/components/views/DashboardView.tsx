@@ -10,6 +10,8 @@ import { ChartCard } from '../ChartCard';
 import { TAIKO_PINK } from '../../theme';
 import { TimeRange, MetricData } from '../../types';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { parseEthValue, findMetricValue } from '../../utils';
+import { useEthPrice } from '../../services/priceService';
 
 const SequencerPieChart = lazy(() =>
   import('../SequencerPieChart').then((m) => ({
@@ -85,6 +87,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   // Default monthly costs in USD
   const [cloudCost, setCloudCost] = useState(1000);
   const [proverCost, setProverCost] = useState(1000);
+  const { data: ethPrice = 0 } = useEthPrice();
+  const proveCostUsd = React.useMemo(() => {
+    const eth = parseEthValue(findMetricValue(metricsData.metrics, 'Prove Cost'));
+    return eth * ethPrice;
+  }, [metricsData.metrics, ethPrice]);
+  const verifyCostUsd = React.useMemo(() => {
+    const eth = parseEthValue(findMetricValue(metricsData.metrics, 'Verify Cost'));
+    return eth * ethPrice;
+  }, [metricsData.metrics, ethPrice]);
 
   const visibleMetrics = React.useMemo(
     () =>
@@ -332,6 +343,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               timeRange={timeRange}
               cloudCost={cloudCost}
               proverCost={proverCost}
+              proveCost={proveCostUsd}
+              verifyCost={verifyCostUsd}
               address={selectedSequencer || undefined}
             />
           </>
