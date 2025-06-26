@@ -41,34 +41,45 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
   const batchCount = batchData.length;
   const HOURS_IN_MONTH = 30 * 24;
   const hours = rangeToHours(timeRange);
-  const costPerBatchUsd =
-    batchCount > 0
-      ?
-      ((cloudCost + proverCost) / HOURS_IN_MONTH) * (hours / batchCount) +
-      proveCost +
-      verifyCost
-      : 0;
-  const costPerBatchEth = ethPrice ? costPerBatchUsd / ethPrice : 0;
 
-  const calcProfitEth = (wei: number) => wei / 1e18 - costPerBatchEth;
+  // Calculate operational costs per batch in USD, then convert to ETH
+  const operationalCostPerBatchUsd = batchCount > 0
+    ? ((cloudCost + proverCost) / HOURS_IN_MONTH) * (hours / batchCount)
+    : 0;
 
-  const profits = batchData.map((b) => ({
-    batch: b.batch,
-    l1Block: b.l1Block,
-    sequencer: b.sequencer,
-    profit: b.priority + b.base - (b.l1Cost ?? 0),
-  }));
+  // Prove and verify costs are per batch and should be attributed to each batch
+  const proveVerifyCostPerBatchUsd = proveCost + verifyCost;
+  const totalCostPerBatchUsd = operationalCostPerBatchUsd + proveVerifyCostPerBatchUsd;
+  const costPerBatchEth = ethPrice ? totalCostPerBatchUsd / ethPrice : 0;
+
+  const profits = batchData.map((b) => {
+    // Calculate revenue in ETH (priority + base - L1 data cost)
+    const revenueEth = (b.priority + b.base - (b.l1Cost ?? 0)) / 1e18;
+
+    // Calculate profit as revenue minus all costs
+    const profitEth = revenueEth - costPerBatchEth;
+    const profitWei = profitEth * 1e18;
+
+    return {
+      batch: b.batch,
+      l1Block: b.l1Block,
+      sequencer: b.sequencer,
+      profit: profitWei, // Store as wei for consistency
+      profitEth, // Store ETH value for sorting and display
+    };
+  });
+
   const topBatches = [...profits]
-    .sort((a, b) => b.profit - a.profit)
+    .sort((a, b) => b.profitEth - a.profitEth)
     .slice(0, 5);
   const bottomBatches = [...profits]
-    .sort((a, b) => a.profit - b.profit)
+    .sort((a, b) => a.profitEth - b.profitEth)
     .slice(0, 5);
 
   const renderTable = (
     title: string,
     items:
-      | { batch: number; l1Block: number; sequencer: string; profit: number }[]
+      | { batch: number; l1Block: number; sequencer: string; profit: number; profitEth: number }[]
       | null,
   ) => (
     <div>
@@ -94,9 +105,9 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
                 <td className="px-2 py-1">{b.sequencer}</td>
                 <td
                   className="px-2 py-1"
-                  title={`$${formatUsd(calcProfitEth(b.profit) * ethPrice)}`}
+                  title={`$${formatUsd(b.profitEth * ethPrice)}`}
                 >
-                  {formatEth(calcProfitEth(b.profit) * 1e18)}
+                  {formatEth(b.profit)}
                 </td>
               </tr>
             ))}
