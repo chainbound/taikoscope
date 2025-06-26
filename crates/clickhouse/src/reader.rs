@@ -2486,9 +2486,9 @@ mod tests {
             "SELECT h.sequencer, \
                     sum(sum_priority_fee) AS priority_fee, \
                     sum(sum_base_fee) AS base_fee, \
-                    sum(dc.cost) AS l1_data_cost, \
-                    sum(pc.cost) AS prove_cost, \
-                    sum(vc.cost) AS verify_cost \
+                    toNullable(sum(dc.cost)) AS l1_data_cost, \
+                    toNullable(sum(pc.cost)) AS prove_cost, \
+                    toNullable(sum(vc.cost)) AS verify_cost \
              FROM {db}.l2_head_events h \
              LEFT JOIN {db}.l1_data_costs dc \
                ON h.l2_block_number = dc.l2_block_number \
@@ -2517,8 +2517,8 @@ mod tests {
             "Query should have space between 'dc' and 'ON'"
         );
         assert!(
-            query.contains("batch_blocks bb LEFT JOIN"),
-            "Query should have space between 'bb' and 'LEFT JOIN'",
+            query.contains("batch_blocks bb ON"),
+            "Query should have space between 'bb' and 'ON'",
         );
         assert!(
             query.contains("prove_costs pc ON"),
@@ -2529,15 +2529,17 @@ mod tests {
             "Query should have space between 'vc' and 'ON'",
         );
         assert!(
-            query.contains("dc.l2_block_number WHERE"),
-            "Query should have space between 'l2_block_number' and 'WHERE'"
+            query.contains("bb.l2_block_number LEFT JOIN"),
+            "Query should have space between 'l2_block_number' and 'LEFT JOIN'"
         );
         assert!(query.contains(") AND"), "Query should have space between ')' and 'AND'");
 
         // Verify that malformed tokens are not present
         assert!(!query.contains("hLEFT"), "Query should not contain 'hLEFT'");
         assert!(!query.contains("dcON"), "Query should not contain 'dcON'");
-        assert!(!query.contains("numberWHERE"), "Query should not contain 'numberWHERE'");
+        assert!(!query.contains("bbON"), "Query should not contain 'bbON'");
+        assert!(!query.contains("pcON"), "Query should not contain 'pcON'");
+        assert!(!query.contains("vcON"), "Query should not contain 'vcON'");
     }
 
     #[derive(Row, serde::Serialize)]
