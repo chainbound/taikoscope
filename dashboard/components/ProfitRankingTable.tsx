@@ -16,6 +16,8 @@ interface ProfitRankingTableProps {
   timeRange: TimeRange;
   cloudCost: number;
   proverCost: number;
+  proveCost?: number;
+  verifyCost?: number;
 }
 
 const formatUsd = (value: number): string => {
@@ -33,6 +35,8 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
   timeRange,
   cloudCost,
   proverCost,
+  proveCost = 0,
+  verifyCost = 0,
 }) => {
   const { data: distRes } = useSWR(['profitRankingSeq', timeRange], () =>
     fetchSequencerDistribution(timeRange),
@@ -93,6 +97,8 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
     const batchCount = batchCounts?.get(addr.toLowerCase()) ?? null;
     const fees = feeDataMap.get(addr.toLowerCase());
     if (!fees) {
+      const extraUsd = batchCount ? (proveCost + verifyCost) * batchCount : 0;
+      const extraEth = ethPrice ? extraUsd / ethPrice : 0;
       return {
         name: seq.name,
         address: addr,
@@ -100,8 +106,8 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
         batches: batchCount,
         revenueEth: null as number | null,
         revenueUsd: null as number | null,
-        costEth: costPerSeqEth,
-        costUsd: costPerSeqUsd,
+        costEth: costPerSeqEth + extraEth,
+        costUsd: costPerSeqUsd + extraUsd,
         profitEth: null as number | null,
         profitUsd: null as number | null,
         ratio: null as number | null,
@@ -112,8 +118,10 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
     const l1CostEth = (fees.l1_data_cost ?? 0) / 1e18;
     const revenueUsd = revenueEth * ethPrice;
     const l1CostUsd = l1CostEth * ethPrice;
-    const costEth = costPerSeqEth + l1CostEth;
-    const costUsd = costPerSeqUsd + l1CostUsd;
+    const extraUsd = batchCount ? (proveCost + verifyCost) * batchCount : 0;
+    const extraEth = ethPrice ? extraUsd / ethPrice : 0;
+    const costEth = costPerSeqEth + l1CostEth + extraEth;
+    const costUsd = costPerSeqUsd + l1CostUsd + extraUsd;
     const profitEth = revenueEth - costEth;
     const profitUsd = revenueUsd - costUsd;
     const ratio = costEth > 0 ? revenueEth / costEth : null;

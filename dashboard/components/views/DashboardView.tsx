@@ -331,6 +331,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 timeRange={timeRange}
                 cloudCost={cloudCost}
                 proverCost={proverCost}
+                proveCost={proveCostUsd}
+                verifyCost={verifyCostUsd}
                 address={selectedSequencer || undefined}
               />
             </div>
@@ -338,6 +340,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               timeRange={timeRange}
               cloudCost={cloudCost}
               proverCost={proverCost}
+              proveCost={proveCostUsd}
+              verifyCost={verifyCostUsd}
             />
             <BlockProfitTables
               timeRange={timeRange}
