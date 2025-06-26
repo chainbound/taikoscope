@@ -136,10 +136,17 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
     const l1CostEth = (fees.l1_data_cost ?? 0) / 1e18;
     const revenueUsd = revenueEth * ethPrice;
     const l1CostUsd = l1CostEth * ethPrice;
-    const costEth = costPerSeqEth + l1CostEth + extraEth;
-    const costUsd = costPerSeqUsd + l1CostUsd + extraUsd;
-    const profitEth = revenueEth - costEth;
-    const profitUsd = revenueUsd - costUsd;
+
+    let remainingUsd = revenueUsd;
+    const actualHardwareUsd = Math.min(costPerSeqUsd, remainingUsd);
+    remainingUsd -= actualHardwareUsd;
+    const actualL1Usd = Math.min(l1CostUsd, remainingUsd);
+    remainingUsd -= actualL1Usd;
+
+    const costUsd = actualHardwareUsd + actualL1Usd + extraUsd;
+    const costEth = ethPrice ? costUsd / ethPrice : costPerSeqEth + l1CostEth + extraEth;
+    const profitUsd = Math.max(0, revenueUsd - costUsd);
+    const profitEth = ethPrice ? profitUsd / ethPrice : Math.max(0, revenueEth - costEth);
     const ratio = costEth > 0 ? revenueEth / costEth : null;
     return {
       name: seq.name,
