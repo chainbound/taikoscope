@@ -3,6 +3,8 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import * as swr from 'swr';
 vi.mock('swr', () => ({ default: vi.fn() }));
+import type { RequestResult } from '../services/apiService';
+import type { BatchFeeComponent } from '../types';
 import * as priceService from '../services/priceService';
 import { ProfitabilityChart } from '../components/ProfitabilityChart';
 
@@ -13,8 +15,12 @@ const feeData = [
 
 describe('ProfitabilityChart', () => {
   it('renders when profit is negative', () => {
-    vi.mocked(swr.default).mockReturnValue({ data: { data: feeData } } as any);
-    vi.spyOn(priceService, 'useEthPrice').mockReturnValue({ data: 1 } as any);
+    vi.mocked(swr.default).mockReturnValue({
+      data: { data: feeData } as RequestResult<BatchFeeComponent[]>,
+    } as unknown as ReturnType<typeof swr.default>);
+    vi.spyOn(priceService, 'useEthPrice').mockReturnValue({
+      data: 1,
+    } as unknown as ReturnType<typeof priceService.useEthPrice>);
 
     const html = renderToStaticMarkup(
       React.createElement(ProfitabilityChart, {
@@ -30,8 +36,12 @@ describe('ProfitabilityChart', () => {
   });
 
   it('renders with non-zero prove and verify cost', () => {
-    vi.mocked(swr.default).mockReturnValue({ data: { data: feeData } } as any);
-    vi.spyOn(priceService, 'useEthPrice').mockReturnValue({ data: 1 } as any);
+    vi.mocked(swr.default).mockReturnValue({
+      data: { data: feeData } as RequestResult<BatchFeeComponent[]>,
+    } as unknown as ReturnType<typeof swr.default>);
+    vi.spyOn(priceService, 'useEthPrice').mockReturnValue({
+      data: 1,
+    } as unknown as ReturnType<typeof priceService.useEthPrice>);
 
     const html = renderToStaticMarkup(
       React.createElement(ProfitabilityChart, {

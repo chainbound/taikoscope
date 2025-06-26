@@ -220,7 +220,7 @@ describe('navigationUtils', () => {
 
       function Wrapper() {
         const { setTimeRange } = useTimeRangeSync();
-        setFn = (r) => setTimeRange(r as any);
+        setFn = (r) => setTimeRange(r);
         return null;
       }
 
