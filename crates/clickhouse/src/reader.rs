@@ -2287,24 +2287,24 @@ impl ClickhouseReader {
         // Create a unique set of all sequencers from all data sources
         let all_sequencers: BTreeSet<AddressBytes> = fees_by_sequencer
             .keys()
-            .cloned()
-            .chain(prove_map.keys().cloned())
-            .chain(verify_map.keys().cloned())
+            .copied()
+            .chain(prove_map.keys().copied())
+            .chain(verify_map.keys().copied())
             .collect();
 
         let mut results: Vec<SequencerFeeRow> = all_sequencers
             .into_iter()
             .map(|sequencer| {
                 let (priority_fee, base_fee, l1_total_cost) =
-                    fees_by_sequencer.get(&sequencer).cloned().unwrap_or_default();
+                    fees_by_sequencer.get(&sequencer).copied().unwrap_or_default();
 
                 SequencerFeeRow {
                     sequencer,
                     priority_fee,
                     base_fee,
-                    l1_data_cost: if l1_total_cost > 0 { Some(l1_total_cost) } else { None },
-                    prove_cost: prove_map.get(&sequencer).cloned(),
-                    verify_cost: verify_map.get(&sequencer).cloned(),
+                    l1_data_cost: (l1_total_cost > 0).then_some(l1_total_cost),
+                    prove_cost: prove_map.get(&sequencer).copied(),
+                    verify_cost: verify_map.get(&sequencer).copied(),
                 }
             })
             .collect();
