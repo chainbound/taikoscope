@@ -10,6 +10,9 @@ import { ChartCard } from '../ChartCard';
 import { TAIKO_PINK } from '../../theme';
 import { TimeRange, MetricData, ChartsData } from '../../types';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useEthPrice } from '../../services/priceService';
+import { rangeToHours } from '../../utils/timeRange';
+import { formatEth } from '../../utils';
 
 const SequencerPieChart = lazy(() =>
   import('../SequencerPieChart').then((m) => ({
@@ -86,14 +89,33 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [cloudCost, setCloudCost] = useState(1000);
   const [proverCost, setProverCost] = useState(1000);
 
+  const { data: ethPrice = 0 } = useEthPrice();
+  const metricsWithHardware = React.useMemo(() => {
+    if (!isEconomicsView) return metricsData.metrics;
+    const HOURS_IN_MONTH = 30 * 24;
+    const hours = rangeToHours(timeRange);
+    const costUsd = ((cloudCost + proverCost) / HOURS_IN_MONTH) * hours;
+    const costWei = ethPrice > 0 ? (costUsd / ethPrice) * 1e18 : null;
+    const hardwareMetric: MetricData = {
+      title: 'Hardware Costs',
+      value: costWei != null ? formatEth(costWei) : 'N/A',
+      group: 'Network Economics',
+    };
+    const idx = metricsData.metrics.findIndex((m) => m.title === 'Verify Cost');
+    const list = [...metricsData.metrics];
+    if (idx >= 0) list.splice(idx + 1, 0, hardwareMetric);
+    else list.push(hardwareMetric);
+    return list;
+  }, [metricsData.metrics, isEconomicsView, cloudCost, proverCost, ethPrice, timeRange]);
+
   const visibleMetrics = React.useMemo(
     () =>
-      metricsData.metrics.filter((m) => {
+      metricsWithHardware.filter((m) => {
         if (selectedSequencer && m.group === 'Sequencers') return false;
         if (isEconomicsView) return m.group === 'Network Economics';
         return m.group !== 'Network Economics';
       }),
-    [metricsData.metrics, selectedSequencer, isEconomicsView],
+    [metricsWithHardware, selectedSequencer, isEconomicsView],
   );
 
   const groupedMetrics = React.useMemo(

@@ -22,13 +22,14 @@ describe('metricsCreator', () => {
       baseFee: 2e18,
       proveCost: 5e18,
       verifyCost: 6e18,
+      hardwareCost: 7e18,
       l1DataCost: 3e18,
       profit: 39e18,
       l2Block: 100,
       l1Block: 50,
     });
 
-    expect(metrics).toHaveLength(19);
+    expect(metrics).toHaveLength(20);
     expect(metrics[0].value).toBe('1.23');
 
     const proveMetric = metrics.find((m) => m.title === 'Avg. Prove Time');
@@ -74,6 +75,7 @@ describe('metricsCreator', () => {
       baseFee: null,
       proveCost: null,
       verifyCost: null,
+      hardwareCost: null,
       l1DataCost: null,
       profit: null,
       l2Block: null,
