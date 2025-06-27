@@ -136,10 +136,10 @@ pub const TABLE_SCHEMAS: &[TableSchema] = &[
     TableSchema {
         name: "l1_data_costs",
         columns: "l1_block_number UInt64,
-                 l2_block_number UInt64,
+                 batch_id UInt64,
                  cost UInt128,
                  inserted_at DateTime64(3) DEFAULT now64()",
-        order_by: "l1_block_number",
+        order_by: "l1_block_number, batch_id",
     },
     TableSchema {
         name: "prove_costs",

@@ -334,11 +334,11 @@ impl ClickhouseWriter {
     pub async fn insert_l1_data_cost(
         &self,
         l1_block_number: u64,
-        l2_block_number: u64,
+        batch_id: u64,
         cost: u128,
     ) -> Result<()> {
         let client = self.base.clone();
-        let row = L1DataCostInsertRow { l1_block_number, l2_block_number, cost };
+        let row = L1DataCostInsertRow { l1_block_number, batch_id, cost };
         let mut insert = client.insert(&format!("{}.l1_data_costs", self.db_name))?;
         insert.write(&row).await?;
         insert.end().await?;
@@ -737,13 +737,10 @@ mod tests {
         let url = Url::parse(mock.url()).unwrap();
         let writer = ClickhouseWriter::new(url, "db".to_owned(), "user".into(), "pass".into());
 
-        writer.insert_l1_data_cost(10, 11, 42).await.unwrap();
+        writer.insert_l1_data_cost(10, 7, 42).await.unwrap();
 
         let rows: Vec<L1DataCostInsertRow> = ctl.collect().await;
-        assert_eq!(
-            rows,
-            vec![L1DataCostInsertRow { l1_block_number: 10, l2_block_number: 11, cost: 42 }]
-        );
+        assert_eq!(rows, vec![L1DataCostInsertRow { l1_block_number: 10, batch_id: 7, cost: 42 }]);
     }
 
     #[tokio::test]
