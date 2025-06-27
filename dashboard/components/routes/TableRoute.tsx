@@ -127,7 +127,11 @@ export const TableRoute: React.FC = () => {
 
         let res;
         let aggRes;
-        if (config.supportsPagination) {
+        if (tableType === 'reorgs') {
+          [res] = await Promise.all([
+            config.fetcher(range, PAGE_LIMIT, startingAfter, endingBefore),
+          ]);
+        } else if (config.supportsPagination) {
           const address = fetcherArgs.pop();
           if (config.aggregatedFetcher) {
             [res, aggRes] = await Promise.all([
@@ -151,10 +155,6 @@ export const TableRoute: React.FC = () => {
               ),
             ]);
           }
-        } else if (tableType === 'reorgs') {
-          [res] = await Promise.all([
-            config.fetcher(range, PAGE_LIMIT, startingAfter, endingBefore),
-          ]);
         } else {
           [res, aggRes] = await (config.aggregatedFetcher
             ? Promise.all([
