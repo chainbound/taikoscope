@@ -119,28 +119,21 @@ export const normalizeTimeRange = (
   range: string,
   now: number = Date.now(),
 ): string => {
-  let start = now - 3600_000;
-  let end = now;
-
   const trimmed = range.trim();
-  const preset = trimmed.match(/^(\d+)([mhd])$/i);
-  if (preset) {
-    const value = parseInt(preset[1], 10);
-    const ms =
-      value *
-      (preset[2].toLowerCase() === 'h'
-        ? 3_600_000
-        : preset[2].toLowerCase() === 'd'
-        ? 86_400_000
-        : 60_000);
-    start = now - ms;
-  } else {
-    const custom = trimmed.match(/^(\d+)-(\d+)$/);
-    if (custom) {
-      start = parseInt(custom[1], 10);
-      end = parseInt(custom[2], 10);
-    }
+
+  // Keep preset ranges as-is so the server calculates the window
+  if (/^\d+[mhd]$/i.test(trimmed)) {
+    return trimmed;
   }
 
+  const custom = trimmed.match(/^(\d+)-(\d+)$/);
+  if (custom) {
+    const start = parseInt(custom[1], 10);
+    const end = parseInt(custom[2], 10);
+    return `${start}-${end}`;
+  }
+
+  const start = now - 3_600_000;
+  const end = now;
   return `${start}-${end}`;
 };
