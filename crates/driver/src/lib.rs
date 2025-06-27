@@ -555,7 +555,7 @@ impl Driver {
                 let cost = primitives::l1_data_cost::cost_from_receipt(&receipt);
                 if let Err(e) = self
                     .clickhouse
-                    .insert_l1_data_cost(batch.info.proposedIn, self.last_proposed_l2_block, cost)
+                    .insert_l1_data_cost(batch.info.proposedIn, batch.meta.batchId, cost)
                     .await
                 {
                     tracing::error!(

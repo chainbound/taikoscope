@@ -1671,14 +1671,12 @@ impl ClickhouseReader {
         let mut query = format!(
             "SELECT sum(c.cost) AS total \
              FROM {db}.l1_data_costs c \
-             INNER JOIN {db}.l2_head_events h \
-               ON c.l2_block_number = h.l2_block_number \
-             INNER JOIN {db}.batch_blocks bb \
-               ON h.l2_block_number = bb.l2_block_number \
              INNER JOIN {db}.batches b \
-               ON bb.batch_id = b.batch_id \
+               ON c.batch_id = b.batch_id AND c.l1_block_number = b.l1_block_number \
              INNER JOIN {db}.verified_batches vb \
                ON b.batch_id = vb.batch_id AND b.l1_block_number = vb.l1_block_number \
+             INNER JOIN {db}.l1_head_events h \
+               ON b.l1_block_number = h.l1_block_number \
              WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
                AND {filter}",
             interval = range.interval(),
@@ -1686,7 +1684,7 @@ impl ClickhouseReader {
             db = self.db_name,
         );
         if let Some(addr) = sequencer {
-            query.push_str(&format!(" AND h.sequencer = unhex('{}')", encode(addr)));
+            query.push_str(&format!(" AND b.proposer_addr = unhex('{}')", encode(addr)));
         }
 
         let rows = self.execute::<SumRow>(&query).await?;
@@ -1715,10 +1713,14 @@ impl ClickhouseReader {
             "SELECT h.l2_block_number, \
                     sum_priority_fee AS priority_fee, \
                     sum_base_fee AS base_fee, \
-                    toNullable(dc.cost) AS l1_data_cost \
+                    toNullable(dc.cost / b.batch_size) AS l1_data_cost \
              FROM {db}.l2_head_events h \
+             LEFT JOIN {db}.batch_blocks bb \
+               ON h.l2_block_number = bb.l2_block_number \
+             LEFT JOIN {db}.batches b \
+               ON bb.batch_id = b.batch_id \
              LEFT JOIN {db}.l1_data_costs dc \
-               ON h.l2_block_number = dc.l2_block_number \
+               ON b.batch_id = dc.batch_id \
              WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
                AND {filter}",
             interval = range.interval(),
@@ -1765,7 +1767,7 @@ impl ClickhouseReader {
                     b.proposer_addr AS proposer, \
                     sum(h.sum_priority_fee) AS priority_fee, \
                     sum(h.sum_base_fee) AS base_fee, \
-                    toNullable(sum(dc.cost)) AS l1_data_cost \
+                    toNullable(max(dc.cost)) AS l1_data_cost \
              FROM {db}.batch_blocks bb \
              INNER JOIN {db}.batches b \
                ON bb.batch_id = b.batch_id \
@@ -1776,7 +1778,7 @@ impl ClickhouseReader {
              LEFT JOIN {db}.l2_head_events h \
                ON bb.l2_block_number = h.l2_block_number \
              LEFT JOIN {db}.l1_data_costs dc \
-               ON h.l2_block_number = dc.l2_block_number \
+               ON bb.batch_id = dc.batch_id \
              WHERE l1.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
                AND {filter}",
             interval = range.interval(),
@@ -1917,7 +1919,7 @@ impl ClickhouseReader {
             "SELECT b.proposer_addr AS proposer, \
                     sum(h.sum_priority_fee) AS priority_fee, \
                     sum(h.sum_base_fee) AS base_fee, \
-                    toNullable(sum(dc.cost)) AS l1_data_cost, \
+                    sum(dc.cost / b.batch_size) AS l1_data_cost, \
                     toNullable(sum(pc.cost)) AS prove_cost, \
                     toNullable(sum(vc.cost)) AS verify_cost \
              FROM {db}.batch_blocks bb \
@@ -1930,7 +1932,7 @@ impl ClickhouseReader {
              LEFT JOIN {db}.l2_head_events h \
                ON bb.l2_block_number = h.l2_block_number \
              LEFT JOIN {db}.l1_data_costs dc \
-               ON h.l2_block_number = dc.l2_block_number \
+               ON bb.batch_id = dc.batch_id \
              LEFT JOIN {db}.prove_costs pc \
                ON bb.batch_id = pc.batch_id \
              LEFT JOIN {db}.verify_costs vc \
@@ -2324,16 +2326,16 @@ impl ClickhouseReader {
             "SELECT h.sequencer, \
                     sum(sum_priority_fee) AS priority_fee, \
                     sum(sum_base_fee) AS base_fee, \
-                    toNullable(sum(dc.cost)) AS l1_data_cost, \
+                    sum(dc.cost / b.batch_size) AS l1_data_cost, \
                     toNullable(sum(pc.cost)) AS prove_cost, \
                     toNullable(sum(vc.cost)) AS verify_cost \
              FROM {db}.l2_head_events h \
-             LEFT JOIN {db}.l1_data_costs dc \
-               ON h.l2_block_number = dc.l2_block_number \
              LEFT JOIN {db}.batch_blocks bb \
                ON h.l2_block_number = bb.l2_block_number \
              LEFT JOIN {db}.batches b \
                ON bb.batch_id = b.batch_id \
+             LEFT JOIN {db}.l1_data_costs dc \
+               ON b.batch_id = dc.batch_id \
              INNER JOIN {db}.verified_batches vb \
                ON b.batch_id = vb.batch_id AND b.l1_block_number = vb.l1_block_number \
              LEFT JOIN {db}.prove_costs pc \
@@ -2531,14 +2533,16 @@ mod tests {
             "SELECT h.sequencer, \
                     sum(sum_priority_fee) AS priority_fee, \
                     sum(sum_base_fee) AS base_fee, \
-                    toNullable(sum(dc.cost)) AS l1_data_cost, \
+                    sum(dc.cost) AS l1_data_cost, \
                     toNullable(sum(pc.cost)) AS prove_cost, \
                     toNullable(sum(vc.cost)) AS verify_cost \
              FROM {db}.l2_head_events h \
-             LEFT JOIN {db}.l1_data_costs dc \
-               ON h.l2_block_number = dc.l2_block_number \
              LEFT JOIN {db}.batch_blocks bb \
                ON h.l2_block_number = bb.l2_block_number \
+             LEFT JOIN {db}.batches b \
+               ON bb.batch_id = b.batch_id \
+             LEFT JOIN {db}.l1_data_costs dc \
+               ON b.batch_id = dc.batch_id \
              LEFT JOIN {db}.prove_costs pc \
                ON bb.batch_id = pc.batch_id \
              LEFT JOIN {db}.verify_costs vc \
@@ -2565,6 +2569,7 @@ mod tests {
             query.contains("batch_blocks bb ON"),
             "Query should have space between 'bb' and 'ON'",
         );
+        assert!(query.contains("batches b ON"), "Query should have space between 'b' and 'ON'",);
         assert!(
             query.contains("prove_costs pc ON"),
             "Query should have space between 'pc' and 'ON'",
