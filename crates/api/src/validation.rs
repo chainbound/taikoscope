@@ -228,18 +228,18 @@ pub fn validate_range_exclusivity(
 
 /// Check if `TimeRangeParams` has any values set
 pub const fn has_time_range_params(params: &TimeRangeParams) -> bool {
-    params.created_gt.is_some() ||
-        params.created_gte.is_some() ||
-        params.created_lt.is_some() ||
-        params.created_lte.is_some()
+    params.created_gt.is_some()
+        || params.created_gte.is_some()
+        || params.created_lt.is_some()
+        || params.created_lte.is_some()
 }
 
 /// Check if `BlockRangeParams` has any values set
 pub const fn has_block_range_params(params: &BlockRangeParams) -> bool {
-    params.block_gt.is_some() ||
-        params.block_gte.is_some() ||
-        params.block_lt.is_some() ||
-        params.block_lte.is_some()
+    params.block_gt.is_some()
+        || params.block_gte.is_some()
+        || params.block_lt.is_some()
+        || params.block_lte.is_some()
 }
 
 /// Convert a range string to `ChronoDuration` (e.g., "15m", "1h", "24h", "7d")

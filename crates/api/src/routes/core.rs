@@ -648,8 +648,8 @@ pub async fn block_profits(
         .into_iter()
         .map(|r| BlockProfitItem {
             block: r.l2_block_number,
-            profit: r.priority_fee as i128 + r.base_fee as i128 -
-                r.l1_data_cost.unwrap_or(0) as i128,
+            profit: r.priority_fee as i128 + r.base_fee as i128
+                - r.l1_data_cost.unwrap_or(0) as i128,
         })
         .collect();
 
