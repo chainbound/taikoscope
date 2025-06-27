@@ -8,7 +8,7 @@ import { calculateProfit } from '../utils/profit';
 
 const NODE_GREEN = '#22c55e';
 import useSWR from 'swr';
-import { fetchL2Fees } from '../services/apiService';
+import { fetchBatchFeeComponents } from '../services/apiService';
 import { getSequencerName } from '../sequencerConfig';
 import { useEthPrice } from '../services/priceService';
 import { TimeRange } from '../types';
@@ -155,14 +155,97 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
   const { theme } = useTheme();
   const textColor =
     theme === 'dark' ? darkTheme.foreground : lightTheme.foreground;
-  const { data: feeRes } = useSWR(['l2FeesFlow', timeRange, address], () =>
-    fetchL2Fees(timeRange, address),
+  const { data: batchRes } = useSWR(['feeFlowBatches', timeRange, address], () =>
+    fetchBatchFeeComponents(timeRange, address),
   );
+  const feeRes = React.useMemo(() => {
+    if (!batchRes?.data) return null;
+    const map = new Map<string, {
+      priority: number;
+      base: number;
+      l1: number;
+      prove: number;
+      verify: number;
+      count: number;
+    }>();
+    batchRes.data.forEach((b) => {
+      const entry = map.get(b.sequencer) || {
+        priority: 0,
+        base: 0,
+        l1: 0,
+        prove: 0,
+        verify: 0,
+        count: 0,
+      };
+      entry.priority += b.priority;
+      entry.base += b.base;
+      entry.l1 += b.l1Cost ?? 0;
+      entry.prove += b.amortizedProveCost ?? 0;
+      entry.verify += b.amortizedVerifyCost ?? 0;
+      entry.count += 1;
+      map.set(b.sequencer, entry);
+    });
+    return { map };
+  }, [batchRes]);
   const { data: ethPrice = 0 } = useEthPrice();
 
-  const priorityFee = feeRes?.data?.priority_fee ?? null;
-  const baseFee = feeRes?.data?.base_fee ?? null;
-  const sequencerFees = feeRes?.data?.sequencers ?? [];
+  const priorityFee = React.useMemo(() => {
+    if (!feeRes) return null;
+    let v = 0;
+    feeRes.map.forEach((s) => {
+      v += s.priority;
+    });
+    return v;
+  }, [feeRes]);
+  const baseFee = React.useMemo(() => {
+    if (!feeRes) return null;
+    let v = 0;
+    feeRes.map.forEach((s) => {
+      v += s.base;
+    });
+    return v;
+  }, [feeRes]);
+  const l1DataCostTotal = React.useMemo(() => {
+    if (!feeRes) return 0;
+    let v = 0;
+    feeRes.map.forEach((s) => {
+      v += s.l1;
+    });
+    return v;
+  }, [feeRes]);
+  const proveCostTotal = React.useMemo(() => {
+    if (!feeRes) return 0;
+    let v = 0;
+    feeRes.map.forEach((s) => {
+      v += s.prove;
+    });
+    return v;
+  }, [feeRes]);
+  const verifyCostTotal = React.useMemo(() => {
+    if (!feeRes) return 0;
+    let v = 0;
+    feeRes.map.forEach((s) => {
+      v += s.verify;
+    });
+    return v;
+  }, [feeRes]);
+  const sequencerFees = React.useMemo(() => {
+    if (!feeRes)
+      return [] as {
+        address: string;
+        priority: number;
+        base: number;
+        l1: number;
+        prove: number;
+        verify: number;
+        count: number;
+      }[];
+    const arr: { address: string; priority: number; base: number; l1: number; prove: number; verify: number; count: number }[] = [];
+    feeRes.map.forEach((v, addr) => {
+      arr.push({ address: addr, ...v });
+    });
+    return arr;
+  }, [feeRes]);
 
   if (!feeRes) {
     return (
@@ -194,28 +277,27 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
   // Convert fees to USD
   const priorityFeeUsd = safeValue(((priorityFee ?? 0) / WEI_TO_ETH) * ethPrice);
   const baseFeeUsd = safeValue(((baseFee ?? 0) / WEI_TO_ETH) * ethPrice);
-  const l1DataCostTotalUsd = safeValue(
-    ((feeRes?.data?.l1_data_cost ?? 0) / WEI_TO_ETH) * ethPrice,
-  );
-  const l1ProveCost = safeValue(
-    ((feeRes?.data?.prove_cost ?? 0) / WEI_TO_ETH) * ethPrice,
-  );
-  const l1VerifyCost = safeValue(
-    ((feeRes?.data?.verify_cost ?? 0) / WEI_TO_ETH) * ethPrice,
-  );
+  const l1DataCostTotalUsd = safeValue((l1DataCostTotal / WEI_TO_ETH) * ethPrice);
+  const l1ProveCost = safeValue((proveCostTotal / WEI_TO_ETH) * ethPrice);
+  const l1VerifyCost = safeValue((verifyCostTotal / WEI_TO_ETH) * ethPrice);
   const baseFeeDaoUsd = safeValue(baseFeeUsd * 0.25);
 
   // Scale operational costs to the selected time range
   const hours = rangeToHours(timeRange);
-  const hardwareCostPerSeq = safeValue(((cloudCost + proverCost) / MONTH_HOURS) * hours);
-  const totalHardwareCost = hardwareCostPerSeq;
+  const totalBatchCount = sequencerFees.reduce((acc, s) => acc + s.count, 0);
+  const hardwarePerBatchUsd =
+    totalBatchCount > 0
+      ? ((cloudCost + proverCost) / MONTH_HOURS) * (hours / totalBatchCount)
+      : 0;
+  const totalHardwareCost = hardwarePerBatchUsd * totalBatchCount;
 
   const seqData = sequencerFees.map((f) => {
-    const priorityWei = f.priority_fee ?? 0;
-    const baseWei = (f.base_fee ?? 0) * 0.75;
-    const l1CostWei = f.l1_data_cost ?? 0;
-    const proveWei = f.prove_cost ?? 0;
-    const verifyWei = f.verify_cost ?? 0;
+    const priorityWei = f.priority;
+    const baseWei = f.base * 0.75;
+    const l1CostWei = f.l1;
+    const proveWei = f.prove;
+    const verifyWei = f.verify;
+    const hardwareCostSeqUsd = hardwarePerBatchUsd * f.count;
     const priorityUsd = safeValue((priorityWei / WEI_TO_ETH) * ethPrice);
     const baseUsd = safeValue((baseWei / WEI_TO_ETH) * ethPrice);
     const l1CostUsd = safeValue((l1CostWei / WEI_TO_ETH) * ethPrice);
@@ -227,17 +309,17 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
 
     const { profitUsd, profitEth } = calculateProfit({
       priorityFee: priorityWei,
-      baseFee: f.base_fee ?? 0,
+      baseFee: f.base,
       l1DataCost: l1CostWei,
       proveCost: proveWei,
       verifyCost: verifyWei,
-      hardwareCostUsd: hardwareCostPerSeq,
+      hardwareCostUsd: hardwareCostSeqUsd,
       ethPrice,
     });
     const profit = safeValue(Math.max(0, profitUsd));
     const profitWei = safeValue(profitEth * WEI_TO_ETH);
     let remaining = revenue;
-    const actualHardwareCost = safeValue(Math.min(hardwareCostPerSeq, remaining));
+    const actualHardwareCost = safeValue(Math.min(hardwareCostSeqUsd, remaining));
     remaining -= actualHardwareCost;
     const actualL1Cost = safeValue(Math.min(l1CostUsd, remaining));
     remaining -= actualL1Cost;

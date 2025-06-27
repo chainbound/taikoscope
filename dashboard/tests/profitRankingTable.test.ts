@@ -6,7 +6,6 @@ vi.mock('swr', () => ({ default: vi.fn() }));
 import type {
   RequestResult,
   SequencerDistributionDataItem,
-  L2FeesResponse,
 } from '../services/apiService';
 import * as api from '../services/apiService';
 import * as priceService from '../services/priceService';
@@ -25,38 +24,29 @@ describe('ProfitRankingTable', () => {
       } as unknown as ReturnType<typeof swr.default>)
       .mockReturnValueOnce({
         data: {
-          data: {
-            priority_fee: 3e18,
-            base_fee: 1.5e18,
-            l1_data_cost: 0,
-            prove_cost: 0,
-            verify_cost: 0,
-            sequencers: [
-              {
-                address: '0xseqA',
-                priority_fee: 2e18,
-                base_fee: 1e18,
-                l1_data_cost: 0,
-                prove_cost: 0,
-                verify_cost: 0,
-              },
-              {
-                address: '0xseqB',
-                priority_fee: 1e18,
-                base_fee: 0.5e18,
-                l1_data_cost: 0,
-                prove_cost: 0,
-                verify_cost: 0,
-              },
-            ],
-          },
-        } as RequestResult<L2FeesResponse>,
-      } as unknown as ReturnType<typeof swr.default>)
-      .mockReturnValueOnce({
-        data: new Map([
-          ['0xseqa', 1],
-          ['0xseqb', 1],
-        ]),
+          data: [
+            {
+              batch: 1,
+              l1Block: 1,
+              sequencer: '0xseqA',
+              priority: 2e18,
+              base: 1e18,
+              l1Cost: 0,
+              amortizedProveCost: 0,
+              amortizedVerifyCost: 0,
+            },
+            {
+              batch: 2,
+              l1Block: 2,
+              sequencer: '0xseqB',
+              priority: 1e18,
+              base: 0.5e18,
+              l1Cost: 0,
+              amortizedProveCost: 0,
+              amortizedVerifyCost: 0,
+            },
+          ],
+        } as RequestResult<api.BatchFeeComponent[]>,
       } as unknown as ReturnType<typeof swr.default>);
 
     vi.spyOn(api, 'fetchSequencerDistribution').mockResolvedValue({
@@ -67,35 +57,32 @@ describe('ProfitRankingTable', () => {
       badRequest: false,
       error: null,
     } as RequestResult<SequencerDistributionDataItem[]>);
-    vi.spyOn(api, 'fetchL2Fees').mockResolvedValue({
-      data: {
-        priority_fee: 3e18,
-        base_fee: 1.5e18,
-        l1_data_cost: 0,
-        prove_cost: 0,
-        verify_cost: 0,
-        sequencers: [
-          {
-            address: '0xseqA',
-            priority_fee: 2e18,
-            base_fee: 1e18,
-            l1_data_cost: 0,
-            prove_cost: 0,
-            verify_cost: 0,
-          },
-          {
-            address: '0xseqB',
-            priority_fee: 1e18,
-            base_fee: 0.5e18,
-            l1_data_cost: 0,
-            prove_cost: 0,
-            verify_cost: 0,
-          },
-        ],
-      },
+    vi.spyOn(api, 'fetchBatchFeeComponents').mockResolvedValue({
+      data: [
+        {
+          batch: 1,
+          l1Block: 1,
+          sequencer: '0xseqA',
+          priority: 2e18,
+          base: 1e18,
+          l1Cost: 0,
+          amortizedProveCost: 0,
+          amortizedVerifyCost: 0,
+        },
+        {
+          batch: 2,
+          l1Block: 2,
+          sequencer: '0xseqB',
+          priority: 1e18,
+          base: 0.5e18,
+          l1Cost: 0,
+          amortizedProveCost: 0,
+          amortizedVerifyCost: 0,
+        },
+      ],
       badRequest: false,
       error: null,
-    } as RequestResult<L2FeesResponse>);
+    } as RequestResult<api.BatchFeeComponent[]>);
     vi.spyOn(priceService, 'useEthPrice').mockReturnValue({
       data: 1000,
     } as unknown as ReturnType<typeof priceService.useEthPrice>);
@@ -129,34 +116,20 @@ describe('ProfitRankingTable', () => {
         } as RequestResult<SequencerDistributionDataItem[]>,
       } as unknown as ReturnType<typeof swr.default>)
       .mockReturnValueOnce({
-        data: new Map([['0xseqa', 1e16]]),
-      } as unknown as ReturnType<typeof swr.default>)
-      .mockReturnValueOnce({
-        data: new Map([['0xseqa', 2e16]]),
-      } as unknown as ReturnType<typeof swr.default>)
-      .mockReturnValueOnce({
         data: {
-          data: {
-            priority_fee: 1e18,
-            base_fee: 0,
-            l1_data_cost: 5e17,
-            prove_cost: 1e16,
-            verify_cost: 2e16,
-            sequencers: [
-              {
-                address: '0xseqA',
-                priority_fee: 1e18,
-                base_fee: 0,
-                l1_data_cost: 5e17,
-                prove_cost: 1e16,
-                verify_cost: 2e16,
-              },
-            ],
-          },
-        } as RequestResult<L2FeesResponse>,
-      } as unknown as ReturnType<typeof swr.default>)
-      .mockReturnValueOnce({
-        data: new Map([['0xseqa', 1]])
+          data: [
+            {
+              batch: 1,
+              l1Block: 1,
+              sequencer: '0xseqA',
+              priority: 1e18,
+              base: 0,
+              l1Cost: 5e17,
+              amortizedProveCost: 1e16,
+              amortizedVerifyCost: 2e16,
+            },
+          ],
+        } as RequestResult<api.BatchFeeComponent[]>,
       } as unknown as ReturnType<typeof swr.default>);
 
     vi.spyOn(api, 'fetchSequencerDistribution').mockResolvedValue({
@@ -164,27 +137,22 @@ describe('ProfitRankingTable', () => {
       badRequest: false,
       error: null,
     } as RequestResult<SequencerDistributionDataItem[]>);
-    vi.spyOn(api, 'fetchL2Fees').mockResolvedValue({
-      data: {
-        priority_fee: 1e18,
-        base_fee: 0,
-        l1_data_cost: 5e17,
-        prove_cost: 1e16,
-        verify_cost: 2e16,
-        sequencers: [
-          {
-            address: '0xseqA',
-            priority_fee: 1e18,
-            base_fee: 0,
-            l1_data_cost: 5e17,
-            prove_cost: 1e16,
-            verify_cost: 2e16,
-          },
-        ],
-      },
+    vi.spyOn(api, 'fetchBatchFeeComponents').mockResolvedValue({
+      data: [
+        {
+          batch: 1,
+          l1Block: 1,
+          sequencer: '0xseqA',
+          priority: 1e18,
+          base: 0,
+          l1Cost: 5e17,
+          amortizedProveCost: 1e16,
+          amortizedVerifyCost: 2e16,
+        },
+      ],
       badRequest: false,
       error: null,
-    } as RequestResult<L2FeesResponse>);
+    } as RequestResult<api.BatchFeeComponent[]>);
     vi.spyOn(priceService, 'useEthPrice').mockReturnValue({
       data: 100,
     } as unknown as ReturnType<typeof priceService.useEthPrice>);

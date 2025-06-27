@@ -3,10 +3,8 @@ import useSWR from 'swr';
 import { TimeRange } from '../types';
 import {
   fetchSequencerDistribution,
-  fetchL2Fees,
   fetchBatchFeeComponents,
 } from '../services/apiService';
-import * as apiService from '../services/apiService';
 import { getSequencerAddress } from '../sequencerConfig';
 import { addressLink, formatEth, formatDecimal } from '../utils';
 import { calculateProfit } from '../utils/profit';
@@ -43,40 +41,43 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
   const { data: ethPrice = 0 } = useEthPrice();
 
 
-  const { data: feeRes } = useSWR(['profitRankingFees', timeRange], () =>
-    fetchL2Fees(timeRange),
+  const { data: batchRes } = useSWR(['profitRankingBatchesAll', timeRange], () =>
+    fetchBatchFeeComponents(timeRange),
   );
   const feeDataMap = React.useMemo(() => {
-    const map = new Map<string, apiService.SequencerFee>();
-    feeRes?.data?.sequencers.forEach((f) => {
-      map.set(f.address.toLowerCase(), f);
-    });
-    return map;
-  }, [feeRes]);
-
-  const addresses = React.useMemo(
-    () =>
-      sequencers.map((s) =>
-        (s.address || getSequencerAddress(s.name) || '').toLowerCase(),
-      ),
-    [sequencers],
-  );
-
-  const { data: batchCounts } = useSWR(
-    sequencers.length
-      ? ['profitRankingBatches', timeRange, addresses.join(',')]
-      : null,
-    async () => {
-      const results = await Promise.all(
-        addresses.map((addr) => fetchBatchFeeComponents(timeRange, addr)),
-      );
-      const map = new Map<string, number>();
-      results.forEach((res, i) => {
-        map.set(addresses[i], res.data?.length ?? 0);
+    const map = new Map<string, {
+      priority: number;
+      base: number;
+      l1: number;
+      prove: number;
+      verify: number;
+      count: number;
+    }>();
+    if (Array.isArray(batchRes?.data)) {
+      batchRes.data.forEach((b) => {
+        const addr = (b.sequencer || '').toLowerCase();
+        if (!addr) return;
+      const entry = map.get(addr) || {
+        priority: 0,
+        base: 0,
+        l1: 0,
+        prove: 0,
+        verify: 0,
+        count: 0,
+      };
+      entry.priority += b.priority;
+      entry.base += b.base;
+      entry.l1 += b.l1Cost ?? 0;
+      entry.prove += b.amortizedProveCost ?? 0;
+      entry.verify += b.amortizedVerifyCost ?? 0;
+      entry.count += 1;
+      map.set(addr, entry);
       });
-      return map;
-    },
-  );
+    }
+    return map;
+  }, [batchRes]);
+
+
 
   const [sortBy, setSortBy] = React.useState<
     'name' | 'blocks' | 'batches' | 'revenue' | 'cost' | 'profit' | 'ratio'
@@ -87,15 +88,26 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
 
   const hours = rangeToHours(timeRange);
   const MONTH_HOURS = 30 * 24;
-  const costPerSeqUsd = ((cloudCost + proverCost) / MONTH_HOURS) * hours;
-  const costPerSeqEth = ethPrice ? costPerSeqUsd / ethPrice : 0;
+  const totalBatchCount = React.useMemo(() => {
+    let count = 0;
+    feeDataMap.forEach((v) => {
+      count += v.count;
+    });
+    return count;
+  }, [feeDataMap]);
+  const hardwarePerBatchUsd =
+    totalBatchCount > 0
+      ? ((cloudCost + proverCost) / MONTH_HOURS) * (hours / totalBatchCount)
+      : 0;
 
   const rows = sequencers.map((seq) => {
     const addr = seq.address || getSequencerAddress(seq.name) || '';
-    const batchCount = batchCounts?.get(addr.toLowerCase()) ?? null;
     const fees = feeDataMap.get(addr.toLowerCase());
-    const proveEth = (fees?.prove_cost ?? 0) / 1e18;
-    const verifyEth = (fees?.verify_cost ?? 0) / 1e18;
+    const batchCount = fees?.count ?? 0;
+    const costPerSeqUsd = hardwarePerBatchUsd * batchCount;
+    const costPerSeqEth = ethPrice ? costPerSeqUsd / ethPrice : 0;
+    const proveEth = (fees?.prove ?? 0) / 1e18;
+    const verifyEth = (fees?.verify ?? 0) / 1e18;
     const extraEth = proveEth + verifyEth;
     const extraUsd = extraEth * ethPrice;
     if (!fees) {
@@ -103,7 +115,7 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
         name: seq.name,
         address: addr,
         blocks: seq.value,
-        batches: batchCount,
+        batches: batchCount || null,
         revenueEth: null as number | null,
         revenueUsd: null as number | null,
         costEth: costPerSeqEth + extraEth,
@@ -114,18 +126,18 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
       };
     }
     const revenueEth =
-      ((fees.priority_fee ?? 0) + (fees.base_fee ?? 0) * 0.75) / 1e18;
-    const l1CostEth = (fees.l1_data_cost ?? 0) / 1e18;
+      ((fees.priority ?? 0) + (fees.base ?? 0) * 0.75) / 1e18;
+    const l1CostEth = (fees.l1 ?? 0) / 1e18;
     const revenueUsd = revenueEth * ethPrice;
     const l1CostUsd = l1CostEth * ethPrice;
     const costEth = costPerSeqEth + l1CostEth + extraEth;
     const costUsd = costPerSeqUsd + l1CostUsd + extraUsd;
     const { profitEth, profitUsd } = calculateProfit({
-      priorityFee: fees.priority_fee,
-      baseFee: fees.base_fee,
-      l1DataCost: fees.l1_data_cost,
-      proveCost: fees.prove_cost,
-      verifyCost: fees.verify_cost,
+      priorityFee: fees.priority,
+      baseFee: fees.base,
+      l1DataCost: fees.l1,
+      proveCost: fees.prove,
+      verifyCost: fees.verify,
       hardwareCostUsd: costPerSeqUsd,
       ethPrice,
     });
@@ -183,7 +195,7 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
     return data;
   }, [rows, sortBy, sortDirection]);
 
-  if (!feeRes) {
+  if (!batchRes) {
     return (
       <div className="flex items-center justify-center h-20 text-gray-500 dark:text-gray-400">
         Loading...
