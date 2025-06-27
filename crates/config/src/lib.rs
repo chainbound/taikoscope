@@ -106,12 +106,12 @@ impl InstatusOpts {
     /// Returns `true` if all required values are set.
     #[allow(clippy::missing_const_for_fn)]
     pub fn enabled(&self) -> bool {
-        if self.api_key.is_empty() ||
-            self.page_id.is_empty() ||
-            self.batch_submission_component_id.is_empty() ||
-            self.proof_submission_component_id.is_empty() ||
-            self.proof_verification_component_id.is_empty() ||
-            self.transaction_sequencing_component_id.is_empty()
+        if self.api_key.is_empty()
+            || self.page_id.is_empty()
+            || self.batch_submission_component_id.is_empty()
+            || self.proof_submission_component_id.is_empty()
+            || self.proof_verification_component_id.is_empty()
+            || self.transaction_sequencing_component_id.is_empty()
         {
             return false;
         }
