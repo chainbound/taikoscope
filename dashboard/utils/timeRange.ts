@@ -50,6 +50,7 @@ export const timeRangeToQuery = (range: string): string => {
 
   const trimmed = range.trim();
   const preset = trimmed.match(/^(\d+)([mhd])$/i);
+  const params = new URLSearchParams();
   if (preset) {
     const value = parseInt(preset[1], 10);
     const ms =
@@ -59,18 +60,28 @@ export const timeRangeToQuery = (range: string): string => {
         : preset[2].toLowerCase() === 'd'
         ? 86_400_000
         : 60_000);
-    start = now - ms;
+    params.set('created[gt]', String(now - ms));
+    params.set('created[lte]', String(now));
   } else {
     const custom = trimmed.match(/^(\d+)-(\d+)$/);
     if (custom) {
       start = parseInt(custom[1], 10);
       end = parseInt(custom[2], 10);
+      const diff = Math.max(end - start, 0);
+      let rangeParam: string;
+      if (diff % 86_400_000 === 0) {
+        rangeParam = `${diff / 86_400_000}d`;
+      } else if (diff % 3_600_000 === 0) {
+        rangeParam = `${diff / 3_600_000}h`;
+      } else {
+        rangeParam = `${Math.round(diff / 60_000)}m`;
+      }
+      params.set('range', rangeParam);
+    } else {
+      params.set('range', '1h');
     }
   }
 
-  const params = new URLSearchParams();
-  params.set('created[gt]', String(start));
-  params.set('created[lte]', String(end));
   return params.toString();
 };
 
