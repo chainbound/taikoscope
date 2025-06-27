@@ -721,8 +721,8 @@ impl BatchVerifyTimeoutMonitor {
     ) -> Result<()> {
         for (_l1_block_number, batch_id, posted_at) in unverified_batches {
             let age_duration = Utc::now().signed_duration_since(*posted_at);
-            if age_duration > ChronoDuration::from_std(self.verify_timeout)?
-                && !self.base.active_incidents.contains_key(batch_id)
+            if age_duration > ChronoDuration::from_std(self.verify_timeout)? &&
+                !self.base.active_incidents.contains_key(batch_id)
             {
                 debug!(
                     batch_id = batch_id,
@@ -774,9 +774,9 @@ impl BatchVerifyTimeoutMonitor {
     /// Resolve the catch-all incident if no specific incidents remain
     async fn resolve_catch_all_if_clear(&mut self, none_left: bool) -> Result<()> {
         let catch_all_key = 0;
-        if self.base.active_incidents.len() == 1
-            && self.base.active_incidents.contains_key(&catch_all_key)
-            && none_left
+        if self.base.active_incidents.len() == 1 &&
+            self.base.active_incidents.contains_key(&catch_all_key) &&
+            none_left
         {
             if let Some(incident_id) = self.base.active_incidents.get(&catch_all_key) {
                 info!(

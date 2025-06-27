@@ -32,10 +32,10 @@ pub fn router(state: ApiState, allowed_origins: Vec<String>) -> Router {
             let allowed = Arc::clone(&allowed);
             move |origin: &HeaderValue, _| match origin.to_str() {
                 Ok(origin) => {
-                    allowed.iter().any(|o| o == origin)
-                        || origin.ends_with(".vercel.app")
-                        || origin.starts_with("http://localhost:")
-                        || origin.starts_with("http://127.0.0.1:")
+                    allowed.iter().any(|o| o == origin) ||
+                        origin.ends_with(".vercel.app") ||
+                        origin.starts_with("http://localhost:") ||
+                        origin.starts_with("http://127.0.0.1:")
                 }
                 Err(_) => false,
             }

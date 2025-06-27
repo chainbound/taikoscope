@@ -7,7 +7,10 @@ use derive_more::Debug;
 use eyre::{Context, Result};
 use hex::encode;
 use serde::{Deserialize, Serialize};
-use std::{collections::BTreeSet, time::Instant};
+use std::{
+    collections::{BTreeSet, HashMap},
+    time::Instant,
+};
 use tracing::{debug, error};
 use url::Url;
 
@@ -1900,16 +1903,6 @@ impl ClickhouseReader {
         &self,
         range: TimeRange,
     ) -> Result<Vec<SequencerFeeRow>> {
-        #[derive(Row, Deserialize)]
-        struct RawRow {
-            proposer: AddressBytes,
-            priority_fee: u128,
-            base_fee: u128,
-            l1_data_cost: Option<u128>,
-            prove_cost: Option<u128>,
-            verify_cost: Option<u128>,
-        }
-
         let query = format!(
             "SELECT b.proposer_addr AS proposer, \
                     sum(h.sum_priority_fee) AS priority_fee, \
@@ -1937,18 +1930,8 @@ impl ClickhouseReader {
             db = self.db_name,
         );
 
-        let rows = self.execute::<RawRow>(&query).await?;
-        Ok(rows
-            .into_iter()
-            .map(|r| SequencerFeeRow {
-                sequencer: r.proposer,
-                priority_fee: r.priority_fee,
-                base_fee: r.base_fee,
-                l1_data_cost: r.l1_data_cost,
-                prove_cost: r.prove_cost,
-                verify_cost: r.verify_cost,
-            })
-            .collect())
+        let rows = self.execute::<SequencerFeeRow>(&query).await?;
+        Ok(rows)
     }
 
     /// Get prover cost since the given cutoff time with cursor-based pagination
@@ -2285,54 +2268,51 @@ impl ClickhouseReader {
 
     /// Get aggregated L2 fees grouped by sequencer for the given range
     pub async fn get_l2_fees_by_sequencer(&self, range: TimeRange) -> Result<Vec<SequencerFeeRow>> {
-        #[derive(Row, Deserialize)]
-        struct RawRow {
-            sequencer: AddressBytes,
-            priority_fee: u128,
-            base_fee: u128,
-            l1_data_cost: Option<u128>,
-            prove_cost: Option<u128>,
-            verify_cost: Option<u128>,
+        let batch_components = self.get_batch_fee_components(None, range).await?;
+        let prove_rows = self.get_prove_costs_by_proposer(range).await?;
+        let verify_rows = self.get_verify_costs_by_proposer(range).await?;
+
+        let prove_map: HashMap<AddressBytes, u128> = prove_rows.into_iter().collect();
+        let verify_map: HashMap<AddressBytes, u128> = verify_rows.into_iter().collect();
+
+        // Aggregate fees from batch components
+        let mut fees_by_sequencer: HashMap<AddressBytes, (u128, u128, u128)> = HashMap::new();
+        for component in batch_components {
+            let entry = fees_by_sequencer.entry(component.sequencer).or_default();
+            entry.0 += component.priority_fee;
+            entry.1 += component.base_fee;
+            entry.2 += component.l1_data_cost.unwrap_or(0);
         }
 
-        let query = format!(
-            "SELECT h.sequencer, \
-                    sum(sum_priority_fee) AS priority_fee, \
-                    sum(sum_base_fee) AS base_fee, \
-                    toNullable(sum(if(b.batch_size > 0, intDiv(dc.cost, b.batch_size), NULL))) AS l1_data_cost, \
-                    toNullable(sum(if(b.batch_size > 0, intDiv(pc.cost, b.batch_size), NULL))) AS prove_cost, \
-                    toNullable(sum(if(b.batch_size > 0, intDiv(vc.cost, b.batch_size), NULL))) AS verify_cost \
-             FROM {db}.l2_head_events h \
-             LEFT JOIN {db}.batch_blocks bb \
-               ON h.l2_block_number = bb.l2_block_number \
-             LEFT JOIN {db}.batches b \
-               ON bb.batch_id = b.batch_id \
-             LEFT JOIN {db}.l1_data_costs dc \
-               ON b.batch_id = dc.batch_id \
-             LEFT JOIN {db}.prove_costs pc \
-               ON b.batch_id = pc.batch_id \
-             LEFT JOIN {db}.verify_costs vc \
-               ON b.batch_id = vc.batch_id \
-             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
-               AND bb.batch_id IS NOT NULL \
-             GROUP BY h.sequencer \
-             ORDER BY priority_fee DESC",
-            interval = range.interval(),
-            db = self.db_name,
-        );
+        // Create a unique set of all sequencers from all data sources
+        let all_sequencers: BTreeSet<AddressBytes> = fees_by_sequencer
+            .keys()
+            .cloned()
+            .chain(prove_map.keys().cloned())
+            .chain(verify_map.keys().cloned())
+            .collect();
 
-        let rows = self.execute::<RawRow>(&query).await?;
-        Ok(rows
+        let mut results: Vec<SequencerFeeRow> = all_sequencers
             .into_iter()
-            .map(|r| SequencerFeeRow {
-                sequencer: r.sequencer,
-                priority_fee: r.priority_fee,
-                base_fee: r.base_fee,
-                l1_data_cost: r.l1_data_cost,
-                prove_cost: r.prove_cost,
-                verify_cost: r.verify_cost,
+            .map(|sequencer| {
+                let (priority_fee, base_fee, l1_total_cost) =
+                    fees_by_sequencer.get(&sequencer).cloned().unwrap_or_default();
+
+                SequencerFeeRow {
+                    sequencer,
+                    priority_fee,
+                    base_fee,
+                    l1_data_cost: if l1_total_cost > 0 { Some(l1_total_cost) } else { None },
+                    prove_cost: prove_map.get(&sequencer).cloned(),
+                    verify_cost: verify_map.get(&sequencer).cloned(),
+                }
             })
-            .collect())
+            .collect();
+
+        // Sort by priority fee in descending order as the original query did
+        results.sort_by(|a, b| b.priority_fee.cmp(&a.priority_fee));
+
+        Ok(results)
     }
 
     /// Get the blob count for each batch within the given range
@@ -2463,14 +2443,26 @@ mod tests {
     #[tokio::test]
     async fn fees_by_sequencer_returns_expected_rows() {
         let mock = Mock::new();
-        mock.add(handlers::provide(vec![SeqFeeRow {
-            sequencer: AddressBytes([1u8; 20]),
+        let addr = AddressBytes([1u8; 20]);
+
+        // Mock for get_batch_fee_components
+        mock.add(handlers::provide(vec![BatchFeeRow {
+            batch_id: 1,
+            l1_block_number: 10,
+            proposer: addr,
             priority_fee: 10,
             base_fee: 20,
             l1_data_cost: Some(5),
-            prove_cost: Some(3),
-            verify_cost: Some(4),
         }]));
+
+        // Mocks for get_prove_costs_by_proposer and get_verify_costs_by_proposer
+        #[derive(Row, serde::Serialize)]
+        struct ProposerCostRow {
+            proposer: AddressBytes,
+            total_cost: u128,
+        }
+        mock.add(handlers::provide(vec![ProposerCostRow { proposer: addr, total_cost: 3 }]));
+        mock.add(handlers::provide(vec![ProposerCostRow { proposer: addr, total_cost: 4 }]));
 
         let url = url::Url::parse(mock.url()).unwrap();
         let reader =
@@ -2481,7 +2473,7 @@ mod tests {
         assert_eq!(
             rows,
             vec![SequencerFeeRow {
-                sequencer: AddressBytes([1u8; 20]),
+                sequencer: addr,
                 priority_fee: 10,
                 base_fee: 20,
                 l1_data_cost: Some(5),
@@ -2503,9 +2495,9 @@ mod tests {
             "SELECT h.sequencer, \
                     sum(sum_priority_fee) AS priority_fee, \
                     sum(sum_base_fee) AS base_fee, \
-                    sum(dc.cost) AS l1_data_cost, \
-                    toNullable(sum(pc.cost)) AS prove_cost, \
-                    toNullable(sum(vc.cost)) AS verify_cost \
+                    toNullable(sum(if(b.batch_size > 0, intDiv(dc.cost, b.batch_size), NULL))) AS l1_data_cost, \
+                    toNullable(sum(if(b.batch_size > 0, intDiv(pc.cost, b.batch_size), NULL))) AS prove_cost, \
+                    toNullable(sum(if(b.batch_size > 0, intDiv(vc.cost, b.batch_size), NULL))) AS verify_cost \
              FROM {db}.l2_head_events h \
              LEFT JOIN {db}.batch_blocks bb \
                ON h.l2_block_number = bb.l2_block_number \
@@ -2514,15 +2506,14 @@ mod tests {
              LEFT JOIN {db}.l1_data_costs dc \
                ON b.batch_id = dc.batch_id \
              LEFT JOIN {db}.prove_costs pc \
-               ON bb.batch_id = pc.batch_id \
+               ON b.batch_id = pc.batch_id \
              LEFT JOIN {db}.verify_costs vc \
-               ON bb.batch_id = vc.batch_id \
+               ON b.batch_id = vc.batch_id \
              WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
-               AND {filter} \
+               AND bb.batch_id IS NOT NULL \
              GROUP BY h.sequencer \
              ORDER BY priority_fee DESC",
             interval = range.interval(),
-            filter = reader.reorg_filter("h"),
             db = reader.db_name,
         );
 
