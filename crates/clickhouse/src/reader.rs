@@ -1667,7 +1667,6 @@ impl ClickhouseReader {
             total: u128,
         }
 
-        let filter = self.reorg_filter("h");
         let mut query = format!(
             "SELECT sum(c.cost) AS total \
              FROM {db}.l1_data_costs c \
@@ -1675,12 +1674,10 @@ impl ClickhouseReader {
                ON c.batch_id = b.batch_id AND c.l1_block_number = b.l1_block_number \
              INNER JOIN {db}.verified_batches vb \
                ON b.batch_id = vb.batch_id AND b.l1_block_number = vb.l1_block_number \
-             INNER JOIN {db}.l1_head_events h \
-               ON b.l1_block_number = h.l1_block_number \
-             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
-               AND {filter}",
+             INNER JOIN {db}.l1_head_events l1 \
+               ON b.l1_block_number = l1.l1_block_number \
+             WHERE l1.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})",
             interval = range.interval(),
-            filter = filter,
             db = self.db_name,
         );
         if let Some(addr) = sequencer {
