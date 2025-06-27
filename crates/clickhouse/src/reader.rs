@@ -1685,7 +1685,7 @@ impl ClickhouseReader {
              INNER JOIN {db}.batches b \
                ON c.batch_id = b.batch_id AND c.l1_block_number = b.l1_block_number \
              INNER JOIN {db}.verified_batches vb \
-               ON b.batch_id = vb.batch_id AND b.l1_block_number = vb.l1_block_number \
+               ON b.batch_id = vb.batch_id \
              INNER JOIN {db}.l1_head_events l1 \
                ON b.l1_block_number = l1.l1_block_number \
              WHERE l1.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})",
@@ -1728,10 +1728,8 @@ impl ClickhouseReader {
                ON h.l2_block_number = bb.l2_block_number \
              LEFT JOIN {db}.batches b \
                ON bb.batch_id = b.batch_id \
-             LEFT JOIN {db}.verified_batches vb \
-               ON b.batch_id = vb.batch_id AND b.l1_block_number = vb.l1_block_number \
              LEFT JOIN {db}.l1_data_costs dc \
-               ON b.batch_id = dc.batch_id \
+               ON b.batch_id = dc.batch_id AND b.l1_block_number = dc.l1_block_number \
              WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})",
             interval = range.interval(),
             db = self.db_name,
@@ -1780,13 +1778,13 @@ impl ClickhouseReader {
              INNER JOIN {db}.batches b \
                ON bb.batch_id = b.batch_id \
              INNER JOIN {db}.verified_batches vb \
-               ON b.batch_id = vb.batch_id AND b.l1_block_number = vb.l1_block_number \
+               ON b.batch_id = vb.batch_id \
              INNER JOIN {db}.l1_head_events l1 \
                ON b.l1_block_number = l1.l1_block_number \
              LEFT JOIN {db}.l2_head_events h \
                ON bb.l2_block_number = h.l2_block_number \
              LEFT JOIN {db}.l1_data_costs dc \
-               ON bb.batch_id = dc.batch_id \
+               ON b.batch_id = dc.batch_id AND b.l1_block_number = dc.l1_block_number \
              WHERE l1.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})",
             interval = range.interval(),
             db = self.db_name,
@@ -1862,7 +1860,7 @@ impl ClickhouseReader {
              FROM {db}.prove_costs pc \
              INNER JOIN {db}.batches b ON pc.batch_id = b.batch_id \
              INNER JOIN {db}.verified_batches vb \
-               ON b.batch_id = vb.batch_id AND b.l1_block_number = vb.l1_block_number \
+               ON b.batch_id = vb.batch_id \
              INNER JOIN {db}.l1_head_events l1 ON pc.l1_block_number = l1.l1_block_number \
              WHERE l1.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
              GROUP BY b.proposer_addr \
@@ -1892,7 +1890,7 @@ impl ClickhouseReader {
              FROM {db}.verify_costs vc \
              INNER JOIN {db}.batches b ON vc.batch_id = b.batch_id \
              INNER JOIN {db}.verified_batches vb \
-               ON b.batch_id = vb.batch_id AND b.l1_block_number = vb.l1_block_number \
+               ON b.batch_id = vb.batch_id \
              INNER JOIN {db}.l1_head_events l1 ON vc.l1_block_number = l1.l1_block_number \
              WHERE l1.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
              GROUP BY b.proposer_addr \
@@ -1925,23 +1923,23 @@ impl ClickhouseReader {
                     sum(h.sum_priority_fee) AS priority_fee, \
                     sum(h.sum_base_fee) AS base_fee, \
                     sum(dc.cost / b.batch_size) AS l1_data_cost, \
-                    toNullable(sum(pc.cost)) AS prove_cost, \
-                    toNullable(sum(vc.cost)) AS verify_cost \
+                    toNullable(sum(pc.cost / b.batch_size)) AS prove_cost, \
+                    toNullable(sum(vc.cost / b.batch_size)) AS verify_cost \
              FROM {db}.batch_blocks bb \
              INNER JOIN {db}.batches b \
                ON bb.batch_id = b.batch_id \
              INNER JOIN {db}.verified_batches vb \
-               ON b.batch_id = vb.batch_id AND b.l1_block_number = vb.l1_block_number \
+               ON b.batch_id = vb.batch_id \
              INNER JOIN {db}.l1_head_events l1 \
                ON b.l1_block_number = l1.l1_block_number \
              LEFT JOIN {db}.l2_head_events h \
                ON bb.l2_block_number = h.l2_block_number \
              LEFT JOIN {db}.l1_data_costs dc \
-               ON bb.batch_id = dc.batch_id \
+               ON b.batch_id = dc.batch_id \
              LEFT JOIN {db}.prove_costs pc \
-               ON bb.batch_id = pc.batch_id \
+               ON b.batch_id = pc.batch_id \
              LEFT JOIN {db}.verify_costs vc \
-               ON bb.batch_id = vc.batch_id \
+               ON b.batch_id = vc.batch_id \
              WHERE l1.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
              GROUP BY b.proposer_addr \
              ORDER BY priority_fee DESC",
@@ -2043,7 +2041,7 @@ impl ClickhouseReader {
              FROM {db}.prove_costs pc \
              INNER JOIN {db}.batches b ON pc.batch_id = b.batch_id \
              INNER JOIN {db}.verified_batches vb \
-               ON b.batch_id = vb.batch_id AND b.l1_block_number = vb.l1_block_number \
+               ON b.batch_id = vb.batch_id \
              INNER JOIN {db}.l1_head_events l1 ON pc.l1_block_number = l1.l1_block_number \
              WHERE l1.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})",
             interval = range.interval(),
@@ -2077,7 +2075,7 @@ impl ClickhouseReader {
              FROM {db}.verify_costs vc \
              INNER JOIN {db}.batches b ON vc.batch_id = b.batch_id \
              INNER JOIN {db}.verified_batches vb \
-               ON b.batch_id = vb.batch_id AND b.l1_block_number = vb.l1_block_number \
+               ON b.batch_id = vb.batch_id \
              INNER JOIN {db}.l1_head_events l1 ON vc.l1_block_number = l1.l1_block_number \
              WHERE l1.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})",
             interval = range.interval(),
@@ -2216,7 +2214,7 @@ impl ClickhouseReader {
              INNER JOIN {db}.batches b \
                ON bb.batch_id = b.batch_id \
              INNER JOIN {db}.verified_batches vb \
-               ON b.batch_id = vb.batch_id AND b.l1_block_number = vb.l1_block_number \
+               ON b.batch_id = vb.batch_id \
              WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})",
             interval = range.interval(),
             db = self.db_name
@@ -2252,7 +2250,7 @@ impl ClickhouseReader {
              INNER JOIN {db}.batches b \
                ON bb.batch_id = b.batch_id \
              INNER JOIN {db}.verified_batches vb \
-               ON b.batch_id = vb.batch_id AND b.l1_block_number = vb.l1_block_number \
+               ON b.batch_id = vb.batch_id \
              WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})",
             interval = range.interval(),
             db = self.db_name
@@ -2288,7 +2286,7 @@ impl ClickhouseReader {
              INNER JOIN {db}.batches b \
                ON bb.batch_id = b.batch_id \
              INNER JOIN {db}.verified_batches vb \
-               ON b.batch_id = vb.batch_id AND b.l1_block_number = vb.l1_block_number \
+               ON b.batch_id = vb.batch_id \
              WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})",
             interval = range.interval(),
             db = self.db_name
@@ -2322,8 +2320,8 @@ impl ClickhouseReader {
                     sum(sum_priority_fee) AS priority_fee, \
                     sum(sum_base_fee) AS base_fee, \
                     sum(dc.cost / b.batch_size) AS l1_data_cost, \
-                    toNullable(sum(pc.cost)) AS prove_cost, \
-                    toNullable(sum(vc.cost)) AS verify_cost \
+                    toNullable(sum(pc.cost / b.batch_size)) AS prove_cost, \
+                    toNullable(sum(vc.cost / b.batch_size)) AS verify_cost \
              FROM {db}.l2_head_events h \
              LEFT JOIN {db}.batch_blocks bb \
                ON h.l2_block_number = bb.l2_block_number \
@@ -2332,11 +2330,11 @@ impl ClickhouseReader {
              LEFT JOIN {db}.l1_data_costs dc \
                ON b.batch_id = dc.batch_id \
              INNER JOIN {db}.verified_batches vb \
-               ON b.batch_id = vb.batch_id AND b.l1_block_number = vb.l1_block_number \
+               ON b.batch_id = vb.batch_id \
              LEFT JOIN {db}.prove_costs pc \
-               ON bb.batch_id = pc.batch_id \
+               ON b.batch_id = pc.batch_id \
              LEFT JOIN {db}.verify_costs vc \
-               ON bb.batch_id = vc.batch_id \
+               ON b.batch_id = vc.batch_id \
              WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
              GROUP BY h.sequencer \
              ORDER BY priority_fee DESC",
