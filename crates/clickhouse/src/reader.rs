@@ -1720,7 +1720,7 @@ impl ClickhouseReader {
             "SELECT h.l2_block_number, \
                     sum_priority_fee AS priority_fee, \
                     sum_base_fee AS base_fee, \
-                    toNullable(dc.cost / b.batch_size) AS l1_data_cost \
+                    toNullable(dc.cost) AS l1_data_cost \
              FROM {db}.l2_head_events h \
              LEFT JOIN {db}.batch_blocks bb \
                ON h.l2_block_number = bb.l2_block_number \
@@ -1914,9 +1914,9 @@ impl ClickhouseReader {
             "SELECT b.proposer_addr AS proposer, \
                     sum(h.sum_priority_fee) AS priority_fee, \
                     sum(h.sum_base_fee) AS base_fee, \
-                    toNullable(sum(dc.cost / b.batch_size)) AS l1_data_cost, \
-                    toNullable(sum(pc.cost / b.batch_size)) AS prove_cost, \
-                    toNullable(sum(vc.cost / b.batch_size)) AS verify_cost \
+                    toNullable(sum(dc.cost)) AS l1_data_cost, \
+                    toNullable(sum(pc.cost)) AS prove_cost, \
+                    toNullable(sum(vc.cost)) AS verify_cost \
              FROM {db}.batch_blocks bb \
              INNER JOIN {db}.batches b \
                ON bb.batch_id = b.batch_id \
@@ -2299,9 +2299,9 @@ impl ClickhouseReader {
             "SELECT h.sequencer, \
                     sum(sum_priority_fee) AS priority_fee, \
                     sum(sum_base_fee) AS base_fee, \
-                    toNullable(sum(dc.cost / b.batch_size)) AS l1_data_cost, \
-                    toNullable(sum(pc.cost / b.batch_size)) AS prove_cost, \
-                    toNullable(sum(vc.cost / b.batch_size)) AS verify_cost \
+                    toNullable(sum(dc.cost)) AS l1_data_cost, \
+                    toNullable(sum(pc.cost)) AS prove_cost, \
+                    toNullable(sum(vc.cost)) AS verify_cost \
              FROM {db}.l2_head_events h \
              LEFT JOIN {db}.batch_blocks bb \
                ON h.l2_block_number = bb.l2_block_number \
