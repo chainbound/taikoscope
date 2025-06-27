@@ -87,7 +87,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
         depth: e.depth.toLocaleString(),
       })),
     urlKey: 'reorgs',
-    reverseOrder: true,
+    reverseOrder: false,
     supportsPagination: true,
   },
 

@@ -54,7 +54,7 @@ async fn l2_reorgs_paginated_builds_query() {
     assert!(query.contains("l2_block_number < 100"));
     assert!(query.contains("l2_block_number > 50"));
     assert!(query.contains("LIMIT 5"));
-    assert!(query.contains("ORDER BY l2_block_number DESC"));
+    assert!(query.contains("ORDER BY inserted_at DESC"));
 }
 
 #[tokio::test]
@@ -105,14 +105,14 @@ async fn reorgs_endpoint_returns_items_with_pagination() {
     let expected = serde_json::json!({
         "events": [
             {
-                "l2_block_number": 9,
-                "depth": 1,
-                "inserted_at": Utc.timestamp_millis_opt(1000).single().unwrap().to_rfc3339()
-            },
-            {
                 "l2_block_number": 8,
                 "depth": 2,
                 "inserted_at": Utc.timestamp_millis_opt(2000).single().unwrap().to_rfc3339()
+            },
+            {
+                "l2_block_number": 9,
+                "depth": 1,
+                "inserted_at": Utc.timestamp_millis_opt(1000).single().unwrap().to_rfc3339()
             }
         ]
     });

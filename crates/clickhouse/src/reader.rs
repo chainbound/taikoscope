@@ -561,7 +561,7 @@ impl ClickhouseReader {
     }
 
     /// Get L2 reorg events since the given cutoff with cursor-based pagination.
-    /// Results are returned in descending order by block number.
+    /// Results are returned in descending order by time recorded.
     pub async fn get_l2_reorgs_paginated(
         &self,
         since: DateTime<Utc>,
@@ -592,7 +592,7 @@ impl ClickhouseReader {
             query.push_str(&format!(" AND l2_block_number > {}", end));
         }
 
-        query.push_str(" ORDER BY l2_block_number DESC");
+        query.push_str(" ORDER BY inserted_at DESC");
         query.push_str(&format!(" LIMIT {}", limit));
 
         let rows = self.execute::<RawRow>(&query).await.context("fetching reorg events failed")?;
