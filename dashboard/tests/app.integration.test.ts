@@ -236,7 +236,6 @@ async function fetchData(range: TimeRange, state: State, economics = false) {
       forcedInclusions: null,
       priorityFee,
       baseFee,
-      hardwareCost: null,
       l2Block,
       l1Block,
     });
@@ -352,7 +351,6 @@ async function fetchData(range: TimeRange, state: State, economics = false) {
     forcedInclusions,
     priorityFee,
     baseFee,
-    hardwareCost: null,
     l2Block,
     l1Block,
   });
