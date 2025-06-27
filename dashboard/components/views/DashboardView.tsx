@@ -12,7 +12,7 @@ import { TimeRange, MetricData, ChartsData } from '../../types';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useEthPrice } from '../../services/priceService';
 import { rangeToHours } from '../../utils/timeRange';
-import { formatEth } from '../../utils';
+import { formatEth, parseEthValue } from '../../utils';
 
 const SequencerPieChart = lazy(() =>
   import('../SequencerPieChart').then((m) => ({
@@ -105,6 +105,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     const list = [...metricsData.metrics];
     if (idx >= 0) list.splice(idx + 1, 0, hardwareMetric);
     else list.push(hardwareMetric);
+
+    if (costWei != null) {
+      const profitIdx = list.findIndex((m) => m.title === 'Profit');
+      if (profitIdx >= 0) {
+        const profitEth = parseEthValue(list[profitIdx].value);
+        const profitWei = profitEth * 1e18;
+        const newProfitWei = profitWei - costWei;
+        list[profitIdx] = {
+          ...list[profitIdx],
+          value: formatEth(newProfitWei),
+        };
+      }
+    }
+
     return list;
   }, [metricsData.metrics, isEconomicsView, cloudCost, proverCost, ethPrice, timeRange]);
 
