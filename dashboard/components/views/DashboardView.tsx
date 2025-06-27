@@ -87,7 +87,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const isEconomicsView = searchParams.get('view') === 'economics';
   // Default monthly costs in USD
   const [cloudCost, setCloudCost] = useState(1000);
-  const [proverCost, setProverCost] = useState(1000);
+  const [proverCost, setProverCost] = useState(0);
 
   const { data: ethPrice = 0 } = useEthPrice();
   const metricsWithHardware = React.useMemo(() => {
