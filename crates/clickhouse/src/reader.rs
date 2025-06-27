@@ -1778,13 +1778,11 @@ impl ClickhouseReader {
              FROM {db}.batch_blocks bb \
              INNER JOIN {db}.batches b \
                ON bb.batch_id = b.batch_id \
-             INNER JOIN {db}.l1_head_events l1 \
-               ON b.l1_block_number = l1.l1_block_number \
              LEFT JOIN {db}.l2_head_events h \
                ON bb.l2_block_number = h.l2_block_number \
              LEFT JOIN {db}.l1_data_costs dc \
                ON b.batch_id = dc.batch_id AND b.l1_block_number = dc.l1_block_number \
-             WHERE l1.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})",
+             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})",
             interval = range.interval(),
             db = self.db_name,
         );
