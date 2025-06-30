@@ -7,6 +7,8 @@ describe('extra utils', () => {
       [-5.678, '-5.7'],
       [0, '0.00'],
       [12.345, '12.3'],
+      [0.01, '0.01'],
+      [-0.04, '-0.04'],
     ])('formats %p to %p', (input, expected) => {
       expect(formatDecimal(input)).toBe(expected);
     });
