@@ -420,12 +420,12 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
         tps: d.tps.toFixed(2),
       })),
     chart: (data) => {
-      const BlockTxChart = React.lazy(() =>
-        import('../components/BlockTxChart').then((m) => ({
-          default: m.BlockTxChart,
+      const TpsChart = React.lazy(() =>
+        import('../components/TpsChart').then((m) => ({
+          default: m.TpsChart,
         })),
       );
-      return React.createElement(BlockTxChart, {
+      return React.createElement(TpsChart, {
         data,
         lineColor: '#4E79A7',
       });
