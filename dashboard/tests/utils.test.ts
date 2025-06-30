@@ -139,6 +139,7 @@ describe('utils', () => {
     expect(formatEth(-345678.9e9)).toBe('-345,678 Gwei');
     expect(formatEth(-1.2345e18)).toBe('-1.2 ETH');
     expect(formatEth(0.01e18)).toBe('0.01 ETH');
+    expect(formatEth(0.012e18)).toBe('0.012 ETH');
     expect(formatEth(-0.04e18)).toBe('-0.04 ETH');
   });
 
