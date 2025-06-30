@@ -141,8 +141,8 @@ describe('utils', () => {
     expect(formatEth(0.01e18)).toBe('0.01 ETH');
     expect(formatEth(0.012e18)).toBe('0.012 ETH');
     expect(formatEth(-0.04e18)).toBe('-0.04 ETH');
-    expect(formatEth(0.0052e18)).toBe('0.0052 ETH');
-    expect(formatEth(-0.0056e18)).toBe('-0.0056 ETH');
+    expect(formatEth(0.0052e18)).toBe('0.005 ETH');
+    expect(formatEth(-0.0056e18)).toBe('-0.006 ETH');
   });
 
   it('parses ETH and Gwei values', () => {

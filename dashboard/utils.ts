@@ -76,20 +76,19 @@ export const formatDecimal = (value: number): string => {
     });
   }
 
-  let result = abs.toLocaleString('en', {
-    useGrouping: false,
-    maximumFractionDigits: 20,
-  });
+  const rounded = Math.round(value * 1000) / 1000;
+  let result = Math.abs(rounded)
+    .toLocaleString('en', {
+      useGrouping: false,
+      minimumFractionDigits: 3,
+      maximumFractionDigits: 3,
+    })
+    .replace(/0+$/, '')
+    .replace(/\.$/, '');
 
-  const [, decimalPart = ''] = result.split('.');
-  if (decimalPart.startsWith('0')) {
-    const leadingZeros = decimalPart.match(/^0*/)?.[0].length ?? 0;
-    if (leadingZeros >= 2 && decimalPart.length < leadingZeros + 2) {
-      result = `${result}${'0'.repeat(leadingZeros + 2 - decimalPart.length)}`;
-    }
-  }
+  if (result === '') result = '0';
 
-  return value < 0 ? `-${result}` : result;
+  return rounded < 0 ? `-${result}` : result;
 };
 
 export const formatSeconds = (seconds: number): string => {
