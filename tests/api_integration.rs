@@ -528,38 +528,7 @@ async fn prove_cost_integration() {
     server.abort();
 }
 
-#[tokio::test]
-async fn verify_cost_integration() {
-    let mock = Mock::new();
-    mock.add(handlers::provide(vec![clickhouse_lib::VerifyCostRow {
-        l1_block_number: 4,
-        batch_id: 2,
-        cost: 456,
-    }]));
 
-    let url = Url::parse(mock.url()).unwrap();
-    let client =
-        ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
-
-    let (addr, server) = spawn_server(client).await;
-    wait_for_server(addr).await;
-
-    let resp = reqwest::get(format!(
-        "http://{addr}/{API_VERSION}/verify-cost?created[gte]=0&created[lte]=3600000"
-    ))
-    .await
-    .unwrap();
-    assert_eq!(resp.status(), StatusCode::OK);
-    let body: serde_json::Value = resp.json().await.unwrap();
-    assert_eq!(
-        body,
-        serde_json::json!({
-            "batches": [ { "l1_block_number": 4, "batch_id": 2, "cost": 456 } ]
-        })
-    );
-
-    server.abort();
-}
 
 #[tokio::test]
 async fn l2_fees_integration() {
@@ -574,7 +543,6 @@ async fn l2_fees_integration() {
             base_fee: 400,
             l1_data_cost: Some(10),
             prove_cost: Some(5),
-            verify_cost: Some(6),
         },
     ]));
 
@@ -599,15 +567,13 @@ async fn l2_fees_integration() {
             "base_fee": 400,
             "l1_data_cost": 10,
             "prove_cost": 5,
-            "verify_cost": 6,
             "sequencers": [
                 {
                     "address": format!("0x{}", hex::encode([1u8; 20])),
                     "priority_fee": 600,
                     "base_fee": 400,
                     "l1_data_cost": 10,
-                    "prove_cost": 5,
-                    "verify_cost": 6
+                    "prove_cost": 5
                 }
             ]
         })
@@ -629,7 +595,6 @@ async fn batch_fees_integration() {
             base_fee: 20,
             l1_data_cost: Some(5),
             prove_cost: Some(1),
-            verify_cost: Some(2),
         },
     ]));
 
@@ -653,16 +618,14 @@ async fn batch_fees_integration() {
             "priority_fee": 10,
             "base_fee": 20,
             "l1_data_cost": 5,
-            "prove_cost": 1,
-            "verify_cost": 2,
+            "prove_cost": null,
             "sequencers": [
                 {
                     "address": format!("0x{}", hex::encode([2u8; 20])),
                     "priority_fee": 10,
                     "base_fee": 20,
                     "l1_data_cost": 5,
-                    "prove_cost": 1,
-                    "verify_cost": 2
+                    "prove_cost": 1
                 }
             ]
         })
@@ -708,42 +671,7 @@ async fn prove_costs_integration() {
     server.abort();
 }
 
-#[tokio::test]
-async fn verify_costs_integration() {
-    let mock = Mock::new();
-    mock.add(handlers::provide(vec![AggregatedCostRow {
-        proposer: AddressBytes([4u8; 20]),
-        total_cost: 456,
-    }]));
 
-    let url = Url::parse(mock.url()).unwrap();
-    let client =
-        ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
-
-    let (addr, server) = spawn_server(client).await;
-    wait_for_server(addr).await;
-
-    let resp = reqwest::get(format!(
-        "http://{addr}/{API_VERSION}/verify-costs?created[gte]=0&created[lte]=3600000"
-    ))
-    .await
-    .unwrap();
-    assert_eq!(resp.status(), StatusCode::OK);
-    let body: serde_json::Value = resp.json().await.unwrap();
-    assert_eq!(
-        body,
-        serde_json::json!({
-            "proposers": [
-                {
-                    "address": format!("0x{}", hex::encode([4u8; 20])),
-                    "cost": 456
-                }
-            ]
-        })
-    );
-
-    server.abort();
-}
 
 #[tokio::test]
 async fn l1_data_cost_paginated() {
