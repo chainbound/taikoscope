@@ -51,9 +51,7 @@ pub fn router(state: ApiState) -> Router {
         .route("/dashboard-data", get(dashboard_data))
         .route("/l1-data-cost", get(l1_data_cost))
         .route("/prove-costs", get(prove_costs))
-        .route("/verify-costs", get(verify_costs))
         .route("/prove-cost", get(prove_cost))
-        .route("/verify-cost", get(verify_cost))
         .route("/block-profits", get(block_profits))
         .route("/eth-price", get(eth_price));
 

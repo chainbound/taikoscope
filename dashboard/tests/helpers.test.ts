@@ -18,7 +18,7 @@ const metrics = createMetrics({
   priorityFee: 41e18,
   baseFee: 1e18,
   proveCost: 9e18,
-  verifyCost: 11e18,
+
   l1DataCost: 2e18,
   profit: 40e18,
 });
@@ -45,7 +45,7 @@ const metricsAllNull = createMetrics({
   priorityFee: null,
   baseFee: null,
   proveCost: null,
-  verifyCost: null,
+
   l1DataCost: null,
   profit: null,
 });

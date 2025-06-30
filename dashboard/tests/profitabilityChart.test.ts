@@ -16,7 +16,6 @@ const feeData = [
     base: 0,
     l1Cost: 0,
     amortizedProveCost: 0,
-    amortizedVerifyCost: 0,
   },
 ];
 

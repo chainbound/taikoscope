@@ -53,7 +53,7 @@ export const EconomicsChart: React.FC<EconomicsChartProps> = ({
   const data = feeData.map((b) => {
     const revenueEth = (b.priority + b.base) / 1e18;
     const proveEth = (b.amortizedProveCost ?? 0) / 1e18;
-    const verifyEth = (b.amortizedVerifyCost ?? 0) / 1e18;
+    const verifyEth = 0;
     const costEth = baseCostPerBatchEth + proveEth + verifyEth + (b.l1Cost ?? 0) / 1e18;
     const profitEth = revenueEth - costEth;
     const revenueUsd = revenueEth * ethPrice;

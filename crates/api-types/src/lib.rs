@@ -204,8 +204,6 @@ pub struct L2FeesResponse {
     pub l1_data_cost: Option<u128>,
     /// Total proving cost for the range.
     pub prove_cost: Option<u128>,
-    /// Total verifying cost for the range.
-    pub verify_cost: Option<u128>,
     /// Fee breakdown for each sequencer.
     pub sequencers: Vec<SequencerFeeRow>,
 }
@@ -297,8 +295,6 @@ pub struct BatchFeeComponentRow {
     pub l1_data_cost: Option<u128>,
     /// Prover cost amortized across batches in the selected range
     pub amortized_prove_cost: Option<u128>,
-    /// Verifier cost amortized across batches in the selected range
-    pub amortized_verify_cost: Option<u128>,
 }
 
 /// Fee components for each batch
@@ -414,8 +410,6 @@ pub struct SequencerFeeRow {
     pub l1_data_cost: Option<u128>,
     /// Total proving cost for the sequencer.
     pub prove_cost: Option<u128>,
-    /// Total verifying cost for the sequencer.
-    pub verify_cost: Option<u128>,
 }
 
 /// Blob count per batch.
@@ -500,8 +494,6 @@ pub struct DashboardDataResponse {
     pub base_fee: Option<u128>,
     /// Total prover cost for the range.
     pub prove_cost: Option<u128>,
-    /// Total verifier cost for the range.
-    pub verify_cost: Option<u128>,
     /// Estimated infrastructure cost in USD for the requested range.
     pub cloud_cost: Option<f64>,
 }

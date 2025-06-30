@@ -779,7 +779,6 @@ export interface SequencerFee {
   base_fee: number;
   l1_data_cost: number | null;
   prove_cost: number | null;
-  verify_cost: number | null;
 }
 
 export interface L2FeesResponse {
@@ -787,7 +786,6 @@ export interface L2FeesResponse {
   base_fee: number | null;
   l1_data_cost: number | null;
   prove_cost: number | null;
-  verify_cost: number | null;
   sequencers: SequencerFee[];
 }
 
@@ -821,7 +819,6 @@ export interface BatchFeeComponent {
   base: number;
   l1Cost: number | null;
   amortizedProveCost: number | null;
-  amortizedVerifyCost: number | null;
 }
 
 export const fetchFeeComponents = async (
@@ -869,7 +866,7 @@ export const fetchBatchFeeComponents = async (
       base_fee: number;
       l1_data_cost: number | null;
       amortized_prove_cost: number | null;
-      amortized_verify_cost: number | null;
+
     }[];
   }>(url);
   return {
@@ -882,7 +879,6 @@ export const fetchBatchFeeComponents = async (
         base: b.base_fee,
         l1Cost: b.l1_data_cost ?? null,
         amortizedProveCost: b.amortized_prove_cost ?? null,
-        amortizedVerifyCost: b.amortized_verify_cost ?? null,
       }))
       : null,
     badRequest: res.badRequest,
@@ -900,10 +896,7 @@ export interface ProveCostItem {
   cost: number;
 }
 
-export interface VerifyCostItem {
-  batch: number;
-  cost: number;
-}
+
 
 export interface SequencerCostItem {
   address: string;
@@ -968,34 +961,7 @@ export const fetchProveCost = async (
   };
 };
 
-export const fetchVerifyCost = async (
-  range: TimeRange,
-  limit = 50,
-  startingAfter?: number,
-  endingBefore?: number,
-): Promise<RequestResult<VerifyCostItem[]>> => {
-  let url = `${API_BASE}/verify-cost?`;
-  if (startingAfter === undefined && endingBefore === undefined) {
-    url += `${timeRangeToQuery(range)}&limit=${limit}`;
-  } else {
-    url += `${rangeToQuery(range)}&limit=${limit}`;
-  }
-  if (startingAfter !== undefined) {
-    url += `&starting_after=${startingAfter}`;
-  } else if (endingBefore !== undefined) {
-    url += `&ending_before=${endingBefore}`;
-  }
-  const res = await fetchJson<{
-    batches: { batch_id: number; cost: number }[];
-  }>(url);
-  return {
-    data: res.data
-      ? res.data.batches.map((b) => ({ batch: b.batch_id, cost: b.cost }))
-      : null,
-    badRequest: res.badRequest,
-    error: res.error,
-  };
-};
+
 
 export const fetchProveCostsByProposer = async (
   range: TimeRange,
@@ -1009,17 +975,7 @@ export const fetchProveCostsByProposer = async (
   };
 };
 
-export const fetchVerifyCostsByProposer = async (
-  range: TimeRange,
-): Promise<RequestResult<SequencerCostItem[]>> => {
-  const url = `${API_BASE}/verify-costs?${timeRangeToQuery(range)}`;
-  const res = await fetchJson<{ proposers: SequencerCostItem[] }>(url);
-  return {
-    data: res.data?.proposers ?? null,
-    badRequest: res.badRequest,
-    error: res.error,
-  };
-};
+
 
 export const fetchL2Tps = async (
   range: TimeRange,
@@ -1122,7 +1078,6 @@ export interface DashboardDataResponse {
   priority_fee: number | null;
   base_fee: number | null;
   prove_cost: number | null;
-  verify_cost: number | null;
   cloud_cost: number | null;
 }
 

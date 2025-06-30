@@ -287,12 +287,11 @@ pub async fn l2_fees(
         None
     };
 
-    let (priority_fee, base_fee, l1_data_cost, prove_cost, verify_cost, rows) = tokio::try_join!(
+    let (priority_fee, base_fee, l1_data_cost, prove_cost, rows) = tokio::try_join!(
         state.client.get_l2_priority_fee(address, time_range),
         state.client.get_l2_base_fee(address, time_range),
         state.client.get_l1_total_data_cost(address, time_range),
         state.client.get_total_prove_cost(address, time_range),
-        state.client.get_total_verify_cost(address, time_range),
         state.client.get_l2_fees_by_sequencer(time_range)
     )
     .map_err(|e| {
@@ -313,19 +312,11 @@ pub async fn l2_fees(
             base_fee: r.base_fee,
             l1_data_cost: r.l1_data_cost,
             prove_cost: r.prove_cost,
-            verify_cost: r.verify_cost,
         })
         .collect();
 
     tracing::info!(count = sequencers.len(), "Returning L2 fees and breakdown");
-    Ok(Json(L2FeesResponse {
-        priority_fee,
-        base_fee,
-        l1_data_cost,
-        prove_cost,
-        verify_cost,
-        sequencers,
-    }))
+    Ok(Json(L2FeesResponse { priority_fee, base_fee, l1_data_cost, prove_cost, sequencers }))
 }
 
 #[utoipa::path(
@@ -388,19 +379,11 @@ pub async fn batch_fees(
             base_fee: r.base_fee,
             l1_data_cost: r.l1_data_cost,
             prove_cost: r.prove_cost,
-            verify_cost: r.verify_cost,
         })
         .collect();
 
     tracing::info!(count = sequencers.len(), "Returning batch fees and breakdown");
-    Ok(Json(L2FeesResponse {
-        priority_fee,
-        base_fee,
-        l1_data_cost,
-        prove_cost: None,
-        verify_cost: None,
-        sequencers,
-    }))
+    Ok(Json(L2FeesResponse { priority_fee, base_fee, l1_data_cost, prove_cost: None, sequencers }))
 }
 
 #[utoipa::path(
@@ -438,44 +421,6 @@ pub async fn prove_costs(
         .collect();
 
     tracing::info!(count = proposers.len(), "Returning prover costs");
-    Ok(Json(ProposerCostsResponse { proposers }))
-}
-
-#[utoipa::path(
-    get,
-    path = "/verify-costs",
-    params(
-        RangeQuery
-    ),
-    responses(
-        (status = 200, description = "Aggregated verifier costs", body = ProposerCostsResponse),
-        (status = 500, description = "Database error", body = ErrorResponse)
-    ),
-    tag = "taikoscope"
-)]
-/// Get aggregated verifier costs grouped by proposer
-pub async fn verify_costs(
-    Query(params): Query<RangeQuery>,
-    State(state): State<ApiState>,
-) -> Result<Json<ProposerCostsResponse>, ErrorResponse> {
-    validate_time_range(&params.time_range)?;
-
-    let has_time_range = has_time_range_params(&params.time_range);
-    validate_range_exclusivity(has_time_range, false)?;
-
-    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
-
-    let rows = state.client.get_verify_costs_by_proposer(time_range).await.map_err(|e| {
-        tracing::error!(error = %e, "Failed to get verifier costs");
-        ErrorResponse::database_error()
-    })?;
-
-    let proposers: Vec<ProposerCostItem> = rows
-        .into_iter()
-        .map(|(addr, cost)| ProposerCostItem { address: format!("0x{}", encode(addr)), cost })
-        .collect();
-
-    tracing::info!(count = proposers.len(), "Returning verifier costs");
     Ok(Json(ProposerCostsResponse { proposers }))
 }
 
@@ -628,14 +573,8 @@ pub async fn batch_fee_components(
             tracing::error!(error = %e, "Failed to get prove cost");
             ErrorResponse::database_error()
         })?;
-    let verify_total =
-        state.client.get_total_verify_cost(address, time_range).await.map_err(|e| {
-            tracing::error!(error = %e, "Failed to get verify cost");
-            ErrorResponse::database_error()
-        })?;
     let count = rows.len() as u128;
     let amortized_prove = if count > 0 { prove_total.map(|c| c / count) } else { None };
-    let amortized_verify = if count > 0 { verify_total.map(|c| c / count) } else { None };
 
     let batches: Vec<BatchFeeComponentRow> = rows
         .into_iter()
@@ -647,7 +586,6 @@ pub async fn batch_fee_components(
             base_fee: r.base_fee,
             l1_data_cost: r.l1_data_cost,
             amortized_prove_cost: amortized_prove,
-            amortized_verify_cost: amortized_verify,
         })
         .collect();
 
@@ -704,14 +642,8 @@ pub async fn batch_fee_components_aggregated(
             tracing::error!(error = %e, "Failed to get prove cost");
             ErrorResponse::database_error()
         })?;
-    let verify_total =
-        state.client.get_total_verify_cost(address, time_range).await.map_err(|e| {
-            tracing::error!(error = %e, "Failed to get verify cost");
-            ErrorResponse::database_error()
-        })?;
     let count = rows.len() as u128;
     let amortized_prove = if count > 0 { prove_total.map(|c| c / count) } else { None };
-    let amortized_verify = if count > 0 { verify_total.map(|c| c / count) } else { None };
 
     let batches: Vec<BatchFeeComponentRow> = rows
         .into_iter()
@@ -723,7 +655,6 @@ pub async fn batch_fee_components_aggregated(
             base_fee: r.base_fee,
             l1_data_cost: r.l1_data_cost,
             amortized_prove_cost: amortized_prove,
-            amortized_verify_cost: amortized_verify,
         })
         .collect();
 
@@ -780,7 +711,6 @@ pub async fn dashboard_data(
         priority_fee,
         base_fee,
         prove_cost,
-        verify_cost,
     ) = tokio::try_join!(
         state.client.get_l2_block_cadence(address, time_range),
         state.client.get_batch_posting_cadence(time_range),
@@ -795,8 +725,7 @@ pub async fn dashboard_data(
         state.client.get_last_l1_block_number(),
         state.client.get_l2_priority_fee(address, time_range),
         state.client.get_l2_base_fee(address, time_range),
-        state.client.get_total_prove_cost(address, time_range),
-        state.client.get_total_verify_cost(address, time_range)
+        state.client.get_total_prove_cost(address, time_range)
     )
     .map_err(|e| {
         tracing::error!(error = %e, "Failed to get dashboard data");
@@ -837,7 +766,7 @@ pub async fn dashboard_data(
         priority_fee,
         base_fee,
         prove_cost,
-        verify_cost,
+
         cloud_cost: Some(cost),
     }))
 }

@@ -42,7 +42,6 @@ export interface MainDashboardData {
   priorityFee: number | null;
   baseFee: number | null;
   proveCost: number | null;
-  verifyCost: number | null;
   badRequestResults: RequestResult<unknown>[];
 }
 
@@ -51,7 +50,6 @@ export interface EconomicsData {
   baseFee: number | null;
   l1DataCost: number | null;
   proveCost: number | null;
-  verifyCost: number | null;
   l2Block: number | null;
   l1Block: number | null;
   sequencerDist: SequencerDistributionDataItem[];
@@ -122,7 +120,7 @@ export const fetchMainDashboardData = async (
     priorityFee: data?.priority_fee ?? null,
     baseFee: data?.base_fee ?? null,
     proveCost: data?.prove_cost ?? null,
-    verifyCost: data?.verify_cost ?? null,
+
     badRequestResults: allResults,
   };
 };
@@ -147,7 +145,7 @@ export const fetchEconomicsData = async (
     baseFee: l2FeesRes.data?.base_fee ?? null,
     l1DataCost: l2FeesRes.data?.l1_data_cost ?? null,
     proveCost: l2FeesRes.data?.prove_cost ?? null,
-    verifyCost: l2FeesRes.data?.verify_cost ?? null,
+
     l2Block: l2BlockRes.data,
     l1Block: l1BlockRes.data,
     sequencerDist: sequencerDistRes.data || [],

@@ -95,7 +95,7 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
     const batchCount = batchCounts?.get(addr.toLowerCase()) ?? null;
     const fees = feeDataMap.get(addr.toLowerCase());
     const proveEth = (fees?.prove_cost ?? 0) / 1e18;
-    const verifyEth = (fees?.verify_cost ?? 0) / 1e18;
+    const verifyEth = 0;
     const extraEth = proveEth + verifyEth;
     const extraUsd = extraEth * ethPrice;
     if (!fees) {
@@ -125,7 +125,7 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
       baseFee: fees.base_fee,
       l1DataCost: fees.l1_data_cost,
       proveCost: fees.prove_cost,
-      verifyCost: fees.verify_cost,
+
       hardwareCostUsd: costPerSeqUsd,
       ethPrice,
     });

@@ -21,7 +21,7 @@ describe('metricsCreator', () => {
       priorityFee: 40e18,
       baseFee: 2e18,
       proveCost: 5e18,
-      verifyCost: 6e18,
+
       l1DataCost: 3e18,
       profit: 39e18,
       l2Block: 100,
@@ -71,7 +71,7 @@ describe('metricsCreator', () => {
       priorityFee: null,
       baseFee: null,
       proveCost: null,
-      verifyCost: null,
+
       l1DataCost: null,
       profit: null,
       l2Block: null,

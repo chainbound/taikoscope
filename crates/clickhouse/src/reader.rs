@@ -20,7 +20,7 @@ use crate::{
         BatchVerifyTimeRow, BlockFeeComponentRow, BlockTransactionRow, ForcedInclusionProcessedRow,
         L1BlockTimeRow, L1DataCostRow, L2BlockTimeRow, L2GasUsedRow, L2ReorgRow, L2TpsRow,
         PreconfData, ProveCostRow, SequencerBlockRow, SequencerDistributionRow, SequencerFeeRow,
-        SlashingEventRow, VerifyCostRow,
+        SlashingEventRow,
     },
     types::AddressBytes,
 };
@@ -1876,34 +1876,6 @@ impl ClickhouseReader {
         Ok(rows.into_iter().map(|r| (r.proposer, r.total_cost)).collect())
     }
 
-    /// Get aggregated verify costs grouped by proposer for the given range
-    pub async fn get_verify_costs_by_proposer(
-        &self,
-        range: TimeRange,
-    ) -> Result<Vec<(AddressBytes, u128)>> {
-        #[derive(Row, Deserialize)]
-        struct RawRow {
-            proposer: AddressBytes,
-            total_cost: u128,
-        }
-
-        let query = format!(
-            "SELECT b.proposer_addr AS proposer, \
-                    sum(vc.cost) AS total_cost \
-             FROM {db}.verify_costs vc \
-             INNER JOIN {db}.batches b ON vc.batch_id = b.batch_id \
-             INNER JOIN {db}.l1_head_events l1 ON vc.l1_block_number = l1.l1_block_number \
-             WHERE l1.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
-             GROUP BY b.proposer_addr \
-             ORDER BY total_cost DESC",
-            interval = range.interval(),
-            db = self.db_name,
-        );
-
-        let rows = self.execute::<RawRow>(&query).await?;
-        Ok(rows.into_iter().map(|r| (r.proposer, r.total_cost)).collect())
-    }
-
     /// Get aggregated batch fees grouped by proposer for the given range
     pub async fn get_batch_fees_by_proposer(
         &self,
@@ -1972,38 +1944,6 @@ impl ClickhouseReader {
         Ok(rows)
     }
 
-    /// Get verifier cost since the given cutoff time with cursor-based pagination
-    /// Results are returned in descending order by batch id
-    pub async fn get_verify_costs_paginated(
-        &self,
-        since: DateTime<Utc>,
-        limit: u64,
-        starting_after: Option<u64>,
-        ending_before: Option<u64>,
-    ) -> Result<Vec<VerifyCostRow>> {
-        let mut query = format!(
-            "SELECT vc.l1_block_number, vc.batch_id, vc.cost \
-         FROM {db}.verify_costs vc \
-         INNER JOIN {db}.l1_head_events h \
-           ON vc.l1_block_number = h.l1_block_number \
-         WHERE h.block_ts >= toUnixTimestamp(fromUnixTimestamp({since})) \
-           AND vc.cost > 0", // Only return non-zero costs
-            since = since.timestamp(),
-            db = self.db_name,
-        );
-        if let Some(start) = starting_after {
-            query.push_str(&format!(" AND vc.batch_id < {}", start));
-        }
-        if let Some(end) = ending_before {
-            query.push_str(&format!(" AND vc.batch_id > {}", end));
-        }
-        query.push_str(" ORDER BY vc.batch_id DESC");
-        query.push_str(&format!(" LIMIT {}", limit));
-
-        let rows = self.execute::<VerifyCostRow>(&query).await?;
-        Ok(rows)
-    }
-
     /// Get the total prover cost for the given range
     pub async fn get_total_prove_cost(
         &self,
@@ -2020,38 +1960,6 @@ impl ClickhouseReader {
              FROM {db}.prove_costs pc \
              INNER JOIN {db}.batches b ON pc.batch_id = b.batch_id \
              INNER JOIN {db}.l1_head_events l1 ON pc.l1_block_number = l1.l1_block_number \
-             WHERE l1.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})",
-            interval = range.interval(),
-            db = self.db_name,
-        );
-        if let Some(addr) = sequencer {
-            query.push_str(&format!(" AND b.proposer_addr = unhex('{}')", encode(addr)));
-        }
-
-        let rows = self.execute::<SumRow>(&query).await?;
-        let row = match rows.into_iter().next() {
-            Some(r) => r,
-            None => return Ok(None),
-        };
-        Ok(Some(row.total))
-    }
-
-    /// Get the total verifier cost for the given range
-    pub async fn get_total_verify_cost(
-        &self,
-        sequencer: Option<AddressBytes>,
-        range: TimeRange,
-    ) -> Result<Option<u128>> {
-        #[derive(Row, Deserialize)]
-        struct SumRow {
-            total: u128,
-        }
-
-        let mut query = format!(
-            "SELECT sum(vc.cost) AS total \
-             FROM {db}.verify_costs vc \
-             INNER JOIN {db}.batches b ON vc.batch_id = b.batch_id \
-             INNER JOIN {db}.l1_head_events l1 ON vc.l1_block_number = l1.l1_block_number \
              WHERE l1.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})",
             interval = range.interval(),
             db = self.db_name,
@@ -2276,10 +2184,8 @@ impl ClickhouseReader {
     pub async fn get_l2_fees_by_sequencer(&self, range: TimeRange) -> Result<Vec<SequencerFeeRow>> {
         let batch_components = self.get_batch_fee_components(None, range).await?;
         let prove_rows = self.get_prove_costs_by_proposer(range).await?;
-        let verify_rows = self.get_verify_costs_by_proposer(range).await?;
 
         let prove_map: HashMap<AddressBytes, u128> = prove_rows.into_iter().collect();
-        let verify_map: HashMap<AddressBytes, u128> = verify_rows.into_iter().collect();
 
         // Aggregate fees from batch components
         let mut fees_by_sequencer: HashMap<AddressBytes, (u128, u128, u128)> = HashMap::new();
@@ -2291,12 +2197,8 @@ impl ClickhouseReader {
         }
 
         // Create a unique set of all sequencers from all data sources
-        let all_sequencers: BTreeSet<AddressBytes> = fees_by_sequencer
-            .keys()
-            .copied()
-            .chain(prove_map.keys().copied())
-            .chain(verify_map.keys().copied())
-            .collect();
+        let all_sequencers: BTreeSet<AddressBytes> =
+            fees_by_sequencer.keys().copied().chain(prove_map.keys().copied()).collect();
 
         let mut results: Vec<SequencerFeeRow> = all_sequencers
             .into_iter()
@@ -2310,7 +2212,6 @@ impl ClickhouseReader {
                     base_fee,
                     l1_data_cost: (l1_total_cost > 0).then_some(l1_total_cost),
                     prove_cost: prove_map.get(&sequencer).copied(),
-                    verify_cost: verify_map.get(&sequencer).copied(),
                 }
             })
             .collect();
@@ -2443,7 +2344,6 @@ mod tests {
         base_fee: u128,
         l1_data_cost: Option<u128>,
         prove_cost: Option<u128>,
-        verify_cost: Option<u128>,
     }
 
     #[tokio::test]
@@ -2461,14 +2361,13 @@ mod tests {
             l1_data_cost: Some(5),
         }]));
 
-        // Mocks for get_prove_costs_by_proposer and get_verify_costs_by_proposer
+        // Mock for get_prove_costs_by_proposer
         #[derive(Row, serde::Serialize)]
         struct ProposerCostRow {
             proposer: AddressBytes,
             total_cost: u128,
         }
         mock.add(handlers::provide(vec![ProposerCostRow { proposer: addr, total_cost: 3 }]));
-        mock.add(handlers::provide(vec![ProposerCostRow { proposer: addr, total_cost: 4 }]));
 
         let url = url::Url::parse(mock.url()).unwrap();
         let reader =
@@ -2484,7 +2383,6 @@ mod tests {
                 base_fee: 20,
                 l1_data_cost: Some(5),
                 prove_cost: Some(3),
-                verify_cost: Some(4),
             }]
         );
     }
@@ -2637,7 +2535,6 @@ mod tests {
             base_fee: 20,
             l1_data_cost: Some(5),
             prove_cost: None,
-            verify_cost: None,
         }]));
 
         let url = url::Url::parse(mock.url()).unwrap();
@@ -2654,7 +2551,6 @@ mod tests {
                 base_fee: 20,
                 l1_data_cost: Some(5),
                 prove_cost: None,
-                verify_cost: None,
             }]
         );
     }

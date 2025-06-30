@@ -22,7 +22,7 @@ import {
   fetchL2GasUsedAggregated,
   fetchL1DataCost,
   fetchProveCost,
-  fetchVerifyCost,
+
   fetchSequencerDistribution,
   fetchL2Tps,
   fetchL2TpsAggregated,
@@ -369,22 +369,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     supportsPagination: true,
   },
 
-  'verify-cost': {
-    title: 'Verify Cost',
-    description: 'Cost to verify each batch.',
-    fetcher: fetchVerifyCost,
-    columns: [
-      { key: 'batch', label: 'Batch' },
-      { key: 'cost', label: 'Cost' },
-    ],
-    mapData: (data) =>
-      (data as { batch: number; cost: number }[]).map((d) => ({
-        batch: d.batch.toLocaleString(),
-        cost: formatEth(d.cost),
-      })),
-    urlKey: 'verify-cost',
-    supportsPagination: true,
-  },
+
 
   'sequencer-dist': {
     title: 'Sequencer Distribution',

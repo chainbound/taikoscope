@@ -27,7 +27,7 @@ export interface MetricInputData {
   l1DataCost?: number | null;
   profit?: number | null;
   proveCost?: number | null;
-  verifyCost?: number | null;
+
 }
 
 export const createMetrics = (data: MetricInputData): MetricData[] => [

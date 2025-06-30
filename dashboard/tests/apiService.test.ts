@@ -143,7 +143,7 @@ describe('apiService', () => {
     expect(res.badRequest).toBe(false);
     expect(res.error).toBeNull();
     expect(res.data?.prove_cost).toBe(10);
-    expect(res.data?.verify_cost).toBe(20);
+
   });
 
   it('fetchDashboardData 15m returns prove and verify cost', async () => {
@@ -152,7 +152,7 @@ describe('apiService', () => {
     expect(res.badRequest).toBe(false);
     expect(res.error).toBeNull();
     expect(res.data?.prove_cost).toBe(11);
-    expect(res.data?.verify_cost).toBe(21);
+
   });
 
   it('retries failed fetches and then throws', async () => {

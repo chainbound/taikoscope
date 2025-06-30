@@ -8,12 +8,12 @@ describe('calculateProfit', () => {
       baseFee: 1e18,
       l1DataCost: 5e17,
       proveCost: 1e17,
-      verifyCost: 2e17,
+
       hardwareCostUsd: 100,
       ethPrice: 10,
     });
     expect(res.profitEth).toBeCloseTo(
-      (2 + 0.75) - (100 / 10 + (0.5 + 0.1 + 0.2))
+      (2 + 0.75) - (100 / 10 + (0.5 + 0.1))
     );
     expect(res.profitUsd).toBeCloseTo(res.profitEth * 10);
   });
@@ -24,7 +24,7 @@ describe('calculateProfit', () => {
       baseFee: 0,
       l1DataCost: 1e18,
       proveCost: 0,
-      verifyCost: 0,
+
       hardwareCostUsd: 50,
       ethPrice: 5,
     });

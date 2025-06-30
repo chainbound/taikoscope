@@ -49,7 +49,7 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
       baseFee: b.base,
       l1DataCost: b.l1Cost ?? 0,
       proveCost: b.amortizedProveCost ?? 0,
-      verifyCost: b.amortizedVerifyCost ?? 0,
+
       hardwareCostUsd: operationalCostPerBatchUsd,
       ethPrice,
     });

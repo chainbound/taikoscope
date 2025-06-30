@@ -30,7 +30,6 @@ describe('ProfitRankingTable', () => {
             base_fee: 1.5e18,
             l1_data_cost: 0,
             prove_cost: 0,
-            verify_cost: 0,
             sequencers: [
               {
                 address: '0xseqA',
@@ -38,7 +37,6 @@ describe('ProfitRankingTable', () => {
                 base_fee: 1e18,
                 l1_data_cost: 0,
                 prove_cost: 0,
-                verify_cost: 0,
               },
               {
                 address: '0xseqB',
@@ -46,7 +44,6 @@ describe('ProfitRankingTable', () => {
                 base_fee: 0.5e18,
                 l1_data_cost: 0,
                 prove_cost: 0,
-                verify_cost: 0,
               },
             ],
           },
@@ -73,7 +70,6 @@ describe('ProfitRankingTable', () => {
         base_fee: 1.5e18,
         l1_data_cost: 0,
         prove_cost: 0,
-        verify_cost: 0,
         sequencers: [
           {
             address: '0xseqA',
@@ -81,7 +77,6 @@ describe('ProfitRankingTable', () => {
             base_fee: 1e18,
             l1_data_cost: 0,
             prove_cost: 0,
-            verify_cost: 0,
           },
           {
             address: '0xseqB',
@@ -89,7 +84,6 @@ describe('ProfitRankingTable', () => {
             base_fee: 0.5e18,
             l1_data_cost: 0,
             prove_cost: 0,
-            verify_cost: 0,
           },
         ],
       },
@@ -141,7 +135,6 @@ describe('ProfitRankingTable', () => {
             base_fee: 0,
             l1_data_cost: 5e17,
             prove_cost: 1e16,
-            verify_cost: 2e16,
             sequencers: [
               {
                 address: '0xseqA',
@@ -149,7 +142,6 @@ describe('ProfitRankingTable', () => {
                 base_fee: 0,
                 l1_data_cost: 5e17,
                 prove_cost: 1e16,
-                verify_cost: 2e16,
               },
             ],
           },
@@ -170,7 +162,6 @@ describe('ProfitRankingTable', () => {
         base_fee: 0,
         l1_data_cost: 5e17,
         prove_cost: 1e16,
-        verify_cost: 2e16,
         sequencers: [
           {
             address: '0xseqA',
@@ -178,7 +169,6 @@ describe('ProfitRankingTable', () => {
             base_fee: 0,
             l1_data_cost: 5e17,
             prove_cost: 1e16,
-            verify_cost: 2e16,
           },
         ],
       },

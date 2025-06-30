@@ -76,18 +76,16 @@ export const useDataFetcher = ({
         baseFee: data.baseFee,
         l1DataCost: data.l1DataCost,
         proveCost: data.proveCost,
-        verifyCost: data.verifyCost,
+
         profit:
           data.priorityFee != null &&
-          data.baseFee != null &&
-          data.l1DataCost != null &&
-          data.proveCost != null &&
-          data.verifyCost != null
+            data.baseFee != null &&
+            data.l1DataCost != null &&
+            data.proveCost != null
             ? data.priorityFee +
-              data.baseFee -
-              data.l1DataCost -
-              data.proveCost -
-              data.verifyCost
+            data.baseFee -
+            data.l1DataCost -
+            data.proveCost
             : null,
         l2Block: data.l2Block,
         l1Block: data.l1Block,
@@ -129,7 +127,7 @@ export const useDataFetcher = ({
       priorityFee: data.priorityFee,
       baseFee: data.baseFee,
       proveCost: data.proveCost,
-      verifyCost: data.verifyCost,
+
       l1DataCost: null,
       profit: null,
       l2Block: data.l2Block,

@@ -68,7 +68,6 @@ export interface BatchFeeComponent {
   base: number;
   l1Cost: number | null;
   amortizedProveCost: number | null;
-  amortizedVerifyCost: number | null;
 }
 
 export interface BlockProfit {

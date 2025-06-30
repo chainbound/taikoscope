@@ -108,7 +108,7 @@ describe('dataFetcher', () => {
     expect(res.l1Block).toBe(3);
     expect(res.l1DataCost).toBe(4);
     expect(res.proveCost).toBe(5);
-    expect(res.verifyCost).toBe(6);
+
     expect(res.sequencerDist[0].name).toBe('foo');
     expect(res.badRequestResults).toHaveLength(4);
   });
@@ -133,7 +133,7 @@ describe('dataFetcher', () => {
     expect(res.baseFee).toBeNull();
     expect(res.l1DataCost).toBeNull();
     expect(res.proveCost).toBeNull();
-    expect(res.verifyCost).toBeNull();
+
     expect(res.badRequestResults).toHaveLength(4);
   });
 
