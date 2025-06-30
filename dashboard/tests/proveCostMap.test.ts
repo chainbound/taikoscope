@@ -7,6 +7,6 @@ describe('prove-cost mapData', () => {
   it('formats batch number and cost correctly', () => {
     const rows = mapData([{ batch: 1000, cost: 42e18 }]);
     expect(rows[0].batch).toBe('1,000');
-    expect(rows[0].cost).toBe('42.000 ETH');
+    expect(rows[0].cost).toBe('42 ETH');
   });
 });

@@ -112,6 +112,7 @@ export const formatEth = (wei: number, decimals?: number): string => {
     return `${Math.trunc(eth).toLocaleString()} ETH`;
   }
   const ethFormatted = formatDecimal(eth, decimals);
+  const ethTrimmed = String(Number(ethFormatted));
   if (wei !== 0 && Math.abs(eth) < 0.005) {
     const gwei = wei / 1e9;
     if (Math.abs(gwei) >= 1000) {
@@ -122,7 +123,7 @@ export const formatEth = (wei: number, decimals?: number): string => {
       : formatDecimal(gwei, decimals);
     return `${gweiFormatted} Gwei`;
   }
-  return `${ethFormatted} ETH`;
+  return `${ethTrimmed} ETH`;
 };
 
 export const parseEthValue = (value: string): number => {
