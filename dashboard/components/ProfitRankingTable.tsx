@@ -25,8 +25,8 @@ const formatUsd = (value: number): string => {
     return Math.trunc(value).toLocaleString();
   }
   return value.toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: 3,
+    maximumFractionDigits: 3,
   });
 };
 
@@ -317,11 +317,11 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
                   }
                 >
                   {row.revenueEth != null
-                    ? formatEth(row.revenueEth * 1e18)
+                    ? formatEth(row.revenueEth * 1e18, 3)
                     : 'N/A'}
                 </td>
                 <td className="px-2 py-1" title={`$${formatUsd(row.costUsd)}`}>
-                  {formatEth(row.costEth * 1e18)}
+                  {formatEth(row.costEth * 1e18, 3)}
                 </td>
                 <td
                   className="px-2 py-1"
@@ -332,7 +332,7 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
                   }
                 >
                   {row.profitEth != null
-                    ? formatEth(row.profitEth * 1e18)
+                    ? formatEth(row.profitEth * 1e18, 3)
                     : 'N/A'}
                 </td>
                 <td className="px-2 py-1">

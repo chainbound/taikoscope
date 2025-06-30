@@ -10,6 +10,6 @@ describe('l1-data-cost mapData', () => {
     // value should be React element from blockLink
     expect(typeof rows[0].block).toBe('object');
     expect(rows[0].block).toHaveProperty('props');
-    expect(rows[0].cost).toBe('42.0 ETH');
+    expect(rows[0].cost).toBe('42.000 ETH');
   });
 });

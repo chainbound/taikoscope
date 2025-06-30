@@ -86,7 +86,7 @@ export const CostChart: React.FC<CostChartProps> = ({
             stroke="#666666"
             fontSize={12}
             domain={['auto', 'auto']}
-            tickFormatter={(v: number) => formatEth(v * 1e18)}
+            tickFormatter={(v: number) => formatEth(v * 1e18, 3)}
             label={{
               value: 'Cost (ETH)',
               angle: -90,
@@ -99,7 +99,7 @@ export const CostChart: React.FC<CostChartProps> = ({
           <Tooltip
             labelFormatter={(v: number) => `Batch ${v}`}
             formatter={(value: number, _name: string, { payload }: Payload<number, string>) =>
-              [`${formatEth(value * 1e18)} ($${payload.costUsd.toFixed(2)})`, 'Cost']
+              [`${formatEth(value * 1e18, 3)} ($${payload.costUsd.toFixed(3)})`, 'Cost']
             }
             contentStyle={{
               backgroundColor: 'rgba(255,255,255,0.8)',

@@ -72,7 +72,7 @@ export const RevenueChart: React.FC<RevenueChartProps> = ({
             stroke="#666666"
             fontSize={12}
             domain={['auto', 'auto']}
-            tickFormatter={(v: number) => formatEth(v * 1e18)}
+            tickFormatter={(v: number) => formatEth(v * 1e18, 3)}
             label={{
               value: 'Revenue (ETH)',
               angle: -90,
@@ -85,7 +85,7 @@ export const RevenueChart: React.FC<RevenueChartProps> = ({
           <Tooltip
             labelFormatter={(v: number) => `Batch ${v}`}
             formatter={(value: number, _name: string, { payload }: Payload<number, string>) =>
-              [`${formatEth(value * 1e18)} ($${payload.revenueUsd.toFixed(2)})`, 'Revenue']
+              [`${formatEth(value * 1e18, 3)} ($${payload.revenueUsd.toFixed(3)})`, 'Revenue']
             }
             contentStyle={{
               backgroundColor: 'rgba(255,255,255,0.8)',
