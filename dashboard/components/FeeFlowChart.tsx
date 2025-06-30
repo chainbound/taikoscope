@@ -245,8 +245,11 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     remaining -= actualProveCost;
     const actualVerifyCost = safeValue(Math.min(verifyUsd, remaining));
     remaining -= actualVerifyCost;
-    const subsidyUsd = safeValue(l1CostUsd - actualL1Cost);
-    const subsidyWei = safeValue(ethPrice ? (subsidyUsd / ethPrice) * WEI_TO_ETH : 0);
+    const deficitUsd = safeValue(Math.max(0, -profitUsd));
+    const subsidyUsd = safeValue(Math.max(l1CostUsd - actualL1Cost, deficitUsd));
+    const subsidyWei = safeValue(
+      ethPrice ? (subsidyUsd / ethPrice) * WEI_TO_ETH : 0,
+    );
     const actualHardwareCostWei = safeValue(
       ethPrice ? (actualHardwareCost / ethPrice) * WEI_TO_ETH : 0,
     );
