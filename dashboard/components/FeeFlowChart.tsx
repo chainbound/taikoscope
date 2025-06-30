@@ -25,7 +25,7 @@ const MONTH_HOURS = 30 * 24;
 const WEI_TO_ETH = 1e18;
 
 // Format numbers as USD without grouping
-const formatUsd = (value: number) => `$${value.toFixed(2)}`;
+const formatUsd = (value: number) => `$${value.toFixed(3)}`;
 
 // Simple node component that renders label with currency-aware value
 const createSankeyNode = (textColor: string) => {
@@ -559,11 +559,11 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
   const formatTooltipValue = (value: number, itemData?: any) => {
     const usd = formatUsd(value);
     if (itemData?.wei != null) {
-      return `${formatEth(itemData.wei)} (${usd})`;
+      return `${formatEth(itemData.wei, 3)} (${usd})`;
     }
     if (!itemData?.usd && ethPrice) {
       const wei = (value / ethPrice) * WEI_TO_ETH;
-      return `${formatEth(wei)} (${usd})`;
+      return `${formatEth(wei, 3)} (${usd})`;
     }
     return usd;
   };

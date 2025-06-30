@@ -346,7 +346,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     mapData: (data) =>
       (data as { block: number; cost: number }[]).map((d) => ({
         block: blockLink(d.block),
-        cost: formatEth(d.cost),
+        cost: formatEth(d.cost, 3),
       })),
     urlKey: 'l1-data-cost',
     supportsPagination: true,
@@ -363,7 +363,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     mapData: (data) =>
       (data as { batch: number; cost: number }[]).map((d) => ({
         batch: d.batch.toLocaleString(),
-        cost: formatEth(d.cost),
+        cost: formatEth(d.cost, 3),
       })),
     urlKey: 'prove-cost',
     supportsPagination: true,

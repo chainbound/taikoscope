@@ -62,17 +62,18 @@ export const addressLink = (
     text ?? address,
   );
 
-export const formatDecimal = (value: number): string => {
+export const formatDecimal = (value: number, decimalsOverride?: number): string => {
   if (value === 0) {
-    return '0.00';
+    const decimals = decimalsOverride ?? 2;
+    return `0.${'0'.repeat(decimals)}`;
   }
 
-  const decimals = Math.abs(value) >= 1 ? 1 : 3;
+  const decimals = decimalsOverride ?? (Math.abs(value) >= 1 ? 1 : 3);
   const factor = 10 ** decimals;
   const rounded = Math.round(value * factor) / factor;
   let result = rounded.toFixed(decimals);
 
-  if (Math.abs(value) < 1) {
+  if (decimalsOverride === undefined && Math.abs(value) < 1) {
     result = result.replace(/0+$/, '');
   }
 
@@ -102,7 +103,7 @@ export const formatLargeNumber = (value: number): string => {
 export const formatWithCommas = (value: number): string =>
   value.toLocaleString();
 
-export const formatEth = (wei: number): string => {
+export const formatEth = (wei: number, decimals?: number): string => {
   if (Math.abs(wei) < 1e9) {
     return `${wei.toLocaleString()} wei`;
   }
@@ -110,7 +111,7 @@ export const formatEth = (wei: number): string => {
   if (Math.abs(eth) >= 1000) {
     return `${Math.trunc(eth).toLocaleString()} ETH`;
   }
-  const ethFormatted = formatDecimal(eth);
+  const ethFormatted = formatDecimal(eth, decimals);
   if (wei !== 0 && Math.abs(eth) < 0.005) {
     const gwei = wei / 1e9;
     if (Math.abs(gwei) >= 1000) {
@@ -118,7 +119,7 @@ export const formatEth = (wei: number): string => {
     }
     const gweiFormatted = Number.isInteger(gwei)
       ? gwei.toLocaleString()
-      : formatDecimal(gwei);
+      : formatDecimal(gwei, decimals);
     return `${gweiFormatted} Gwei`;
   }
   return `${ethFormatted} ETH`;

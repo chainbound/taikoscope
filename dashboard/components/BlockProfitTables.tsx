@@ -18,8 +18,8 @@ const formatUsd = (value: number): string => {
   const abs = Math.abs(value);
   if (abs >= 1000) return Math.trunc(value).toLocaleString();
   return value.toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: 3,
+    maximumFractionDigits: 3,
   });
 };
 
@@ -102,7 +102,7 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
                   className="px-2 py-1"
                   title={`$${formatUsd(b.profitEth * ethPrice)}`}
                 >
-                  {formatEth(b.profit)}
+                  {formatEth(b.profit, 3)}
                 </td>
               </tr>
             ))}
