@@ -260,7 +260,7 @@ mod tests {
         let opts = Opts::try_parse_from(args).expect("failed to parse opts");
 
         assert_eq!(opts.instatus.monitor_poll_interval_secs, 30);
-        assert_eq!(opts.instatus.monitor_threshold_secs, 96);
+        assert_eq!(opts.instatus.monitor_threshold_secs, 192);
         assert_eq!(opts.instatus.batch_proof_timeout_secs, 10800);
         assert_eq!(opts.api.host, "127.0.0.1");
         assert_eq!(opts.api.port, 3000);
