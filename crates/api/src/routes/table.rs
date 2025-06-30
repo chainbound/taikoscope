@@ -48,7 +48,7 @@ pub async fn reorgs(
     validate_range_exclusivity(has_time_range, has_slot_range)?;
 
     let since = resolve_time_range_since(&params.common.range, &params.common.time_range);
-    let events = match state
+    let rows = match state
         .client
         .get_l2_reorgs_paginated(since, limit, params.starting_after, params.ending_before)
         .await
@@ -59,6 +59,19 @@ pub async fn reorgs(
             return Err(ErrorResponse::database_error());
         }
     };
+    let events: Vec<L2ReorgEvent> = rows
+        .into_iter()
+        .filter_map(|e| {
+            let inserted_at = e.inserted_at?;
+            Some(L2ReorgEvent {
+                l2_block_number: e.l2_block_number,
+                depth: e.depth,
+                old_sequencer: format!("0x{}", encode(e.old_sequencer)),
+                new_sequencer: format!("0x{}", encode(e.new_sequencer)),
+                inserted_at,
+            })
+        })
+        .collect();
     tracing::info!(count = events.len(), "Returning reorg events");
     Ok(Json(ReorgEventsResponse { events }))
 }

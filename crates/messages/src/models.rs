@@ -128,6 +128,10 @@ pub struct L2ReorgInsertRow {
     pub l2_block_number: u64,
     /// Depth
     pub depth: u16,
+    /// Sequencer that produced the replaced block
+    pub old_sequencer: AddressBytes,
+    /// Sequencer that produced the new block
+    pub new_sequencer: AddressBytes,
 }
 
 /// L2 reorg row
@@ -137,6 +141,10 @@ pub struct L2ReorgRow {
     pub l2_block_number: u64,
     /// Depth
     pub depth: u16,
+    /// Sequencer that produced the replaced block
+    pub old_sequencer: AddressBytes,
+    /// Sequencer that produced the new block
+    pub new_sequencer: AddressBytes,
     /// Time the reorg was recorded.
     /// This is populated when reading from the database.
     pub inserted_at: Option<DateTime<Utc>>,

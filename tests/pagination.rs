@@ -4,8 +4,10 @@ use axum::{extract::connect_info::IntoMakeServiceWithConnectInfo, serve};
 use chrono::Utc;
 use clickhouse::{
     Row,
-    test::{Mock, handlers},
+    test::{handlers, Mock},
+    types::AddressBytes,
 };
+use alloy::primitives::Address;
 use reqwest::StatusCode;
 use tokio::{
     net::{TcpListener, TcpStream},
@@ -79,13 +81,27 @@ async fn reorgs_endpoint_returns_items_with_pagination() {
     struct RawRow {
         l2_block_number: u64,
         depth: u16,
+        old_sequencer: AddressBytes,
+        new_sequencer: AddressBytes,
         ts: u64,
     }
 
     let mock = Mock::new();
     mock.add(handlers::provide(vec![
-        RawRow { l2_block_number: 9, depth: 1, ts: 1000 },
-        RawRow { l2_block_number: 8, depth: 2, ts: 2000 },
+        RawRow {
+            l2_block_number: 9,
+            depth: 1,
+            old_sequencer: AddressBytes::from(Address::repeat_byte(1)),
+            new_sequencer: AddressBytes::from(Address::repeat_byte(2)),
+            ts: 1000,
+        },
+        RawRow {
+            l2_block_number: 8,
+            depth: 2,
+            old_sequencer: AddressBytes::from(Address::repeat_byte(3)),
+            new_sequencer: AddressBytes::from(Address::repeat_byte(4)),
+            ts: 2000,
+        },
     ]));
 
     let url = Url::parse(mock.url()).unwrap();
@@ -107,11 +123,15 @@ async fn reorgs_endpoint_returns_items_with_pagination() {
             {
                 "l2_block_number": 8,
                 "depth": 2,
+                "old_sequencer": "0x0303030303030303030303030303030303030303",
+                "new_sequencer": "0x0404040404040404040404040404040404040404",
                 "inserted_at": Utc.timestamp_millis_opt(2000).single().unwrap().to_rfc3339()
             },
             {
                 "l2_block_number": 9,
                 "depth": 1,
+                "old_sequencer": "0x0101010101010101010101010101010101010101",
+                "new_sequencer": "0x0202020202020202020202020202020202020202",
                 "inserted_at": Utc.timestamp_millis_opt(1000).single().unwrap().to_rfc3339()
             }
         ]

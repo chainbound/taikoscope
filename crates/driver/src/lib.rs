@@ -489,12 +489,20 @@ impl Driver {
 
     /// Process an L2 header event, inserting statistics and detecting reorgs.
     async fn handle_l2_header(&mut self, header: L2Header) {
-        self.last_l2_header = Some((header.number, header.beneficiary));
+        let prev_header = self.last_l2_header;
         // Detect reorgs
         // It returns Some(depth) if new_block_number < current_head_number.
-        if let Some(depth) = self.reorg.on_new_block(header.number) {
+        let reorg_depth = self.reorg.on_new_block(header.number);
+        self.last_l2_header = Some((header.number, header.beneficiary));
+
+        if let Some(depth) = reorg_depth {
+            let old_seq = prev_header.map(|(_, addr)| addr).unwrap_or(Address::ZERO);
             // The block_number should be the new head number after the reorg.
-            if let Err(e) = self.clickhouse.insert_l2_reorg(header.number, depth).await {
+            if let Err(e) = self
+                .clickhouse
+                .insert_l2_reorg(header.number, depth, old_seq, header.beneficiary)
+                .await
+            {
                 tracing::error!(block_number = header.number, depth = depth, err = %e, "Failed to insert L2 reorg");
             } else {
                 info!(new_head = header.number, depth, "Inserted L2 reorg");

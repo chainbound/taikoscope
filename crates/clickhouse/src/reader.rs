@@ -537,11 +537,13 @@ impl ClickhouseReader {
         struct RawRow {
             l2_block_number: u64,
             depth: u16,
+            old_sequencer: AddressBytes,
+            new_sequencer: AddressBytes,
             ts: u64,
         }
 
         let query = format!(
-            "SELECT l2_block_number, depth, \
+            "SELECT l2_block_number, depth, old_sequencer, new_sequencer, \
                     toUInt64(toUnixTimestamp64Milli(inserted_at)) AS ts \
              FROM {}.l2_reorgs \
              WHERE inserted_at > toDateTime64({}, 3) \
@@ -557,6 +559,8 @@ impl ClickhouseReader {
                 Some(L2ReorgRow {
                     l2_block_number: r.l2_block_number,
                     depth: r.depth,
+                    old_sequencer: r.old_sequencer,
+                    new_sequencer: r.new_sequencer,
                     inserted_at: Some(ts),
                 })
             })
@@ -576,11 +580,13 @@ impl ClickhouseReader {
         struct RawRow {
             l2_block_number: u64,
             depth: u16,
+            old_sequencer: AddressBytes,
+            new_sequencer: AddressBytes,
             ts: u64,
         }
 
         let mut query = format!(
-            "SELECT l2_block_number, depth, \
+            "SELECT l2_block_number, depth, old_sequencer, new_sequencer, \
                     toUInt64(toUnixTimestamp64Milli(inserted_at)) AS ts \
              FROM {db}.l2_reorgs \
              WHERE inserted_at > toDateTime64({since}, 3)",
@@ -606,6 +612,8 @@ impl ClickhouseReader {
                 Some(L2ReorgRow {
                     l2_block_number: r.l2_block_number,
                     depth: r.depth,
+                    old_sequencer: r.old_sequencer,
+                    new_sequencer: r.new_sequencer,
                     inserted_at: Some(ts),
                 })
             })

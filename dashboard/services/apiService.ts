@@ -173,13 +173,21 @@ export const fetchL2ReorgEvents = async (
     url += `&ending_before=${endingBefore}`;
   }
   const res = await fetchJson<{
-    events: { l2_block_number: number; depth: number; inserted_at: string }[];
+    events: {
+      l2_block_number: number;
+      depth: number;
+      old_sequencer: string;
+      new_sequencer: string;
+      inserted_at: string;
+    }[];
   }>(url);
   return {
     data: res.data?.events
       ? res.data.events.map((e) => ({
           l2_block_number: e.l2_block_number,
           depth: e.depth,
+          old_sequencer: e.old_sequencer,
+          new_sequencer: e.new_sequencer,
           timestamp: Date.parse(e.inserted_at),
         }))
       : null,

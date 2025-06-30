@@ -452,9 +452,20 @@ impl ClickhouseWriter {
     }
 
     /// Insert L2 reorg row
-    pub async fn insert_l2_reorg(&self, block_number: BlockNumber, depth: u16) -> Result<()> {
+    pub async fn insert_l2_reorg(
+        &self,
+        block_number: BlockNumber,
+        depth: u16,
+        old_sequencer: Address,
+        new_sequencer: Address,
+    ) -> Result<()> {
         let client = self.base.clone();
-        let row = L2ReorgInsertRow { l2_block_number: block_number, depth };
+        let row = L2ReorgInsertRow {
+            l2_block_number: block_number,
+            depth,
+            old_sequencer: AddressBytes(old_sequencer.into_array()),
+            new_sequencer: AddressBytes(new_sequencer.into_array()),
+        };
         let mut insert = client.insert(&format!("{}.l2_reorgs", self.db_name))?;
         insert.write(&row).await?;
         insert.end().await?;
@@ -482,7 +493,7 @@ mod tests {
 
     use super::*;
 
-    use alloy::primitives::B256;
+    use alloy::primitives::{Address, B256};
     use chainio::{ITaikoInbox, taiko::wrapper::ITaikoWrapper};
     use clickhouse::test::{self, Mock, handlers};
 
@@ -555,12 +566,17 @@ mod tests {
         let url = Url::parse(mock.url()).unwrap();
         let writer = ClickhouseWriter::new(url, "db".to_owned(), "user".into(), "pass".into());
 
-        writer.insert_l2_reorg(10, 3).await.unwrap();
+        writer
+            .insert_l2_reorg(10, 3, Address::repeat_byte(1), Address::repeat_byte(2))
+            .await
+            .unwrap();
 
         let rows: Vec<L2ReorgInsertRow> = ctl.collect().await;
         assert_eq!(rows.len(), 1);
         assert_eq!(rows[0].l2_block_number, 10);
         assert_eq!(rows[0].depth, 3);
+        assert_eq!(rows[0].old_sequencer, AddressBytes::from(Address::repeat_byte(1)));
+        assert_eq!(rows[0].new_sequencer, AddressBytes::from(Address::repeat_byte(2)));
     }
 
     #[tokio::test]
