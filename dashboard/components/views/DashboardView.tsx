@@ -103,7 +103,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       value: costWei != null ? formatEth(costWei) : 'N/A',
       group: 'Network Economics',
     };
-    const idx = metricsData.metrics.findIndex((m) => m.title === 'Verify Cost');
+    const idx = metricsData.metrics.findIndex((m) => m.title === 'Prove Cost');
     const list = [...metricsData.metrics];
     if (idx >= 0) list.splice(idx + 1, 0, hardwareMetric);
     else list.push(hardwareMetric);
@@ -193,7 +193,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         'Avg. Verify Time': () => onOpenTable('verify-time', timeRange),
         'Propose Batch Cost': () => onOpenTable('l1-data-cost', timeRange),
         'Prove Cost': () => onOpenTable('prove-cost', timeRange),
-        'Verify Cost': () => onOpenTable('verify-cost', timeRange),
       };
       return actions[title];
     },

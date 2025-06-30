@@ -140,11 +140,6 @@ export const createMetrics = (data: MetricInputData): MetricData[] => [
     group: 'Network Economics',
   },
   {
-    title: 'Verify Cost',
-    value: data.verifyCost != null ? formatEth(data.verifyCost) : 'N/A',
-    group: 'Network Economics',
-  },
-  {
     title: 'L2 Block',
     value: data.l2Block != null ? data.l2Block.toLocaleString() : 'N/A',
     link:

@@ -84,14 +84,12 @@ describe('helpers', () => {
     expect(metrics[14].group).toBe('Network Economics');
     expect(metrics[15].value).toBe('9.0 ETH');
     expect(metrics[15].group).toBe('Network Economics');
-    expect(metrics[16].value).toBe('11.0 ETH');
-    expect(metrics[16].group).toBe('Network Economics');
-    expect(metrics[17].value).toBe('100');
-    expect(metrics[17].link).toContain('/block/100');
+    expect(metrics[16].value).toBe('100');
+    expect(metrics[16].link).toContain('/block/100');
+    expect(metrics[16].group).toBe('Block Information');
+    expect(metrics[17].value).toBe('50');
+    expect(metrics[17].link).toContain('/block/50');
     expect(metrics[17].group).toBe('Block Information');
-    expect(metrics[18].value).toBe('50');
-    expect(metrics[18].link).toContain('/block/50');
-    expect(metrics[18].group).toBe('Block Information');
   });
 
   it('detects bad requests', () => {
@@ -121,9 +119,8 @@ describe('helpers', () => {
     expect(metricsAllNull[13].group).toBe('Network Economics');
     expect(metricsAllNull[14].group).toBe('Network Economics');
     expect(metricsAllNull[15].group).toBe('Network Economics');
-    expect(metricsAllNull[16].group).toBe('Network Economics');
+    expect(metricsAllNull[16].group).toBe('Block Information');
     expect(metricsAllNull[17].group).toBe('Block Information');
-    expect(metricsAllNull[18].group).toBe('Block Information');
   });
 
   it('handles all successful requests', () => {

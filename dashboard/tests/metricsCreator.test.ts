@@ -28,7 +28,7 @@ describe('metricsCreator', () => {
       l1Block: 50,
     });
 
-    expect(metrics).toHaveLength(19);
+    expect(metrics).toHaveLength(18);
     expect(metrics[0].value).toBe('1.2');
 
     const proveMetric = metrics.find((m) => m.title === 'Avg. Prove Time');
@@ -37,9 +37,7 @@ describe('metricsCreator', () => {
     expect(verifyMetric?.value).toBe('3.0s');
 
     const proveCostMetric = metrics.find((m) => m.title === 'Prove Cost');
-    const verifyCostMetric = metrics.find((m) => m.title === 'Verify Cost');
     expect(proveCostMetric?.value).toBe('5.0 ETH');
-    expect(verifyCostMetric?.value).toBe('6.0 ETH');
 
     const profitMetric = metrics.find((m) => m.title === 'Profit');
     expect(profitMetric?.value).toBe('39.0 ETH');
