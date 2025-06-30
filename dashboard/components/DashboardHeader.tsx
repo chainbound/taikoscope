@@ -10,7 +10,6 @@ import { useSearchParams } from 'react-router-dom';
 import { showToast } from '../utils/toast';
 import { DayPicker } from 'react-day-picker';
 import * as Popover from '@radix-ui/react-popover';
-import { ThemeToggle } from './ThemeToggle';
 
 interface ImportMetaEnv {
   readonly VITE_NETWORK_NAME?: string;
@@ -121,8 +120,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
           value={selectedSequencer}
           onChange={onSequencerChange}
         />
-        <ThemeToggle />
-        {/* Export button removed as per request */}
+        {/* Dark mode toggle removed as per request */}
       </div>
     </header>
   );

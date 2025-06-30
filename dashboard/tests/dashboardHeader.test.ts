@@ -39,7 +39,6 @@ describe('DashboardHeader', () => {
     expect(html.includes('Status')).toBe(true);
     expect(html.includes('All Sequencers')).toBe(true);
     expect(html.includes('Economics')).toBe(true);
-    expect(html.includes('Dark Mode')).toBe(true);
   });
 
   it('shows sequencer selector in economics view', () => {
@@ -69,6 +68,5 @@ describe('DashboardHeader', () => {
       ),
     );
     expect(html.includes('All Sequencers')).toBe(true);
-    expect(html.includes('Dark Mode')).toBe(true);
   });
 });
