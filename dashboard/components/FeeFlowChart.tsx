@@ -38,7 +38,7 @@ const createSankeyNode = (textColor: string) => {
 
     const isCostNode =
       payload.name === 'Hardware Cost' ||
-      payload.name === 'L1 Data Cost' ||
+      payload.name === 'Propose Batch Cost' ||
       payload.name === 'L1 Prove Cost' ||
       payload.name === 'L1 Verify Cost' ||
       payload.name === 'Subsidy' ||
@@ -124,7 +124,7 @@ const SankeyLink = (props: any) => {
 
   const isCost =
     payload.target.name === 'Hardware Cost' ||
-    payload.target.name === 'L1 Data Cost' ||
+    payload.target.name === 'Propose Batch Cost' ||
     payload.target.name === 'L1 Prove Cost' ||
     payload.target.name === 'L1 Verify Cost' ||
     payload.target.name === 'Subsidy' ||
@@ -319,7 +319,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
       { name: 'Base Fee', value: baseFeeUsd, wei: baseFee ?? 0 },
       { name: 'Sequencers', value: sequencerRevenue, wei: sequencerRevenueWei },
       { name: 'Hardware Cost', value: totalHardwareCost, usd: true },
-      { name: 'L1 Data Cost', value: l1DataCostTotalUsd, usd: true },
+      { name: 'Propose Batch Cost', value: l1DataCostTotalUsd, usd: true },
       { name: 'Profit', value: sequencerProfit, wei: sequencerProfitWei },
       { name: 'Taiko DAO', value: baseFeeDaoUsd, wei: (baseFee ?? 0) * 0.25 },
     ];
@@ -365,8 +365,8 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
           l1DataCostTotalUsd,
           Math.max(0, sequencerRevenue - totalHardwareCost),
         )),
-      }, // Sequencers → L1 Data Cost
-      { source: 0, target: 5, value: l1Subsidy }, // Subsidy → L1 Data Cost
+      }, // Sequencers → Propose Batch Cost
+      { source: 0, target: 5, value: l1Subsidy }, // Subsidy → Propose Batch Cost
       { source: 3, target: profitIndex, value: sequencerProfit }, // Sequencers → Profit
     ].filter((l) => l.value > 0);
 
@@ -426,7 +426,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
         revenueNode: true,
       })),
       { name: 'Hardware Cost', value: totalActualHardwareCost, usd: true },
-      { name: 'L1 Data Cost', value: totalL1Cost, usd: true },
+      { name: 'Propose Batch Cost', value: totalL1Cost, usd: true },
       ...(l1ProveCost > 0
         ? [{ name: 'L1 Prove Cost', value: totalActualProveCost, usd: true }]
         : []),

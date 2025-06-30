@@ -108,10 +108,10 @@ export const createMetrics = (data: MetricInputData): MetricData[] => [
   },
   {
     title: 'Forced Inclusions',
-      value:
-        data.forcedInclusions != null
-          ? formatWithCommas(data.forcedInclusions)
-          : 'N/A',
+    value:
+      data.forcedInclusions != null
+        ? formatWithCommas(data.forcedInclusions)
+        : 'N/A',
     group: 'Network Health',
   },
   {
@@ -130,7 +130,7 @@ export const createMetrics = (data: MetricInputData): MetricData[] => [
     group: 'Network Economics',
   },
   {
-    title: 'L1 Data Cost',
+    title: 'Propose Batch Cost',
     value: data.l1DataCost != null ? formatEth(data.l1DataCost) : 'N/A',
     group: 'Network Economics',
   },

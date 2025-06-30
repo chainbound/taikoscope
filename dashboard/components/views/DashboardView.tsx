@@ -152,10 +152,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const skeletonGroupCounts: Record<string, number> = isEconomicsView
     ? { 'Network Economics': 3 }
     : {
-        'Network Performance': 3,
-        'Network Health': 5,
-        Sequencers: 3,
-      };
+      'Network Performance': 3,
+      'Network Health': 5,
+      Sequencers: 3,
+    };
 
   const displayGroupName = useCallback(
     (group: string): string => {
@@ -191,7 +191,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         'Batch Posting Cadence': () => onOpenTable('batch-posting-cadence'),
         'Avg. Prove Time': () => onOpenTable('prove-time', timeRange),
         'Avg. Verify Time': () => onOpenTable('verify-time', timeRange),
-        'L1 Data Cost': () => onOpenTable('l1-data-cost', timeRange),
+        'Propose Batch Cost': () => onOpenTable('l1-data-cost', timeRange),
         'Prove Cost': () => onOpenTable('prove-cost', timeRange),
         'Verify Cost': () => onOpenTable('verify-cost', timeRange),
       };
@@ -354,12 +354,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               onProverCostChange={setProverCost}
             />
             <div className="mt-6">
-            <EconomicsChart
-              timeRange={timeRange}
-              cloudCost={cloudCost}
-              proverCost={proverCost}
-              address={selectedSequencer || undefined}
-            />
+              <EconomicsChart
+                timeRange={timeRange}
+                cloudCost={cloudCost}
+                proverCost={proverCost}
+                address={selectedSequencer || undefined}
+              />
             </div>
             <ProfitRankingTable
               timeRange={timeRange}
