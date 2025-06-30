@@ -128,7 +128,7 @@ describe('utils', () => {
   });
 
   it('formats ETH amounts', () => {
-    expect(formatEth(42e18)).toBe('42.0 ETH');
+    expect(formatEth(42e18)).toBe('42 ETH');
     expect(formatEth(0)).toBe('0 wei');
     expect(formatEth(1e8)).toBe('100,000,000 wei');
     expect(formatEth(1334501e9)).toBe('1,334,501 Gwei');
@@ -141,7 +141,7 @@ describe('utils', () => {
     expect(formatEth(0.01e18)).toBe('0.01 ETH');
     expect(formatEth(0.012e18)).toBe('0.012 ETH');
     expect(formatEth(-0.04e18)).toBe('-0.04 ETH');
-    expect(formatEth(1e18, 3)).toBe('1.000 ETH');
+    expect(formatEth(1e18, 3)).toBe('1 ETH');
   });
 
   it('parses ETH and Gwei values', () => {

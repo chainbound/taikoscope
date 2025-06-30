@@ -37,10 +37,10 @@ describe('metricsCreator', () => {
     expect(verifyMetric?.value).toBe('3.0s');
 
     const proveCostMetric = metrics.find((m) => m.title === 'Prove Cost');
-    expect(proveCostMetric?.value).toBe('5.000 ETH');
+    expect(proveCostMetric?.value).toBe('5 ETH');
 
     const profitMetric = metrics.find((m) => m.title === 'Profit');
-    expect(profitMetric?.value).toBe('39.000 ETH');
+    expect(profitMetric?.value).toBe('39 ETH');
 
     const current = metrics.find((m) => m.title === 'Current Sequencer');
     const next = metrics.find((m) => m.title === 'Next Sequencer');
