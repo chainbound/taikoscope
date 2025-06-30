@@ -14,7 +14,7 @@ use api_types::{
     BlockProfitsResponse, ErrorResponse, EthPriceResponse, L1BlockTimesResponse,
     L1DataCostResponse, L1HeadBlockResponse, L1HeadResponse, L2HeadBlockResponse, L2HeadResponse,
     ProveCostResponse, ProveTimesResponse, SequencerBlocksItem, SequencerBlocksResponse,
-    SequencerDistributionItem, SequencerDistributionResponse,
+    SequencerDistributionItem, SequencerDistributionResponse, VerifyTimesResponse,
 };
 use axum::{
     Json,
@@ -274,6 +274,53 @@ pub async fn prove_times(
     };
     tracing::info!(count = batches.len(), "Returning prove times");
     Ok(Json(ProveTimesResponse { batches }))
+}
+
+#[utoipa::path(
+    get,
+    path = "/verify-times",
+    params(
+        PaginatedQuery
+    ),
+    responses(
+        (status = 200, description = "Verify times", body = VerifyTimesResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
+    ),
+    tag = "taikoscope"
+)]
+/// Get batch verification time metrics for the specified time range
+pub async fn verify_times(
+    Query(params): Query<PaginatedQuery>,
+    State(state): State<ApiState>,
+) -> Result<Json<VerifyTimesResponse>, ErrorResponse> {
+    // Validate time range parameters
+    validate_time_range(&params.common.time_range)?;
+
+    // Check for range exclusivity
+    let limit = validate_pagination(
+        params.starting_after.as_ref(),
+        params.ending_before.as_ref(),
+        params.limit.as_ref(),
+        MAX_TABLE_LIMIT,
+    )?;
+    let has_time_range = has_time_range_params(&params.common.time_range);
+    let has_slot_range = params.starting_after.is_some() || params.ending_before.is_some();
+    validate_range_exclusivity(has_time_range, has_slot_range)?;
+
+    let since = resolve_time_range_since(&params.common.range, &params.common.time_range);
+    let batches = match state
+        .client
+        .get_verify_times_paginated(since, limit, params.starting_after, params.ending_before)
+        .await
+    {
+        Ok(rows) => rows,
+        Err(e) => {
+            tracing::error!(error = %e, "Failed to get verify times");
+            return Err(ErrorResponse::database_error());
+        }
+    };
+    tracing::info!(count = batches.len(), "Returning verify times");
+    Ok(Json(VerifyTimesResponse { batches }))
 }
 
 #[utoipa::path(
