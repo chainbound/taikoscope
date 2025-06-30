@@ -117,7 +117,7 @@ describe('ProfitRankingTable', () => {
     expect(html.includes('Batches')).toBe(true);
     expect(html.includes('Cost')).toBe(true);
     expect(html.includes('Profit')).toBe(true);
-    expect(html.includes('Income/Cost')).toBe(true);
+    expect(html.includes('Revenue-to-Cost Ratio')).toBe(true);
     expect(html.includes('↓')).toBe(true);
   });
 

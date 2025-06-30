@@ -286,7 +286,7 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
                 className="px-2 py-1 text-left cursor-pointer select-none"
                 onClick={() => handleSort('ratio')}
               >
-                Income/Cost
+                Revenue-to-Cost Ratio
                 {sortBy === 'ratio' && (
                   <span className="ml-1">
                     {sortDirection === 'asc' ? '↑' : '↓'}
