@@ -21,7 +21,7 @@ import {
 
 describe('utils', () => {
   it('formats numbers and durations', () => {
-    expect(formatDecimal(1)).toBe('1.00');
+    expect(formatDecimal(1)).toBe('1.0');
     expect(formatDecimal(12.345)).toBe('12.3');
 
     expect(formatSeconds(30)).toBe('30.0s');
@@ -29,12 +29,12 @@ describe('utils', () => {
     expect(formatSeconds(7200)).toBe('2h');
 
     expect(formatInterval(30, false, false)).toBe('30 seconds');
-    expect(formatInterval(180, false, true)).toBe('3.00 minutes');
-    expect(formatInterval(7200, true, false)).toBe('2.00 hours');
+    expect(formatInterval(180, false, true)).toBe('3.0 minutes');
+    expect(formatInterval(7200, true, false)).toBe('2.0 hours');
 
     expect(formatBatchDuration(45, false, false)).toBe('45 seconds');
-    expect(formatBatchDuration(150, false, true)).toBe('2.50 minutes');
-    expect(formatBatchDuration(7200, true, false)).toBe('2.00 hours');
+    expect(formatBatchDuration(150, false, true)).toBe('2.5 minutes');
+    expect(formatBatchDuration(7200, true, false)).toBe('2.0 hours');
   });
 
   it('computes batch duration flags', () => {
@@ -137,7 +137,9 @@ describe('utils', () => {
     expect(formatEth(187788.9e9)).toBe('187,788 Gwei');
     expect(formatEth(-1e8)).toBe('-100,000,000 wei');
     expect(formatEth(-345678.9e9)).toBe('-345,678 Gwei');
-    expect(formatEth(-1.2345e18)).toBe('-1.23 ETH');
+    expect(formatEth(-1.2345e18)).toBe('-1.2 ETH');
+    expect(formatEth(0.01e18)).toBe('0.01 ETH');
+    expect(formatEth(-0.04e18)).toBe('-0.04 ETH');
   });
 
   it('parses ETH and Gwei values', () => {

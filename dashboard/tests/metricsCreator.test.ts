@@ -29,17 +29,17 @@ describe('metricsCreator', () => {
     });
 
     expect(metrics).toHaveLength(19);
-    expect(metrics[0].value).toBe('1.23');
+    expect(metrics[0].value).toBe('1.2');
 
     const proveMetric = metrics.find((m) => m.title === 'Avg. Prove Time');
     const verifyMetric = metrics.find((m) => m.title === 'Avg. Verify Time');
-    expect(proveMetric?.value).toBe('2.00s');
-    expect(verifyMetric?.value).toBe('3.00s');
+    expect(proveMetric?.value).toBe('2.0s');
+    expect(verifyMetric?.value).toBe('3.0s');
 
     const proveCostMetric = metrics.find((m) => m.title === 'Prove Cost');
     const verifyCostMetric = metrics.find((m) => m.title === 'Verify Cost');
-    expect(proveCostMetric?.value).toBe('5.00 ETH');
-    expect(verifyCostMetric?.value).toBe('6.00 ETH');
+    expect(proveCostMetric?.value).toBe('5.0 ETH');
+    expect(verifyCostMetric?.value).toBe('6.0 ETH');
 
     const profitMetric = metrics.find((m) => m.title === 'Profit');
     expect(profitMetric?.value).toBe('39.0 ETH');

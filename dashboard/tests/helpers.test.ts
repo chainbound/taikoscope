@@ -52,13 +52,13 @@ const metricsAllNull = createMetrics({
 
 describe('helpers', () => {
   it('creates metrics correctly', () => {
-    expect(metrics[0].value).toBe('3.00');
+    expect(metrics[0].value).toBe('3.0');
     expect(metrics[0].group).toBe('Network Performance');
     expect(metrics[1].value).toBe('60.0s');
     expect(metrics[1].group).toBe('Network Performance');
     expect(metrics[2].value).toBe('N/A');
     expect(metrics[2].group).toBe('Network Performance');
-    expect(metrics[3].value).toBe('1.20s');
+    expect(metrics[3].value).toBe('1.2s');
     expect(metrics[3].group).toBe('Network Health');
     expect(metrics[4].value).toBe('N/A');
     expect(metrics[4].group).toBe('Network Health');
@@ -78,11 +78,11 @@ describe('helpers', () => {
     expect(metrics[11].group).toBe('Network Economics');
     expect(metrics[12].value).toBe('41.0 ETH');
     expect(metrics[12].group).toBe('Network Economics');
-    expect(metrics[13].value).toBe('1.00 ETH');
+    expect(metrics[13].value).toBe('1.0 ETH');
     expect(metrics[13].group).toBe('Network Economics');
-    expect(metrics[14].value).toBe('2.00 ETH');
+    expect(metrics[14].value).toBe('2.0 ETH');
     expect(metrics[14].group).toBe('Network Economics');
-    expect(metrics[15].value).toBe('9.00 ETH');
+    expect(metrics[15].value).toBe('9.0 ETH');
     expect(metrics[15].group).toBe('Network Economics');
     expect(metrics[16].value).toBe('11.0 ETH');
     expect(metrics[16].group).toBe('Network Economics');
