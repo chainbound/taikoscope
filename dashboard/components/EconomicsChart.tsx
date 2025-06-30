@@ -61,6 +61,7 @@ export const EconomicsChart: React.FC<EconomicsChartProps> = ({
     const profitUsd = profitEth * ethPrice;
     return {
       batch: b.batch,
+      sequencer: b.sequencer,
       incomeEth,
       costEth,
       profitEth,
@@ -108,7 +109,10 @@ export const EconomicsChart: React.FC<EconomicsChartProps> = ({
             }}
           />
           <Tooltip
-            labelFormatter={(v: number) => `Batch ${v}`}
+            labelFormatter={(v: number, payload) => {
+              const seq = payload?.[0]?.payload?.sequencer as string | undefined;
+              return seq ? `Batch ${v} - ${seq}` : `Batch ${v}`;
+            }}
             formatter={(value: number, name: string, { payload }: Payload<number, string>) => {
               if (name === 'Income')
                 return [
