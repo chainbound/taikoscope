@@ -67,16 +67,29 @@ export const formatDecimal = (value: number): string => {
     return '0.00';
   }
 
-  const decimals = Math.abs(value) >= 1 ? 1 : 3;
-  const factor = 10 ** decimals;
-  const rounded = Math.round(value * factor) / factor;
-  let result = rounded.toFixed(decimals);
+  const abs = Math.abs(value);
 
-  if (Math.abs(value) < 1) {
-    result = result.replace(/0+$/, '');
+  if (abs >= 1) {
+    return value.toLocaleString('en', {
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1,
+    });
   }
 
-  return result;
+  let result = abs.toLocaleString('en', {
+    useGrouping: false,
+    maximumFractionDigits: 20,
+  });
+
+  const [, decimalPart = ''] = result.split('.');
+  if (decimalPart.startsWith('0')) {
+    const leadingZeros = decimalPart.match(/^0*/)?.[0].length ?? 0;
+    if (leadingZeros >= 2 && decimalPart.length < leadingZeros + 2) {
+      result = `${result}${'0'.repeat(leadingZeros + 2 - decimalPart.length)}`;
+    }
+  }
+
+  return value < 0 ? `-${result}` : result;
 };
 
 export const formatSeconds = (seconds: number): string => {
