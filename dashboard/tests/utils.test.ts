@@ -146,6 +146,11 @@ describe('utils', () => {
     expect(parseEthValue('N/A')).toBe(0);
   });
 
+  it('parses negative ETH and Gwei values', () => {
+    expect(parseEthValue('-0.5 ETH')).toBe(-0.5);
+    expect(parseEthValue('-100 Gwei')).toBeCloseTo(-0.0000001);
+  });
+
   it('converts bytes to hex', () => {
     expect(bytesToHex([0, 1, 255])).toBe('0x0001ff');
   });
