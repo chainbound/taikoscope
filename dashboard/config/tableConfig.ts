@@ -404,6 +404,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     title: 'Transactions Per Second',
     description: 'Transactions per second for each L2 block.',
     fetcher: fetchL2Tps,
+    aggregatedFetcher: fetchBlockTransactionsAggregated,
     columns: [
       { key: 'block', label: 'Block Number' },
       { key: 'tps', label: 'TPS' },
@@ -413,6 +414,17 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
         block: blockLink(d.block),
         tps: d.tps.toFixed(2),
       })),
+    chart: (data) => {
+      const BlockTxChart = React.lazy(() =>
+        import('../components/BlockTxChart').then((m) => ({
+          default: m.BlockTxChart,
+        })),
+      );
+      return React.createElement(BlockTxChart, {
+        data,
+        lineColor: '#4E79A7',
+      });
+    },
     urlKey: 'l2-tps',
     supportsPagination: true,
   },
