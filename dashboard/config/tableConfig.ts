@@ -79,12 +79,16 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
       { key: 'timestamp', label: 'Time' },
       { key: 'l2_block_number', label: 'L2 Block Number' },
       { key: 'depth', label: 'Depth' },
+      { key: 'old_sequencer', label: 'Old Sequencer' },
+      { key: 'new_sequencer', label: 'New Sequencer' },
     ],
     mapData: (data) =>
       (data as L2ReorgEvent[]).map((e) => ({
         timestamp: formatDateTime(e.timestamp),
         l2_block_number: blockLink(e.l2_block_number),
         depth: e.depth.toLocaleString(),
+        old_sequencer: getSequencerName(e.old_sequencer),
+        new_sequencer: getSequencerName(e.new_sequencer),
       })),
     urlKey: 'reorgs',
     reverseOrder: false,

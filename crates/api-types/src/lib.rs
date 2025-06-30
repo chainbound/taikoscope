@@ -9,8 +9,7 @@
 use clickhouse_lib::{
     BatchBlobCountRow, BatchPostingTimeRow, BatchProveTimeRow, BatchVerifyTimeRow,
     BlockFeeComponentRow, ForcedInclusionProcessedRow, L1BlockTimeRow, L1DataCostRow,
-    L2BlockTimeRow, L2GasUsedRow, L2ReorgRow, L2TpsRow, ProveCostRow, SlashingEventRow,
-    VerifyCostRow,
+    L2BlockTimeRow, L2GasUsedRow, L2TpsRow, ProveCostRow, SlashingEventRow, VerifyCostRow,
 };
 
 use axum::{Json, http::StatusCode, response::IntoResponse};
@@ -105,11 +104,26 @@ pub struct ForcedInclusionEventsResponse {
     pub events: Vec<ForcedInclusionProcessedRow>,
 }
 
+/// Single L2 reorg event with sequencer addresses.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct L2ReorgEvent {
+    /// Block number that became the new head.
+    pub l2_block_number: u64,
+    /// Number of blocks replaced by the reorg.
+    pub depth: u16,
+    /// Address of the sequencer that produced the replaced block.
+    pub old_sequencer: String,
+    /// Address of the sequencer that produced the new block.
+    pub new_sequencer: String,
+    /// Time the reorg was recorded.
+    pub inserted_at: DateTime<Utc>,
+}
+
 /// Detected L2 reorg events.
 #[derive(Debug, Serialize, ToSchema)]
 pub struct ReorgEventsResponse {
     /// Detected L2 reorg events.
-    pub events: Vec<L2ReorgRow>,
+    pub events: Vec<L2ReorgEvent>,
 }
 
 /// Gateways that submitted batches in the requested range.

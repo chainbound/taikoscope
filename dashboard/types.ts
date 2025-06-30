@@ -28,6 +28,8 @@ export interface MetricData {
 export interface L2ReorgEvent {
   l2_block_number: number;
   depth: number;
+  old_sequencer: string;
+  new_sequencer: string;
   timestamp: number;
 }
 
