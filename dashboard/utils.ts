@@ -63,10 +63,20 @@ export const addressLink = (
   );
 
 export const formatDecimal = (value: number): string => {
-  const decimals = Math.abs(value) >= 1 ? 1 : 2;
+  if (value === 0) {
+    return '0.00';
+  }
+
+  const decimals = Math.abs(value) >= 1 ? 1 : 3;
   const factor = 10 ** decimals;
   const rounded = Math.round(value * factor) / factor;
-  return rounded.toFixed(decimals);
+  let result = rounded.toFixed(decimals);
+
+  if (Math.abs(value) < 1) {
+    result = result.replace(/0+$/, '');
+  }
+
+  return result;
 };
 
 export const formatSeconds = (seconds: number): string => {
@@ -101,7 +111,7 @@ export const formatEth = (wei: number): string => {
     return `${Math.trunc(eth).toLocaleString()} ETH`;
   }
   const ethFormatted = formatDecimal(eth);
-  if (wei !== 0 && ethFormatted === '0.00') {
+  if (wei !== 0 && Math.abs(eth) < 0.005) {
     const gwei = wei / 1e9;
     if (Math.abs(gwei) >= 1000) {
       return `${Math.trunc(gwei).toLocaleString()} Gwei`;
