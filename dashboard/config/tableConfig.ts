@@ -25,6 +25,7 @@ import {
   fetchVerifyCost,
   fetchSequencerDistribution,
   fetchL2Tps,
+  fetchL2TpsAggregated,
 } from '../services/apiService';
 import { getSequencerName } from '../sequencerConfig';
 import {
@@ -408,7 +409,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     title: 'Transactions Per Second',
     description: 'Transactions per second for each L2 block.',
     fetcher: fetchL2Tps,
-    aggregatedFetcher: fetchBlockTransactionsAggregated,
+    aggregatedFetcher: fetchL2TpsAggregated,
     columns: [
       { key: 'block', label: 'Block Number' },
       { key: 'tps', label: 'TPS' },

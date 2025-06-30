@@ -3,7 +3,7 @@
 use api_types::BlockTransactionsItem;
 
 use api_types::BatchFeeComponentRow;
-use clickhouse_lib::{BlockFeeComponentRow, L2BlockTimeRow, L2GasUsedRow, TimeRange};
+use clickhouse_lib::{BlockFeeComponentRow, L2BlockTimeRow, L2GasUsedRow, L2TpsRow, TimeRange};
 use std::collections::BTreeMap;
 
 /// Determine bucket size based on time range
@@ -139,6 +139,23 @@ pub fn aggregate_batch_fee_components(
         .collect()
 }
 
+/// Aggregate L2 TPS by bucket size
+pub fn aggregate_l2_tps(rows: Vec<L2TpsRow>, bucket: u64) -> Vec<L2TpsRow> {
+    let bucket = bucket.max(1);
+    let mut groups: BTreeMap<u64, Vec<L2TpsRow>> = BTreeMap::new();
+    for row in rows {
+        groups.entry(row.l2_block_number / bucket).or_default().push(row);
+    }
+    groups
+        .into_iter()
+        .map(|(g, rs)| {
+            let (sum, count) = rs.iter().fold((0f64, 0u64), |(s, c), r| (s + r.tps, c + 1));
+            let avg = if count > 0 { sum / count as f64 } else { 0.0 };
+            L2TpsRow { l2_block_number: g * bucket, tps: avg }
+        })
+        .collect()
+}
+
 /// Aggregate block transactions by bucket size
 pub fn aggregate_block_transactions(
     rows: Vec<BlockTransactionsItem>,
@@ -246,6 +263,10 @@ mod tests {
             sequencer: sequencer.to_owned(),
             block_time: Utc::now() + chrono::Duration::seconds(time_offset_secs),
         }
+    }
+
+    fn create_l2_tps_row(block_num: u64, tps: f64) -> L2TpsRow {
+        L2TpsRow { l2_block_number: block_num, tps }
     }
 
     // Tests for bucket_size_from_range
@@ -677,5 +698,83 @@ mod tests {
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].l2_block_number, 0); // All blocks go to bucket 0
         assert_eq!(result[0].ms_since_prev_block, Some(2000)); // Average
+    }
+
+    // Tests for aggregate_l2_tps
+    #[test]
+    fn test_aggregate_l2_tps_empty() {
+        let rows = vec![];
+        let result = aggregate_l2_tps(rows, 5);
+        assert_eq!(result.len(), 0);
+    }
+
+    #[test]
+    fn test_aggregate_l2_tps_single_row() {
+        let rows = vec![create_l2_tps_row(10, 15.5)];
+        let result = aggregate_l2_tps(rows, 5);
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].l2_block_number, 10); // 10 / 5 * 5 = 10
+        assert_eq!(result[0].tps, 15.5);
+    }
+
+    #[test]
+    fn test_aggregate_l2_tps_multiple_in_bucket() {
+        let rows = vec![
+            create_l2_tps_row(10, 10.0),
+            create_l2_tps_row(11, 20.0),
+            create_l2_tps_row(12, 30.0),
+        ];
+        let result = aggregate_l2_tps(rows, 5);
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].l2_block_number, 10); // bucket 2 * 5 = 10
+        assert_eq!(result[0].tps, 20.0); // (10.0 + 20.0 + 30.0) / 3 = 20.0
+    }
+
+    #[test]
+    fn test_aggregate_l2_tps_multiple_buckets() {
+        let rows = vec![create_l2_tps_row(2, 10.0), create_l2_tps_row(7, 30.0)];
+        let result = aggregate_l2_tps(rows, 5);
+
+        assert_eq!(result.len(), 2);
+        // First bucket: block 2 -> bucket 0
+        assert_eq!(result[0].l2_block_number, 0);
+        assert_eq!(result[0].tps, 10.0);
+        // Second bucket: block 7 -> bucket 1
+        assert_eq!(result[1].l2_block_number, 5);
+        assert_eq!(result[1].tps, 30.0);
+    }
+
+    #[test]
+    fn test_aggregate_l2_tps_zero_tps() {
+        let rows = vec![create_l2_tps_row(10, 0.0), create_l2_tps_row(11, 10.0)];
+        let result = aggregate_l2_tps(rows, 5);
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].tps, 5.0); // (0.0 + 10.0) / 2 = 5.0
+    }
+
+    #[test]
+    fn test_aggregate_l2_tps_zero_bucket() {
+        let rows = vec![create_l2_tps_row(10, 15.5)];
+        let result = aggregate_l2_tps(rows, 0);
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].l2_block_number, 10); // bucket becomes 1
+        assert_eq!(result[0].tps, 15.5);
+    }
+
+    #[test]
+    fn test_aggregate_l2_tps_fractional_values() {
+        let rows = vec![
+            create_l2_tps_row(10, 1.25),
+            create_l2_tps_row(11, 2.75),
+            create_l2_tps_row(12, 3.5),
+        ];
+        let result = aggregate_l2_tps(rows, 5);
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].tps, 2.5); // (1.25 + 2.75 + 3.5) / 3 = 2.5
     }
 }

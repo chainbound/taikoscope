@@ -37,6 +37,7 @@ use utoipa::OpenApi;
         routes::table::l2_gas_used,
         routes::aggregated::l2_gas_used_aggregated,
         routes::table::l2_tps,
+        routes::aggregated::l2_tps_aggregated,
         routes::table::block_transactions,
         routes::aggregated::block_transactions_aggregated,
         routes::core::sequencer_distribution,

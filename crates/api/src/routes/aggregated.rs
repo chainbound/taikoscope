@@ -3,7 +3,8 @@
 use crate::{
     helpers::{
         aggregate_batch_fee_components, aggregate_block_transactions, aggregate_l2_block_times,
-        aggregate_l2_fee_components, aggregate_l2_gas_used, bucket_size_from_range,
+        aggregate_l2_fee_components, aggregate_l2_gas_used, aggregate_l2_tps,
+        bucket_size_from_range,
     },
     state::{ApiState, MAX_BLOCK_TRANSACTIONS_LIMIT},
     validation::{
@@ -125,6 +126,57 @@ pub async fn l2_gas_used_aggregated(
     let blocks = aggregate_l2_gas_used(blocks, bucket);
     tracing::info!(count = blocks.len(), "Returning aggregated L2 gas used");
     Ok(Json(L2GasUsedResponse { blocks }))
+}
+
+#[utoipa::path(
+    get,
+    path = "/l2-tps/aggregated",
+    params(
+        RangeQuery
+    ),
+    responses(
+        (status = 200, description = "Aggregated L2 TPS", body = L2TpsResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
+    ),
+    tag = "taikoscope"
+)]
+/// Get aggregated L2 transactions per second with automatic bucketing based on time range
+pub async fn l2_tps_aggregated(
+    Query(params): Query<RangeQuery>,
+    State(state): State<ApiState>,
+) -> Result<Json<L2TpsResponse>, ErrorResponse> {
+    validate_time_range(&params.time_range)?;
+    let has_time_range = has_time_range_params(&params.time_range);
+    validate_range_exclusivity(has_time_range, false)?;
+
+    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
+    let address = if let Some(addr) = params.address.as_ref() {
+        match addr.parse::<Address>() {
+            Ok(a) => Some(AddressBytes::from(a)),
+            Err(e) => {
+                tracing::warn!(error = %e, "Failed to parse address");
+                return Err(ErrorResponse::new(
+                    "invalid-params",
+                    "Bad Request",
+                    StatusCode::BAD_REQUEST,
+                    e.to_string(),
+                ));
+            }
+        }
+    } else {
+        None
+    };
+    let blocks = match state.client.get_l2_tps(address, time_range).await {
+        Ok(rows) => rows,
+        Err(e) => {
+            tracing::error!(error = %e, "Failed to get L2 TPS");
+            return Err(ErrorResponse::database_error());
+        }
+    };
+    let bucket = bucket_size_from_range(&time_range);
+    let blocks = aggregate_l2_tps(blocks, bucket);
+    tracing::info!(count = blocks.len(), "Returning aggregated L2 TPS");
+    Ok(Json(L2TpsResponse { blocks }))
 }
 
 #[utoipa::path(

@@ -37,6 +37,7 @@ pub fn router(state: ApiState) -> Router {
         .route("/l2-gas-used", get(l2_gas_used))
         .route("/l2-gas-used/aggregated", get(l2_gas_used_aggregated))
         .route("/l2-tps", get(l2_tps))
+        .route("/l2-tps/aggregated", get(l2_tps_aggregated))
         .route("/sequencer-distribution", get(sequencer_distribution))
         .route("/sequencer-blocks", get(sequencer_blocks))
         .route("/block-transactions", get(block_transactions))
