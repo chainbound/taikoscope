@@ -63,7 +63,7 @@ export const addressLink = (
   );
 
 export const formatDecimal = (value: number): string => {
-  const decimals = Math.abs(value) >= 10 ? 1 : 2;
+  const decimals = Math.abs(value) >= 1 ? 1 : 2;
   const fixed = value.toFixed(decimals);
   return Number(fixed).toFixed(decimals);
 };
