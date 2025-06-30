@@ -114,7 +114,10 @@ export const formatEth = (wei: number): string => {
 };
 
 export const parseEthValue = (value: string): number => {
-  const amount = parseFloat(value.replace(/[^0-9.]/g, ''));
+  const sanitized = value
+    .replace(/[^0-9.-]/g, '')
+    .replace(/(?!^)-/g, '');
+  const amount = parseFloat(sanitized);
   if (!Number.isFinite(amount)) return 0;
   return /gwei/i.test(value) ? amount / 1e9 : amount;
 };
