@@ -223,14 +223,12 @@ impl InstatusL1Monitor {
 
     /// Check for existing incidents and initial health
     async fn check_initial_health(&mut self) -> Result<()> {
-        if let Some(_id) = self.base.active_incidents.values().next() {
-            if let (Ok(Some(batch_ts)), Ok(Some(l2_ts))) = (
-                self.base.clickhouse.get_last_batch_time().await,
-                self.base.clickhouse.get_last_l2_head_time().await,
-            ) {
-                if let Err(e) = self.handle(batch_ts, l2_ts).await {
-                    error!(%e, "Failed initial health check for existing batch incident");
-                }
+        if let Some(_id) = self.base.active_incidents.values().next() &&
+            let Ok(Some(batch_ts)) = self.base.clickhouse.get_last_batch_time().await &&
+            let Ok(Some(l2_ts)) = self.base.clickhouse.get_last_l2_head_time().await
+        {
+            if let Err(e) = self.handle(batch_ts, l2_ts).await {
+                error!(%e, "Failed initial health check for existing batch incident");
             }
         }
 
@@ -385,16 +383,15 @@ impl InstatusMonitor {
 
     /// Check for existing incidents and initial health
     async fn check_initial_health(&mut self) -> Result<()> {
-        if self.base.active_incidents.values().next().is_some() {
-            // Immediately check if the incident should be closed by checking latest L2 head time
-            if let Ok(Some(ts)) = self.base.clickhouse.get_last_l2_head_time().await {
-                info!(
-                    last_l2_timestamp = %ts,
-                    "Found L2 head event on startup, checking if incident can be closed"
-                );
-                if let Err(e) = self.handle(ts).await {
-                    error!(%e, "Failed initial health check for existing incident");
-                }
+        if self.base.active_incidents.values().next().is_some() &&
+            let Ok(Some(ts)) = self.base.clickhouse.get_last_l2_head_time().await
+        {
+            info!(
+                last_l2_timestamp = %ts,
+                "Found L2 head event on startup, checking if incident can be closed"
+            );
+            if let Err(e) = self.handle(ts).await {
+                error!(%e, "Failed initial health check for existing incident");
             }
         }
 
