@@ -1,7 +1,6 @@
 import { it, expect, vi, afterAll } from 'vitest';
 import {
   fetchAvgProveTime,
-  fetchAvgVerifyTime,
   fetchL2BlockCadence,
   fetchBatchPostingCadence,
   fetchPreconfData,
@@ -16,11 +15,11 @@ import {
   fetchL2HeadNumber,
   fetchL1HeadNumber,
   fetchProveTimes,
-  fetchVerifyTimes,
   fetchL2BlockTimes,
   fetchL2GasUsed,
   fetchSequencerDistribution,
   fetchL2Fees,
+  fetchDashboardData,
 } from '../services/apiService.ts';
 import { createMetrics, hasBadRequest } from '../helpers';
 import type { MetricData } from '../types';
@@ -58,11 +57,9 @@ const responses: Record<string, Record<string, unknown>> = {
   [`/v1/l2-block-cadence?${q15m}`]: { l2_block_cadence_ms: 60000 },
   [`/v1/batch-posting-cadence?${q15m}`]: { batch_posting_cadence_ms: 120000 },
   [`/v1/avg-prove-time?${q15m}`]: { avg_prove_time_ms: 1500 },
-  [`/v1/avg-verify-time?${q15m}`]: { avg_verify_time_ms: 2500 },
+  [`/v1/avg-prove-time?${q1h}`]: { avg_prove_time_ms: 1500 },
   [`/v1/l2-block-cadence?${q1h}`]: { l2_block_cadence_ms: 60000 },
   [`/v1/batch-posting-cadence?${q1h}`]: { batch_posting_cadence_ms: 120000 },
-  [`/v1/avg-prove-time?${q1h}`]: { avg_prove_time_ms: 1500 },
-  [`/v1/avg-verify-time?${q1h}`]: { avg_verify_time_ms: 2500 },
   [`/v1/dashboard-data?${q1h}`]: {
     preconf_data: {
       candidates: ['gw1', 'gw2'],
@@ -113,17 +110,18 @@ const responses: Record<string, Record<string, unknown>> = {
     ],
   },
   [`/v1/prove-times?${q1h}&limit=50`]: {
-    batches: [{ batch_id: 1, seconds_to_prove: 3 }],
+    batches: [
+      { batch_id: 1, seconds_to_prove: 1 },
+      { batch_id: 2, seconds_to_prove: 2 },
+    ],
   },
   [`/v1/prove-times?${q15m}&limit=50`]: {
-    batches: [{ batch_id: 1, seconds_to_prove: 3 }],
+    batches: [
+      { batch_id: 1, seconds_to_prove: 1 },
+      { batch_id: 2, seconds_to_prove: 2 },
+    ],
   },
-  [`/v1/verify-times?${q1h}&limit=50`]: {
-    batches: [{ batch_id: 1, seconds_to_verify: 4 }],
-  },
-  [`/v1/verify-times?${q15m}&limit=50`]: {
-    batches: [{ batch_id: 1, seconds_to_verify: 4 }],
-  },
+
   [`/v1/l2-gas-used?${q1h}&limit=50`]: {
     blocks: [
       { l2_block_number: 1, block_time: '1970-01-01T00:00:01Z', gas_used: 100 },
@@ -141,7 +139,6 @@ const responses: Record<string, Record<string, unknown>> = {
     base_fee: 400,
     l1_data_cost: null,
     prove_cost: 5,
-    verify_cost: 6,
     sequencers: [],
   },
   [`/v1/l2-fees?${q15m}`]: {
@@ -149,7 +146,6 @@ const responses: Record<string, Record<string, unknown>> = {
     base_fee: 400,
     l1_data_cost: null,
     prove_cost: 5,
-    verify_cost: 6,
     sequencers: [],
   },
   [`/v1/sequencer-distribution?${q1h}`]: {
@@ -160,12 +156,27 @@ const responses: Record<string, Record<string, unknown>> = {
   },
   '/v1/l2-head-block': { l2_head_block: 123 },
   '/v1/l1-head-block': { l1_head_block: 456 },
+  [`/v1/dashboard-data?${q15m}`]: {
+    l2_block_cadence_ms: 1,
+    batch_posting_cadence_ms: 2,
+    avg_prove_time_ms: 3,
+    avg_tps: 5,
+    preconf_data: { candidates: [] },
+    l2_reorgs: 6,
+    slashings: 7,
+    forced_inclusions: 8,
+    l2_head_block: 9,
+    l1_head_block: 10,
+    priority_fee: 11,
+    base_fee: 12,
+    prove_cost: 13,
+    cloud_cost: 14,
+  },
   [`/v1/l2-fees?${q24h}`]: {
     priority_fee: 1200,
     base_fee: 800,
     l1_data_cost: null,
     prove_cost: 10,
-    verify_cost: 12,
     sequencers: [],
   },
 };
@@ -254,7 +265,6 @@ async function fetchData(range: TimeRange, state: State, economics = false) {
     l2CadenceRes,
     batchCadenceRes,
     avgProveRes,
-    avgVerifyRes,
     preconfRes,
     l2ReorgsRes,
     l2ReorgEventsRes,
@@ -265,7 +275,6 @@ async function fetchData(range: TimeRange, state: State, economics = false) {
     l2BlockRes,
     l1BlockRes,
     proveTimesRes,
-    verifyTimesRes,
     l2TimesRes,
     l2GasUsedRes,
     sequencerDistRes,
@@ -274,7 +283,6 @@ async function fetchData(range: TimeRange, state: State, economics = false) {
     fetchL2BlockCadence(range, undefined),
     fetchBatchPostingCadence(range),
     fetchAvgProveTime(range),
-    fetchAvgVerifyTime(range),
     fetchPreconfData(range),
     fetchL2Reorgs(range),
     fetchL2ReorgEvents(range),
@@ -285,7 +293,6 @@ async function fetchData(range: TimeRange, state: State, economics = false) {
     fetchL2HeadBlock(range),
     fetchL1HeadBlock(range),
     fetchProveTimes(range),
-    fetchVerifyTimes(range),
     fetchL2BlockTimes(range, undefined),
     fetchL2GasUsed(range, undefined),
     fetchSequencerDistribution(range),
@@ -295,7 +302,6 @@ async function fetchData(range: TimeRange, state: State, economics = false) {
   const l2Cadence = l2CadenceRes.data;
   const batchCadence = batchCadenceRes.data;
   const avgProve = avgProveRes.data;
-  const avgVerify = avgVerifyRes.data;
   const preconfData = preconfRes.data;
   const activeGateways = preconfData ? preconfData.candidates.length : null;
   const currentOperator = preconfData?.current_operator ?? null;
@@ -309,7 +315,6 @@ async function fetchData(range: TimeRange, state: State, economics = false) {
   const l2Block = l2BlockRes.data;
   const l1Block = l1BlockRes.data;
   const proveTimes = proveTimesRes.data || [];
-  const verifyTimes = verifyTimesRes.data || [];
   const l2Times = l2TimesRes.data || [];
   const l2Gas = l2GasUsedRes.data || [];
   const sequencerDist = sequencerDistRes.data || [];
@@ -321,7 +326,6 @@ async function fetchData(range: TimeRange, state: State, economics = false) {
     l2CadenceRes,
     batchCadenceRes,
     avgProveRes,
-    avgVerifyRes,
     preconfRes,
     l2ReorgsRes,
     l2ReorgEventsRes,
@@ -330,7 +334,6 @@ async function fetchData(range: TimeRange, state: State, economics = false) {
     l2BlockRes,
     l1BlockRes,
     proveTimesRes,
-    verifyTimesRes,
     l2TimesRes,
     l2GasUsedRes,
     sequencerDistRes,
@@ -342,7 +345,7 @@ async function fetchData(range: TimeRange, state: State, economics = false) {
     l2Cadence,
     batchCadence,
     avgProve,
-    avgVerify,
+    avgVerify: null,
     activeGateways,
     currentOperator,
     nextOperator,
@@ -357,7 +360,7 @@ async function fetchData(range: TimeRange, state: State, economics = false) {
 
   state.metrics = currentMetrics;
   state.secondsToProveData = proveTimes;
-  state.secondsToVerifyData = verifyTimes;
+  state.secondsToVerifyData = [];
   state.l2BlockTimeData = l2Times;
   state.l2GasUsedData = l2Gas;
   state.sequencerDistribution = sequencerDist;
@@ -423,7 +426,7 @@ it('app integration', async () => {
 
   await fetchData('1h', state);
   expect(state.metrics.length > 0).toBe(true);
-  expect(state.secondsToProveData.length).toBe(1);
+  expect(state.secondsToProveData.length).toBe(2);
   expect(state.l2GasUsedData.length).toBe(2);
 
   await fetchData('15m', state, true);
@@ -461,4 +464,32 @@ it('app integration', async () => {
 
 afterAll(() => {
   vi.useRealTimers();
+});
+
+it('fetches dashboard data correctly', async () => {
+  const result = await fetchDashboardData('15m');
+  expect(result.data).toEqual({
+    l2_block_cadence_ms: 1,
+    batch_posting_cadence_ms: 2,
+    avg_prove_time_ms: 3,
+    avg_tps: 5,
+    preconf_data: { candidates: [] },
+    l2_reorgs: 6,
+    slashings: 7,
+    forced_inclusions: 8,
+    l2_head_block: 9,
+    l1_head_block: 10,
+    priority_fee: 11,
+    base_fee: 12,
+    prove_cost: 13,
+    cloud_cost: 14,
+  });
+});
+
+it('fetches prove times correctly', async () => {
+  const result = await fetchProveTimes('15m');
+  expect(result.data).toEqual([
+    { name: '1', value: 1, timestamp: 0 },
+    { name: '2', value: 2, timestamp: 0 },
+  ]);
 });
