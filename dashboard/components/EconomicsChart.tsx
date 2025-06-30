@@ -51,21 +51,21 @@ export const EconomicsChart: React.FC<EconomicsChartProps> = ({
   const baseCostPerBatchEth = ethPrice ? baseCostPerBatchUsd / ethPrice : 0;
 
   const data = feeData.map((b) => {
-    const incomeEth = (b.priority + b.base) / 1e18;
+    const revenueEth = (b.priority + b.base) / 1e18;
     const proveEth = (b.amortizedProveCost ?? 0) / 1e18;
     const verifyEth = (b.amortizedVerifyCost ?? 0) / 1e18;
     const costEth = baseCostPerBatchEth + proveEth + verifyEth + (b.l1Cost ?? 0) / 1e18;
-    const profitEth = incomeEth - costEth;
-    const incomeUsd = incomeEth * ethPrice;
+    const profitEth = revenueEth - costEth;
+    const revenueUsd = revenueEth * ethPrice;
     const costUsd = costEth * ethPrice;
     const profitUsd = profitEth * ethPrice;
     return {
       batch: b.batch,
       sequencer: b.sequencer,
-      incomeEth,
+      revenueEth,
       costEth,
       profitEth,
-      incomeUsd,
+      revenueUsd,
       costUsd,
       profitUsd,
     };
@@ -114,9 +114,9 @@ export const EconomicsChart: React.FC<EconomicsChartProps> = ({
               return seq ? `Batch ${v} - ${seq}` : `Batch ${v}`;
             }}
             formatter={(value: number, name: string, { payload }: Payload<number, string>) => {
-              if (name === 'Income')
+              if (name === 'Revenue')
                 return [
-                  `${formatEth(value * 1e18)} ($${payload.incomeUsd.toFixed(2)})`,
+                  `${formatEth(value * 1e18)} ($${payload.revenueUsd.toFixed(2)})`,
                   name,
                 ];
               if (name === 'Cost')
@@ -137,11 +137,11 @@ export const EconomicsChart: React.FC<EconomicsChartProps> = ({
           />
           <Line
             type="monotone"
-            dataKey="incomeEth"
+            dataKey="revenueEth"
             stroke="#4E79A7"
             strokeWidth={2}
             dot={false}
-            name="Income"
+            name="Revenue"
           />
           <Line
             type="monotone"

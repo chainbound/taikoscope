@@ -51,8 +51,8 @@ const createSankeyNode = (textColor: string) => {
     let label = addressLabel ?? payload.name;
     if (isProfitNode && addressLabel) {
       label = `${addressLabel} Profit`;
-    } else if (payload.incomeNode && addressLabel) {
-      label = `${addressLabel} Income`;
+    } else if (payload.revenueNode && addressLabel) {
+      label = `${addressLabel} Revenue`;
     }
 
     return (
@@ -423,7 +423,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
         addressLabel: s.shortAddress,
         value: s.revenue,
         wei: s.revenueWei,
-        incomeNode: true,
+        revenueNode: true,
       })),
       { name: 'Hardware Cost', value: totalActualHardwareCost, usd: true },
       { name: 'L1 Data Cost', value: totalL1Cost, usd: true },
@@ -611,8 +611,8 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
         if (node.profitNode && node.addressLabel) {
           return `${node.addressLabel} Profit`;
         }
-        if (node.incomeNode && node.addressLabel) {
-          return `${node.addressLabel} Income`;
+        if (node.revenueNode && node.addressLabel) {
+          return `${node.addressLabel} Revenue`;
         }
         return node.addressLabel ?? node.address ?? node.name;
       };
@@ -635,8 +635,8 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
       if (itemData.profitNode && itemData.addressLabel) {
         return `${itemData.addressLabel} Profit`;
       }
-      if (itemData.incomeNode && itemData.addressLabel) {
-        return `${itemData.addressLabel} Income`;
+      if (itemData.revenueNode && itemData.addressLabel) {
+        return `${itemData.addressLabel} Revenue`;
       }
       return itemData.addressLabel ?? itemData.address ?? itemData.name;
     })();

@@ -15,12 +15,12 @@ import { formatEth } from '../utils';
 import { fetchBatchFeeComponents } from '../services/apiService';
 import { TimeRange, BatchFeeComponent } from '../types';
 
-interface IncomeChartProps {
+interface RevenueChartProps {
   timeRange: TimeRange;
   address?: string;
 }
 
-export const IncomeChart: React.FC<IncomeChartProps> = ({
+export const RevenueChart: React.FC<RevenueChartProps> = ({
   timeRange,
   address,
 }) => {
@@ -40,9 +40,9 @@ export const IncomeChart: React.FC<IncomeChartProps> = ({
   }
 
   const data = feeData.map((b) => {
-    const incomeEth = (b.priority + b.base) / 1e18;
-    const incomeUsd = incomeEth * ethPrice;
-    return { batch: b.batch, incomeEth, incomeUsd };
+    const revenueEth = (b.priority + b.base) / 1e18;
+    const revenueUsd = revenueEth * ethPrice;
+    return { batch: b.batch, revenueEth, revenueUsd };
   });
 
   return (
@@ -74,7 +74,7 @@ export const IncomeChart: React.FC<IncomeChartProps> = ({
             domain={['auto', 'auto']}
             tickFormatter={(v: number) => formatEth(v * 1e18)}
             label={{
-              value: 'Income (ETH)',
+              value: 'Revenue (ETH)',
               angle: -90,
               position: 'insideLeft',
               offset: -16,
@@ -85,7 +85,7 @@ export const IncomeChart: React.FC<IncomeChartProps> = ({
           <Tooltip
             labelFormatter={(v: number) => `Batch ${v}`}
             formatter={(value: number, _name: string, { payload }: Payload<number, string>) =>
-              [`${formatEth(value * 1e18)} ($${payload.incomeUsd.toFixed(2)})`, 'Income']
+              [`${formatEth(value * 1e18)} ($${payload.revenueUsd.toFixed(2)})`, 'Revenue']
             }
             contentStyle={{
               backgroundColor: 'rgba(255,255,255,0.8)',
@@ -95,11 +95,11 @@ export const IncomeChart: React.FC<IncomeChartProps> = ({
           />
           <Line
             type="monotone"
-            dataKey="incomeEth"
+            dataKey="revenueEth"
             stroke="#4E79A7"
             strokeWidth={2}
             dot={false}
-            name="Income"
+            name="Revenue"
           />
         </LineChart>
       </ResponsiveContainer>

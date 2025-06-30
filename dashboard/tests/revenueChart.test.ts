@@ -6,7 +6,7 @@ vi.mock('swr', () => ({ default: vi.fn() }));
 import type { RequestResult } from '../services/apiService';
 import type { BatchFeeComponent } from '../types';
 import * as priceService from '../services/priceService';
-import { IncomeChart } from '../components/IncomeChart';
+import { RevenueChart } from '../components/RevenueChart';
 
 const feeData = [
   {
@@ -19,8 +19,8 @@ const feeData = [
   },
 ];
 
-describe('IncomeChart', () => {
-  it('renders with income data', () => {
+describe('RevenueChart', () => {
+  it('renders with revenue data', () => {
     vi.mocked(swr.default).mockReturnValue({
       data: { data: feeData } as RequestResult<BatchFeeComponent[]>,
     } as unknown as ReturnType<typeof swr.default>);
@@ -29,7 +29,7 @@ describe('IncomeChart', () => {
     } as unknown as ReturnType<typeof priceService.useEthPrice>);
 
     const html = renderToStaticMarkup(
-      React.createElement(IncomeChart, {
+      React.createElement(RevenueChart, {
         timeRange: '1h',
       }),
     );
