@@ -166,3 +166,516 @@ pub fn aggregate_block_transactions(
         })
         .collect()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::Utc;
+
+    // Helper functions for creating test data
+    fn create_l2_block_time_row(
+        block_num: u64,
+        ms_since_prev: Option<u64>,
+        time_offset_secs: i64,
+    ) -> L2BlockTimeRow {
+        L2BlockTimeRow {
+            l2_block_number: block_num,
+            block_time: Utc::now() + chrono::Duration::seconds(time_offset_secs),
+            ms_since_prev_block: ms_since_prev,
+        }
+    }
+
+    fn create_l2_gas_used_row(
+        block_num: u64,
+        gas_used: u64,
+        time_offset_secs: i64,
+    ) -> L2GasUsedRow {
+        L2GasUsedRow {
+            l2_block_number: block_num,
+            block_time: Utc::now() + chrono::Duration::seconds(time_offset_secs),
+            gas_used,
+        }
+    }
+
+    fn create_block_fee_component_row(
+        block_num: u64,
+        priority_fee: u128,
+        base_fee: u128,
+        l1_cost: Option<u128>,
+    ) -> BlockFeeComponentRow {
+        BlockFeeComponentRow {
+            l2_block_number: block_num,
+            priority_fee,
+            base_fee,
+            l1_data_cost: l1_cost,
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn create_batch_fee_component_row(
+        batch_id: u64,
+        l1_block_number: u64,
+        sequencer: &str,
+        priority_fee: u128,
+        base_fee: u128,
+        l1_cost: Option<u128>,
+        prove_cost: Option<u128>,
+        verify_cost: Option<u128>,
+    ) -> BatchFeeComponentRow {
+        BatchFeeComponentRow {
+            batch_id,
+            l1_block_number,
+            sequencer: sequencer.to_owned(),
+            priority_fee,
+            base_fee,
+            l1_data_cost: l1_cost,
+            amortized_prove_cost: prove_cost,
+            amortized_verify_cost: verify_cost,
+        }
+    }
+
+    fn create_block_transactions_item(
+        block: u64,
+        txs: u32,
+        sequencer: &str,
+        time_offset_secs: i64,
+    ) -> BlockTransactionsItem {
+        BlockTransactionsItem {
+            block,
+            txs,
+            sequencer: sequencer.to_owned(),
+            block_time: Utc::now() + chrono::Duration::seconds(time_offset_secs),
+        }
+    }
+
+    // Tests for bucket_size_from_range
+    #[test]
+    fn test_bucket_size_from_range_15_min() {
+        let range = TimeRange::Last15Min; // 900 seconds = 0.25 hours
+        assert_eq!(bucket_size_from_range(&range), 1);
+    }
+
+    #[test]
+    fn test_bucket_size_from_range_1_hour() {
+        let range = TimeRange::LastHour; // 3600 seconds = 1 hour
+        assert_eq!(bucket_size_from_range(&range), 1);
+    }
+
+    #[test]
+    fn test_bucket_size_from_range_6_hours() {
+        let range = TimeRange::Custom(6 * 3600); // 6 hours
+        assert_eq!(bucket_size_from_range(&range), 5);
+    }
+
+    #[test]
+    fn test_bucket_size_from_range_12_hours() {
+        let range = TimeRange::Custom(12 * 3600); // 12 hours
+        assert_eq!(bucket_size_from_range(&range), 10);
+    }
+
+    #[test]
+    fn test_bucket_size_from_range_24_hours() {
+        let range = TimeRange::Last24Hours; // 24 hours
+        assert_eq!(bucket_size_from_range(&range), 25);
+    }
+
+    #[test]
+    fn test_bucket_size_from_range_48_hours() {
+        let range = TimeRange::Custom(48 * 3600); // 48 hours
+        assert_eq!(bucket_size_from_range(&range), 50);
+    }
+
+    #[test]
+    fn test_bucket_size_from_range_72_hours() {
+        let range = TimeRange::Custom(72 * 3600); // 72 hours
+        assert_eq!(bucket_size_from_range(&range), 100);
+    }
+
+    #[test]
+    fn test_bucket_size_from_range_7_days() {
+        let range = TimeRange::Last7Days; // 7 days
+        assert_eq!(bucket_size_from_range(&range), 250);
+    }
+
+    #[test]
+    fn test_bucket_size_from_range_zero_seconds() {
+        let range = TimeRange::Custom(0);
+        assert_eq!(bucket_size_from_range(&range), 1);
+    }
+
+    // Tests for aggregate_l2_block_times
+    #[test]
+    fn test_aggregate_l2_block_times_empty() {
+        let rows = vec![];
+        let result = aggregate_l2_block_times(rows, 5);
+        assert_eq!(result.len(), 0);
+    }
+
+    #[test]
+    fn test_aggregate_l2_block_times_single_row() {
+        let rows = vec![create_l2_block_time_row(10, Some(1000), 0)];
+        let result = aggregate_l2_block_times(rows, 5);
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].l2_block_number, 10); // 10 / 5 * 5 = 10
+        assert_eq!(result[0].ms_since_prev_block, Some(1000));
+    }
+
+    #[test]
+    fn test_aggregate_l2_block_times_multiple_in_bucket() {
+        let rows = vec![
+            create_l2_block_time_row(10, Some(1000), 0),
+            create_l2_block_time_row(11, Some(2000), 1),
+            create_l2_block_time_row(12, Some(3000), 2),
+        ];
+        let result = aggregate_l2_block_times(rows, 5);
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].l2_block_number, 10); // bucket 2 * 5 = 10
+        assert_eq!(result[0].ms_since_prev_block, Some(2000)); // (1000 + 2000 + 3000) / 3 = 2000
+    }
+
+    #[test]
+    fn test_aggregate_l2_block_times_multiple_buckets() {
+        let rows = vec![
+            create_l2_block_time_row(2, Some(1000), 0),
+            create_l2_block_time_row(7, Some(2000), 1),
+        ];
+        let result = aggregate_l2_block_times(rows, 5);
+
+        assert_eq!(result.len(), 2);
+        // First bucket: block 2 -> bucket 0
+        assert_eq!(result[0].l2_block_number, 0);
+        assert_eq!(result[0].ms_since_prev_block, Some(1000));
+        // Second bucket: block 7 -> bucket 1
+        assert_eq!(result[1].l2_block_number, 5);
+        assert_eq!(result[1].ms_since_prev_block, Some(2000));
+    }
+
+    #[test]
+    fn test_aggregate_l2_block_times_with_nones() {
+        let rows = vec![
+            create_l2_block_time_row(10, None, 0),
+            create_l2_block_time_row(11, Some(2000), 1),
+            create_l2_block_time_row(12, None, 2),
+        ];
+        let result = aggregate_l2_block_times(rows, 5);
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].ms_since_prev_block, Some(2000)); // Only non-None value
+    }
+
+    #[test]
+    fn test_aggregate_l2_block_times_all_nones() {
+        let rows =
+            vec![create_l2_block_time_row(10, None, 0), create_l2_block_time_row(11, None, 1)];
+        let result = aggregate_l2_block_times(rows, 5);
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].ms_since_prev_block, Some(0)); // No valid values, so 0
+    }
+
+    #[test]
+    fn test_aggregate_l2_block_times_zero_bucket() {
+        let rows = vec![create_l2_block_time_row(10, Some(1000), 0)];
+        let result = aggregate_l2_block_times(rows, 0);
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].l2_block_number, 10); // bucket becomes 1
+    }
+
+    // Tests for aggregate_l2_gas_used
+    #[test]
+    fn test_aggregate_l2_gas_used_empty() {
+        let rows = vec![];
+        let result = aggregate_l2_gas_used(rows, 5);
+        assert_eq!(result.len(), 0);
+    }
+
+    #[test]
+    fn test_aggregate_l2_gas_used_single_row() {
+        let rows = vec![create_l2_gas_used_row(10, 1000000, 0)];
+        let result = aggregate_l2_gas_used(rows, 5);
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].l2_block_number, 10);
+        assert_eq!(result[0].gas_used, 1000000);
+    }
+
+    #[test]
+    fn test_aggregate_l2_gas_used_averaging() {
+        let rows = vec![
+            create_l2_gas_used_row(10, 1000000, 0),
+            create_l2_gas_used_row(11, 2000000, 1),
+            create_l2_gas_used_row(12, 3000000, 2),
+        ];
+        let result = aggregate_l2_gas_used(rows, 5);
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].gas_used, 2000000); // (1M + 2M + 3M) / 3 = 2M
+    }
+
+    #[test]
+    fn test_aggregate_l2_gas_used_zero_gas() {
+        let rows = vec![create_l2_gas_used_row(10, 0, 0), create_l2_gas_used_row(11, 1000000, 1)];
+        let result = aggregate_l2_gas_used(rows, 5);
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].gas_used, 500000); // (0 + 1M) / 2 = 500K
+    }
+
+    // Tests for aggregate_l2_fee_components
+    #[test]
+    fn test_aggregate_l2_fee_components_empty() {
+        let rows = vec![];
+        let result = aggregate_l2_fee_components(rows, 5);
+        assert_eq!(result.len(), 0);
+    }
+
+    #[test]
+    fn test_aggregate_l2_fee_components_single_row() {
+        let rows = vec![create_block_fee_component_row(10, 1000, 2000, Some(500))];
+        let result = aggregate_l2_fee_components(rows, 5);
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].l2_block_number, 10);
+        assert_eq!(result[0].priority_fee, 1000);
+        assert_eq!(result[0].base_fee, 2000);
+        assert_eq!(result[0].l1_data_cost, Some(500));
+    }
+
+    #[test]
+    fn test_aggregate_l2_fee_components_summation() {
+        let rows = vec![
+            create_block_fee_component_row(10, 1000, 2000, Some(500)),
+            create_block_fee_component_row(11, 1500, 2500, Some(600)),
+        ];
+        let result = aggregate_l2_fee_components(rows, 5);
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].priority_fee, 2500); // 1000 + 1500
+        assert_eq!(result[0].base_fee, 4500); // 2000 + 2500
+        assert_eq!(result[0].l1_data_cost, Some(1100)); // 500 + 600
+    }
+
+    #[test]
+    fn test_aggregate_l2_fee_components_all_none_l1_cost() {
+        let rows = vec![
+            create_block_fee_component_row(10, 1000, 2000, None),
+            create_block_fee_component_row(11, 1500, 2500, None),
+        ];
+        let result = aggregate_l2_fee_components(rows, 5);
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].l1_data_cost, None); // Should remain None
+    }
+
+    #[test]
+    fn test_aggregate_l2_fee_components_mixed_l1_cost() {
+        let rows = vec![
+            create_block_fee_component_row(10, 1000, 2000, None),
+            create_block_fee_component_row(11, 1500, 2500, Some(600)),
+        ];
+        let result = aggregate_l2_fee_components(rows, 5);
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].l1_data_cost, Some(600)); // Should be Some due to any=true
+    }
+
+    // Tests for aggregate_batch_fee_components
+    #[test]
+    fn test_aggregate_batch_fee_components_empty() {
+        let rows = vec![];
+        let result = aggregate_batch_fee_components(rows, 5);
+        assert_eq!(result.len(), 0);
+    }
+
+    #[test]
+    fn test_aggregate_batch_fee_components_single_row() {
+        let rows = vec![create_batch_fee_component_row(
+            10,
+            100,
+            "seq1",
+            1000,
+            2000,
+            Some(500),
+            Some(300),
+            Some(200),
+        )];
+        let result = aggregate_batch_fee_components(rows, 5);
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].batch_id, 10);
+        assert_eq!(result[0].l1_block_number, 100);
+        assert_eq!(result[0].sequencer, "seq1");
+        assert_eq!(result[0].priority_fee, 1000);
+        assert_eq!(result[0].base_fee, 2000);
+        assert_eq!(result[0].l1_data_cost, Some(500));
+        assert_eq!(result[0].amortized_prove_cost, Some(300));
+        assert_eq!(result[0].amortized_verify_cost, Some(200));
+    }
+
+    #[test]
+    fn test_aggregate_batch_fee_components_summation() {
+        let rows = vec![
+            create_batch_fee_component_row(
+                10,
+                100,
+                "seq1",
+                1000,
+                2000,
+                Some(500),
+                Some(300),
+                Some(200),
+            ),
+            create_batch_fee_component_row(
+                11,
+                101,
+                "seq2",
+                1500,
+                2500,
+                Some(600),
+                Some(400),
+                Some(250),
+            ),
+        ];
+        let result = aggregate_batch_fee_components(rows, 5);
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].priority_fee, 2500); // 1000 + 1500
+        assert_eq!(result[0].base_fee, 4500); // 2000 + 2500
+        assert_eq!(result[0].l1_data_cost, Some(1100)); // 500 + 600
+        assert_eq!(result[0].amortized_prove_cost, Some(700)); // 300 + 400
+        assert_eq!(result[0].amortized_verify_cost, Some(450)); // 200 + 250
+        assert_eq!(result[0].l1_block_number, 101); // Last value
+        assert_eq!(result[0].sequencer, "seq2"); // Last value
+    }
+
+    #[test]
+    fn test_aggregate_batch_fee_components_mixed_optional_fields() {
+        let rows = vec![
+            create_batch_fee_component_row(10, 100, "seq1", 1000, 2000, None, Some(300), None),
+            create_batch_fee_component_row(11, 101, "seq2", 1500, 2500, Some(600), None, Some(250)),
+        ];
+        let result = aggregate_batch_fee_components(rows, 5);
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].l1_data_cost, Some(600)); // any=true due to second row
+        assert_eq!(result[0].amortized_prove_cost, Some(300)); // any=true due to first row
+        assert_eq!(result[0].amortized_verify_cost, Some(250)); // any=true due to second row
+    }
+
+    // Tests for aggregate_block_transactions
+    #[test]
+    fn test_aggregate_block_transactions_empty() {
+        let rows = vec![];
+        let result = aggregate_block_transactions(rows, 5);
+        assert_eq!(result.len(), 0);
+    }
+
+    #[test]
+    fn test_aggregate_block_transactions_single_row() {
+        let rows = vec![create_block_transactions_item(10, 25, "seq1", 0)];
+        let result = aggregate_block_transactions(rows, 5);
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].block, 10);
+        assert_eq!(result[0].txs, 25);
+        assert_eq!(result[0].sequencer, "seq1");
+    }
+
+    #[test]
+    fn test_aggregate_block_transactions_averaging() {
+        let rows = vec![
+            create_block_transactions_item(10, 20, "seq1", 0),
+            create_block_transactions_item(11, 30, "seq2", 1),
+            create_block_transactions_item(12, 40, "seq3", 2),
+        ];
+        let result = aggregate_block_transactions(rows, 5);
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].txs, 30); // (20 + 30 + 40) / 3 = 30
+        assert_eq!(result[0].sequencer, "seq3"); // Last value
+    }
+
+    #[test]
+    fn test_aggregate_block_transactions_zero_txs() {
+        let rows = vec![
+            create_block_transactions_item(10, 0, "seq1", 0),
+            create_block_transactions_item(11, 50, "seq2", 1),
+        ];
+        let result = aggregate_block_transactions(rows, 5);
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].txs, 25); // (0 + 50) / 2 = 25
+    }
+
+    #[test]
+    fn test_aggregate_block_transactions_multiple_buckets() {
+        let rows = vec![
+            create_block_transactions_item(2, 20, "seq1", 0),
+            create_block_transactions_item(7, 30, "seq2", 1),
+        ];
+        let result = aggregate_block_transactions(rows, 5);
+
+        assert_eq!(result.len(), 2);
+        // First bucket: block 2 -> bucket 0
+        assert_eq!(result[0].block, 0);
+        assert_eq!(result[0].txs, 20);
+        assert_eq!(result[0].sequencer, "seq1");
+        // Second bucket: block 7 -> bucket 1
+        assert_eq!(result[1].block, 5);
+        assert_eq!(result[1].txs, 30);
+        assert_eq!(result[1].sequencer, "seq2");
+    }
+
+    #[test]
+    fn test_aggregate_block_transactions_large_values() {
+        let rows = vec![
+            create_block_transactions_item(10, u32::MAX - 1, "seq1", 0),
+            create_block_transactions_item(11, u32::MAX, "seq2", 1),
+        ];
+        let result = aggregate_block_transactions(rows, 5);
+
+        assert_eq!(result.len(), 1);
+        // Should handle large values correctly: ((2^32-2) + (2^32-1)) / 2 = 2^32 - 1.5 = 2^32 - 2
+        // (truncated)
+        assert_eq!(result[0].txs, u32::MAX - 1);
+    }
+
+    // Edge case tests for all functions
+    #[test]
+    fn test_all_aggregations_with_bucket_size_1() {
+        // Test that bucket size 1 doesn't change block numbers
+        let l2_time_rows = vec![
+            create_l2_block_time_row(5, Some(1000), 0),
+            create_l2_block_time_row(10, Some(2000), 1),
+        ];
+        let l2_time_result = aggregate_l2_block_times(l2_time_rows, 1);
+        assert_eq!(l2_time_result.len(), 2);
+        assert_eq!(l2_time_result[0].l2_block_number, 5);
+        assert_eq!(l2_time_result[1].l2_block_number, 10);
+
+        let gas_rows =
+            vec![create_l2_gas_used_row(5, 1000000, 0), create_l2_gas_used_row(10, 2000000, 1)];
+        let gas_result = aggregate_l2_gas_used(gas_rows, 1);
+        assert_eq!(gas_result.len(), 2);
+        assert_eq!(gas_result[0].l2_block_number, 5);
+        assert_eq!(gas_result[1].l2_block_number, 10);
+    }
+
+    #[test]
+    fn test_bucket_size_larger_than_data_range() {
+        // Test when bucket size is larger than the data range
+        let rows = vec![
+            create_l2_block_time_row(1, Some(1000), 0),
+            create_l2_block_time_row(2, Some(2000), 1),
+            create_l2_block_time_row(3, Some(3000), 2),
+        ];
+        let result = aggregate_l2_block_times(rows, 100);
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].l2_block_number, 0); // All blocks go to bucket 0
+        assert_eq!(result[0].ms_since_prev_block, Some(2000)); // Average
+    }
+}
