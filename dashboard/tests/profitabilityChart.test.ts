@@ -39,7 +39,7 @@ describe('ProfitabilityChart', () => {
     expect(html).toContain('recharts-responsive-container');
   });
 
-  it('renders with non-zero prove and verify cost', () => {
+  it('renders with non-zero prove cost', () => {
     vi.mocked(swr.default).mockReturnValue({
       data: { data: feeData } as RequestResult<BatchFeeComponent[]>,
     } as unknown as ReturnType<typeof swr.default>);

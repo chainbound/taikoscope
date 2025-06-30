@@ -137,7 +137,7 @@ describe('apiService', () => {
     expect(res.data).toBeNull();
   });
 
-  it('fetchDashboardData returns prove and verify cost', async () => {
+  it('fetchDashboardData returns prove cost', async () => {
     globalThis.fetch = mockFetch({ prove_cost: 10, verify_cost: 20 });
     const res = await fetchDashboardData('1h');
     expect(res.badRequest).toBe(false);
@@ -146,7 +146,7 @@ describe('apiService', () => {
 
   });
 
-  it('fetchDashboardData 15m returns prove and verify cost', async () => {
+  it('fetchDashboardData 15m returns prove cost', async () => {
     globalThis.fetch = mockFetch({ prove_cost: 11, verify_cost: 21 });
     const res = await fetchDashboardData('15m');
     expect(res.badRequest).toBe(false);

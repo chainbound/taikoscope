@@ -22,7 +22,7 @@ const feeData = [
 ];
 
 describe('BlockProfitTables', () => {
-  it('renders with prove and verify cost', () => {
+  it('renders with prove cost', () => {
     vi.mocked(swr.default).mockReturnValue({
       data: { data: feeData } as RequestResult<BatchFeeComponent[]>,
     } as unknown as ReturnType<typeof swr.default>);
