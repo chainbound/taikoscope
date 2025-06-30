@@ -189,8 +189,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         'Forced Inclusions': () => onOpenTable('forced-inclusions'),
         'Active Sequencers': () => onOpenTable('gateways'),
         'Batch Posting Cadence': () => onOpenTable('batch-posting-cadence'),
-        'Avg. Prove Time': () => onOpenTable('prove-time', timeRange),
-        'Avg. Verify Time': () => onOpenTable('verify-time', timeRange),
+        'Avg. Prove Time': () => onOpenTable('prove-times', timeRange),
+        'Avg. Verify Time': () => onOpenTable('verify-times', timeRange),
         'Propose Batch Cost': () => onOpenTable('l1-data-cost', timeRange),
         'Prove Cost': () => onOpenTable('prove-cost', timeRange),
       };
@@ -233,7 +233,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       <ChartCard
         key="prove"
         title="Avg Prove Time"
-        onMore={() => onOpenTable('prove-time', timeRange)}
+        onMore={() => onOpenTable('prove-times', timeRange)}
         loading={isLoadingData}
       >
         <BatchProcessChart
@@ -245,7 +245,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       <ChartCard
         key="verify"
         title="Avg Verify Time"
-        onMore={() => onOpenTable('verify-time', timeRange)}
+        onMore={() => onOpenTable('verify-times', timeRange)}
         loading={isLoadingData}
       >
         <BatchProcessChart

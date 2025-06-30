@@ -35,7 +35,6 @@ import {
   formatDateTime,
   formatEth,
 } from '../utils';
-import { TAIKO_PINK } from '../theme';
 import React from 'react';
 
 export interface TableColumn {
@@ -181,38 +180,6 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     reverseOrder: true,
     supportsPagination: true,
   },
-
-  'prove-time': {
-    title: 'Prove Time',
-    description: 'How long it took to prove each batch.',
-    fetcher: fetchProveTimes,
-    columns: [
-      { key: 'name', label: 'Batch' },
-      { key: 'value', label: 'Seconds' },
-    ],
-    mapData: (data) =>
-      (data as Record<string, string | number>[]).map((d) => ({
-        ...d,
-        name: Number(d.name).toLocaleString(),
-        value: typeof d.value === 'number' ? d.value.toLocaleString() : d.value,
-      })),
-    chart: (data) => {
-      const BatchProcessChart = React.lazy(() =>
-        import('../components/BatchProcessChart').then((m) => ({
-          default: m.BatchProcessChart,
-        })),
-      );
-      return React.createElement(BatchProcessChart, {
-        data,
-        lineColor: TAIKO_PINK,
-      });
-    },
-    urlKey: 'prove-time',
-    reverseOrder: true,
-    supportsPagination: true,
-  },
-
-
 
   'block-tx': {
     title: 'Tx Count Per L2 Block',

@@ -100,7 +100,7 @@ export const ChartsGrid: React.FC<ChartsGridProps> = ({
     <>
       <ChartCard
         title="Avg Prove Time"
-        onMore={() => onOpenTable('prove-time', timeRange)}
+        onMore={() => onOpenTable('prove-times', timeRange)}
         loading={isLoading}
       >
         <BatchProcessChart
@@ -111,7 +111,7 @@ export const ChartsGrid: React.FC<ChartsGridProps> = ({
       </ChartCard>
       <ChartCard
         title="Avg Verify Time"
-        onMore={() => onOpenTable('verify-time', timeRange)}
+        onMore={() => onOpenTable('verify-times', timeRange)}
         loading={isLoading}
       >
         <BatchProcessChart
