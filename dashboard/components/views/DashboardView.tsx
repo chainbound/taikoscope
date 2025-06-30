@@ -94,7 +94,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     if (!isEconomicsView) return metricsData.metrics;
     const HOURS_IN_MONTH = 30 * 24;
     const hours = rangeToHours(timeRange);
-    const costUsd = ((cloudCost + proverCost) / HOURS_IN_MONTH) * hours;
+    const sequencerCount = chartsData.sequencerDistribution.length || 1;
+    const costUsd =
+      ((cloudCost + proverCost) * sequencerCount) / HOURS_IN_MONTH * hours;
     const costWei = ethPrice > 0 ? (costUsd / ethPrice) * 1e18 : null;
     const hardwareMetric: MetricData = {
       title: 'Hardware Costs',
