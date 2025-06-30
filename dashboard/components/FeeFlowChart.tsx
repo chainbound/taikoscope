@@ -207,8 +207,11 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
 
   // Scale operational costs to the selected time range
   const hours = rangeToHours(timeRange);
-  const hardwareCostPerSeq = safeValue(((cloudCost + proverCost) / MONTH_HOURS) * hours);
-  const totalHardwareCost = hardwareCostPerSeq;
+  const sequencerCount = Math.max(1, sequencerFees.length);
+  const hardwareCostPerSeq = safeValue(
+    ((cloudCost + proverCost) / MONTH_HOURS) * hours,
+  );
+  const totalHardwareCost = hardwareCostPerSeq * sequencerCount;
 
   const seqData = sequencerFees.map((f) => {
     const priorityWei = f.priority_fee ?? 0;
