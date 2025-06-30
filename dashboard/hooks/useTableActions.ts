@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import { TimeRange } from '../types';
 import { TABLE_CONFIGS } from '../config/tableConfig';
 import { getSequencerAddress } from '../sequencerConfig';
@@ -57,6 +57,7 @@ export const useTableActions = (
   const [seqDistTxPage, setSeqDistTxPage] = useState<number>(0);
   const { navigateToTable } = useRouterNavigation();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
 
   const setTableUrl = useCallback(
     (
@@ -69,12 +70,16 @@ export const useTableActions = (
           if (v !== undefined) cleanParams[k] = v;
         });
 
+        if (searchParams.get('view') === 'economics') {
+          cleanParams.view = 'economics';
+        }
+
         navigateToTable(name, cleanParams, timeRange);
       } catch (err) {
         console.error('Failed to set table URL:', err);
       }
     },
-    [navigateToTable, timeRange],
+    [navigateToTable, timeRange, searchParams],
   );
 
   const openTable = useCallback(
