@@ -365,7 +365,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     aggregatedFetcher: fetchProveTimesAggregated,
     columns: [
       { key: 'name', label: 'Batch' },
-      { key: 'value', label: 'Minutes' },
+      { key: 'value', label: 'Time' },
     ],
     mapData: (data) =>
       (data as Record<string, string | number>[]).map((d) => ({
@@ -385,7 +385,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     aggregatedFetcher: fetchVerifyTimesAggregated,
     columns: [
       { key: 'name', label: 'Batch' },
-      { key: 'value', label: 'Minutes' },
+      { key: 'value', label: 'Time' },
     ],
     mapData: (data) =>
       (data as Record<string, string | number>[]).map((d) => ({
