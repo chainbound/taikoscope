@@ -117,7 +117,7 @@ export const useDataFetcher = ({
       l2Cadence: data.l2Cadence,
       batchCadence: data.batchCadence,
       avgProve: data.avgProve,
-      avgVerify: null,
+      avgVerify: data.avgVerify,
       activeGateways,
       currentOperator,
       nextOperator,
