@@ -237,7 +237,7 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
       <Popover.Trigger asChild>
         <button
           disabled={isChanging}
-          className="p-1 border rounded-md text-sm bg-white dark:bg-gray-800 min-w-[3rem]"
+          className="p-1 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 min-w-[3rem]"
           title={customTooltip}
         >
           {buttonLabel}
@@ -374,7 +374,7 @@ export const SequencerSelector: React.FC<SequencerSelectorProps> = ({
     <select
       value={value ?? ''}
       onChange={(e) => onChange(e.target.value || null)}
-      className="p-1 border rounded-md text-sm"
+      className="p-1 border border-gray-300 dark:border-gray-600 rounded-md text-sm"
     >
       <option value="">All Sequencers</option>
       {sorted.map((s) => (
