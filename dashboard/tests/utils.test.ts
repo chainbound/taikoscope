@@ -17,6 +17,7 @@ import {
   loadRefreshRate,
   saveRefreshRate,
   isValidRefreshRate,
+  formatHoursMinutes,
 } from '../utils';
 
 describe('utils', () => {
@@ -27,6 +28,7 @@ describe('utils', () => {
     expect(formatSeconds(30)).toBe('30.0s');
     expect(formatSeconds(150)).toBe('2.5m');
     expect(formatSeconds(7200)).toBe('2h');
+    expect(formatHoursMinutes(9000)).toBe('2:30h');
 
     expect(formatInterval(30, false, false)).toBe('30 seconds');
     expect(formatInterval(180, false, true)).toBe('3.0 minutes');

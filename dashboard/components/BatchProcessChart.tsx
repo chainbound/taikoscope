@@ -14,6 +14,7 @@ import {
   formatDecimal,
   formatBatchDuration,
   computeBatchDurationFlags,
+  formatHoursMinutes,
 } from '../utils';
 
 interface BatchProcessChartProps {
@@ -64,7 +65,7 @@ const BatchProcessChartComponent: React.FC<BatchProcessChartProps> = ({
           fontSize={12}
           tickFormatter={(v) =>
             showHours
-              ? Number(formatDecimal(v / 3600))
+              ? formatHoursMinutes(v)
               : showMinutes
                 ? Number(formatDecimal(v / 60))
                 : v.toString()

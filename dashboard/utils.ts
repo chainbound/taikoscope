@@ -95,6 +95,13 @@ export const formatSeconds = (seconds: number): string => {
   return `${formatDecimal(seconds)}s`;
 };
 
+export const formatHoursMinutes = (seconds: number): string => {
+  const secs = Math.round(seconds);
+  const hrs = Math.floor(secs / 3600);
+  const mins = Math.floor((secs % 3600) / 60);
+  return `${hrs}:${mins.toString().padStart(2, '0')}h`;
+};
+
 export const formatLargeNumber = (value: number): string => {
   if (Math.abs(value) >= 1_000_000) {
     return `${Number(formatDecimal(value / 1_000_000))}M`;

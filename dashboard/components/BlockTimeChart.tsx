@@ -17,6 +17,7 @@ import {
   formatInterval,
   computeIntervalFlags,
   formatDateTime,
+  formatHoursMinutes,
 } from '../utils';
 
 interface BlockTimeChartProps {
@@ -69,7 +70,7 @@ const BlockTimeChartComponent: React.FC<BlockTimeChartProps> = ({
           domain={['auto', 'auto']}
           tickFormatter={(v) =>
             showHours
-              ? String(Number(formatDecimal(v / (seconds ? 3600 : 3600000))))
+              ? formatHoursMinutes(seconds ? v : v / 1000)
               : showMinutes
                 ? String(Number(formatDecimal(v / (seconds ? 60 : 60000))))
                 : String(Number(formatDecimal(seconds ? v : v / 1000)))
