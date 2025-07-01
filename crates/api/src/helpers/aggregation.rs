@@ -387,7 +387,7 @@ mod tests {
     #[test]
     fn test_verify_bucket_size_smaller() {
         let range = TimeRange::Custom(6 * 3600); // 6 hours
-        assert_eq!(verify_bucket_size(&range), 1); // base 5 / 5 = 1
+        assert_eq!(verify_bucket_size(&range), 1); // base 5 / 25 = 0 -> 1
     }
 
     // Tests for aggregate_l2_block_times
