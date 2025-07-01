@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { ResponsiveContainer, Sankey, Tooltip } from 'recharts';
 import type { TooltipProps } from 'recharts';
 import { formatEth } from '../utils';
@@ -12,7 +12,7 @@ import { fetchL2Fees } from '../services/apiService';
 import { getSequencerName } from '../sequencerConfig';
 import { useEthPrice } from '../services/priceService';
 import { TimeRange } from '../types';
-import { rangeToHours } from '../utils/timeRange';
+import { rangeToHours, normalizeTimeRange } from '../utils/timeRange';
 
 interface FeeFlowChartProps {
   timeRange: TimeRange;
@@ -153,10 +153,11 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
   address,
 }) => {
   const { theme } = useTheme();
+  const normalizedRange = useMemo(() => normalizeTimeRange(timeRange), [timeRange]);
   const textColor =
     theme === 'dark' ? darkTheme.foreground : lightTheme.foreground;
-  const { data: feeRes } = useSWR(['l2FeesFlow', timeRange, address], () =>
-    fetchL2Fees(timeRange, address),
+  const { data: feeRes } = useSWR(['l2FeesFlow', normalizedRange, address], () =>
+    fetchL2Fees(normalizedRange, address),
   );
   const { data: ethPrice = 0 } = useEthPrice();
 
