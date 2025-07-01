@@ -34,7 +34,7 @@ pub const fn bucket_size_from_range(range: &TimeRange) -> u64 {
 /// when prove events are infrequent.
 pub const fn prove_bucket_size(range: &TimeRange) -> u64 {
     let base = bucket_size_from_range(range);
-    let size = base / 5;
+    let size = base / 10;
     if size == 0 { 1 } else { size }
 }
 
@@ -43,7 +43,7 @@ pub const fn prove_bucket_size(range: &TimeRange) -> u64 {
 /// data points.
 pub const fn verify_bucket_size(range: &TimeRange) -> u64 {
     let base = bucket_size_from_range(range);
-    let size = base / 2;
+    let size = base / 5;
     if size == 0 { 1 } else { size }
 }
 
@@ -381,13 +381,13 @@ mod tests {
     #[test]
     fn test_prove_bucket_size_smaller() {
         let range = TimeRange::Custom(6 * 3600); // 6 hours
-        assert_eq!(prove_bucket_size(&range), 1); // base 5 / 5 = 1
+        assert_eq!(prove_bucket_size(&range), 1); // base 5 / 10 = 0 -> 1
     }
 
     #[test]
     fn test_verify_bucket_size_smaller() {
         let range = TimeRange::Custom(6 * 3600); // 6 hours
-        assert_eq!(verify_bucket_size(&range), 2); // base 5 / 2 = 2
+        assert_eq!(verify_bucket_size(&range), 1); // base 5 / 5 = 1
     }
 
     // Tests for aggregate_l2_block_times
