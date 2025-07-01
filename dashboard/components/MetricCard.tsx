@@ -36,10 +36,10 @@ export const MetricCard: React.FC<MetricCardProps> = ({
         {onMore && (
           <button
             onClick={onMore}
-            className="absolute top-0 right-0 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 text-xl leading-none w-6 h-6 flex items-center justify-center rounded-md"
-            aria-label="View table"
+            className="absolute top-0 right-0 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 text-lg leading-none w-6 h-6 flex items-center justify-center rounded-md"
+            aria-label="View detailed table"
           >
-            ⋮
+            →
           </button>
         )}
       </div>

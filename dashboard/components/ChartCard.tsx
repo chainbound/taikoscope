@@ -22,10 +22,10 @@ export const ChartCard: React.FC<ChartCardProps> = ({
         {onMore && (
           <button
             onClick={onMore}
-            className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 text-2xl w-8 h-8 flex items-center justify-center rounded-md"
-            aria-label="View table"
+            className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 text-xl w-8 h-8 flex items-center justify-center rounded-md"
+            aria-label="View detailed table"
           >
-            ⋮
+            →
           </button>
         )}
       </div>
