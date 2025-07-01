@@ -813,17 +813,17 @@ export const fetchAvgL2Tps = async (
 
 export interface SequencerFee {
   address: string;
-  priority_fee: number;
-  base_fee: number;
-  l1_data_cost: number | null;
-  prove_cost: number | null;
+  priority_fee: string;
+  base_fee: string;
+  l1_data_cost: string | null;
+  prove_cost: string | null;
 }
 
 export interface L2FeesResponse {
-  priority_fee: number | null;
-  base_fee: number | null;
-  l1_data_cost: number | null;
-  prove_cost: number | null;
+  priority_fee: string | null;
+  base_fee: string | null;
+  l1_data_cost: string | null;
+  prove_cost: string | null;
   sequencers: SequencerFee[];
 }
 
@@ -844,19 +844,19 @@ export const fetchL2Fees = async (
 
 export interface FeeComponent {
   block: number;
-  priority: number;
-  base: number;
-  l1Cost: number | null;
+  priority: string;
+  base: string;
+  l1Cost: string | null;
 }
 
 export interface BatchFeeComponent {
   batch: number;
   l1Block: number;
   sequencer: string;
-  priority: number;
-  base: number;
-  l1Cost: number | null;
-  amortizedProveCost: number | null;
+  priority: string;
+  base: string;
+  l1Cost: string | null;
+  amortizedProveCost: string | null;
 }
 
 export const fetchFeeComponents = async (
@@ -869,9 +869,9 @@ export const fetchFeeComponents = async (
   const res = await fetchJson<{
     blocks: {
       l2_block_number: number;
-      priority_fee: number;
-      base_fee: number;
-      l1_data_cost: number | null;
+      priority_fee: string;
+      base_fee: string;
+      l1_data_cost: string | null;
     }[];
   }>(url);
   return {
@@ -900,10 +900,10 @@ export const fetchBatchFeeComponents = async (
       batch_id: number;
       l1_block_number: number;
       sequencer: string;
-      priority_fee: number;
-      base_fee: number;
-      l1_data_cost: number | null;
-      amortized_prove_cost: number | null;
+      priority_fee: string;
+      base_fee: string;
+      l1_data_cost: string | null;
+      amortized_prove_cost: string | null;
 
     }[];
   }>(url);
@@ -1113,9 +1113,9 @@ export interface DashboardDataResponse {
   forced_inclusions: number;
   l2_head_block: number | null;
   l1_head_block: number | null;
-  priority_fee: number | null;
-  base_fee: number | null;
-  prove_cost: number | null;
+  priority_fee: string | null;
+  base_fee: string | null;
+  prove_cost: string | null;
   cloud_cost: number | null;
 }
 

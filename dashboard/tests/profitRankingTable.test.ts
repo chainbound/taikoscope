@@ -26,24 +26,24 @@ describe('ProfitRankingTable', () => {
       .mockReturnValueOnce({
         data: {
           data: {
-            priority_fee: 3e18,
-            base_fee: 1.5e18,
-            l1_data_cost: 0,
-            prove_cost: 0,
+            priority_fee: '3000000000000000000',
+            base_fee: '1500000000000000000',
+            l1_data_cost: '0',
+            prove_cost: '0',
             sequencers: [
               {
                 address: '0xseqA',
-                priority_fee: 2e18,
-                base_fee: 1e18,
-                l1_data_cost: 0,
-                prove_cost: 0,
+                priority_fee: '2000000000000000000',
+                base_fee: '1000000000000000000',
+                l1_data_cost: '0',
+                prove_cost: '0',
               },
               {
                 address: '0xseqB',
-                priority_fee: 1e18,
-                base_fee: 0.5e18,
-                l1_data_cost: 0,
-                prove_cost: 0,
+                priority_fee: '1000000000000000000',
+                base_fee: '500000000000000000',
+                l1_data_cost: '0',
+                prove_cost: '0',
               },
             ],
           },
@@ -66,24 +66,24 @@ describe('ProfitRankingTable', () => {
     } as RequestResult<SequencerDistributionDataItem[]>);
     vi.spyOn(api, 'fetchL2Fees').mockResolvedValue({
       data: {
-        priority_fee: 3e18,
-        base_fee: 1.5e18,
-        l1_data_cost: 0,
-        prove_cost: 0,
+        priority_fee: '3000000000000000000',
+        base_fee: '1500000000000000000',
+        l1_data_cost: '0',
+        prove_cost: '0',
         sequencers: [
           {
             address: '0xseqA',
-            priority_fee: 2e18,
-            base_fee: 1e18,
-            l1_data_cost: 0,
-            prove_cost: 0,
+            priority_fee: '2000000000000000000',
+            base_fee: '1000000000000000000',
+            l1_data_cost: '0',
+            prove_cost: '0',
           },
           {
             address: '0xseqB',
-            priority_fee: 1e18,
-            base_fee: 0.5e18,
-            l1_data_cost: 0,
-            prove_cost: 0,
+            priority_fee: '1000000000000000000',
+            base_fee: '500000000000000000',
+            l1_data_cost: '0',
+            prove_cost: '0',
           },
         ],
       },
@@ -131,17 +131,17 @@ describe('ProfitRankingTable', () => {
       .mockReturnValueOnce({
         data: {
           data: {
-            priority_fee: 1e18,
-            base_fee: 0,
-            l1_data_cost: 5e17,
-            prove_cost: 1e16,
+            priority_fee: '1000000000000000000',
+            base_fee: '0',
+            l1_data_cost: '500000000000000000',
+            prove_cost: '10000000000000000',
             sequencers: [
               {
                 address: '0xseqA',
-                priority_fee: 1e18,
-                base_fee: 0,
-                l1_data_cost: 5e17,
-                prove_cost: 1e16,
+                priority_fee: '1000000000000000000',
+                base_fee: '0',
+                l1_data_cost: '500000000000000000',
+                prove_cost: '10000000000000000',
               },
             ],
           },
@@ -158,17 +158,17 @@ describe('ProfitRankingTable', () => {
     } as RequestResult<SequencerDistributionDataItem[]>);
     vi.spyOn(api, 'fetchL2Fees').mockResolvedValue({
       data: {
-        priority_fee: 1e18,
-        base_fee: 0,
-        l1_data_cost: 5e17,
-        prove_cost: 1e16,
+        priority_fee: '1000000000000000000',
+        base_fee: '0',
+        l1_data_cost: '500000000000000000',
+        prove_cost: '10000000000000000',
         sequencers: [
           {
             address: '0xseqA',
-            priority_fee: 1e18,
-            base_fee: 0,
-            l1_data_cost: 5e17,
-            prove_cost: 1e16,
+            priority_fee: '1000000000000000000',
+            base_fee: '0',
+            l1_data_cost: '500000000000000000',
+            prove_cost: '10000000000000000',
           },
         ],
       },

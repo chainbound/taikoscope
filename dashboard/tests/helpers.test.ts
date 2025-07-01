@@ -15,12 +15,12 @@ const metrics = createMetrics({
   forcedInclusions: 0,
   l2Block: 100,
   l1Block: 50,
-  priorityFee: 41e18,
-  baseFee: 1e18,
-  proveCost: 9e18,
+  priorityFee: 41000000000000000000n,
+  baseFee: 1000000000000000000n,
+  proveCost: 9000000000000000000n,
 
-  l1DataCost: 2e18,
-  profit: 40e18,
+  l1DataCost: 2000000000000000000n,
+  profit: 40000000000000000000n,
 });
 
 const results = [

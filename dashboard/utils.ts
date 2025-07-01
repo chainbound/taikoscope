@@ -115,6 +115,23 @@ export const formatLargeNumber = (value: number): string => {
 export const formatWithCommas = (value: number): string =>
   value.toLocaleString();
 
+export const toBigInt = (
+  value: string | number | bigint | null | undefined,
+): bigint => {
+  try {
+    return value == null ? 0n : BigInt(value);
+  } catch {
+    return 0n;
+  }
+};
+
+export const weiToEth = (wei: bigint): number => Number(wei) / 1e18;
+
+export const formatEthBigInt = (
+  wei: bigint | null | undefined,
+  decimals?: number,
+): string => formatEth(Number(wei ?? 0n), decimals);
+
 export const formatEth = (wei: number, decimals?: number): string => {
   const eth = wei / 1e18;
   if (Math.abs(eth) >= 1000) {

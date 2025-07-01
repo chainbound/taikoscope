@@ -39,8 +39,8 @@ describe('dataFetcher', () => {
         forced_inclusions: 8,
         l2_head_block: 10,
         l1_head_block: 11,
-        priority_fee: 12,
-        base_fee: 5,
+        priority_fee: '12',
+        base_fee: '5',
         cloud_cost: 13,
       }),
       fetchProveTimes: ok([{ name: '1', value: 1, timestamp: 0 }]),
@@ -84,10 +84,10 @@ describe('dataFetcher', () => {
   it('fetches economics data', async () => {
     setAll({
       fetchL2Fees: ok({
-        priority_fee: 1,
-        base_fee: 2,
-        l1_data_cost: 4,
-        prove_cost: 5,
+        priority_fee: '1',
+        base_fee: '2',
+        l1_data_cost: '4',
+        prove_cost: '5',
         sequencers: [],
       }),
       fetchL2HeadBlock: ok(2),

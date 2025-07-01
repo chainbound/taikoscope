@@ -2,7 +2,7 @@ import { type MetricData } from '../types';
 import {
   formatSeconds,
   formatDecimal,
-  formatEth,
+  formatEthBigInt,
   formatWithCommas,
   TAIKOSCAN_BASE,
 } from '../utils';
@@ -22,11 +22,11 @@ export interface MetricInputData {
   forcedInclusions: number | null;
   l2Block: number | null;
   l1Block: number | null;
-  priorityFee: number | null;
-  baseFee: number | null;
-  l1DataCost?: number | null;
-  profit?: number | null;
-  proveCost?: number | null;
+  priorityFee: bigint | null;
+  baseFee: bigint | null;
+  l1DataCost?: bigint | null;
+  profit?: bigint | null;
+  proveCost?: bigint | null;
 
 }
 
@@ -116,27 +116,27 @@ export const createMetrics = (data: MetricInputData): MetricData[] => [
   },
   {
     title: 'Profit',
-    value: data.profit != null ? formatEth(data.profit, 3) : 'N/A',
+    value: data.profit != null ? formatEthBigInt(data.profit, 3) : 'N/A',
     group: 'Network Economics',
   },
   {
     title: 'Priority Fee',
-    value: data.priorityFee != null ? formatEth(data.priorityFee, 3) : 'N/A',
+    value: data.priorityFee != null ? formatEthBigInt(data.priorityFee, 3) : 'N/A',
     group: 'Network Economics',
   },
   {
     title: 'Base Fee',
-    value: data.baseFee != null ? formatEth(data.baseFee, 3) : 'N/A',
+    value: data.baseFee != null ? formatEthBigInt(data.baseFee, 3) : 'N/A',
     group: 'Network Economics',
   },
   {
     title: 'Propose Batch Cost',
-    value: data.l1DataCost != null ? formatEth(data.l1DataCost, 3) : 'N/A',
+    value: data.l1DataCost != null ? formatEthBigInt(data.l1DataCost, 3) : 'N/A',
     group: 'Network Economics',
   },
   {
     title: 'Prove Cost',
-    value: data.proveCost != null ? formatEth(data.proveCost, 3) : 'N/A',
+    value: data.proveCost != null ? formatEthBigInt(data.proveCost, 3) : 'N/A',
     group: 'Network Economics',
   },
   {

@@ -135,15 +135,15 @@ const responses: Record<string, Record<string, unknown>> = {
     ],
   },
   [`/v1/l2-fees?${q1h}`]: {
-    priority_fee: 600,
-    base_fee: 400,
+    priority_fee: '600',
+    base_fee: '400',
     l1_data_cost: null,
     prove_cost: 5,
     sequencers: [],
   },
   [`/v1/l2-fees?${q15m}`]: {
-    priority_fee: 600,
-    base_fee: 400,
+    priority_fee: '600',
+    base_fee: '400',
     l1_data_cost: null,
     prove_cost: 5,
     sequencers: [],
@@ -167,14 +167,14 @@ const responses: Record<string, Record<string, unknown>> = {
     forced_inclusions: 8,
     l2_head_block: 9,
     l1_head_block: 10,
-    priority_fee: 11,
-    base_fee: 12,
+    priority_fee: '11',
+    base_fee: '12',
     prove_cost: 13,
     cloud_cost: 14,
   },
   [`/v1/l2-fees?${q24h}`]: {
-    priority_fee: 1200,
-    base_fee: 800,
+    priority_fee: '1200',
+    base_fee: '800',
     l1_data_cost: null,
     prove_cost: 10,
     sequencers: [],
@@ -226,8 +226,10 @@ async function fetchData(range: TimeRange, state: State, economics = false) {
     ]);
 
     const l2FeeData = l2FeesRes.data;
-    const priorityFee = l2FeeData?.priority_fee ?? null;
-    const baseFee = l2FeeData?.base_fee ?? null;
+    const priorityFee =
+      l2FeeData?.priority_fee != null ? BigInt(l2FeeData.priority_fee) : null;
+    const baseFee =
+      l2FeeData?.base_fee != null ? BigInt(l2FeeData.base_fee) : null;
     const l2Block = l2BlockRes.data;
     const l1Block = l1BlockRes.data;
 
@@ -319,8 +321,10 @@ async function fetchData(range: TimeRange, state: State, economics = false) {
   const l2Gas = l2GasUsedRes.data || [];
   const sequencerDist = sequencerDistRes.data || [];
   const l2FeeData = l2FeesRes.data;
-  const priorityFee = l2FeeData?.priority_fee ?? null;
-  const baseFee = l2FeeData?.base_fee ?? null;
+  const priorityFee =
+    l2FeeData?.priority_fee != null ? BigInt(l2FeeData.priority_fee) : null;
+  const baseFee =
+    l2FeeData?.base_fee != null ? BigInt(l2FeeData.base_fee) : null;
 
   const anyBadRequest = hasBadRequest([
     l2CadenceRes,
@@ -479,8 +483,8 @@ it('fetches dashboard data correctly', async () => {
     forced_inclusions: 8,
     l2_head_block: 9,
     l1_head_block: 10,
-    priority_fee: 11,
-    base_fee: 12,
+    priority_fee: '11',
+    base_fee: '12',
     prove_cost: 13,
     cloud_cost: 14,
   });

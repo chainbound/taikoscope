@@ -4,7 +4,7 @@ import { fetchBatchFeeComponents } from '../services/apiService';
 import { useEthPrice } from '../services/priceService';
 import { TimeRange } from '../types';
 import { rangeToHours } from '../utils/timeRange';
-import { formatEth, l1BlockLink } from '../utils';
+import { formatEth, l1BlockLink, toBigInt } from '../utils';
 import { calculateProfit } from '../utils/profit';
 
 interface BlockProfitTablesProps {
@@ -44,16 +44,20 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
     : 0;
 
   const profits = batchData.map((b) => {
+    const priorityWei = toBigInt(b.priority);
+    const baseWei = toBigInt(b.base);
+    const l1CostWei = toBigInt(b.l1Cost);
+    const proveWei = toBigInt(b.amortizedProveCost);
     const { profitEth } = calculateProfit({
-      priorityFee: b.priority,
-      baseFee: b.base,
-      l1DataCost: b.l1Cost ?? 0,
-      proveCost: b.amortizedProveCost ?? 0,
+      priorityFee: Number(priorityWei),
+      baseFee: Number(baseWei),
+      l1DataCost: Number(l1CostWei ?? 0n),
+      proveCost: Number(proveWei ?? 0n),
 
       hardwareCostUsd: operationalCostPerBatchUsd,
       ethPrice,
     });
-    const profitWei = profitEth * 1e18;
+    const profitWei = toBigInt(Math.round(profitEth * 1e18));
 
     return {
       batch: b.batch,

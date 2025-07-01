@@ -8,7 +8,7 @@ import {
 } from '../services/apiService';
 import * as apiService from '../services/apiService';
 import { getSequencerAddress } from '../sequencerConfig';
-import { addressLink, formatEth, formatDecimal } from '../utils';
+import { addressLink, formatEth, formatDecimal, toBigInt } from '../utils';
 import { calculateProfit } from '../utils/profit';
 import { useEthPrice } from '../services/priceService';
 import { rangeToHours } from '../utils/timeRange';
@@ -113,18 +113,22 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
         ratio: null as number | null,
       };
     }
-    const revenueEth =
-      ((fees.priority_fee ?? 0) + (fees.base_fee ?? 0) * 0.75) / 1e18;
-    const l1CostEth = (fees.l1_data_cost ?? 0) / 1e18;
+    const priorityWei = toBigInt(fees.priority_fee);
+    const baseWei = (toBigInt(fees.base_fee) * 75n) / 100n;
+    const l1CostWei = toBigInt(fees.l1_data_cost);
+    const proveWei = toBigInt(fees.prove_cost);
+
+    const revenueEth = Number(priorityWei + baseWei) / 1e18;
+    const l1CostEth = Number(l1CostWei) / 1e18;
     const revenueUsd = revenueEth * ethPrice;
     const l1CostUsd = l1CostEth * ethPrice;
     const costEth = costPerSeqEth + l1CostEth + extraEth;
     const costUsd = costPerSeqUsd + l1CostUsd + extraUsd;
     const { profitEth, profitUsd } = calculateProfit({
-      priorityFee: fees.priority_fee,
-      baseFee: fees.base_fee,
-      l1DataCost: fees.l1_data_cost,
-      proveCost: fees.prove_cost,
+      priorityFee: Number(priorityWei),
+      baseFee: Number(toBigInt(fees.base_fee)),
+      l1DataCost: Number(l1CostWei),
+      proveCost: Number(proveWei),
 
       hardwareCostUsd: costPerSeqUsd,
       ethPrice,

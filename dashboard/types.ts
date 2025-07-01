@@ -55,19 +55,19 @@ export interface ErrorResponse {
 
 export interface FeeComponent {
   block: number;
-  priority: number;
-  base: number;
-  l1Cost: number | null;
+  priority: string;
+  base: string;
+  l1Cost: string | null;
 }
 
 export interface BatchFeeComponent {
   batch: number;
   l1Block: number;
   sequencer: string;
-  priority: number;
-  base: number;
-  l1Cost: number | null;
-  amortizedProveCost: number | null;
+  priority: string;
+  base: string;
+  l1Cost: string | null;
+  amortizedProveCost: string | null;
 }
 
 export interface BlockProfit {

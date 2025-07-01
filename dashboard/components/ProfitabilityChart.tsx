@@ -14,7 +14,7 @@ import { useEthPrice } from '../services/priceService';
 import { fetchBatchFeeComponents } from '../services/apiService';
 import { TimeRange, BatchFeeComponent } from '../types';
 import { rangeToHours } from '../utils/timeRange';
-import { formatEth } from '../utils';
+import { formatEth, toBigInt } from '../utils';
 import { calculateProfit } from '../utils/profit';
 
 interface ProfitabilityChartProps {
@@ -52,10 +52,10 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
 
   const data = feeData.map((b) => {
     const { profitEth, profitUsd } = calculateProfit({
-      priorityFee: b.priority,
-      baseFee: b.base,
-      l1DataCost: b.l1Cost ?? 0,
-      proveCost: b.amortizedProveCost ?? 0,
+      priorityFee: Number(toBigInt(b.priority)),
+      baseFee: Number(toBigInt(b.base)),
+      l1DataCost: Number(toBigInt(b.l1Cost)),
+      proveCost: Number(toBigInt(b.amortizedProveCost)),
 
       hardwareCostUsd: costPerBatchUsd,
       ethPrice,

@@ -1,7 +1,7 @@
 import React from 'react';
 import { ResponsiveContainer, Sankey, Tooltip } from 'recharts';
 import type { TooltipProps } from 'recharts';
-import { formatEth } from '../utils';
+import { formatEthBigInt, toBigInt, weiToEth } from '../utils';
 import { TAIKO_PINK, lightTheme, darkTheme } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
 import { calculateProfit } from '../utils/profit';
@@ -22,7 +22,7 @@ interface FeeFlowChartProps {
 }
 
 const MONTH_HOURS = 30 * 24;
-const WEI_TO_ETH = 1e18;
+const WEI_PER_ETH = 10n ** 18n;
 
 // Format numbers as USD without grouping
 const formatUsd = (value: number) => `$${value.toFixed(3)}`;
@@ -192,13 +192,13 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
   const safeValue = (value: number) => (isFinite(value) ? value : 0);
 
   // Convert fees to USD
-  const priorityFeeUsd = safeValue(((priorityFee ?? 0) / WEI_TO_ETH) * ethPrice);
-  const baseFeeUsd = safeValue(((baseFee ?? 0) / WEI_TO_ETH) * ethPrice);
+  const priorityFeeUsd = safeValue((Number(priorityFee ?? 0n) / Number(WEI_PER_ETH)) * ethPrice);
+  const baseFeeUsd = safeValue((Number(baseFee ?? 0n) / Number(WEI_PER_ETH)) * ethPrice);
   const l1DataCostTotalUsd = safeValue(
-    ((feeRes?.data?.l1_data_cost ?? 0) / WEI_TO_ETH) * ethPrice,
+    (Number(toBigInt(feeRes?.data?.l1_data_cost) ?? 0n) / Number(WEI_PER_ETH)) * ethPrice,
   );
   const l1ProveCost = safeValue(
-    ((feeRes?.data?.prove_cost ?? 0) / WEI_TO_ETH) * ethPrice,
+    (Number(toBigInt(feeRes?.data?.prove_cost) ?? 0n) / Number(WEI_PER_ETH)) * ethPrice,
   );
 
   const baseFeeDaoUsd = safeValue(baseFeeUsd * 0.25);
@@ -212,23 +212,23 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
   const totalHardwareCost = hardwareCostPerSeq * sequencerCount;
 
   const seqData = sequencerFees.map((f) => {
-    const priorityWei = f.priority_fee ?? 0;
-    const baseWei = (f.base_fee ?? 0) * 0.75;
-    const l1CostWei = f.l1_data_cost ?? 0;
-    const proveWei = f.prove_cost ?? 0;
+    const priorityWei = toBigInt(f.priority_fee);
+    const baseWei = toBigInt(f.base_fee) * 75n / 100n;
+    const l1CostWei = toBigInt(f.l1_data_cost);
+    const proveWei = toBigInt(f.prove_cost);
 
-    const priorityUsd = safeValue((priorityWei / WEI_TO_ETH) * ethPrice);
-    const baseUsd = safeValue((baseWei / WEI_TO_ETH) * ethPrice);
-    const l1CostUsd = safeValue((l1CostWei / WEI_TO_ETH) * ethPrice);
-    const proveUsd = safeValue((proveWei / WEI_TO_ETH) * ethPrice);
+    const priorityUsd = safeValue((Number(priorityWei) / Number(WEI_PER_ETH)) * ethPrice);
+    const baseUsd = safeValue((Number(baseWei) / Number(WEI_PER_ETH)) * ethPrice);
+    const l1CostUsd = safeValue((Number(l1CostWei) / Number(WEI_PER_ETH)) * ethPrice);
+    const proveUsd = safeValue((Number(proveWei) / Number(WEI_PER_ETH)) * ethPrice);
 
 
     const revenue = safeValue(priorityUsd + baseUsd);
-    const revenueWei = safeValue(priorityWei + baseWei);
+    const revenueWei = priorityWei + baseWei;
 
     const { profitUsd, profitEth } = calculateProfit({
       priorityFee: priorityWei,
-      baseFee: f.base_fee ?? 0,
+      baseFee: toBigInt(f.base_fee),
       l1DataCost: l1CostWei,
       proveCost: proveWei,
 
@@ -236,7 +236,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
       ethPrice,
     });
     const profit = safeValue(Math.max(0, profitUsd));
-    const profitWei = safeValue(profitEth * WEI_TO_ETH);
+    const profitWei = toBigInt(Math.round(profitEth * Number(WEI_PER_ETH)));
     let remaining = revenue;
     const actualHardwareCost = safeValue(Math.min(hardwareCostPerSeq, remaining));
     remaining -= actualHardwareCost;
@@ -247,16 +247,16 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     const deficitUsd = safeValue(Math.max(0, -profitUsd));
     const subsidyUsd = safeValue(Math.max(l1CostUsd - actualL1Cost, deficitUsd));
     const subsidyWei = safeValue(
-      ethPrice ? (subsidyUsd / ethPrice) * WEI_TO_ETH : 0,
+      ethPrice ? toBigInt((subsidyUsd / ethPrice) * Number(WEI_PER_ETH)) : 0n,
     );
     const actualHardwareCostWei = safeValue(
-      ethPrice ? (actualHardwareCost / ethPrice) * WEI_TO_ETH : 0,
+      ethPrice ? toBigInt((actualHardwareCost / ethPrice) * Number(WEI_PER_ETH)) : 0n,
     );
     const actualL1CostWei = safeValue(
-      ethPrice ? (actualL1Cost / ethPrice) * WEI_TO_ETH : 0,
+      ethPrice ? toBigInt((actualL1Cost / ethPrice) * Number(WEI_PER_ETH)) : 0n,
     );
     const actualProveCostWei = safeValue(
-      ethPrice ? (actualProveCost / ethPrice) * WEI_TO_ETH : 0,
+      ethPrice ? toBigInt((actualProveCost / ethPrice) * Number(WEI_PER_ETH)) : 0n,
     );
 
     const name = getSequencerName(f.address);
@@ -301,20 +301,20 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     remaining -= actualProveCost;
 
     const sequencerProfit = safeValue(Math.max(0, remaining));
-    const sequencerRevenueWei = safeValue((priorityFee ?? 0) + (baseFee ?? 0) * 0.75);
-    const sequencerProfitWei = safeValue(
-      ethPrice ? (sequencerProfit / ethPrice) * WEI_TO_ETH : 0,
-    );
+    const sequencerRevenueWei =
+      toBigInt(priorityFee ?? 0n) + (toBigInt(baseFee ?? 0n) * 75n) / 100n;
+    const sequencerProfitWei =
+      ethPrice ? toBigInt((sequencerProfit / ethPrice) * Number(WEI_PER_ETH)) : 0n;
 
     nodes = [
       { name: 'Subsidy', value: l1Subsidy, usd: true },
-      { name: 'Priority Fee', value: priorityFeeUsd, wei: priorityFee ?? 0 },
-      { name: 'Base Fee', value: baseFeeUsd, wei: baseFee ?? 0 },
+      { name: 'Priority Fee', value: priorityFeeUsd, wei: toBigInt(priorityFee) },
+      { name: 'Base Fee', value: baseFeeUsd, wei: toBigInt(baseFee) },
       { name: 'Sequencers', value: sequencerRevenue, wei: sequencerRevenueWei },
       { name: 'Hardware Cost', value: totalHardwareCost, usd: true },
       { name: 'Propose Batch Cost', value: l1DataCostTotalUsd, usd: true },
       { name: 'Profit', value: sequencerProfit, wei: sequencerProfitWei },
-      { name: 'Taiko DAO', value: baseFeeDaoUsd, wei: (baseFee ?? 0) * 0.25 },
+      { name: 'Taiko DAO', value: baseFeeDaoUsd, wei: toBigInt(baseFee ?? 0n) * 25n / 100n },
     ];
 
     let inserted = 0;
@@ -395,8 +395,8 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
         value: s.subsidyUsd,
         usd: true,
       })),
-      { name: 'Priority Fee', value: priorityFeeUsd, wei: priorityFee ?? 0 },
-      { name: 'Base Fee', value: baseFeeUsd, wei: baseFee ?? 0 },
+      { name: 'Priority Fee', value: priorityFeeUsd, wei: toBigInt(priorityFee) },
+      { name: 'Base Fee', value: baseFeeUsd, wei: toBigInt(baseFee) },
       ...seqData.map((s) => ({
         name: '',
         address: s.address,
@@ -419,7 +419,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
         wei: s.profitWei,
         profitNode: true,
       })),
-      { name: 'Taiko DAO', value: baseFeeDaoUsd, wei: (baseFee ?? 0) * 0.25 },
+      { name: 'Taiko DAO', value: baseFeeDaoUsd, wei: toBigInt(baseFee ?? 0n) * 25n / 100n },
     ];
 
     const proveIndex =
@@ -559,11 +559,11 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
   const formatTooltipValue = (value: number, itemData?: any) => {
     const usd = formatUsd(value);
     if (itemData?.wei != null) {
-      return `${formatEth(itemData.wei, 3)} (${usd})`;
+      return `${formatEthBigInt(itemData.wei, 3)} (${usd})`;
     }
     if (!itemData?.usd && ethPrice) {
-      const wei = (value / ethPrice) * WEI_TO_ETH;
-      return `${formatEth(wei, 3)} (${usd})`;
+      const wei = toBigInt((value / ethPrice) * Number(WEI_PER_ETH));
+      return `${formatEthBigInt(wei, 3)} (${usd})`;
     }
     return usd;
   };

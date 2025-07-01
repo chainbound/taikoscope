@@ -1,6 +1,7 @@
 import { TimeRange, type TimeSeriesData } from '../types';
 import { getSequencerAddress } from '../sequencerConfig';
 import { normalizeTimeRange } from './timeRange';
+import { toBigInt } from '../utils';
 import {
   fetchDashboardData,
   fetchProveTimesAggregated,
@@ -39,17 +40,17 @@ export interface MainDashboardData {
   sequencerDist: SequencerDistributionDataItem[];
   txPerBlock: BlockTransaction[];
   blobsPerBatch: BatchBlobCount[];
-  priorityFee: number | null;
-  baseFee: number | null;
-  proveCost: number | null;
+  priorityFee: bigint | null;
+  baseFee: bigint | null;
+  proveCost: bigint | null;
   badRequestResults: RequestResult<unknown>[];
 }
 
 export interface EconomicsData {
-  priorityFee: number | null;
-  baseFee: number | null;
-  l1DataCost: number | null;
-  proveCost: number | null;
+  priorityFee: bigint | null;
+  baseFee: bigint | null;
+  l1DataCost: bigint | null;
+  proveCost: bigint | null;
   l2Block: number | null;
   l1Block: number | null;
   sequencerDist: SequencerDistributionDataItem[];
@@ -121,9 +122,9 @@ export const fetchMainDashboardData = async (
     sequencerDist: sequencerDistRes.data || [],
     txPerBlock: blockTxRes.data || [],
     blobsPerBatch: batchBlobCountsRes.data || [],
-    priorityFee: data?.priority_fee ?? null,
-    baseFee: data?.base_fee ?? null,
-    proveCost: data?.prove_cost ?? null,
+    priorityFee: toBigInt(data?.priority_fee),
+    baseFee: toBigInt(data?.base_fee),
+    proveCost: toBigInt(data?.prove_cost),
 
     badRequestResults: allResults.slice(1),
   };
@@ -145,10 +146,10 @@ export const fetchEconomicsData = async (
   ]);
 
   return {
-    priorityFee: l2FeesRes.data?.priority_fee ?? null,
-    baseFee: l2FeesRes.data?.base_fee ?? null,
-    l1DataCost: l2FeesRes.data?.l1_data_cost ?? null,
-    proveCost: l2FeesRes.data?.prove_cost ?? null,
+    priorityFee: toBigInt(l2FeesRes.data?.priority_fee),
+    baseFee: toBigInt(l2FeesRes.data?.base_fee),
+    l1DataCost: toBigInt(l2FeesRes.data?.l1_data_cost),
+    proveCost: toBigInt(l2FeesRes.data?.prove_cost),
 
     l2Block: l2BlockRes.data,
     l1Block: l1BlockRes.data,
