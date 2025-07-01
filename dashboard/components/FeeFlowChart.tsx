@@ -19,22 +19,32 @@ interface FeeFlowChartProps {
   cloudCost: number;
   proverCost: number;
   address?: string;
+  /** Height of the chart in pixels (defaults to 320) */
+  height?: number;
 }
 
 const MONTH_HOURS = 30 * 24;
 const WEI_TO_ETH = 1e18;
 
 // Format numbers as USD without grouping
-const formatUsd = (value: number) => `$${value.toFixed(3)}`;
+const formatUsd = (value: number) => `$${value.toFixed(1)}`;
 
 // Simple node component that renders label with currency-aware value
-const createSankeyNode = (textColor: string) => {
+const createSankeyNode = (
+  textColor: string,
+  formatValue: (value: number, itemData?: any) => string,
+) => {
   const SankeyNodeComponent = ({ x, y, width, height, payload }: any) => {
     // Guard against NaN values
     const safeX = isNaN(x) ? 0 : x;
     const safeY = isNaN(y) ? 0 : y;
     const safeWidth = isNaN(width) ? 0 : width;
     const safeHeight = isNaN(height) ? 0 : height;
+
+    // Constants for centering the combined label block
+    const LINE_HEIGHT = 12;           // More conservative estimate for 12px font
+    const NUM_LINES = 2;              // name + value
+    const blockHalf = (LINE_HEIGHT * (NUM_LINES - 1)) / 2;  // = 6 px
 
     const isCostNode =
       payload.name === 'Hardware Cost' ||
@@ -68,13 +78,16 @@ const createSankeyNode = (textColor: string) => {
         {!hideLabel && (
           <text
             x={safeX + safeWidth + 6}
-            y={safeY + safeHeight / 2}
+            y={safeY + safeHeight / 2 - blockHalf}
             textAnchor="start"
             dominantBaseline="middle"
             fontSize={12}
             fill={textColor}
           >
-            {label}
+            <tspan x={safeX + safeWidth + 6}>{label}</tspan>
+            <tspan x={safeX + safeWidth + 6} dy="1.2em">
+              {formatValue(payload.value, payload)}
+            </tspan>
           </text>
         )}
       </g>
@@ -120,6 +133,7 @@ const SankeyLink = (props: any) => {
   const safeTargetX = isNaN(targetX) ? 0 : targetX;
   const safeTargetY = isNaN(targetY) ? 0 : targetY;
   const safeTargetControlX = isNaN(targetControlX) ? 0 : targetControlX;
+  // Use the link width provided by Recharts without overriding
   const safeLinkWidth = isNaN(linkWidth) ? 0 : linkWidth;
 
   const isCost =
@@ -151,6 +165,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
   cloudCost,
   proverCost,
   address,
+  height = 480,
 }) => {
   const { theme } = useTheme();
   const textColor =
@@ -163,6 +178,34 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
   const priorityFee = feeRes?.data?.priority_fee ?? null;
   const baseFee = feeRes?.data?.base_fee ?? null;
   const sequencerFees = feeRes?.data?.sequencers ?? [];
+
+  // Memoized tooltip value formatter to avoid unnecessary re-renders
+  // NOTE: Depends on `ethPrice`, so it is recreated only when the price changes
+  const formatTooltipValue = React.useCallback(
+    (value: number, itemData?: any) => {
+      const usd = formatUsd(value);
+
+      // If the item already has a `wei` value, use it directly
+      if (itemData?.wei != null) {
+        return `${formatEth(itemData.wei, 3)} (${usd})`;
+      }
+
+      // Otherwise, attempt to derive `wei` from USD using the current ETH price
+      if (ethPrice) {
+        const wei = (value / ethPrice) * WEI_TO_ETH;
+        return `${formatEth(wei, 3)} (${usd})`;
+      }
+
+      // Fallback (should rarely happen): return USD only
+      return usd;
+    },
+    [ethPrice],
+  );
+
+  const NodeComponent = React.useMemo(
+    () => createSankeyNode(textColor, formatTooltipValue),
+    [textColor, formatTooltipValue],
+  );
 
   if (!feeRes) {
     return (
@@ -556,48 +599,14 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
 
   const data = { nodes: validatedNodes, links: validatedLinks };
 
-  const formatTooltipValue = (value: number, itemData?: any) => {
-    const usd = formatUsd(value);
-    if (itemData?.wei != null) {
-      return `${formatEth(itemData.wei, 3)} (${usd})`;
-    }
-    if (!itemData?.usd && ethPrice) {
-      const wei = (value / ethPrice) * WEI_TO_ETH;
-      return `${formatEth(wei, 3)} (${usd})`;
-    }
-    return usd;
-  };
-
   const tooltipContent = ({ active, payload }: TooltipProps<number, string>) => {
     if (!active || !payload?.[0]) return null;
 
     const { value = 0, payload: itemData } = payload![0];
 
+    // Suppress tooltip for flows (links) – they now display values directly on the chart
     if (itemData.source != null && itemData.target != null) {
-      const sourceNode = data.nodes[itemData.source] as any;
-      const targetNode = data.nodes[itemData.target] as any;
-      const formatLabel = (node: any) => {
-        if (node.profitNode && node.addressLabel) {
-          return `${node.addressLabel} Profit`;
-        }
-        if (node.revenueNode && node.addressLabel) {
-          return `${node.addressLabel} Revenue`;
-        }
-        return node.addressLabel ?? node.address ?? node.name;
-      };
-      const sourceLabel = formatLabel(sourceNode);
-      const targetLabel = formatLabel(targetNode);
-
-      return (
-        <div className="bg-white dark:bg-gray-800 p-2 border border-gray-200 dark:border-gray-700 rounded shadow-sm">
-          <p className="text-sm font-medium">
-            {sourceLabel} → {targetLabel}
-          </p>
-          <p className="text-sm text-gray-600 dark:text-gray-300">
-            {formatTooltipValue(value, itemData)}
-          </p>
-        </div>
-      );
+      return null;
     }
 
     const nodeLabel = (() => {
@@ -620,14 +629,14 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
   };
 
   return (
-    <div className="mt-6" style={{ height: 240 }}>
+    <div className="mt-6" style={{ height }}>
       <ResponsiveContainer width="100%" height="100%">
         <Sankey
           data={data}
-          node={createSankeyNode(textColor)}
-          nodePadding={10}
+          node={NodeComponent}
+          nodePadding={30}
           nodeWidth={10}
-          margin={{ top: 10, right: 120, bottom: 10, left: 10 }}
+          margin={{ top: 20, right: 120, bottom: 20, left: 10 }}
           sort={false}
           iterations={32}
           link={SankeyLink}
