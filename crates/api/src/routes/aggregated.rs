@@ -654,6 +654,7 @@ pub async fn batch_fee_components(
         .map(|r| BatchFeeComponentRow {
             batch_id: r.batch_id,
             l1_block_number: r.l1_block_number,
+            l1_tx_hash: format!("0x{}", encode(r.l1_tx_hash)),
             sequencer: format!("0x{}", encode(r.sequencer)),
             priority_fee: r.priority_fee,
             base_fee: r.base_fee,
@@ -723,6 +724,7 @@ pub async fn batch_fee_components_aggregated(
         .map(|r| BatchFeeComponentRow {
             batch_id: r.batch_id,
             l1_block_number: r.l1_block_number,
+            l1_tx_hash: format!("0x{}", encode(r.l1_tx_hash)),
             sequencer: format!("0x{}", encode(r.sequencer)),
             priority_fee: r.priority_fee,
             base_fee: r.base_fee,

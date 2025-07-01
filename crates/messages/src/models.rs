@@ -55,6 +55,8 @@ pub struct L2HeadEvent {
 pub struct BatchRow {
     /// L1 block number
     pub l1_block_number: u64,
+    /// Transaction hash that proposed the batch
+    pub l1_tx_hash: HashBytes,
     /// Batch ID
     pub batch_id: u64,
     /// Batch size

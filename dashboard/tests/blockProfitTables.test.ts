@@ -11,7 +11,7 @@ import { BlockProfitTables } from '../components/BlockProfitTables';
 const feeData = [
   {
     batch: 1,
-    l1Block: 1,
+    txHash: '0x00',
     sequencer: 'SeqA',
     priority: 1e18,
     base: 1e18,

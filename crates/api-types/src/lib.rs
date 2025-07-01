@@ -271,6 +271,8 @@ pub struct BatchFeeComponentRow {
     pub batch_id: u64,
     /// L1 block number that included the batch
     pub l1_block_number: u64,
+    /// Transaction hash that proposed the batch
+    pub l1_tx_hash: String,
     /// Sequencer address that proposed the batch
     pub sequencer: String,
     /// Total priority fee for the batch

@@ -143,10 +143,12 @@ pub fn aggregate_batch_fee_components(
             });
 
             let last_l1 = rs.last().map(|r| r.l1_block_number).unwrap_or_default();
+            let last_hash = rs.last().map(|r| r.l1_tx_hash.clone()).unwrap_or_default();
             let last_seq = rs.last().map(|r| r.sequencer.clone()).unwrap_or_default();
             BatchFeeComponentRow {
                 batch_id: g * bucket,
                 l1_block_number: last_l1,
+                l1_tx_hash: last_hash,
                 sequencer: last_seq,
                 priority_fee: sum_priority,
                 base_fee: sum_base,
@@ -285,9 +287,11 @@ mod tests {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn create_batch_fee_component_row(
         batch_id: u64,
         l1_block_number: u64,
+        l1_tx_hash: String,
         sequencer: &str,
         priority_fee: u128,
         base_fee: u128,
@@ -297,6 +301,7 @@ mod tests {
         BatchFeeComponentRow {
             batch_id,
             l1_block_number,
+            l1_tx_hash,
             sequencer: sequencer.to_owned(),
             priority_fee,
             base_fee,
@@ -579,13 +584,22 @@ mod tests {
 
     #[test]
     fn test_aggregate_batch_fee_components_single_row() {
-        let rows =
-            vec![create_batch_fee_component_row(10, 100, "seq1", 1000, 2000, Some(500), Some(300))];
+        let rows = vec![create_batch_fee_component_row(
+            10,
+            100,
+            "0x0".into(),
+            "seq1",
+            1000,
+            2000,
+            Some(500),
+            Some(300),
+        )];
         let result = aggregate_batch_fee_components(rows, 5);
 
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].batch_id, 10);
         assert_eq!(result[0].l1_block_number, 100);
+        assert_eq!(result[0].l1_tx_hash, "0x0");
         assert_eq!(result[0].sequencer, "seq1");
         assert_eq!(result[0].priority_fee, 1000);
         assert_eq!(result[0].base_fee, 2000);
@@ -596,8 +610,26 @@ mod tests {
     #[test]
     fn test_aggregate_batch_fee_components_summation() {
         let rows = vec![
-            create_batch_fee_component_row(10, 100, "seq1", 1000, 2000, Some(500), Some(300)),
-            create_batch_fee_component_row(11, 101, "seq2", 1500, 2500, Some(600), Some(400)),
+            create_batch_fee_component_row(
+                10,
+                100,
+                "0x0".into(),
+                "seq1",
+                1000,
+                2000,
+                Some(500),
+                Some(300),
+            ),
+            create_batch_fee_component_row(
+                11,
+                101,
+                "0x1".into(),
+                "seq2",
+                1500,
+                2500,
+                Some(600),
+                Some(400),
+            ),
         ];
         let result = aggregate_batch_fee_components(rows, 5);
 
@@ -607,14 +639,33 @@ mod tests {
         assert_eq!(result[0].l1_data_cost, Some(1100)); // 500 + 600
         assert_eq!(result[0].amortized_prove_cost, Some(700)); // 300 + 400
         assert_eq!(result[0].l1_block_number, 101); // Last value
+        assert_eq!(result[0].l1_tx_hash, "0x1"); // Last value
         assert_eq!(result[0].sequencer, "seq2"); // Last value
     }
 
     #[test]
     fn test_aggregate_batch_fee_components_mixed_optional_fields() {
         let rows = vec![
-            create_batch_fee_component_row(10, 100, "seq1", 1000, 2000, None, Some(300)),
-            create_batch_fee_component_row(11, 101, "seq2", 1500, 2500, Some(600), None),
+            create_batch_fee_component_row(
+                10,
+                100,
+                "0x0".into(),
+                "seq1",
+                1000,
+                2000,
+                None,
+                Some(300),
+            ),
+            create_batch_fee_component_row(
+                11,
+                101,
+                "0x1".into(),
+                "seq2",
+                1500,
+                2500,
+                Some(600),
+                None,
+            ),
         ];
         let result = aggregate_batch_fee_components(rows, 5);
 
