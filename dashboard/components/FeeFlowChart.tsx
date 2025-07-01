@@ -41,6 +41,11 @@ const createSankeyNode = (
     const safeWidth = isNaN(width) ? 0 : width;
     const safeHeight = isNaN(height) ? 0 : height;
 
+    // Constants for centering the combined label block
+    const LINE_HEIGHT = 12;           // More conservative estimate for 12px font
+    const NUM_LINES = 2;              // name + value
+    const blockHalf = (LINE_HEIGHT * (NUM_LINES - 1)) / 2;  // = 6 px
+
     const isCostNode =
       payload.name === 'Hardware Cost' ||
       payload.name === 'Propose Batch Cost' ||
@@ -73,7 +78,7 @@ const createSankeyNode = (
         {!hideLabel && (
           <text
             x={safeX + safeWidth + 6}
-            y={safeY + safeHeight / 2}
+            y={safeY + safeHeight / 2 - blockHalf}
             textAnchor="start"
             dominantBaseline="middle"
             fontSize={12}
