@@ -146,6 +146,13 @@ describe('utils', () => {
     expect(formatEth(1e18, 3)).toBe('1 ETH');
   });
 
+  it('formats ETH amounts parsed from BigInt', () => {
+    const big = BigInt('42000000000000000000');
+    const veryBig = BigInt('2500000000000000000000');
+    expect(formatEth(Number(big))).toBe('42 ETH');
+    expect(formatEth(Number(veryBig))).toBe('2,500 ETH');
+  });
+
   it('parses ETH values', () => {
     expect(parseEthValue('0.6 ETH')).toBe(0.6);
     expect(parseEthValue('N/A')).toBe(0);

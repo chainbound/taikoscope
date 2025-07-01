@@ -55,6 +55,39 @@ describe('metricsCreator', () => {
     expect(l1BlockMetric?.link).toContain('/block/50');
   });
 
+  it('handles fee values provided as BigInt', () => {
+    const metrics = createMetrics({
+      avgTps: 1.234,
+      l2Cadence: 60000,
+      batchCadence: 30000,
+      avgProve: 2000,
+      avgVerify: 3000,
+      activeGateways: 2,
+      currentOperator: addressA,
+      nextOperator: addressB,
+      l2Reorgs: 1,
+      slashings: 2,
+      forcedInclusions: 3,
+      priorityFee: Number(BigInt('40000000000000000000')),
+      baseFee: Number(BigInt('2000000000000000000')),
+      proveCost: Number(BigInt('5000000000000000000')),
+      l1DataCost: Number(BigInt('3000000000000000000')),
+      profit: Number(BigInt('39000000000000000000')),
+      l2Block: 100,
+      l1Block: 50,
+    });
+
+    const priorityMetric = metrics.find((m) => m.title === 'Priority Fee');
+    const baseMetric = metrics.find((m) => m.title === 'Base Fee');
+    const proveCostMetric = metrics.find((m) => m.title === 'Prove Cost');
+    const profitMetric = metrics.find((m) => m.title === 'Profit');
+
+    expect(priorityMetric?.value).toBe('40 ETH');
+    expect(baseMetric?.value).toBe('2 ETH');
+    expect(proveCostMetric?.value).toBe('5 ETH');
+    expect(profitMetric?.value).toBe('39 ETH');
+  });
+
   it('falls back to N/A for missing values', () => {
     const metrics = createMetrics({
       avgTps: null,
