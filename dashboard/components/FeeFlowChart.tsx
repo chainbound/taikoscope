@@ -19,13 +19,15 @@ interface FeeFlowChartProps {
   cloudCost: number;
   proverCost: number;
   address?: string;
+  /** Height of the chart in pixels (defaults to 320) */
+  height?: number;
 }
 
 const MONTH_HOURS = 30 * 24;
 const WEI_TO_ETH = 1e18;
 
 // Format numbers as USD without grouping
-const formatUsd = (value: number) => `$${value.toFixed(3)}`;
+const formatUsd = (value: number) => `$${value.toFixed(1)}`;
 
 // Simple node component that renders label with currency-aware value
 const createSankeyNode = (
@@ -157,6 +159,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
   cloudCost,
   proverCost,
   address,
+  height = 320,
 }) => {
   const { theme } = useTheme();
   const textColor =
@@ -169,6 +172,24 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
   const priorityFee = feeRes?.data?.priority_fee ?? null;
   const baseFee = feeRes?.data?.base_fee ?? null;
   const sequencerFees = feeRes?.data?.sequencers ?? [];
+
+  // Define formatTooltipValue and NodeComponent before any conditional returns
+  const formatTooltipValue = (value: number, itemData?: any) => {
+    const usd = formatUsd(value);
+    if (itemData?.wei != null) {
+      return `${formatEth(itemData.wei, 3)} (${usd})`;
+    }
+    if (!itemData?.usd && ethPrice) {
+      const wei = (value / ethPrice) * WEI_TO_ETH;
+      return `${formatEth(wei, 3)} (${usd})`;
+    }
+    return usd;
+  };
+
+  const NodeComponent = React.useMemo(
+    () => createSankeyNode(textColor, formatTooltipValue),
+    [textColor, formatTooltipValue],
+  );
 
   if (!feeRes) {
     return (
@@ -562,18 +583,6 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
 
   const data = { nodes: validatedNodes, links: validatedLinks };
 
-  const formatTooltipValue = (value: number, itemData?: any) => {
-    const usd = formatUsd(value);
-    if (itemData?.wei != null) {
-      return `${formatEth(itemData.wei, 3)} (${usd})`;
-    }
-    if (!itemData?.usd && ethPrice) {
-      const wei = (value / ethPrice) * WEI_TO_ETH;
-      return `${formatEth(wei, 3)} (${usd})`;
-    }
-    return usd;
-  };
-
   const tooltipContent = ({ active, payload }: TooltipProps<number, string>) => {
     if (!active || !payload?.[0]) return null;
 
@@ -625,13 +634,8 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     );
   };
 
-  const NodeComponent = React.useMemo(
-    () => createSankeyNode(textColor, formatTooltipValue),
-    [textColor, formatTooltipValue],
-  );
-
   return (
-    <div className="mt-6" style={{ height: 240 }}>
+    <div className="mt-6" style={{ height }}>
       <ResponsiveContainer width="100%" height="100%">
         <Sankey
           data={data}

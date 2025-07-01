@@ -166,8 +166,8 @@ describe('utils', () => {
       setItem: (k: string, v: string) => {
         store[k] = v;
       },
-      removeItem: () => {},
-      clear: () => {},
+      removeItem: () => { },
+      clear: () => { },
       key: () => null,
       length: 0,
     } as Storage;

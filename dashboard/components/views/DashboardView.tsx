@@ -344,6 +344,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               cloudCost={cloudCost}
               proverCost={proverCost}
               address={selectedSequencer || undefined}
+              height={400}
             />
             <ProfitCalculator
               timeRange={timeRange}
