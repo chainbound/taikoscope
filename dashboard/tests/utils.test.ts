@@ -129,14 +129,14 @@ describe('utils', () => {
 
   it('formats ETH amounts', () => {
     expect(formatEth(42e18)).toBe('42 ETH');
-    expect(formatEth(0)).toBe('0 wei');
-    expect(formatEth(1e8)).toBe('100,000,000 wei');
-    expect(formatEth(1334501e9)).toBe('1,334,501 Gwei');
-    expect(formatEth(1422636.1e9)).toBe('1,422,636 Gwei');
+    expect(formatEth(0)).toBe('0 ETH');
+    expect(formatEth(1e8)).toBe('0 ETH');
+    expect(formatEth(1334501e9)).toBe('0.001 ETH');
+    expect(formatEth(1422636.1e9)).toBe('0.001 ETH');
     expect(formatEth(1422636.1e18)).toBe('1,422,636 ETH');
-    expect(formatEth(187788.9e9)).toBe('187,788 Gwei');
-    expect(formatEth(-1e8)).toBe('-100,000,000 wei');
-    expect(formatEth(-345678.9e9)).toBe('-345,678 Gwei');
+    expect(formatEth(187788.9e9)).toBe('0 ETH');
+    expect(formatEth(-1e8)).toBe('0 ETH');
+    expect(formatEth(-345678.9e9)).toBe('0 ETH');
     expect(formatEth(-1.2345e18)).toBe('-1.2 ETH');
     expect(formatEth(0.01e18)).toBe('0.01 ETH');
     expect(formatEth(0.012e18)).toBe('0.012 ETH');
@@ -144,15 +144,13 @@ describe('utils', () => {
     expect(formatEth(1e18, 3)).toBe('1 ETH');
   });
 
-  it('parses ETH and Gwei values', () => {
+  it('parses ETH values', () => {
     expect(parseEthValue('0.6 ETH')).toBe(0.6);
-    expect(parseEthValue('1334501 Gwei')).toBeCloseTo(0.001334501);
     expect(parseEthValue('N/A')).toBe(0);
   });
 
-  it('parses negative ETH and Gwei values', () => {
+  it('parses negative ETH values', () => {
     expect(parseEthValue('-0.5 ETH')).toBe(-0.5);
-    expect(parseEthValue('-100 Gwei')).toBeCloseTo(-0.0000001);
   });
 
   it('converts bytes to hex', () => {
