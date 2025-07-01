@@ -27,6 +27,9 @@ use incident::{
 };
 use primitives::headers::{L1Header, L1HeaderStream, L2Header, L2HeaderStream};
 
+mod subscription;
+use crate::subscription::subscribe_with_retry;
+
 /// An EPOCH is a series of 32 slots.
 pub const EPOCH_SLOTS: u64 = 32;
 
@@ -152,96 +155,50 @@ impl Driver {
     ///
     /// The function keeps attempting to subscribe until a stream is
     /// successfully returned, waiting five seconds between retries.
-    async fn subscribe_l1(&self) -> L1HeaderStream {
-        loop {
-            match self.extractor.get_l1_header_stream().await {
-                Ok(s) => return s,
-                Err(e) => {
-                    tracing::error!(error = %e, "L1 subscribe failed, retrying in 5s");
-                    tokio::time::sleep(Duration::from_secs(5)).await;
-                }
-            }
-        }
+    async fn subscribe_l1_headers(&self) -> L1HeaderStream {
+        subscribe_with_retry(|| self.extractor.get_l1_header_stream(), "l1 headers").await
     }
 
     /// Subscribe to the L2 header stream with a retry loop.
     ///
     /// Similar to [`subscribe_l1`], this will retry every five seconds
     /// until a stream is obtained.
-    async fn subscribe_l2(&self) -> L2HeaderStream {
-        loop {
-            match self.extractor.get_l2_header_stream().await {
-                Ok(s) => return s,
-                Err(e) => {
-                    tracing::error!(error = %e, "L2 subscribe failed, retrying in 5s");
-                    tokio::time::sleep(Duration::from_secs(5)).await;
-                }
-            }
-        }
+    async fn subscribe_l2_headers(&self) -> L2HeaderStream {
+        subscribe_with_retry(|| self.extractor.get_l2_header_stream(), "l2 headers").await
     }
 
     /// Subscribe to `BatchProposed` events with a retry loop.
-    async fn subscribe_batch(&self) -> BatchProposedStream {
-        loop {
-            match self.extractor.get_batch_proposed_stream().await {
-                Ok(s) => return s,
-                Err(e) => {
-                    tracing::error!(error = %e, "BatchProposed subscribe failed, retrying in 5s");
-                    tokio::time::sleep(Duration::from_secs(5)).await;
-                }
-            }
-        }
+    async fn subscribe_batch_proposed(&self) -> BatchProposedStream {
+        subscribe_with_retry(|| self.extractor.get_batch_proposed_stream(), "batch proposed").await
     }
 
     /// Subscribe to `ForcedInclusionProcessed` events with a retry loop.
-    async fn subscribe_forced(&self) -> ForcedInclusionStream {
-        loop {
-            match self.extractor.get_forced_inclusion_stream().await {
-                Ok(s) => return s,
-                Err(e) => {
-                    tracing::error!(error = %e, "ForcedInclusion subscribe failed, retrying in 5s");
-                    tokio::time::sleep(Duration::from_secs(5)).await;
-                }
-            }
-        }
+    async fn subscribe_forced_inclusion(&self) -> ForcedInclusionStream {
+        subscribe_with_retry(|| self.extractor.get_forced_inclusion_stream(), "forced inclusion")
+            .await
     }
 
     /// Subscribe to `BatchesProved` events with a retry loop.
-    async fn subscribe_proved(&self) -> BatchesProvedStream {
-        loop {
-            match self.extractor.get_batches_proved_stream().await {
-                Ok(s) => return s,
-                Err(e) => {
-                    tracing::error!(error = %e, "BatchesProved subscribe failed, retrying in 5s");
-                    tokio::time::sleep(Duration::from_secs(5)).await;
-                }
-            }
-        }
+    async fn subscribe_batches_proved(&self) -> BatchesProvedStream {
+        subscribe_with_retry(|| self.extractor.get_batches_proved_stream(), "batches proved").await
     }
 
     /// Subscribe to `BatchesVerified` events with a retry loop.
-    async fn subscribe_verified(&self) -> BatchesVerifiedStream {
-        loop {
-            match self.extractor.get_batches_verified_stream().await {
-                Ok(s) => return s,
-                Err(e) => {
-                    tracing::error!(error = %e, "BatchesVerified subscribe failed, retrying in 5s");
-                    tokio::time::sleep(Duration::from_secs(5)).await;
-                }
-            }
-        }
+    async fn subscribe_batches_verified(&self) -> BatchesVerifiedStream {
+        subscribe_with_retry(|| self.extractor.get_batches_verified_stream(), "batches verified")
+            .await
     }
 
     /// Consume the driver and drive the infinite processing loop.
     pub async fn start(mut self) -> Result<()> {
         info!("Starting event loop");
 
-        let l1_stream = self.subscribe_l1().await;
-        let l2_stream = self.subscribe_l2().await;
-        let batch_stream = self.subscribe_batch().await;
-        let forced_stream = self.subscribe_forced().await;
-        let proved_stream = self.subscribe_proved().await;
-        let verified_stream = self.subscribe_verified().await;
+        let l1_stream = self.subscribe_l1_headers().await;
+        let l2_stream = self.subscribe_l2_headers().await;
+        let batch_stream = self.subscribe_batch_proposed().await;
+        let forced_stream = self.subscribe_forced_inclusion().await;
+        let proved_stream = self.subscribe_batches_proved().await;
+        let verified_stream = self.subscribe_batches_verified().await;
 
         self.spawn_monitors();
 
@@ -330,7 +287,7 @@ impl Driver {
                         }
                         None => {
                             tracing::warn!("L1 header stream ended; re-subscribing…");
-                            l1_stream = self.subscribe_l1().await;
+                            l1_stream = self.subscribe_l1_headers().await;
                         }
                     }
                 }
@@ -341,7 +298,7 @@ impl Driver {
                         }
                         None => {
                             tracing::warn!("L2 header stream ended; re-subscribing…");
-                            l2_stream = self.subscribe_l2().await;
+                            l2_stream = self.subscribe_l2_headers().await;
                         }
                     }
                 }
@@ -352,7 +309,7 @@ impl Driver {
                         }
                         None => {
                             tracing::warn!("Batch proposed stream ended; re-subscribing…");
-                            batch_stream = self.subscribe_batch().await;
+                            batch_stream = self.subscribe_batch_proposed().await;
                         }
                     }
                 }
@@ -363,7 +320,7 @@ impl Driver {
                         }
                         None => {
                             tracing::warn!("Forced inclusion stream ended; re-subscribing…");
-                            forced_stream = self.subscribe_forced().await;
+                            forced_stream = self.subscribe_forced_inclusion().await;
                         }
                     }
                 }
@@ -374,7 +331,7 @@ impl Driver {
                         }
                         None => {
                             tracing::warn!("Batches proved stream ended; re-subscribing…");
-                            proved_stream = self.subscribe_proved().await;
+                            proved_stream = self.subscribe_batches_proved().await;
                         }
                     }
                 }
@@ -385,7 +342,7 @@ impl Driver {
                         }
                         None => {
                             tracing::warn!("Batches verified stream ended; re-subscribing…");
-                            verified_stream = self.subscribe_verified().await;
+                            verified_stream = self.subscribe_batches_verified().await;
                         }
                     }
                 }
@@ -592,11 +549,11 @@ impl Driver {
     }
 
     /// Record a forced inclusion event.
-    async fn handle_forced_inclusion(&self, fi: ForcedInclusionProcessed) {
-        if let Err(e) = self.clickhouse.insert_forced_inclusion(&fi).await {
-            tracing::error!(blob_hash = ?fi.blobHash, err = %e, "Failed to insert forced inclusion");
+    async fn handle_forced_inclusion(&self, event: ForcedInclusionProcessed) {
+        if let Err(e) = self.clickhouse.insert_forced_inclusion(&event).await {
+            tracing::error!(blob_hash = ?event.blobHash, err = %e, "Failed to insert forced inclusion");
         } else {
-            info!(blob_hash = ?fi.blobHash, "Inserted forced inclusion processed");
+            info!(blob_hash = ?event.blobHash, "Inserted forced inclusion processed");
         }
     }
 
