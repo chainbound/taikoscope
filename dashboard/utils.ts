@@ -2,8 +2,7 @@ import React from 'react';
 import { TAIKO_PINK } from './theme';
 
 const rawNetworkName =
-  import.meta.env.VITE_NETWORK_NAME ??
-  import.meta.env.NETWORK_NAME;
+  import.meta.env.VITE_NETWORK_NAME ?? import.meta.env.NETWORK_NAME;
 
 export const TAIKOSCAN_BASE =
   import.meta.env.VITE_TAIKOSCAN_BASE ??
@@ -33,7 +32,10 @@ export const blockLink = (
     text ?? block.toLocaleString(),
   );
 
-export const l1BlockLink = (block: number, text?: string | number): React.ReactElement =>
+export const l1BlockLink = (
+  block: number,
+  text?: string | number,
+): React.ReactElement =>
   React.createElement(
     'a',
     {
@@ -62,7 +64,10 @@ export const addressLink = (
     text ?? address,
   );
 
-export const formatDecimal = (value: number, decimalsOverride?: number): string => {
+export const formatDecimal = (
+  value: number,
+  decimalsOverride?: number,
+): string => {
   if (value === 0) {
     const decimals = decimalsOverride ?? 2;
     return `0.${'0'.repeat(decimals)}`;
@@ -104,35 +109,19 @@ export const formatWithCommas = (value: number): string =>
   value.toLocaleString();
 
 export const formatEth = (wei: number, decimals?: number): string => {
-  if (Math.abs(wei) < 1e9) {
-    return `${wei.toLocaleString()} wei`;
-  }
   const eth = wei / 1e18;
   if (Math.abs(eth) >= 1000) {
     return `${Math.trunc(eth).toLocaleString()} ETH`;
   }
   const ethFormatted = formatDecimal(eth, decimals);
   const ethTrimmed = String(Number(ethFormatted));
-  if (wei !== 0 && Math.abs(eth) < 0.005) {
-    const gwei = wei / 1e9;
-    if (Math.abs(gwei) >= 1000) {
-      return `${Math.trunc(gwei).toLocaleString()} Gwei`;
-    }
-    const gweiFormatted = Number.isInteger(gwei)
-      ? gwei.toLocaleString()
-      : formatDecimal(gwei, decimals);
-    return `${gweiFormatted} Gwei`;
-  }
   return `${ethTrimmed} ETH`;
 };
 
 export const parseEthValue = (value: string): number => {
-  const sanitized = value
-    .replace(/[^0-9.-]/g, '')
-    .replace(/(?!^)-/g, '');
+  const sanitized = value.replace(/[^0-9.-]/g, '').replace(/(?!^)-/g, '');
   const amount = parseFloat(sanitized);
-  if (!Number.isFinite(amount)) return 0;
-  return /gwei/i.test(value) ? amount / 1e9 : amount;
+  return Number.isFinite(amount) ? amount : 0;
 };
 
 export const formatUsd = (value: number): string => {
