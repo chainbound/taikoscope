@@ -176,13 +176,18 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
   // Define formatTooltipValue and NodeComponent before any conditional returns
   const formatTooltipValue = (value: number, itemData?: any) => {
     const usd = formatUsd(value);
+    // If the item already has wei value, use it directly
     if (itemData?.wei != null) {
       return `${formatEth(itemData.wei, 3)} (${usd})`;
     }
-    if (!itemData?.usd && ethPrice) {
+
+    // Otherwise, attempt to derive wei from USD using the current ETH price
+    if (ethPrice) {
       const wei = (value / ethPrice) * WEI_TO_ETH;
       return `${formatEth(wei, 3)} (${usd})`;
     }
+
+    // Fallback (should rarely happen): return USD only
     return usd;
   };
 
