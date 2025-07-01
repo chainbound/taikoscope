@@ -29,6 +29,24 @@ pub const fn bucket_size_from_range(range: &TimeRange) -> u64 {
     }
 }
 
+/// Determine bucket size for prove time aggregation. Uses a smaller
+/// bucket than [`bucket_size_from_range`] to avoid over-aggregation
+/// when prove events are infrequent.
+pub const fn prove_bucket_size(range: &TimeRange) -> u64 {
+    let base = bucket_size_from_range(range);
+    let size = base / 5;
+    if size == 0 { 1 } else { size }
+}
+
+/// Determine bucket size for verify time aggregation. Uses a bucket
+/// slightly smaller than [`bucket_size_from_range`] to capture more
+/// data points.
+pub const fn verify_bucket_size(range: &TimeRange) -> u64 {
+    let base = bucket_size_from_range(range);
+    let size = base / 2;
+    if size == 0 { 1 } else { size }
+}
+
 /// Aggregate L2 block times by bucket size
 pub fn aggregate_l2_block_times(rows: Vec<L2BlockTimeRow>, bucket: u64) -> Vec<L2BlockTimeRow> {
     let bucket = bucket.max(1);
@@ -358,6 +376,18 @@ mod tests {
     fn test_bucket_size_from_range_zero_seconds() {
         let range = TimeRange::Custom(0);
         assert_eq!(bucket_size_from_range(&range), 1);
+    }
+
+    #[test]
+    fn test_prove_bucket_size_smaller() {
+        let range = TimeRange::Custom(6 * 3600); // 6 hours
+        assert_eq!(prove_bucket_size(&range), 1); // base 5 / 5 = 1
+    }
+
+    #[test]
+    fn test_verify_bucket_size_smaller() {
+        let range = TimeRange::Custom(6 * 3600); // 6 hours
+        assert_eq!(verify_bucket_size(&range), 2); // base 5 / 2 = 2
     }
 
     // Tests for aggregate_l2_block_times

@@ -4,7 +4,8 @@ use crate::{
     helpers::{
         aggregate_batch_fee_components, aggregate_block_transactions, aggregate_l2_block_times,
         aggregate_l2_fee_components, aggregate_l2_gas_used, aggregate_l2_tps,
-        aggregate_prove_times, aggregate_verify_times, bucket_size_from_range,
+        aggregate_prove_times, aggregate_verify_times, bucket_size_from_range, prove_bucket_size,
+        verify_bucket_size,
     },
     state::{ApiState, MAX_BLOCK_TRANSACTIONS_LIMIT},
     validation::{
@@ -277,7 +278,7 @@ pub async fn prove_times_aggregated(
         }
     };
 
-    let bucket = bucket_size_from_range(&time_range);
+    let bucket = prove_bucket_size(&time_range);
     let batches = aggregate_prove_times(batches, bucket);
     tracing::info!(count = batches.len(), "Returning aggregated prove times");
     Ok(Json(ProveTimesResponse { batches }))
@@ -313,7 +314,7 @@ pub async fn verify_times_aggregated(
         }
     };
 
-    let bucket = bucket_size_from_range(&time_range);
+    let bucket = verify_bucket_size(&time_range);
     let batches = aggregate_verify_times(batches, bucket);
     tracing::info!(count = batches.len(), "Returning aggregated verify times");
     Ok(Json(VerifyTimesResponse { batches }))
