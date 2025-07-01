@@ -40,11 +40,22 @@ const fetchJson = async <T>(
   url: string,
   { retries = 2, retryDelay = 500, timeout = 10_000 }: FetchOptions = {},
 ): Promise<RequestResult<T>> => {
+  const buildUrl = (u: string) => {
+    if (/^https?:\/\//.test(u)) return u;
+    // Node.js fetch (used in Vitest/Jest) requires absolute URLs.
+    // When running in a non-browser env, prefix with localhost so relative paths work.
+    if (typeof window === 'undefined') {
+      return `http://localhost${u.startsWith('/') ? '' : '/'}${u}`;
+    }
+    return u;
+  };
+
+  const absoluteUrl = buildUrl(url);
   for (let attempt = 0; attempt <= retries; attempt++) {
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), timeout);
     try {
-      const res = await fetch(url, { signal: controller.signal });
+      const res = await fetch(absoluteUrl, { signal: controller.signal });
       clearTimeout(id);
       if (!res.ok) {
         if (res.status === 429) {

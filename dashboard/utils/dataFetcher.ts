@@ -64,6 +64,10 @@ export const fetchMainDashboardData = async (
     ? getSequencerAddress(selectedSequencer)
     : undefined;
 
+  function safe<T>(pr: Promise<RequestResult<T>>): Promise<RequestResult<T>> {
+    return pr.catch(() => ({ data: null, badRequest: false, error: null }));
+  }
+
   const [
     dashboardRes,
     proveTimesRes,
@@ -74,14 +78,14 @@ export const fetchMainDashboardData = async (
     blockTxRes,
     batchBlobCountsRes,
   ] = await Promise.all([
-    fetchDashboardData(normalizedRange, address),
-    fetchProveTimesAggregated(normalizedRange),
-    fetchVerifyTimesAggregated(normalizedRange),
-    fetchL2BlockTimesAggregated(normalizedRange, address),
-    fetchL2GasUsedAggregated(normalizedRange, address),
-    fetchSequencerDistribution(normalizedRange),
-    fetchBlockTransactionsAggregated(normalizedRange, address),
-    fetchBatchBlobCounts(normalizedRange),
+    safe(fetchDashboardData(normalizedRange, address)),
+    safe(fetchProveTimesAggregated(normalizedRange)),
+    safe(fetchVerifyTimesAggregated(normalizedRange)),
+    safe(fetchL2BlockTimesAggregated(normalizedRange, address)),
+    safe(fetchL2GasUsedAggregated(normalizedRange, address)),
+    safe(fetchSequencerDistribution(normalizedRange)),
+    safe(fetchBlockTransactionsAggregated(normalizedRange, address)),
+    safe(fetchBatchBlobCounts(normalizedRange)),
   ]);
 
   const data = dashboardRes.data;
@@ -119,7 +123,7 @@ export const fetchMainDashboardData = async (
     baseFee: data?.base_fee ?? null,
     proveCost: data?.prove_cost ?? null,
 
-    badRequestResults: allResults,
+    badRequestResults: allResults.slice(1),
   };
 };
 
