@@ -28,7 +28,10 @@ const WEI_TO_ETH = 1e18;
 const formatUsd = (value: number) => `$${value.toFixed(3)}`;
 
 // Simple node component that renders label with currency-aware value
-const createSankeyNode = (textColor: string) => {
+const createSankeyNode = (
+  textColor: string,
+  formatValue: (value: number, itemData?: any) => string,
+) => {
   const SankeyNodeComponent = ({ x, y, width, height, payload }: any) => {
     // Guard against NaN values
     const safeX = isNaN(x) ? 0 : x;
@@ -74,7 +77,10 @@ const createSankeyNode = (textColor: string) => {
             fontSize={12}
             fill={textColor}
           >
-            {label}
+            <tspan x={safeX + safeWidth + 6}>{label}</tspan>
+            <tspan x={safeX + safeWidth + 6} dy="1.2em">
+              {formatValue(payload.value, payload)}
+            </tspan>
           </text>
         )}
       </g>
@@ -619,12 +625,17 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     );
   };
 
+  const NodeComponent = React.useMemo(
+    () => createSankeyNode(textColor, formatTooltipValue),
+    [textColor, formatTooltipValue],
+  );
+
   return (
     <div className="mt-6" style={{ height: 240 }}>
       <ResponsiveContainer width="100%" height="100%">
         <Sankey
           data={data}
-          node={createSankeyNode(textColor)}
+          node={NodeComponent}
           nodePadding={10}
           nodeWidth={10}
           margin={{ top: 10, right: 120, bottom: 10, left: 10 }}
