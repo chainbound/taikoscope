@@ -192,13 +192,13 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
   const safeValue = (value: number) => (isFinite(value) ? value : 0);
 
   // Convert fees to USD
-  const priorityFeeUsd = safeValue(((priorityFee ?? 0) / WEI_TO_ETH) * ethPrice);
-  const baseFeeUsd = safeValue(((baseFee ?? 0) / WEI_TO_ETH) * ethPrice);
+  const priorityFeeUsd = safeValue((priorityFee ?? 0) * ethPrice);
+  const baseFeeUsd = safeValue((baseFee ?? 0) * ethPrice);
   const l1DataCostTotalUsd = safeValue(
-    ((feeRes?.data?.l1_data_cost ?? 0) / WEI_TO_ETH) * ethPrice,
+    (feeRes?.data?.l1_data_cost ?? 0) * ethPrice,
   );
   const l1ProveCost = safeValue(
-    ((feeRes?.data?.prove_cost ?? 0) / WEI_TO_ETH) * ethPrice,
+    (feeRes?.data?.prove_cost ?? 0) * ethPrice,
   );
 
   const baseFeeDaoUsd = safeValue(baseFeeUsd * 0.25);
@@ -212,25 +212,25 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
   const totalHardwareCost = hardwareCostPerSeq * sequencerCount;
 
   const seqData = sequencerFees.map((f) => {
-    const priorityWei = f.priority_fee ?? 0;
-    const baseWei = (f.base_fee ?? 0) * 0.75;
-    const l1CostWei = f.l1_data_cost ?? 0;
-    const proveWei = f.prove_cost ?? 0;
+    const priorityEth = f.priority_fee ?? 0;
+    const baseEth = (f.base_fee ?? 0) * 0.75;
+    const l1CostEth = f.l1_data_cost ?? 0;
+    const proveEth = f.prove_cost ?? 0;
 
-    const priorityUsd = safeValue((priorityWei / WEI_TO_ETH) * ethPrice);
-    const baseUsd = safeValue((baseWei / WEI_TO_ETH) * ethPrice);
-    const l1CostUsd = safeValue((l1CostWei / WEI_TO_ETH) * ethPrice);
-    const proveUsd = safeValue((proveWei / WEI_TO_ETH) * ethPrice);
+    const priorityUsd = safeValue(priorityEth * ethPrice);
+    const baseUsd = safeValue(baseEth * ethPrice);
+    const l1CostUsd = safeValue(l1CostEth * ethPrice);
+    const proveUsd = safeValue(proveEth * ethPrice);
 
 
     const revenue = safeValue(priorityUsd + baseUsd);
-    const revenueWei = safeValue(priorityWei + baseWei);
+    const revenueWei = safeValue((priorityEth + baseEth) * WEI_TO_ETH);
 
     const { profitUsd, profitEth } = calculateProfit({
-      priorityFee: priorityWei,
+      priorityFee: priorityEth,
       baseFee: f.base_fee ?? 0,
-      l1DataCost: l1CostWei,
-      proveCost: proveWei,
+      l1DataCost: l1CostEth,
+      proveCost: proveEth,
 
       hardwareCostUsd: hardwareCostPerSeq,
       ethPrice,
@@ -301,15 +301,15 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     remaining -= actualProveCost;
 
     const sequencerProfit = safeValue(Math.max(0, remaining));
-    const sequencerRevenueWei = safeValue((priorityFee ?? 0) + (baseFee ?? 0) * 0.75);
+    const sequencerRevenueWei = safeValue(((priorityFee ?? 0) + (baseFee ?? 0) * 0.75) * WEI_TO_ETH);
     const sequencerProfitWei = safeValue(
       ethPrice ? (sequencerProfit / ethPrice) * WEI_TO_ETH : 0,
     );
 
     nodes = [
       { name: 'Subsidy', value: l1Subsidy, usd: true },
-      { name: 'Priority Fee', value: priorityFeeUsd, wei: priorityFee ?? 0 },
-      { name: 'Base Fee', value: baseFeeUsd, wei: baseFee ?? 0 },
+      { name: 'Priority Fee', value: priorityFeeUsd, wei: (priorityFee ?? 0) * WEI_TO_ETH },
+      { name: 'Base Fee', value: baseFeeUsd, wei: (baseFee ?? 0) * WEI_TO_ETH },
       { name: 'Sequencers', value: sequencerRevenue, wei: sequencerRevenueWei },
       { name: 'Hardware Cost', value: totalHardwareCost, usd: true },
       { name: 'Propose Batch Cost', value: l1DataCostTotalUsd, usd: true },
@@ -395,8 +395,8 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
         value: s.subsidyUsd,
         usd: true,
       })),
-      { name: 'Priority Fee', value: priorityFeeUsd, wei: priorityFee ?? 0 },
-      { name: 'Base Fee', value: baseFeeUsd, wei: baseFee ?? 0 },
+      { name: 'Priority Fee', value: priorityFeeUsd, wei: (priorityFee ?? 0) * WEI_TO_ETH },
+      { name: 'Base Fee', value: baseFeeUsd, wei: (baseFee ?? 0) * WEI_TO_ETH },
       ...seqData.map((s) => ({
         name: '',
         address: s.address,

@@ -189,14 +189,14 @@ pub struct AvgL2TpsResponse {
 /// Total L2 fees broken down by component.
 #[derive(Debug, Serialize, ToSchema)]
 pub struct L2FeesResponse {
-    /// Sum of priority fees for the range.
-    pub priority_fee: Option<u128>,
-    /// Sum of base fees for the range.
-    pub base_fee: Option<u128>,
-    /// Total L1 data posting cost for the range.
-    pub l1_data_cost: Option<u128>,
-    /// Total proving cost for the range.
-    pub prove_cost: Option<u128>,
+    /// Sum of priority fees for the range in ETH.
+    pub priority_fee: Option<f64>,
+    /// Sum of base fees for the range in ETH.
+    pub base_fee: Option<f64>,
+    /// Total L1 data posting cost for the range in ETH.
+    pub l1_data_cost: Option<f64>,
+    /// Total proving cost for the range in ETH.
+    pub prove_cost: Option<f64>,
     /// Fee breakdown for each sequencer.
     pub sequencers: Vec<SequencerFeeRow>,
 }
@@ -274,13 +274,17 @@ pub struct BatchFeeComponentRow {
     /// Sequencer address that proposed the batch
     pub sequencer: String,
     /// Total priority fee for the batch
-    pub priority_fee: u128,
+    /// Total priority fee for the batch in ETH
+    pub priority_fee: f64,
     /// Total base fee for the batch
-    pub base_fee: u128,
+    /// Total base fee for the batch in ETH
+    pub base_fee: f64,
     /// L1 data posting cost associated with the batch, if available
-    pub l1_data_cost: Option<u128>,
+    /// L1 data posting cost associated with the batch, if available, in ETH
+    pub l1_data_cost: Option<f64>,
     /// Prover cost amortized across batches in the selected range
-    pub amortized_prove_cost: Option<u128>,
+    /// Prover cost amortized across batches in the selected range in ETH
+    pub amortized_prove_cost: Option<f64>,
 }
 
 /// Fee components for each batch
@@ -356,8 +360,8 @@ pub struct BlockTransactionsResponse {
 pub struct BlockProfitItem {
     /// Block number.
     pub block: u64,
-    /// Profit in wei (priority + base - L1 cost).
-    pub profit: i128,
+    /// Profit in ETH (priority + base - L1 cost).
+    pub profit: f64,
 }
 
 /// Collection of block profit entries.
@@ -372,8 +376,8 @@ pub struct BlockProfitsResponse {
 pub struct ProposerCostItem {
     /// Proposer address.
     pub address: String,
-    /// Total cost in wei.
-    pub cost: u128,
+    /// Total cost in ETH.
+    pub cost: f64,
 }
 
 /// Aggregated cost results grouped by proposer.
@@ -389,13 +393,17 @@ pub struct SequencerFeeRow {
     /// Sequencer address.
     pub address: String,
     /// Sum of priority fees for the sequencer.
-    pub priority_fee: u128,
+    /// Sum of priority fees for the sequencer in ETH.
+    pub priority_fee: f64,
     /// Sum of base fees for the sequencer.
-    pub base_fee: u128,
+    /// Sum of base fees for the sequencer in ETH.
+    pub base_fee: f64,
     /// Total L1 data posting cost for the sequencer.
-    pub l1_data_cost: Option<u128>,
+    /// Total L1 data posting cost for the sequencer in ETH.
+    pub l1_data_cost: Option<f64>,
     /// Total proving cost for the sequencer.
-    pub prove_cost: Option<u128>,
+    /// Total proving cost for the sequencer in ETH.
+    pub prove_cost: Option<f64>,
 }
 
 /// Blob count per batch.
@@ -474,12 +482,12 @@ pub struct DashboardDataResponse {
     pub l2_head_block: Option<u64>,
     /// Number of the most recent L1 block.
     pub l1_head_block: Option<u64>,
-    /// Sum of priority fees for the range.
-    pub priority_fee: Option<u128>,
-    /// Sum of base fees for the range.
-    pub base_fee: Option<u128>,
-    /// Total prover cost for the range.
-    pub prove_cost: Option<u128>,
+    /// Sum of priority fees for the range in ETH.
+    pub priority_fee: Option<f64>,
+    /// Sum of base fees for the range in ETH.
+    pub base_fee: Option<f64>,
+    /// Total prover cost for the range in ETH.
+    pub prove_cost: Option<f64>,
     /// Estimated infrastructure cost in USD for the requested range.
     pub cloud_cost: Option<f64>,
 }

@@ -51,8 +51,8 @@ export const CostChart: React.FC<CostChartProps> = ({
   const baseCostPerBatchEth = baseCostEth / feeData.length;
 
   const data = feeData.map((b) => {
-    const l1CostEth = (b.l1Cost ?? 0) / 1e18;
-    const proveEth = (b.amortizedProveCost ?? 0) / 1e18;
+    const l1CostEth = b.l1Cost ?? 0;
+    const proveEth = b.amortizedProveCost ?? 0;
     const verifyEth = 0;
     const costEth = baseCostPerBatchEth + proveEth + verifyEth + l1CostEth;
     const costUsd = costEth * ethPrice;

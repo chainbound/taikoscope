@@ -116,27 +116,27 @@ export const createMetrics = (data: MetricInputData): MetricData[] => [
   },
   {
     title: 'Profit',
-    value: data.profit != null ? formatEth(data.profit, 3) : 'N/A',
+    value: data.profit != null ? formatEth(data.profit * 1e18, 3) : 'N/A',
     group: 'Network Economics',
   },
   {
     title: 'Priority Fee',
-    value: data.priorityFee != null ? formatEth(data.priorityFee, 3) : 'N/A',
+    value: data.priorityFee != null ? formatEth(data.priorityFee * 1e18, 3) : 'N/A',
     group: 'Network Economics',
   },
   {
     title: 'Base Fee',
-    value: data.baseFee != null ? formatEth(data.baseFee, 3) : 'N/A',
+    value: data.baseFee != null ? formatEth(data.baseFee * 1e18, 3) : 'N/A',
     group: 'Network Economics',
   },
   {
     title: 'Propose Batch Cost',
-    value: data.l1DataCost != null ? formatEth(data.l1DataCost, 3) : 'N/A',
+    value: data.l1DataCost != null ? formatEth(data.l1DataCost * 1e18, 3) : 'N/A',
     group: 'Network Economics',
   },
   {
     title: 'Prove Cost',
-    value: data.proveCost != null ? formatEth(data.proveCost, 3) : 'N/A',
+    value: data.proveCost != null ? formatEth(data.proveCost * 1e18, 3) : 'N/A',
     group: 'Network Economics',
   },
   {

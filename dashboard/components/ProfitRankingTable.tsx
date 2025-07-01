@@ -94,7 +94,7 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
     const addr = seq.address || getSequencerAddress(seq.name) || '';
     const batchCount = batchCounts?.get(addr.toLowerCase()) ?? null;
     const fees = feeDataMap.get(addr.toLowerCase());
-    const proveEth = (fees?.prove_cost ?? 0) / 1e18;
+    const proveEth = fees?.prove_cost ?? 0;
     const verifyEth = 0;
     const extraEth = proveEth + verifyEth;
     const extraUsd = extraEth * ethPrice;
@@ -114,8 +114,8 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
       };
     }
     const revenueEth =
-      ((fees.priority_fee ?? 0) + (fees.base_fee ?? 0) * 0.75) / 1e18;
-    const l1CostEth = (fees.l1_data_cost ?? 0) / 1e18;
+      (fees.priority_fee ?? 0) + (fees.base_fee ?? 0) * 0.75;
+    const l1CostEth = fees.l1_data_cost ?? 0;
     const revenueUsd = revenueEth * ethPrice;
     const l1CostUsd = l1CostEth * ethPrice;
     const costEth = costPerSeqEth + l1CostEth + extraEth;

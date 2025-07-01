@@ -40,7 +40,7 @@ export const RevenueChart: React.FC<RevenueChartProps> = ({
   }
 
   const data = feeData.map((b) => {
-    const revenueEth = (b.priority + b.base) / 1e18;
+    const revenueEth = b.priority + b.base;
     const revenueUsd = revenueEth * ethPrice;
     return { batch: b.batch, revenueEth, revenueUsd };
   });

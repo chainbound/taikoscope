@@ -1,6 +1,7 @@
 //! Core simple API endpoints
 
 use crate::{
+    helpers::wei_to_eth_signed,
     state::{ApiState, MAX_TABLE_LIMIT},
     validation::{
         CommonQuery, PaginatedQuery, ProfitQuery, has_time_range_params, resolve_time_range_enum,
@@ -601,14 +602,15 @@ pub async fn block_profits(
 
     let mut blocks: Vec<BlockProfitItem> = rows
         .into_iter()
-        .map(|r| BlockProfitItem {
-            block: r.l2_block_number,
-            profit: r.priority_fee as i128 + r.base_fee as i128 -
-                r.l1_data_cost.unwrap_or(0) as i128,
+        .map(|r| {
+            let profit =
+                r.priority_fee as i128 + r.base_fee as i128 - r.l1_data_cost.unwrap_or(0) as i128;
+            BlockProfitItem { block: r.l2_block_number, profit: wei_to_eth_signed(profit) }
         })
         .collect();
 
-    blocks.sort_by_key(|b| b.profit);
+    use std::cmp::Ordering;
+    blocks.sort_by(|a, b| a.profit.partial_cmp(&b.profit).unwrap_or(Ordering::Equal));
     if order_desc {
         blocks.reverse();
     }

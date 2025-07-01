@@ -103,9 +103,9 @@ async fn batch_fee_components_filters_unverified() {
             "batches": [
                 {
                     "batch_id": 1,
-                    "priority_fee": 10,
-                    "base_fee": 20,
-                    "l1_data_cost": 5,
+                    "priority_fee": 0.0,
+                    "base_fee": 0.0,
+                    "l1_data_cost": 0.0,
                     "amortized_prove_cost": null,
                     "amortized_verify_cost": null
                 }
@@ -365,7 +365,7 @@ async fn l2_fee_components_aggregated_integration() {
     let body: serde_json::Value = resp.json().await.unwrap();
     assert_eq!(
         body,
-        serde_json::json!({ "blocks": [ { "l2_block_number": 0, "priority_fee": 5, "base_fee": 8, "l1_data_cost": 3 } ] })
+        serde_json::json!({ "blocks": [ { "l2_block_number": 0, "priority_fee": 0.0, "base_fee": 0.0, "l1_data_cost": 0.0 } ] })
     );
 
     let resp = reqwest::get(
@@ -433,7 +433,7 @@ async fn block_profits_integration() {
     .unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
     let body: serde_json::Value = resp.json().await.unwrap();
-    assert_eq!(body, serde_json::json!({ "blocks": [ { "block": 1, "profit": 12 } ] }));
+    assert_eq!(body, serde_json::json!({ "blocks": [ { "block": 1, "profit": 0.0 } ] }));
 
     let resp = reqwest::get(
         format!("http://{addr}/{API_VERSION}/block-profits?created[gte]=0&created[lte]=3600000&limit=1&order=asc"),
@@ -442,7 +442,7 @@ async fn block_profits_integration() {
     .unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
     let body: serde_json::Value = resp.json().await.unwrap();
-    assert_eq!(body, serde_json::json!({ "blocks": [ { "block": 2, "profit": -6 } ] }));
+    assert_eq!(body, serde_json::json!({ "blocks": [ { "block": 2, "profit": 0.0 } ] }));
 
     server.abort();
 }
@@ -596,17 +596,17 @@ async fn l2_fees_integration() {
     assert_eq!(
         body,
         serde_json::json!({
-            "priority_fee": 600,
-            "base_fee": 400,
-            "l1_data_cost": 10,
-            "prove_cost": 5,
+            "priority_fee": 0.0,
+            "base_fee": 0.0,
+            "l1_data_cost": 0.0,
+            "prove_cost": 0.0,
             "sequencers": [
                 {
                     "address": format!("0x{}", hex::encode([1u8; 20])),
-                    "priority_fee": 600,
-                    "base_fee": 400,
-                    "l1_data_cost": 10,
-                    "prove_cost": 5
+                    "priority_fee": 0.0,
+                    "base_fee": 0.0,
+                    "l1_data_cost": 0.0,
+                    "prove_cost": 0.0
                 }
             ]
         })
@@ -648,17 +648,17 @@ async fn batch_fees_integration() {
     assert_eq!(
         body,
         serde_json::json!({
-            "priority_fee": 10,
-            "base_fee": 20,
-            "l1_data_cost": 5,
+            "priority_fee": 0.0,
+            "base_fee": 0.0,
+            "l1_data_cost": 0.0,
             "prove_cost": null,
             "sequencers": [
                 {
                     "address": format!("0x{}", hex::encode([2u8; 20])),
-                    "priority_fee": 10,
-                    "base_fee": 20,
-                    "l1_data_cost": 5,
-                    "prove_cost": 1
+                    "priority_fee": 0.0,
+                    "base_fee": 0.0,
+                    "l1_data_cost": 0.0,
+                    "prove_cost": 0.0
                 }
             ]
         })

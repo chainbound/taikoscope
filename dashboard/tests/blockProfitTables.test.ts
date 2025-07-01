@@ -13,8 +13,8 @@ const feeData = [
     batch: 1,
     l1Block: 1,
     sequencer: 'SeqA',
-    priority: 1e18,
-    base: 1e18,
+    priority: 1,
+    base: 1,
     l1Cost: 0,
     amortizedProveCost: 0,
 

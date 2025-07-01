@@ -4,7 +4,8 @@ use crate::{
     helpers::{
         aggregate_batch_fee_components, aggregate_block_transactions, aggregate_l2_block_times,
         aggregate_l2_fee_components, aggregate_l2_gas_used, aggregate_l2_tps,
-        aggregate_prove_times, aggregate_verify_times, bucket_size_from_range,
+        aggregate_prove_times, aggregate_verify_times, bucket_size_from_range, opt_wei_to_eth,
+        wei_to_eth,
     },
     state::{ApiState, MAX_BLOCK_TRANSACTIONS_LIMIT},
     validation::{
@@ -380,15 +381,21 @@ pub async fn l2_fees(
         .filter(|r| if let Some(target) = address { r.sequencer == target } else { true })
         .map(|r| SequencerFeeRow {
             address: format!("0x{}", encode(r.sequencer)),
-            priority_fee: r.priority_fee,
-            base_fee: r.base_fee,
-            l1_data_cost: r.l1_data_cost,
-            prove_cost: r.prove_cost,
+            priority_fee: wei_to_eth(r.priority_fee),
+            base_fee: wei_to_eth(r.base_fee),
+            l1_data_cost: opt_wei_to_eth(r.l1_data_cost),
+            prove_cost: opt_wei_to_eth(r.prove_cost),
         })
         .collect();
 
     tracing::info!(count = sequencers.len(), "Returning L2 fees and breakdown");
-    Ok(Json(L2FeesResponse { priority_fee, base_fee, l1_data_cost, prove_cost, sequencers }))
+    Ok(Json(L2FeesResponse {
+        priority_fee: opt_wei_to_eth(priority_fee),
+        base_fee: opt_wei_to_eth(base_fee),
+        l1_data_cost: opt_wei_to_eth(l1_data_cost),
+        prove_cost: opt_wei_to_eth(prove_cost),
+        sequencers,
+    }))
 }
 
 #[utoipa::path(
@@ -447,15 +454,21 @@ pub async fn batch_fees(
         .filter(|r| if let Some(target) = address { r.sequencer == target } else { true })
         .map(|r| SequencerFeeRow {
             address: format!("0x{}", encode(r.sequencer)),
-            priority_fee: r.priority_fee,
-            base_fee: r.base_fee,
-            l1_data_cost: r.l1_data_cost,
-            prove_cost: r.prove_cost,
+            priority_fee: wei_to_eth(r.priority_fee),
+            base_fee: wei_to_eth(r.base_fee),
+            l1_data_cost: opt_wei_to_eth(r.l1_data_cost),
+            prove_cost: opt_wei_to_eth(r.prove_cost),
         })
         .collect();
 
     tracing::info!(count = sequencers.len(), "Returning batch fees and breakdown");
-    Ok(Json(L2FeesResponse { priority_fee, base_fee, l1_data_cost, prove_cost: None, sequencers }))
+    Ok(Json(L2FeesResponse {
+        priority_fee: opt_wei_to_eth(priority_fee),
+        base_fee: opt_wei_to_eth(base_fee),
+        l1_data_cost: opt_wei_to_eth(l1_data_cost),
+        prove_cost: None,
+        sequencers,
+    }))
 }
 
 #[utoipa::path(
@@ -489,7 +502,10 @@ pub async fn prove_costs(
 
     let proposers: Vec<ProposerCostItem> = rows
         .into_iter()
-        .map(|(addr, cost)| ProposerCostItem { address: format!("0x{}", encode(addr)), cost })
+        .map(|(addr, cost)| ProposerCostItem {
+            address: format!("0x{}", encode(addr)),
+            cost: wei_to_eth(cost),
+        })
         .collect();
 
     tracing::info!(count = proposers.len(), "Returning prover costs");
@@ -654,10 +670,10 @@ pub async fn batch_fee_components(
             batch_id: r.batch_id,
             l1_block_number: r.l1_block_number,
             sequencer: format!("0x{}", encode(r.sequencer)),
-            priority_fee: r.priority_fee,
-            base_fee: r.base_fee,
-            l1_data_cost: r.l1_data_cost,
-            amortized_prove_cost: amortized_prove,
+            priority_fee: wei_to_eth(r.priority_fee),
+            base_fee: wei_to_eth(r.base_fee),
+            l1_data_cost: opt_wei_to_eth(r.l1_data_cost),
+            amortized_prove_cost: amortized_prove.map(wei_to_eth),
         })
         .collect();
 
@@ -723,10 +739,10 @@ pub async fn batch_fee_components_aggregated(
             batch_id: r.batch_id,
             l1_block_number: r.l1_block_number,
             sequencer: format!("0x{}", encode(r.sequencer)),
-            priority_fee: r.priority_fee,
-            base_fee: r.base_fee,
-            l1_data_cost: r.l1_data_cost,
-            amortized_prove_cost: amortized_prove,
+            priority_fee: wei_to_eth(r.priority_fee),
+            base_fee: wei_to_eth(r.base_fee),
+            l1_data_cost: opt_wei_to_eth(r.l1_data_cost),
+            amortized_prove_cost: amortized_prove.map(wei_to_eth),
         })
         .collect();
 
@@ -835,9 +851,9 @@ pub async fn dashboard_data(
         forced_inclusions: forced_inclusions.len(),
         l2_head_block,
         l1_head_block,
-        priority_fee,
-        base_fee,
-        prove_cost,
+        priority_fee: opt_wei_to_eth(priority_fee),
+        base_fee: opt_wei_to_eth(base_fee),
+        prove_cost: opt_wei_to_eth(prove_cost),
 
         cloud_cost: Some(cost),
     }))

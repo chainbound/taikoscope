@@ -4,10 +4,10 @@ import { calculateProfit } from '../utils/profit';
 describe('calculateProfit', () => {
   it('computes positive profit', () => {
     const res = calculateProfit({
-      priorityFee: 2e18,
-      baseFee: 1e18,
-      l1DataCost: 5e17,
-      proveCost: 1e17,
+      priorityFee: 2,
+      baseFee: 1,
+      l1DataCost: 0.5,
+      proveCost: 0.1,
 
       hardwareCostUsd: 100,
       ethPrice: 10,
@@ -22,7 +22,7 @@ describe('calculateProfit', () => {
     const res = calculateProfit({
       priorityFee: 0,
       baseFee: 0,
-      l1DataCost: 1e18,
+      l1DataCost: 1,
       proveCost: 0,
 
       hardwareCostUsd: 50,

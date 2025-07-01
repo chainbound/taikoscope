@@ -115,13 +115,13 @@ pub fn aggregate_batch_fee_components(
     groups
         .into_iter()
         .map(|(g, rs)| {
-            let sum_priority: u128 = rs.iter().map(|r| r.priority_fee).sum();
-            let sum_base: u128 = rs.iter().map(|r| r.base_fee).sum();
-            let (sum_l1, any_l1): (u128, bool) = rs.iter().fold((0, false), |(s, a), r| {
-                (s + r.l1_data_cost.unwrap_or(0), a || r.l1_data_cost.is_some())
+            let sum_priority: f64 = rs.iter().map(|r| r.priority_fee).sum();
+            let sum_base: f64 = rs.iter().map(|r| r.base_fee).sum();
+            let (sum_l1, any_l1): (f64, bool) = rs.iter().fold((0.0, false), |(s, a), r| {
+                (s + r.l1_data_cost.unwrap_or(0.0), a || r.l1_data_cost.is_some())
             });
-            let (sum_prove, any_prove) = rs.iter().fold((0u128, false), |(s, a), r| {
-                (s + r.amortized_prove_cost.unwrap_or(0), a || r.amortized_prove_cost.is_some())
+            let (sum_prove, any_prove) = rs.iter().fold((0.0, false), |(s, a), r| {
+                (s + r.amortized_prove_cost.unwrap_or(0.0), a || r.amortized_prove_cost.is_some())
             });
 
             let last_l1 = rs.last().map(|r| r.l1_block_number).unwrap_or_default();
@@ -271,10 +271,10 @@ mod tests {
         batch_id: u64,
         l1_block_number: u64,
         sequencer: &str,
-        priority_fee: u128,
-        base_fee: u128,
-        l1_cost: Option<u128>,
-        prove_cost: Option<u128>,
+        priority_fee: f64,
+        base_fee: f64,
+        l1_cost: Option<f64>,
+        prove_cost: Option<f64>,
     ) -> BatchFeeComponentRow {
         BatchFeeComponentRow {
             batch_id,
@@ -549,33 +549,56 @@ mod tests {
 
     #[test]
     fn test_aggregate_batch_fee_components_single_row() {
-        let rows =
-            vec![create_batch_fee_component_row(10, 100, "seq1", 1000, 2000, Some(500), Some(300))];
+        let rows = vec![create_batch_fee_component_row(
+            10,
+            100,
+            "seq1",
+            1000.0,
+            2000.0,
+            Some(500.0),
+            Some(300.0),
+        )];
         let result = aggregate_batch_fee_components(rows, 5);
 
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].batch_id, 10);
         assert_eq!(result[0].l1_block_number, 100);
         assert_eq!(result[0].sequencer, "seq1");
-        assert_eq!(result[0].priority_fee, 1000);
-        assert_eq!(result[0].base_fee, 2000);
-        assert_eq!(result[0].l1_data_cost, Some(500));
-        assert_eq!(result[0].amortized_prove_cost, Some(300));
+        assert_eq!(result[0].priority_fee, 1000.0);
+        assert_eq!(result[0].base_fee, 2000.0);
+        assert_eq!(result[0].l1_data_cost, Some(500.0));
+        assert_eq!(result[0].amortized_prove_cost, Some(300.0));
     }
 
     #[test]
     fn test_aggregate_batch_fee_components_summation() {
         let rows = vec![
-            create_batch_fee_component_row(10, 100, "seq1", 1000, 2000, Some(500), Some(300)),
-            create_batch_fee_component_row(11, 101, "seq2", 1500, 2500, Some(600), Some(400)),
+            create_batch_fee_component_row(
+                10,
+                100,
+                "seq1",
+                1000.0,
+                2000.0,
+                Some(500.0),
+                Some(300.0),
+            ),
+            create_batch_fee_component_row(
+                11,
+                101,
+                "seq2",
+                1500.0,
+                2500.0,
+                Some(600.0),
+                Some(400.0),
+            ),
         ];
         let result = aggregate_batch_fee_components(rows, 5);
 
         assert_eq!(result.len(), 1);
-        assert_eq!(result[0].priority_fee, 2500); // 1000 + 1500
-        assert_eq!(result[0].base_fee, 4500); // 2000 + 2500
-        assert_eq!(result[0].l1_data_cost, Some(1100)); // 500 + 600
-        assert_eq!(result[0].amortized_prove_cost, Some(700)); // 300 + 400
+        assert_eq!(result[0].priority_fee, 2500.0); // 1000 + 1500
+        assert_eq!(result[0].base_fee, 4500.0); // 2000 + 2500
+        assert_eq!(result[0].l1_data_cost, Some(1100.0)); // 500 + 600
+        assert_eq!(result[0].amortized_prove_cost, Some(700.0)); // 300 + 400
         assert_eq!(result[0].l1_block_number, 101); // Last value
         assert_eq!(result[0].sequencer, "seq2"); // Last value
     }
@@ -583,14 +606,14 @@ mod tests {
     #[test]
     fn test_aggregate_batch_fee_components_mixed_optional_fields() {
         let rows = vec![
-            create_batch_fee_component_row(10, 100, "seq1", 1000, 2000, None, Some(300)),
-            create_batch_fee_component_row(11, 101, "seq2", 1500, 2500, Some(600), None),
+            create_batch_fee_component_row(10, 100, "seq1", 1000.0, 2000.0, None, Some(300.0)),
+            create_batch_fee_component_row(11, 101, "seq2", 1500.0, 2500.0, Some(600.0), None),
         ];
         let result = aggregate_batch_fee_components(rows, 5);
 
         assert_eq!(result.len(), 1);
-        assert_eq!(result[0].l1_data_cost, Some(600)); // any=true due to second row
-        assert_eq!(result[0].amortized_prove_cost, Some(300)); // any=true due to first row
+        assert_eq!(result[0].l1_data_cost, Some(600.0)); // any=true due to second row
+        assert_eq!(result[0].amortized_prove_cost, Some(300.0)); // any=true due to first row
     }
 
     // Tests for aggregate_block_transactions
