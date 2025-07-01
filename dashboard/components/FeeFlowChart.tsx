@@ -173,23 +173,28 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
   const baseFee = feeRes?.data?.base_fee ?? null;
   const sequencerFees = feeRes?.data?.sequencers ?? [];
 
-  // Define formatTooltipValue and NodeComponent before any conditional returns
-  const formatTooltipValue = (value: number, itemData?: any) => {
-    const usd = formatUsd(value);
-    // If the item already has wei value, use it directly
-    if (itemData?.wei != null) {
-      return `${formatEth(itemData.wei, 3)} (${usd})`;
-    }
+  // Memoized tooltip value formatter to avoid unnecessary re-renders
+  // NOTE: Depends on `ethPrice`, so it is recreated only when the price changes
+  const formatTooltipValue = React.useCallback(
+    (value: number, itemData?: any) => {
+      const usd = formatUsd(value);
 
-    // Otherwise, attempt to derive wei from USD using the current ETH price
-    if (ethPrice) {
-      const wei = (value / ethPrice) * WEI_TO_ETH;
-      return `${formatEth(wei, 3)} (${usd})`;
-    }
+      // If the item already has a `wei` value, use it directly
+      if (itemData?.wei != null) {
+        return `${formatEth(itemData.wei, 3)} (${usd})`;
+      }
 
-    // Fallback (should rarely happen): return USD only
-    return usd;
-  };
+      // Otherwise, attempt to derive `wei` from USD using the current ETH price
+      if (ethPrice) {
+        const wei = (value / ethPrice) * WEI_TO_ETH;
+        return `${formatEth(wei, 3)} (${usd})`;
+      }
+
+      // Fallback (should rarely happen): return USD only
+      return usd;
+    },
+    [ethPrice],
+  );
 
   const NodeComponent = React.useMemo(
     () => createSankeyNode(textColor, formatTooltipValue),
@@ -593,31 +598,9 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
 
     const { value = 0, payload: itemData } = payload![0];
 
+    // Suppress tooltip for flows (links) – they now display values directly on the chart
     if (itemData.source != null && itemData.target != null) {
-      const sourceNode = data.nodes[itemData.source] as any;
-      const targetNode = data.nodes[itemData.target] as any;
-      const formatLabel = (node: any) => {
-        if (node.profitNode && node.addressLabel) {
-          return `${node.addressLabel} Profit`;
-        }
-        if (node.revenueNode && node.addressLabel) {
-          return `${node.addressLabel} Revenue`;
-        }
-        return node.addressLabel ?? node.address ?? node.name;
-      };
-      const sourceLabel = formatLabel(sourceNode);
-      const targetLabel = formatLabel(targetNode);
-
-      return (
-        <div className="bg-white dark:bg-gray-800 p-2 border border-gray-200 dark:border-gray-700 rounded shadow-sm">
-          <p className="text-sm font-medium">
-            {sourceLabel} → {targetLabel}
-          </p>
-          <p className="text-sm text-gray-600 dark:text-gray-300">
-            {formatTooltipValue(value, itemData)}
-          </p>
-        </div>
-      );
+      return null;
     }
 
     const nodeLabel = (() => {
