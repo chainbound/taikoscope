@@ -983,9 +983,10 @@ impl ClickhouseReader {
         let mv_query = format!(
             "SELECT avg(prove_time_ms) AS avg_ms \
              FROM {db}.batch_prove_times_mv \
-             WHERE proved_at >= now64() - INTERVAL {}",
-            range.interval(),
-            db = self.db_name
+             WHERE proved_at >= now64() - INTERVAL {interval} \
+               AND batch_id != 0",
+            interval = range.interval(),
+            db = self.db_name,
         );
 
         let rows = self.execute::<AvgRow>(&mv_query).await?;
@@ -1004,9 +1005,10 @@ impl ClickhouseReader {
                ON b.l1_block_number = l1_proposed.l1_block_number \
              JOIN {db}.l1_head_events l1_proved \
                ON pb.l1_block_number = l1_proved.l1_block_number \
-             WHERE l1_proved.block_ts >= (toUInt64(now()) - {})",
-            range.seconds(),
-            db = self.db_name
+             WHERE l1_proved.block_ts >= (toUInt64(now()) - {secs}) \
+               AND b.batch_id != 0",
+            secs = range.seconds(),
+            db = self.db_name,
         );
 
         let rows = self.execute::<AvgRow>(&fallback_query).await?;
@@ -1030,9 +1032,10 @@ impl ClickhouseReader {
         let mv_query = format!(
             "SELECT avg(verify_time_ms) AS avg_ms \
              FROM {db}.batch_verify_times_mv \
-             WHERE verified_at >= now64() - INTERVAL {}",
-            range.interval(),
-            db = self.db_name
+             WHERE verified_at >= now64() - INTERVAL {interval} \
+               AND batch_id != 0",
+            interval = range.interval(),
+            db = self.db_name,
         );
 
         let rows = self.execute::<AvgRow>(&mv_query).await?;
@@ -1342,7 +1345,8 @@ impl ClickhouseReader {
             "SELECT batch_id, toUInt64(verify_time_ms / 1000) AS seconds_to_verify \
              FROM {db}.batch_verify_times_mv \
              WHERE verified_at >= {since} \
-               AND verify_time_ms > 60000",
+               AND verify_time_ms > 60000 \
+               AND batch_id != 0",
             since = since.timestamp(),
             db = self.db_name,
         );
@@ -1373,7 +1377,8 @@ impl ClickhouseReader {
                 ON vb.l1_block_number = l1_verified.l1_block_number \
              WHERE l1_verified.block_ts >= {since} \
                AND l1_verified.block_ts > l1_proved.block_ts \
-               AND (l1_verified.block_ts - l1_proved.block_ts) > 60",
+               AND (l1_verified.block_ts - l1_proved.block_ts) > 60 \
+               AND pb.batch_id != 0",
             since = since.timestamp(),
             db = self.db_name,
         );
@@ -1403,7 +1408,8 @@ impl ClickhouseReader {
         let mut mv_query = format!(
             "SELECT batch_id, toUInt64(prove_time_ms / 1000) AS seconds_to_prove \
              FROM {db}.batch_prove_times_mv \
-             WHERE proved_at >= {since}",
+             WHERE proved_at >= {since} \
+               AND batch_id != 0",
             since = since.timestamp(),
             db = self.db_name,
         );
@@ -1431,7 +1437,8 @@ impl ClickhouseReader {
                ON b.l1_block_number = l1_proposed.l1_block_number \
              JOIN {db}.l1_head_events l1_proved \
                ON pb.l1_block_number = l1_proved.l1_block_number \
-             WHERE l1_proved.block_ts >= {since}",
+             WHERE l1_proved.block_ts >= {since} \
+               AND b.batch_id != 0",
             since = since.timestamp(),
             db = self.db_name,
         );
