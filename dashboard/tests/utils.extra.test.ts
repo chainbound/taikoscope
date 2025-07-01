@@ -27,9 +27,9 @@ describe('extra utils', () => {
 
   describe('formatHoursMinutes', () => {
     it.each([
-      [3600, '1:00h'],
-      [3661, '1:01h'],
-      [9000, '2:30h'],
+      [3600, '1:00'],
+      [3661, '1:01'],
+      [9000, '2:30'],
     ])('formats %p seconds to %p', (input, expected) => {
       expect(formatHoursMinutes(input)).toBe(expected);
     });

@@ -99,7 +99,7 @@ export const formatHoursMinutes = (seconds: number): string => {
   const secs = Math.round(seconds);
   const hrs = Math.floor(secs / 3600);
   const mins = Math.floor((secs % 3600) / 60);
-  return `${hrs}:${mins.toString().padStart(2, '0')}h`;
+  return `${hrs}:${mins.toString().padStart(2, '0')}`;
 };
 
 export const formatLargeNumber = (value: number): string => {
