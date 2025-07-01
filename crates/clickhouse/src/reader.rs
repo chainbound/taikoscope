@@ -1026,21 +1026,46 @@ impl ClickhouseReader {
             avg_ms: f64,
         }
 
-        let query = format!(
-            "SELECT COALESCE(avg(verify_time_ms), 0) AS avg_ms \
+        // First try the materialized view
+        let mv_query = format!(
+            "SELECT avg(verify_time_ms) AS avg_ms \
              FROM {db}.batch_verify_times_mv \
-             WHERE verified_at >= now64() - INTERVAL {interval}",
-            interval = range.interval(),
+             WHERE verified_at >= now64() - INTERVAL {}",
+            range.interval(),
             db = self.db_name
         );
 
-        let rows = self.execute::<AvgRow>(&query).await?;
+        let rows = self.execute::<AvgRow>(&mv_query).await?;
+        if let Some(row) = rows.into_iter().next() {
+            if !row.avg_ms.is_nan() {
+                return Ok(Some(row.avg_ms.round() as u64));
+            }
+        }
+
+        // Fallback to raw data if materialized view is empty
+        let fallback_query = format!(
+            "SELECT avg((l1_verified.block_ts - l1_proved.block_ts) * 1000) AS avg_ms \
+             FROM {db}.proved_batches pb \
+             INNER JOIN {db}.verified_batches vb \
+                ON pb.batch_id = vb.batch_id AND pb.block_hash = vb.block_hash \
+             INNER JOIN {db}.l1_head_events l1_proved \
+                ON pb.l1_block_number = l1_proved.l1_block_number \
+             INNER JOIN {db}.l1_head_events l1_verified \
+                ON vb.l1_block_number = l1_verified.l1_block_number \
+             WHERE l1_verified.block_ts >= (toUInt64(now()) - {}) \
+               AND l1_verified.block_ts > l1_proved.block_ts \
+               AND (l1_verified.block_ts - l1_proved.block_ts) > 60",
+            range.seconds(),
+            db = self.db_name
+        );
+
+        let rows = self.execute::<AvgRow>(&fallback_query).await?;
         let row = match rows.into_iter().next() {
             Some(r) => r,
             None => return Ok(None),
         };
 
-        if row.avg_ms == 0.0 { Ok(None) } else { Ok(Some(row.avg_ms.round() as u64)) }
+        if row.avg_ms.is_nan() { Ok(None) } else { Ok(Some(row.avg_ms.round() as u64)) }
     }
 
     /// Get the average interval in milliseconds between consecutive L2 blocks
@@ -1308,7 +1333,8 @@ impl ClickhouseReader {
         starting_after: Option<u64>,
         ending_before: Option<u64>,
     ) -> Result<Vec<BatchVerifyTimeRow>> {
-        let mut query = format!(
+        // First try the materialized view
+        let mut mv_query = format!(
             "SELECT batch_id, toUInt64(verify_time_ms / 1000) AS seconds_to_verify \
              FROM {db}.batch_verify_times_mv \
              WHERE verified_at >= {since} \
@@ -1317,15 +1343,46 @@ impl ClickhouseReader {
             db = self.db_name,
         );
         if let Some(start) = starting_after {
-            query.push_str(&format!(" AND batch_id < {}", start));
+            mv_query.push_str(&format!(" AND batch_id < {}", start));
         }
         if let Some(end) = ending_before {
-            query.push_str(&format!(" AND batch_id > {}", end));
+            mv_query.push_str(&format!(" AND batch_id > {}", end));
         }
-        query.push_str(" ORDER BY batch_id DESC");
-        query.push_str(&format!(" LIMIT {}", limit));
+        mv_query.push_str(" ORDER BY batch_id DESC");
+        mv_query.push_str(&format!(" LIMIT {}", limit));
 
-        let rows = self.execute::<BatchVerifyTimeRow>(&query).await?;
+        let rows = self.execute::<BatchVerifyTimeRow>(&mv_query).await?;
+        if !rows.is_empty() {
+            return Ok(rows);
+        }
+
+        // Fallback to raw data if materialized view is empty
+        let mut fallback_query = format!(
+            "SELECT toUInt64(pb.batch_id) AS batch_id, \
+                    (l1_verified.block_ts - l1_proved.block_ts) AS seconds_to_verify \
+             FROM {db}.proved_batches pb \
+             INNER JOIN {db}.verified_batches vb \
+                ON pb.batch_id = vb.batch_id AND pb.block_hash = vb.block_hash \
+             INNER JOIN {db}.l1_head_events l1_proved \
+                ON pb.l1_block_number = l1_proved.l1_block_number \
+             INNER JOIN {db}.l1_head_events l1_verified \
+                ON vb.l1_block_number = l1_verified.l1_block_number \
+             WHERE l1_verified.block_ts >= {since} \
+               AND l1_verified.block_ts > l1_proved.block_ts \
+               AND (l1_verified.block_ts - l1_proved.block_ts) > 60",
+            since = since.timestamp(),
+            db = self.db_name,
+        );
+        if let Some(start) = starting_after {
+            fallback_query.push_str(&format!(" AND pb.batch_id < {}", start));
+        }
+        if let Some(end) = ending_before {
+            fallback_query.push_str(&format!(" AND pb.batch_id > {}", end));
+        }
+        fallback_query.push_str(" ORDER BY pb.batch_id DESC");
+        fallback_query.push_str(&format!(" LIMIT {}", limit));
+
+        let rows = self.execute::<BatchVerifyTimeRow>(&fallback_query).await?;
         Ok(rows)
     }
 
@@ -1338,7 +1395,8 @@ impl ClickhouseReader {
         starting_after: Option<u64>,
         ending_before: Option<u64>,
     ) -> Result<Vec<BatchProveTimeRow>> {
-        let mut query = format!(
+        // First try the materialized view
+        let mut mv_query = format!(
             "SELECT batch_id, toUInt64(prove_time_ms / 1000) AS seconds_to_prove \
              FROM {db}.batch_prove_times_mv \
              WHERE proved_at >= {since}",
@@ -1346,15 +1404,43 @@ impl ClickhouseReader {
             db = self.db_name,
         );
         if let Some(start) = starting_after {
-            query.push_str(&format!(" AND batch_id < {}", start));
+            mv_query.push_str(&format!(" AND batch_id < {}", start));
         }
         if let Some(end) = ending_before {
-            query.push_str(&format!(" AND batch_id > {}", end));
+            mv_query.push_str(&format!(" AND batch_id > {}", end));
         }
-        query.push_str(" ORDER BY batch_id DESC");
-        query.push_str(&format!(" LIMIT {}", limit));
+        mv_query.push_str(" ORDER BY batch_id DESC");
+        mv_query.push_str(&format!(" LIMIT {}", limit));
 
-        let rows = self.execute::<BatchProveTimeRow>(&query).await?;
+        let rows = self.execute::<BatchProveTimeRow>(&mv_query).await?;
+        if !rows.is_empty() {
+            return Ok(rows);
+        }
+
+        // Fallback to raw data if materialized view is empty
+        let mut fallback_query = format!(
+            "SELECT toUInt64(b.batch_id) AS batch_id, \
+                    (l1_proved.block_ts - l1_proposed.block_ts) AS seconds_to_prove \
+             FROM {db}.batches b \
+             JOIN {db}.proved_batches pb ON b.batch_id = pb.batch_id \
+             JOIN {db}.l1_head_events l1_proposed \
+               ON b.l1_block_number = l1_proposed.l1_block_number \
+             JOIN {db}.l1_head_events l1_proved \
+               ON pb.l1_block_number = l1_proved.l1_block_number \
+             WHERE l1_proved.block_ts >= {since}",
+            since = since.timestamp(),
+            db = self.db_name,
+        );
+        if let Some(start) = starting_after {
+            fallback_query.push_str(&format!(" AND b.batch_id < {}", start));
+        }
+        if let Some(end) = ending_before {
+            fallback_query.push_str(&format!(" AND b.batch_id > {}", end));
+        }
+        fallback_query.push_str(" ORDER BY b.batch_id DESC");
+        fallback_query.push_str(&format!(" LIMIT {}", limit));
+
+        let rows = self.execute::<BatchProveTimeRow>(&fallback_query).await?;
         Ok(rows)
     }
 

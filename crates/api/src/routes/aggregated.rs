@@ -4,7 +4,7 @@ use crate::{
     helpers::{
         aggregate_batch_fee_components, aggregate_block_transactions, aggregate_l2_block_times,
         aggregate_l2_fee_components, aggregate_l2_gas_used, aggregate_l2_tps,
-        bucket_size_from_range,
+        aggregate_prove_times, aggregate_verify_times, bucket_size_from_range,
     },
     state::{ApiState, MAX_BLOCK_TRANSACTIONS_LIMIT},
     validation::{
@@ -245,6 +245,78 @@ pub async fn block_transactions_aggregated(
     let blocks = aggregate_block_transactions(blocks, bucket);
     tracing::info!(count = blocks.len(), "Returning aggregated block transactions");
     Ok(Json(BlockTransactionsResponse { blocks }))
+}
+
+#[utoipa::path(
+    get,
+    path = "/prove-times/aggregated",
+    params(
+        RangeQuery
+    ),
+    responses(
+        (status = 200, description = "Aggregated prove times", body = ProveTimesResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
+    ),
+    tag = "taikoscope"
+)]
+/// Get aggregated batch proving time metrics with automatic bucketing based on time range
+pub async fn prove_times_aggregated(
+    Query(params): Query<RangeQuery>,
+    State(state): State<ApiState>,
+) -> Result<Json<ProveTimesResponse>, ErrorResponse> {
+    validate_time_range(&params.time_range)?;
+    let has_time_range = has_time_range_params(&params.time_range);
+    validate_range_exclusivity(has_time_range, false)?;
+
+    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
+    let batches = match state.client.get_prove_times(time_range).await {
+        Ok(rows) => rows,
+        Err(e) => {
+            tracing::error!(error = %e, "Failed to get prove times");
+            return Err(ErrorResponse::database_error());
+        }
+    };
+
+    let bucket = bucket_size_from_range(&time_range);
+    let batches = aggregate_prove_times(batches, bucket);
+    tracing::info!(count = batches.len(), "Returning aggregated prove times");
+    Ok(Json(ProveTimesResponse { batches }))
+}
+
+#[utoipa::path(
+    get,
+    path = "/verify-times/aggregated",
+    params(
+        RangeQuery
+    ),
+    responses(
+        (status = 200, description = "Aggregated verify times", body = VerifyTimesResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
+    ),
+    tag = "taikoscope"
+)]
+/// Get aggregated batch verification time metrics with automatic bucketing based on time range
+pub async fn verify_times_aggregated(
+    Query(params): Query<RangeQuery>,
+    State(state): State<ApiState>,
+) -> Result<Json<VerifyTimesResponse>, ErrorResponse> {
+    validate_time_range(&params.time_range)?;
+    let has_time_range = has_time_range_params(&params.time_range);
+    validate_range_exclusivity(has_time_range, false)?;
+
+    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
+    let batches = match state.client.get_verify_times(time_range).await {
+        Ok(rows) => rows,
+        Err(e) => {
+            tracing::error!(error = %e, "Failed to get verify times");
+            return Err(ErrorResponse::database_error());
+        }
+    };
+
+    let bucket = bucket_size_from_range(&time_range);
+    let batches = aggregate_verify_times(batches, bucket);
+    tracing::info!(count = batches.len(), "Returning aggregated verify times");
+    Ok(Json(VerifyTimesResponse { batches }))
 }
 
 #[utoipa::path(

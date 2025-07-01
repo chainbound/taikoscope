@@ -140,6 +140,7 @@ export const useDataFetcher = ({
       metrics,
       chartData: {
         proveTimes: data.proveTimes,
+        verifyTimes: data.verifyTimes,
         l2Times: data.l2Times,
         l2Gas: data.l2Gas,
         txPerBlock: data.txPerBlock,

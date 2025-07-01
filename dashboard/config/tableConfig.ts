@@ -13,7 +13,9 @@ import {
   fetchBatchBlobCounts,
   fetchBatchPostingTimes,
   fetchProveTimes,
+  fetchProveTimesAggregated,
   fetchVerifyTimes,
+  fetchVerifyTimesAggregated,
   fetchAllBlockTransactions,
   fetchBlockTransactionsAggregated,
   fetchL2BlockTimes,
@@ -360,6 +362,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     title: 'Prove Times',
     description: 'Time taken to prove batches',
     fetcher: fetchProveTimes,
+    aggregatedFetcher: fetchProveTimesAggregated,
     columns: [
       { key: 'name', label: 'Batch' },
       { key: 'value', label: 'Minutes' },
@@ -379,6 +382,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     title: 'Verify Times',
     description: 'Time taken to verify batches',
     fetcher: fetchVerifyTimes,
+    aggregatedFetcher: fetchVerifyTimesAggregated,
     columns: [
       { key: 'name', label: 'Batch' },
       { key: 'value', label: 'Minutes' },

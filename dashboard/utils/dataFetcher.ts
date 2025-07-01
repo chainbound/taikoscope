@@ -4,6 +4,8 @@ import { normalizeTimeRange } from './timeRange';
 import {
   fetchDashboardData,
   fetchProveTimes,
+  fetchProveTimesAggregated,
+  fetchVerifyTimesAggregated,
   fetchL2BlockTimesAggregated,
   fetchL2GasUsedAggregated,
   fetchSequencerDistribution,
@@ -31,6 +33,7 @@ export interface MainDashboardData {
   l2Block: number | null;
   l1Block: number | null;
   proveTimes: TimeSeriesData[];
+  verifyTimes: TimeSeriesData[];
   l2Times: TimeSeriesData[];
   l2Gas: TimeSeriesData[];
   sequencerDist: SequencerDistributionDataItem[];
@@ -65,6 +68,7 @@ export const fetchMainDashboardData = async (
   const [
     dashboardRes,
     proveTimesRes,
+    verifyTimesRes,
     l2TimesRes,
     l2GasUsedRes,
     sequencerDistRes,
@@ -72,7 +76,8 @@ export const fetchMainDashboardData = async (
     batchBlobCountsRes,
   ] = await Promise.all([
     fetchDashboardData(normalizedRange, address),
-    fetchProveTimes(normalizedRange),
+    fetchProveTimesAggregated(normalizedRange),
+    fetchVerifyTimesAggregated(normalizedRange),
     fetchL2BlockTimesAggregated(normalizedRange, address),
     fetchL2GasUsedAggregated(normalizedRange, address),
     fetchSequencerDistribution(normalizedRange),
@@ -85,6 +90,7 @@ export const fetchMainDashboardData = async (
   const allResults = [
     dashboardRes,
     proveTimesRes,
+    verifyTimesRes,
     l2TimesRes,
     l2GasUsedRes,
     sequencerDistRes,
@@ -104,6 +110,7 @@ export const fetchMainDashboardData = async (
     l2Block: data?.l2_head_block ?? null,
     l1Block: data?.l1_head_block ?? null,
     proveTimes: proveTimesRes.data || [],
+    verifyTimes: verifyTimesRes.data || [],
     l2Times: l2TimesRes.data || [],
     l2Gas: l2GasUsedRes.data || [],
     sequencerDist: sequencerDistRes.data || [],

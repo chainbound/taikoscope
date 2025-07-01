@@ -3,7 +3,10 @@
 use api_types::BlockTransactionsItem;
 
 use api_types::BatchFeeComponentRow;
-use clickhouse_lib::{BlockFeeComponentRow, L2BlockTimeRow, L2GasUsedRow, L2TpsRow, TimeRange};
+use clickhouse_lib::{
+    BatchProveTimeRow, BatchVerifyTimeRow, BlockFeeComponentRow, L2BlockTimeRow, L2GasUsedRow,
+    L2TpsRow, TimeRange,
+};
 use std::collections::BTreeMap;
 
 /// Determine bucket size based on time range
@@ -177,6 +180,45 @@ pub fn aggregate_block_transactions(
                 sequencer: last_seq,
                 block_time: last_time,
             }
+        })
+        .collect()
+}
+
+/// Aggregate prove times by bucket size
+pub fn aggregate_prove_times(rows: Vec<BatchProveTimeRow>, bucket: u64) -> Vec<BatchProveTimeRow> {
+    let bucket = bucket.max(1);
+    let mut groups: BTreeMap<u64, Vec<BatchProveTimeRow>> = BTreeMap::new();
+    for row in rows {
+        groups.entry(row.batch_id / bucket).or_default().push(row);
+    }
+    groups
+        .into_iter()
+        .map(|(g, rs)| {
+            let (sum, count) =
+                rs.iter().fold((0u64, 0u64), |(s, c), r| (s + r.seconds_to_prove, c + 1));
+            let avg = if count > 0 { sum / count } else { 0 };
+            BatchProveTimeRow { batch_id: g * bucket, seconds_to_prove: avg }
+        })
+        .collect()
+}
+
+/// Aggregate verify times by bucket size
+pub fn aggregate_verify_times(
+    rows: Vec<BatchVerifyTimeRow>,
+    bucket: u64,
+) -> Vec<BatchVerifyTimeRow> {
+    let bucket = bucket.max(1);
+    let mut groups: BTreeMap<u64, Vec<BatchVerifyTimeRow>> = BTreeMap::new();
+    for row in rows {
+        groups.entry(row.batch_id / bucket).or_default().push(row);
+    }
+    groups
+        .into_iter()
+        .map(|(g, rs)| {
+            let (sum, count) =
+                rs.iter().fold((0u64, 0u64), |(s, c), r| (s + r.seconds_to_verify, c + 1));
+            let avg = if count > 0 { sum / count } else { 0 };
+            BatchVerifyTimeRow { batch_id: g * bucket, seconds_to_verify: avg }
         })
         .collect()
 }
@@ -741,5 +783,146 @@ mod tests {
 
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].tps, 2.5); // (1.25 + 2.75 + 3.5) / 3 = 2.5
+    }
+
+    // Tests for aggregate_prove_times
+    #[test]
+    fn test_aggregate_prove_times_empty() {
+        let rows = vec![];
+        let result = aggregate_prove_times(rows, 5);
+        assert_eq!(result.len(), 0);
+    }
+
+    #[test]
+    fn test_aggregate_prove_times_single_row() {
+        let rows = vec![BatchProveTimeRow { batch_id: 10, seconds_to_prove: 1000 }];
+        let result = aggregate_prove_times(rows, 5);
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].batch_id, 10);
+        assert_eq!(result[0].seconds_to_prove, 1000);
+    }
+
+    #[test]
+    fn test_aggregate_prove_times_multiple_rows() {
+        let rows = vec![
+            BatchProveTimeRow { batch_id: 10, seconds_to_prove: 1000 },
+            BatchProveTimeRow { batch_id: 11, seconds_to_prove: 2000 },
+            BatchProveTimeRow { batch_id: 12, seconds_to_prove: 3000 },
+        ];
+        let result = aggregate_prove_times(rows, 5);
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].batch_id, 10);
+        assert_eq!(result[0].seconds_to_prove, 2000); // (1000 + 2000 + 3000) / 3 = 2000
+    }
+
+    #[test]
+    fn test_aggregate_prove_times_multiple_buckets() {
+        let rows = vec![
+            BatchProveTimeRow { batch_id: 2, seconds_to_prove: 1000 },
+            BatchProveTimeRow { batch_id: 7, seconds_to_prove: 2000 },
+        ];
+        let result = aggregate_prove_times(rows, 5);
+
+        assert_eq!(result.len(), 2);
+        // First bucket: batch 2 -> bucket 0
+        assert_eq!(result[0].batch_id, 0);
+        assert_eq!(result[0].seconds_to_prove, 1000);
+        // Second bucket: batch 7 -> bucket 1
+        assert_eq!(result[1].batch_id, 5);
+        assert_eq!(result[1].seconds_to_prove, 2000);
+    }
+
+    #[test]
+    fn test_aggregate_prove_times_zero_seconds() {
+        let rows = vec![BatchProveTimeRow { batch_id: 10, seconds_to_prove: 0 }];
+        let result = aggregate_prove_times(rows, 5);
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].batch_id, 10);
+        assert_eq!(result[0].seconds_to_prove, 0);
+    }
+
+    #[test]
+    fn test_aggregate_prove_times_zero_bucket() {
+        let rows = vec![
+            BatchProveTimeRow { batch_id: 10, seconds_to_prove: 60 },
+            BatchProveTimeRow { batch_id: 20, seconds_to_prove: 120 },
+        ];
+        let result = aggregate_prove_times(rows, 0);
+        assert_eq!(result.len(), 2);
+        assert_eq!(result[0].batch_id, 10);
+        assert_eq!(result[0].seconds_to_prove, 60);
+    }
+
+    // Tests for aggregate_verify_times
+    #[test]
+    fn test_aggregate_verify_times_empty() {
+        let rows = vec![];
+        let result = aggregate_verify_times(rows, 5);
+        assert_eq!(result.len(), 0);
+    }
+
+    #[test]
+    fn test_aggregate_verify_times_single_row() {
+        let rows = vec![BatchVerifyTimeRow { batch_id: 10, seconds_to_verify: 60 }];
+        let result = aggregate_verify_times(rows, 5);
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].batch_id, 10);
+        assert_eq!(result[0].seconds_to_verify, 60);
+    }
+
+    #[test]
+    fn test_aggregate_verify_times_multiple_rows() {
+        let rows = vec![
+            BatchVerifyTimeRow { batch_id: 10, seconds_to_verify: 60 },
+            BatchVerifyTimeRow { batch_id: 12, seconds_to_verify: 120 },
+            BatchVerifyTimeRow { batch_id: 14, seconds_to_verify: 180 },
+        ];
+        let result = aggregate_verify_times(rows, 5);
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].batch_id, 10);
+        assert_eq!(result[0].seconds_to_verify, 120); // (60 + 120 + 180) / 3 = 120
+    }
+
+    #[test]
+    fn test_aggregate_verify_times_multiple_buckets() {
+        let rows = vec![
+            BatchVerifyTimeRow { batch_id: 10, seconds_to_verify: 60 },
+            BatchVerifyTimeRow { batch_id: 12, seconds_to_verify: 120 },
+            BatchVerifyTimeRow { batch_id: 20, seconds_to_verify: 180 },
+            BatchVerifyTimeRow { batch_id: 22, seconds_to_verify: 240 },
+        ];
+        let result = aggregate_verify_times(rows, 5);
+        assert_eq!(result.len(), 2);
+        assert_eq!(result[0].batch_id, 10);
+        assert_eq!(result[0].seconds_to_verify, 90); // (60 + 120) / 2 = 90
+        assert_eq!(result[1].batch_id, 20);
+        assert_eq!(result[1].seconds_to_verify, 210); // (180 + 240) / 2 = 210
+    }
+
+    #[test]
+    fn test_aggregate_verify_times_zero_seconds() {
+        let rows = vec![
+            BatchVerifyTimeRow { batch_id: 10, seconds_to_verify: 0 },
+            BatchVerifyTimeRow { batch_id: 12, seconds_to_verify: 60 },
+        ];
+        let result = aggregate_verify_times(rows, 5);
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].batch_id, 10);
+        assert_eq!(result[0].seconds_to_verify, 30); // (0 + 60) / 2 = 30
+    }
+
+    #[test]
+    fn test_aggregate_verify_times_zero_bucket() {
+        let rows = vec![
+            BatchVerifyTimeRow { batch_id: 10, seconds_to_verify: 60 },
+            BatchVerifyTimeRow { batch_id: 20, seconds_to_verify: 120 },
+        ];
+        let result = aggregate_verify_times(rows, 0);
+        assert_eq!(result.len(), 2);
+        assert_eq!(result[0].batch_id, 10);
+        assert_eq!(result[0].seconds_to_verify, 60);
     }
 }

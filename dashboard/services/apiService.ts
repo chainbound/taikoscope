@@ -325,6 +325,26 @@ export const fetchProveTimes = async (
   };
 };
 
+export const fetchProveTimesAggregated = async (
+  range: TimeRange,
+): Promise<RequestResult<TimeSeriesData[]>> => {
+  const url = `${API_BASE}/prove-times/aggregated?${timeRangeToQuery(range)}`;
+  const res = await fetchJson<{
+    batches: { batch_id: number; seconds_to_prove: number }[];
+  }>(url);
+  return {
+    data: res.data
+      ? res.data.batches.map((b) => ({
+        name: b.batch_id.toString(),
+        value: b.seconds_to_prove,
+        timestamp: 0,
+      }))
+      : null,
+    badRequest: res.badRequest,
+    error: res.error,
+  };
+};
+
 export const fetchVerifyTimes = async (
   range: TimeRange,
   limit = 50,
@@ -342,6 +362,26 @@ export const fetchVerifyTimes = async (
   } else if (endingBefore !== undefined) {
     url += `&ending_before=${endingBefore}`;
   }
+  const res = await fetchJson<{
+    batches: { batch_id: number; seconds_to_verify: number }[];
+  }>(url);
+  return {
+    data: res.data
+      ? res.data.batches.map((b) => ({
+        name: b.batch_id.toString(),
+        value: b.seconds_to_verify,
+        timestamp: 0,
+      }))
+      : null,
+    badRequest: res.badRequest,
+    error: res.error,
+  };
+};
+
+export const fetchVerifyTimesAggregated = async (
+  range: TimeRange,
+): Promise<RequestResult<TimeSeriesData[]>> => {
+  const url = `${API_BASE}/verify-times/aggregated?${timeRangeToQuery(range)}`;
   const res = await fetchJson<{
     batches: { batch_id: number; seconds_to_verify: number }[];
   }>(url);
