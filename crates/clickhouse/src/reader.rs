@@ -1836,8 +1836,10 @@ impl ClickhouseReader {
                ON bb.batch_id = b.batch_id \
              LEFT JOIN {db}.l1_data_costs dc \
                ON b.batch_id = dc.batch_id AND b.l1_block_number = dc.l1_block_number \
-             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})",
+             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
+               AND {filter}",
             interval = range.interval(),
+            filter = self.reorg_filter("h"),
             db = self.db_name,
         );
         if let Some(addr) = sequencer {
@@ -1887,8 +1889,10 @@ impl ClickhouseReader {
                ON bb.l2_block_number = h.l2_block_number \
              LEFT JOIN {db}.l1_data_costs dc \
                ON b.batch_id = dc.batch_id AND b.l1_block_number = dc.l1_block_number \
-             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})",
+             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
+               AND {filter}",
             interval = range.interval(),
+            filter = self.reorg_filter("h"),
             db = self.db_name,
         );
         if let Some(addr) = proposer {
@@ -1999,9 +2003,11 @@ impl ClickhouseReader {
              LEFT JOIN {db}.verify_costs vc \
                ON b.batch_id = vc.batch_id \
              WHERE l1.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
+               AND {filter} \
              GROUP BY b.proposer_addr \
              ORDER BY priority_fee DESC",
             interval = range.interval(),
+            filter = self.reorg_filter("h"),
             db = self.db_name,
         );
 
@@ -2193,8 +2199,10 @@ impl ClickhouseReader {
                ON h.l2_block_number = bb.l2_block_number \
              INNER JOIN {db}.batches b \
                ON bb.batch_id = b.batch_id \
-             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})",
+             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
+               AND {filter}",
             interval = range.interval(),
+            filter = self.reorg_filter("h"),
             db = self.db_name
         );
         if let Some(addr) = sequencer {
@@ -2227,8 +2235,10 @@ impl ClickhouseReader {
                ON h.l2_block_number = bb.l2_block_number \
              INNER JOIN {db}.batches b \
                ON bb.batch_id = b.batch_id \
-             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})",
+             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
+               AND {filter}",
             interval = range.interval(),
+            filter = self.reorg_filter("h"),
             db = self.db_name
         );
         if let Some(addr) = sequencer {
@@ -2261,8 +2271,10 @@ impl ClickhouseReader {
                ON h.l2_block_number = bb.l2_block_number \
              INNER JOIN {db}.batches b \
                ON bb.batch_id = b.batch_id \
-             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})",
+             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
+               AND {filter}",
             interval = range.interval(),
+            filter = self.reorg_filter("h"),
             db = self.db_name
         );
         if let Some(addr) = sequencer {
