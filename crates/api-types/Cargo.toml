@@ -13,6 +13,7 @@ chrono.workspace = true
 
 serde.workspace = true
 utoipa.workspace = true
+serde_with.workspace = true
 
 [lints]
 workspace = true

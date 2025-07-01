@@ -48,6 +48,7 @@ tower = { version = "0.5.2", features = ["limit"] }
 dashmap = "6.1"
 utoipa = { version = "5.4", features = ["axum_extras"] }
 utoipa-swagger-ui = { version = "8.1", features = ["axum", "vendored"] }
+serde_with = "3.13.0"
 
 [workspace.lints]
 rust.missing_debug_implementations = "warn"

@@ -795,6 +795,7 @@ dependencies = [
  "chrono",
  "clickhouse 0.1.0",
  "serde",
+ "serde_with",
  "utoipa",
 ]
 

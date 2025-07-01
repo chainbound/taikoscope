@@ -15,6 +15,7 @@ use clickhouse_lib::{
 use axum::{Json, http::StatusCode, response::IntoResponse};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use serde_with::{DisplayFromStr, serde_as};
 use utoipa::ToSchema;
 
 /// Error response following a condensed version of RFC 7807.
@@ -187,15 +188,20 @@ pub struct AvgL2TpsResponse {
 }
 
 /// Total L2 fees broken down by component.
+#[serde_as]
 #[derive(Debug, Serialize, ToSchema)]
 pub struct L2FeesResponse {
     /// Sum of priority fees for the range.
+    #[serde_as(as = "Option<DisplayFromStr>")]
     pub priority_fee: Option<u128>,
     /// Sum of base fees for the range.
+    #[serde_as(as = "Option<DisplayFromStr>")]
     pub base_fee: Option<u128>,
     /// Total L1 data posting cost for the range.
+    #[serde_as(as = "Option<DisplayFromStr>")]
     pub l1_data_cost: Option<u128>,
     /// Total proving cost for the range.
+    #[serde_as(as = "Option<DisplayFromStr>")]
     pub prove_cost: Option<u128>,
     /// Fee breakdown for each sequencer.
     pub sequencers: Vec<SequencerFeeRow>,
@@ -265,6 +271,7 @@ pub struct FeeComponentsResponse {
 }
 
 /// Fee components for a batch
+#[serde_as]
 #[derive(Debug, Serialize, ToSchema)]
 pub struct BatchFeeComponentRow {
     /// Batch ID
@@ -274,12 +281,16 @@ pub struct BatchFeeComponentRow {
     /// Sequencer address that proposed the batch
     pub sequencer: String,
     /// Total priority fee for the batch
+    #[serde_as(as = "DisplayFromStr")]
     pub priority_fee: u128,
     /// Total base fee for the batch
+    #[serde_as(as = "DisplayFromStr")]
     pub base_fee: u128,
     /// L1 data posting cost associated with the batch, if available
+    #[serde_as(as = "Option<DisplayFromStr>")]
     pub l1_data_cost: Option<u128>,
     /// Prover cost amortized across batches in the selected range
+    #[serde_as(as = "Option<DisplayFromStr>")]
     pub amortized_prove_cost: Option<u128>,
 }
 
@@ -368,11 +379,13 @@ pub struct BlockProfitsResponse {
 }
 
 /// Aggregated cost attributed to a proposer.
+#[serde_as]
 #[derive(Debug, Serialize, ToSchema)]
 pub struct ProposerCostItem {
     /// Proposer address.
     pub address: String,
     /// Total cost in wei.
+    #[serde_as(as = "DisplayFromStr")]
     pub cost: u128,
 }
 
@@ -384,17 +397,22 @@ pub struct ProposerCostsResponse {
 }
 
 /// Aggregated L2 fees for a sequencer.
+#[serde_as]
 #[derive(Debug, Serialize, ToSchema)]
 pub struct SequencerFeeRow {
     /// Sequencer address.
     pub address: String,
     /// Sum of priority fees for the sequencer.
+    #[serde_as(as = "DisplayFromStr")]
     pub priority_fee: u128,
     /// Sum of base fees for the sequencer.
+    #[serde_as(as = "DisplayFromStr")]
     pub base_fee: u128,
     /// Total L1 data posting cost for the sequencer.
+    #[serde_as(as = "Option<DisplayFromStr>")]
     pub l1_data_cost: Option<u128>,
     /// Total proving cost for the sequencer.
+    #[serde_as(as = "Option<DisplayFromStr>")]
     pub prove_cost: Option<u128>,
 }
 
@@ -450,6 +468,7 @@ pub struct L1HeadBlockResponse {
 }
 
 /// Aggregated data for the main dashboard.
+#[serde_as]
 #[derive(Debug, Serialize, ToSchema)]
 pub struct DashboardDataResponse {
     /// Average delay between L2 blocks in milliseconds.
@@ -475,10 +494,13 @@ pub struct DashboardDataResponse {
     /// Number of the most recent L1 block.
     pub l1_head_block: Option<u64>,
     /// Sum of priority fees for the range.
+    #[serde_as(as = "Option<DisplayFromStr>")]
     pub priority_fee: Option<u128>,
     /// Sum of base fees for the range.
+    #[serde_as(as = "Option<DisplayFromStr>")]
     pub base_fee: Option<u128>,
     /// Total prover cost for the range.
+    #[serde_as(as = "Option<DisplayFromStr>")]
     pub prove_cost: Option<u128>,
     /// Estimated infrastructure cost in USD for the requested range.
     pub cloud_cost: Option<f64>,
