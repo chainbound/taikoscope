@@ -1054,7 +1054,8 @@ impl ClickhouseReader {
                 ON vb.l1_block_number = l1_verified.l1_block_number \
              WHERE l1_verified.block_ts >= (toUInt64(now()) - {}) \
                AND l1_verified.block_ts > l1_proved.block_ts \
-               AND (l1_verified.block_ts - l1_proved.block_ts) > 60",
+               AND (l1_verified.block_ts - l1_proved.block_ts) > 60 \
+               AND pb.batch_id != 0",
             range.seconds(),
             db = self.db_name
         );
@@ -1256,6 +1257,7 @@ impl ClickhouseReader {
             "SELECT batch_id, toUInt64(prove_time_ms / 1000) AS seconds_to_prove \
              FROM {db}.batch_prove_times_mv \
              WHERE proved_at >= now64() - INTERVAL {interval} \
+               AND batch_id != 0 \
              ORDER BY batch_id ASC",
             interval = range.interval(),
             db = self.db_name,
@@ -1276,6 +1278,7 @@ impl ClickhouseReader {
              JOIN {db}.l1_head_events l1_proved \
                ON pb.l1_block_number = l1_proved.l1_block_number \
              WHERE l1_proved.block_ts >= (toUInt64(now()) - {secs}) \
+               AND b.batch_id != 0 \
              ORDER BY b.batch_id ASC",
             secs = range.seconds(),
             db = self.db_name,
@@ -1292,6 +1295,7 @@ impl ClickhouseReader {
              FROM {db}.batch_verify_times_mv \
              WHERE verified_at >= now64() - INTERVAL {interval} \
                AND verify_time_ms > 60000 \
+               AND batch_id != 0 \
              ORDER BY batch_id ASC",
             interval = range.interval(),
             db = self.db_name,
@@ -1312,12 +1316,12 @@ impl ClickhouseReader {
                 ON pb.l1_block_number = l1_proved.l1_block_number \
              INNER JOIN {db}.l1_head_events l1_verified \
                 ON vb.l1_block_number = l1_verified.l1_block_number \
-             WHERE l1_verified.block_ts >= (toUInt64(now()) - {secs}) \
+             WHERE l1_verified.block_ts >= (toUInt64(now()) - {}) \
                AND l1_verified.block_ts > l1_proved.block_ts \
                AND (l1_verified.block_ts - l1_proved.block_ts) > 60 \
-             ORDER BY pb.batch_id ASC",
-            secs = range.seconds(),
-            db = self.db_name,
+               AND pb.batch_id != 0",
+            range.seconds(),
+            db = self.db_name
         );
 
         let rows = self.execute::<BatchVerifyTimeRow>(&fallback_query).await?;
