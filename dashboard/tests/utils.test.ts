@@ -26,8 +26,8 @@ describe('utils', () => {
     expect(formatDecimal(12.345)).toBe('12.3');
 
     expect(formatSeconds(30)).toBe('30.0s');
-    expect(formatSeconds(150)).toBe('2.5m');
-    expect(formatSeconds(7200)).toBe('2h');
+    expect(formatSeconds(150)).toBe('2:30m');
+    expect(formatSeconds(7200)).toBe('2:00h');
     expect(formatHoursMinutes(9000)).toBe('2:30');
 
     expect(formatInterval(30, false, false)).toBe('30 seconds');
@@ -166,8 +166,8 @@ describe('utils', () => {
       setItem: (k: string, v: string) => {
         store[k] = v;
       },
-      removeItem: () => {},
-      clear: () => {},
+      removeItem: () => { },
+      clear: () => { },
       key: () => null,
       length: 0,
     } as Storage;
