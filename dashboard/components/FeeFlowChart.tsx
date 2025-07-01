@@ -128,6 +128,7 @@ const SankeyLink = (props: any) => {
   const safeTargetX = isNaN(targetX) ? 0 : targetX;
   const safeTargetY = isNaN(targetY) ? 0 : targetY;
   const safeTargetControlX = isNaN(targetControlX) ? 0 : targetControlX;
+  // Use the link width provided by Recharts without overriding
   const safeLinkWidth = isNaN(linkWidth) ? 0 : linkWidth;
 
   const isCost =
@@ -159,7 +160,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
   cloudCost,
   proverCost,
   address,
-  height = 320,
+  height = 480,
 }) => {
   const { theme } = useTheme();
   const textColor =
@@ -628,7 +629,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
         <Sankey
           data={data}
           node={NodeComponent}
-          nodePadding={10}
+          nodePadding={30}
           nodeWidth={10}
           margin={{ top: 10, right: 120, bottom: 10, left: 10 }}
           sort={false}
