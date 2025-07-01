@@ -86,7 +86,7 @@ export const formatDecimal = (
 };
 
 export const formatMinutesSeconds = (seconds: number): string => {
-  const secs = Math.round(seconds);
+  const secs = Math.floor(seconds);
   const mins = Math.floor(secs / 60);
   const rem = secs % 60;
   return `${mins}:${rem.toString().padStart(2, '0')}m`;
