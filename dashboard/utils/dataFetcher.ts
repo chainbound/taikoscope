@@ -3,7 +3,6 @@ import { getSequencerAddress } from '../sequencerConfig';
 import { normalizeTimeRange } from './timeRange';
 import {
   fetchDashboardData,
-  fetchProveTimes,
   fetchProveTimesAggregated,
   fetchVerifyTimesAggregated,
   fetchL2BlockTimesAggregated,

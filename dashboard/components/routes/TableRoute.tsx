@@ -127,10 +127,17 @@ export const TableRoute: React.FC = () => {
 
         let res;
         let aggRes;
-        if (tableType === 'reorgs') {
-          [res] = await Promise.all([
-            config.fetcher(range, PAGE_LIMIT, startingAfter, endingBefore),
-          ]);
+        if (tableType === 'reorgs' || tableType === 'prove-times' || tableType === 'verify-times') {
+          if (config.aggregatedFetcher) {
+            [res, aggRes] = await Promise.all([
+              config.fetcher(range, PAGE_LIMIT, startingAfter, endingBefore),
+              config.aggregatedFetcher(range),
+            ]);
+          } else {
+            [res] = await Promise.all([
+              config.fetcher(range, PAGE_LIMIT, startingAfter, endingBefore),
+            ]);
+          }
         } else if (config.supportsPagination) {
           const address = fetcherArgs.pop();
           if (config.aggregatedFetcher) {

@@ -374,7 +374,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
         value: `${Math.round(Number(d.value) / 60)} minutes`,
       })),
     urlKey: 'prove-times',
-    reverseOrder: true,
+    reverseOrder: false,
     supportsPagination: true,
   },
 
@@ -394,7 +394,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
         value: `${Math.round(Number(d.value) / 60)} minutes`,
       })),
     urlKey: 'verify-times',
-    reverseOrder: true,
+    reverseOrder: false,
     supportsPagination: true,
   },
 
