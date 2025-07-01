@@ -85,12 +85,19 @@ export const formatDecimal = (
   return result;
 };
 
+export const formatMinutesSeconds = (seconds: number): string => {
+  const secs = Math.floor(seconds);
+  const mins = Math.floor(secs / 60);
+  const rem = secs % 60;
+  return `${mins}:${rem.toString().padStart(2, '0')}m`;
+};
+
 export const formatSeconds = (seconds: number): string => {
   if (seconds >= 120 * 60) {
-    return `${Number(formatDecimal(seconds / 3600))}h`;
+    return formatHoursMinutes(seconds) + 'h';
   }
   if (seconds >= 120) {
-    return `${Number(formatDecimal(seconds / 60))}m`;
+    return formatMinutesSeconds(seconds);
   }
   return `${formatDecimal(seconds)}s`;
 };

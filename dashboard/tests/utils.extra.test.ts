@@ -18,8 +18,8 @@ describe('extra utils', () => {
     it.each([
       [0, '0.00s'],
       [119, '119.0s'],
-      [120, '2m'],
-      [7200, '2h'],
+      [120, '2:00m'],
+      [7200, '2:00h'],
     ])('formats %p seconds to %p', (input, expected) => {
       expect(formatSeconds(input)).toBe(expected);
     });
