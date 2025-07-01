@@ -150,7 +150,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     : ['Network Performance', 'Network Health', 'Sequencers', 'Other'];
 
   const skeletonGroupCounts: Record<string, number> = isEconomicsView
-    ? { 'Network Economics': 3 }
+    ? { 'Network Economics': 6 }
     : {
       'Network Performance': 3,
       'Network Health': 5,
