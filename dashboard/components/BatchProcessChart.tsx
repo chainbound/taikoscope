@@ -12,9 +12,9 @@ import { useIsMobile } from '../hooks/useIsMobile';
 import { TimeSeriesData } from '../types';
 import {
   formatDecimal,
-  formatBatchDuration,
   computeBatchDurationFlags,
   formatHoursMinutes,
+  formatSeconds,
 } from '../utils';
 
 interface BatchProcessChartProps {
@@ -36,8 +36,7 @@ const BatchProcessChartComponent: React.FC<BatchProcessChartProps> = ({
   }
 
   const { showHours, showMinutes } = computeBatchDurationFlags(data);
-  const formatValue = (value: number) =>
-    formatBatchDuration(value, showHours, showMinutes);
+  const formatValue = (value: number) => formatSeconds(value);
 
   return (
     <ResponsiveContainer width="100%" height="100%">

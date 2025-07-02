@@ -14,7 +14,7 @@ import { useIsMobile } from '../hooks/useIsMobile';
 import { TimeSeriesData } from '../types';
 import {
   formatDecimal,
-  formatInterval,
+  formatSeconds,
   computeIntervalFlags,
   formatDateTime,
   formatHoursMinutes,
@@ -95,11 +95,7 @@ const BlockTimeChartComponent: React.FC<BlockTimeChartProps> = ({
             return `Block ${label.toLocaleString()} (${timeStr})`;
           }}
           formatter={(value: number) => [
-            formatInterval(
-              seconds ? value : value / 1000,
-              showHours,
-              showMinutes,
-            ),
+            formatSeconds(seconds ? value : value / 1000),
           ]}
           contentStyle={{
             backgroundColor: 'rgba(255, 255, 255, 0.8)',

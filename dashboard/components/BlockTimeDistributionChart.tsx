@@ -9,7 +9,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { TimeSeriesData } from '../types';
-import { formatInterval, shouldShowMinutes } from '../utils';
+import { formatInterval, formatSeconds, shouldShowMinutes } from '../utils';
 
 // Constants for histogram configuration
 const MIN_BIN_COUNT = 5;
@@ -125,7 +125,7 @@ const BlockTimeDistributionChartComponent: React.FC<
         />
         <Tooltip
           labelFormatter={(label: number) =>
-            formatInterval(label, false, showMinutes)
+            formatSeconds(label)
           }
           formatter={(value: number) => [value.toLocaleString(), 'blocks']}
           contentStyle={{
