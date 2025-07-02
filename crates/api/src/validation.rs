@@ -171,7 +171,21 @@ pub fn validate_block_range(params: &BlockRangeParams) -> Result<(), ErrorRespon
         ));
     }
 
-    let lower_bound = params.block_gt.map(|v| v + 1).or(params.block_gte);
+    let lower_bound = if let Some(gt) = params.block_gt {
+        match gt.checked_add(1) {
+            Some(v) => Some(v),
+            None => {
+                return Err(ErrorResponse::new(
+                    "invalid-params",
+                    "Bad Request",
+                    StatusCode::BAD_REQUEST,
+                    "block[gt] value is too large",
+                ))
+            }
+        }
+    } else {
+        params.block_gte
+    };
     let upper_bound = params.block_lt.or(params.block_lte);
 
     if let (Some(lower), Some(upper)) = (lower_bound, upper_bound) {
@@ -606,6 +620,21 @@ mod tests {
             block_lte: None,
         };
         assert!(has_block_range_params(&with_gt));
+    }
+
+    #[test]
+    fn test_block_range_validation_block_gt_overflow() {
+        let params = BlockRangeParams {
+            block_gt: Some(u64::MAX),
+            block_gte: None,
+            block_lt: None,
+            block_lte: None,
+        };
+
+        let result = validate_block_range(&params);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.detail.contains("too large"));
     }
 
     #[test]

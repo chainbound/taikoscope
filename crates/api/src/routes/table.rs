@@ -12,6 +12,7 @@ use api_types::*;
 use axum::{
     Json,
     extract::{Query, State},
+    http::StatusCode,
 };
 
 use hex::encode;
@@ -104,7 +105,18 @@ pub async fn l2_tps(
     let has_slot_range = params.starting_after.is_some() || params.ending_before.is_some();
     validate_range_exclusivity(has_block_range, has_slot_range)?;
 
-    let start_block = params.block_range.block_gt.map(|v| v + 1).or(params.block_range.block_gte);
+    let start_block = if let Some(gt) = params.block_range.block_gt {
+        Some(gt.checked_add(1).ok_or_else(|| {
+            ErrorResponse::new(
+                "invalid-params",
+                "Bad Request",
+                StatusCode::BAD_REQUEST,
+                "block[gt] value is too large",
+            )
+        })?)
+    } else {
+        params.block_range.block_gte
+    };
     let end_block = params.block_range.block_lt.or(params.block_range.block_lte);
 
     let mut blocks = match state.client.get_l2_tps_block_range(None, start_block, end_block).await {
@@ -156,7 +168,18 @@ pub async fn l2_block_times(
     let has_slot_range = params.starting_after.is_some() || params.ending_before.is_some();
     validate_range_exclusivity(has_block_range, has_slot_range)?;
 
-    let start_block = params.block_range.block_gt.map(|v| v + 1).or(params.block_range.block_gte);
+    let start_block = if let Some(gt) = params.block_range.block_gt {
+        Some(gt.checked_add(1).ok_or_else(|| {
+            ErrorResponse::new(
+                "invalid-params",
+                "Bad Request",
+                StatusCode::BAD_REQUEST,
+                "block[gt] value is too large",
+            )
+        })?)
+    } else {
+        params.block_range.block_gte
+    };
     let end_block = params.block_range.block_lt.or(params.block_range.block_lte);
 
     let mut rows =
@@ -211,7 +234,18 @@ pub async fn l2_gas_used(
     let has_slot_range = params.starting_after.is_some() || params.ending_before.is_some();
     validate_range_exclusivity(has_block_range, has_slot_range)?;
 
-    let start_block = params.block_range.block_gt.map(|v| v + 1).or(params.block_range.block_gte);
+    let start_block = if let Some(gt) = params.block_range.block_gt {
+        Some(gt.checked_add(1).ok_or_else(|| {
+            ErrorResponse::new(
+                "invalid-params",
+                "Bad Request",
+                StatusCode::BAD_REQUEST,
+                "block[gt] value is too large",
+            )
+        })?)
+    } else {
+        params.block_range.block_gte
+    };
     let end_block = params.block_range.block_lt.or(params.block_range.block_lte);
 
     let mut rows =
@@ -266,7 +300,18 @@ pub async fn block_transactions(
     let has_slot_range = params.starting_after.is_some() || params.ending_before.is_some();
     validate_range_exclusivity(has_block_range, has_slot_range)?;
 
-    let start_block = params.block_range.block_gt.map(|v| v + 1).or(params.block_range.block_gte);
+    let start_block = if let Some(gt) = params.block_range.block_gt {
+        Some(gt.checked_add(1).ok_or_else(|| {
+            ErrorResponse::new(
+                "invalid-params",
+                "Bad Request",
+                StatusCode::BAD_REQUEST,
+                "block[gt] value is too large",
+            )
+        })?)
+    } else {
+        params.block_range.block_gte
+    };
     let end_block = params.block_range.block_lt.or(params.block_range.block_lte);
 
     let mut rows =

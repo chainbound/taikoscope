@@ -357,3 +357,25 @@ async fn block_transactions_endpoint_supports_block_range() {
 
     server.abort();
 }
+
+#[tokio::test]
+async fn block_range_overflow_returns_400() {
+    let mock = Mock::new();
+
+    let url = Url::parse(mock.url()).unwrap();
+    let client =
+        ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+    let (addr, server) = spawn_server(client).await;
+    wait_for_server(addr).await;
+
+    let resp = reqwest::get(format!(
+        "http://{addr}/{API_VERSION}/l2-tps?block[gt]={}",
+        u64::MAX
+    ))
+    .await
+    .unwrap();
+    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+
+    server.abort();
+}
