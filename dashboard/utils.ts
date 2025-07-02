@@ -48,6 +48,22 @@ export const l1BlockLink = (
     text ?? block.toLocaleString(),
   );
 
+export const l1TxLink = (
+  txHash: string,
+  text?: string | number,
+): React.ReactElement =>
+  React.createElement(
+    'a',
+    {
+      href: `${ETHERSCAN_BASE}/tx/${txHash}`,
+      target: '_blank',
+      rel: 'noopener noreferrer',
+      className: 'font-semibold hover:underline',
+      style: { color: TAIKO_PINK },
+    },
+    text ?? txHash,
+  );
+
 export const addressLink = (
   address: string,
   text?: string,

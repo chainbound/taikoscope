@@ -4,7 +4,7 @@ import { fetchBatchFeeComponents } from '../services/apiService';
 import { useEthPrice } from '../services/priceService';
 import { TimeRange } from '../types';
 import { rangeToHours } from '../utils/timeRange';
-import { formatEth, l1BlockLink } from '../utils';
+import { formatEth, l1TxLink } from '../utils';
 import { calculateProfit } from '../utils/profit';
 
 interface BlockProfitTablesProps {
@@ -57,7 +57,7 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
 
     return {
       batch: b.batch,
-      l1Block: b.l1Block,
+      txHash: b.txHash,
       sequencer: b.sequencer,
       profit: profitWei, // Store as wei for consistency
       profitEth, // Store ETH value for sorting and display
@@ -74,7 +74,7 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
   const renderTable = (
     title: string,
     items:
-      | { batch: number; l1Block: number; sequencer: string; profit: number; profitEth: number }[]
+      | { batch: number; txHash: string; sequencer: string; profit: number; profitEth: number }[]
       | null,
   ) => (
     <div>
@@ -95,7 +95,7 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
                 className="border-t border-gray-200 dark:border-gray-700"
               >
                 <td className="px-2 py-1">
-                  {l1BlockLink(b.l1Block ?? 0, b.batch.toLocaleString())}
+                  {l1TxLink(b.txHash, b.batch.toLocaleString())}
                 </td>
                 <td className="px-2 py-1">{b.sequencer}</td>
                 <td

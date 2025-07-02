@@ -62,7 +62,7 @@ export interface FeeComponent {
 
 export interface BatchFeeComponent {
   batch: number;
-  l1Block: number;
+  txHash: string;
   sequencer: string;
   priority: number;
   base: number;

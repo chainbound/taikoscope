@@ -2,6 +2,7 @@ use crate::{
     models::{BatchRow, ForcedInclusionProcessedRow, ProvedBatchRow, VerifiedBatchRow},
     types::{AddressBytes, HashBytes},
 };
+use alloy::primitives::B256;
 use chainio::{ITaikoInbox, taiko::wrapper::ITaikoWrapper};
 use eyre::{Error, Result, eyre};
 use std::convert::TryFrom;
@@ -12,10 +13,11 @@ use std::convert::TryFrom;
 // omit important values.
 
 // Conversion from BatchProposed to BatchRow
-impl TryFrom<&ITaikoInbox::BatchProposed> for BatchRow {
+impl TryFrom<(&ITaikoInbox::BatchProposed, B256)> for BatchRow {
     type Error = Error;
 
-    fn try_from(batch: &ITaikoInbox::BatchProposed) -> Result<Self, Self::Error> {
+    fn try_from(input: (&ITaikoInbox::BatchProposed, B256)) -> Result<Self, Self::Error> {
+        let (batch, tx_hash) = input;
         let batch_size = u16::try_from(batch.info.blocks.len())?;
         let blob_count = u8::try_from(batch.info.blobHashes.len())?;
 
@@ -23,6 +25,7 @@ impl TryFrom<&ITaikoInbox::BatchProposed> for BatchRow {
 
         Ok(Self {
             l1_block_number: batch.info.proposedIn,
+            l1_tx_hash: HashBytes::from(tx_hash),
             batch_id: batch.meta.batchId,
             batch_size,
             last_l2_block_number: batch.info.lastBlockId,
@@ -120,11 +123,12 @@ mod tests {
             ..Default::default()
         };
 
-        let row = BatchRow::try_from(&batch).unwrap();
+        let row = BatchRow::try_from((&batch, B256::ZERO)).unwrap();
         assert_eq!(
             row,
             BatchRow {
                 l1_block_number: 7,
+                l1_tx_hash: HashBytes::from([0u8; 32]),
                 batch_id: 42,
                 batch_size: 2,
                 last_l2_block_number: 105,

@@ -501,7 +501,7 @@ impl Driver {
     async fn handle_batch_proposed(&mut self, batch_data: (BatchProposed, B256)) {
         let (batch, l1_tx_hash) = batch_data;
 
-        if let Err(e) = self.clickhouse.insert_batch(&batch).await {
+        if let Err(e) = self.clickhouse.insert_batch(&batch, l1_tx_hash).await {
             tracing::error!(batch_last_block = ?batch.last_block_number(), err = %e, "Failed to insert batch");
         } else {
             info!(last_block_number = ?batch.last_block_number(), "Inserted batch");
@@ -804,6 +804,7 @@ mod tests {
             rows,
             vec![BatchRow {
                 l1_block_number: 2,
+                l1_tx_hash: HashBytes::from([0u8; 32]),
                 batch_id: 7,
                 batch_size: 1,
                 last_l2_block_number: 100,

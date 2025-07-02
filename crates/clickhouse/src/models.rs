@@ -58,6 +58,8 @@ pub struct L2HeadEvent {
 pub struct BatchRow {
     /// L1 block number
     pub l1_block_number: u64,
+    /// Transaction hash that proposed the batch
+    pub l1_tx_hash: HashBytes,
     /// Batch ID
     pub batch_id: u64,
     /// Batch size
@@ -369,6 +371,8 @@ pub struct BatchFeeComponentRow {
     pub batch_id: u64,
     /// L1 block number that included the batch
     pub l1_block_number: u64,
+    /// Transaction hash that proposed the batch
+    pub l1_tx_hash: HashBytes,
     /// Sequencer address that proposed the batch
     pub sequencer: AddressBytes,
     /// Total priority fee for the batch
@@ -419,6 +423,7 @@ mod tests {
         // Test normal case
         let batch = BatchRow {
             l1_block_number: 1,
+            l1_tx_hash: HashBytes([0u8; 32]),
             batch_id: 1,
             batch_size: 3,
             last_l2_block_number: 5,
@@ -432,6 +437,7 @@ mod tests {
         // Test genesis block case
         let genesis_batch = BatchRow {
             l1_block_number: 1,
+            l1_tx_hash: HashBytes([0u8; 32]),
             batch_id: 1,
             batch_size: 1,
             last_l2_block_number: 0,
@@ -445,6 +451,7 @@ mod tests {
         // Test single block case
         let single_batch = BatchRow {
             l1_block_number: 1,
+            l1_tx_hash: HashBytes([0u8; 32]),
             batch_id: 1,
             batch_size: 1,
             last_l2_block_number: 10,
@@ -458,6 +465,7 @@ mod tests {
         // Test edge case with zero blocks
         let empty_batch = BatchRow {
             l1_block_number: 1,
+            l1_tx_hash: HashBytes([0u8; 32]),
             batch_id: 1,
             batch_size: 0,
             last_l2_block_number: 5,

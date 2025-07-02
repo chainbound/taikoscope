@@ -22,7 +22,7 @@ use crate::{
         PreconfData, ProveCostRow, SequencerBlockRow, SequencerDistributionRow, SequencerFeeRow,
         SlashingEventRow,
     },
-    types::AddressBytes,
+    types::{AddressBytes, HashBytes},
 };
 
 #[derive(Row, Deserialize, Serialize)]
@@ -1869,6 +1869,7 @@ impl ClickhouseReader {
         struct RawRow {
             batch_id: u64,
             l1_block_number: u64,
+            l1_tx_hash: HashBytes,
             proposer: AddressBytes,
             priority_fee: u128,
             base_fee: u128,
@@ -1878,6 +1879,7 @@ impl ClickhouseReader {
         let mut query = format!(
             "SELECT bb.batch_id, \
                     b.l1_block_number AS l1_block_number, \
+                    b.l1_tx_hash AS l1_tx_hash, \
                     b.proposer_addr AS proposer, \
                     sum(h.sum_priority_fee) AS priority_fee, \
                     sum(h.sum_base_fee) AS base_fee, \
@@ -1899,7 +1901,7 @@ impl ClickhouseReader {
             query.push_str(&format!(" AND b.proposer_addr = unhex('{}')", encode(addr)));
         }
         query.push_str(
-            " GROUP BY bb.batch_id, b.l1_block_number, b.proposer_addr ORDER BY bb.batch_id ASC",
+            " GROUP BY bb.batch_id, b.l1_block_number, b.l1_tx_hash, b.proposer_addr ORDER BY bb.batch_id ASC",
         );
 
         let rows = self.execute::<RawRow>(&query).await?;
@@ -1908,6 +1910,7 @@ impl ClickhouseReader {
             .map(|r| BatchFeeComponentRow {
                 batch_id: r.batch_id,
                 l1_block_number: r.l1_block_number,
+                l1_tx_hash: r.l1_tx_hash,
                 sequencer: r.proposer,
                 priority_fee: r.priority_fee,
                 base_fee: r.base_fee,
@@ -2464,6 +2467,7 @@ mod tests {
         mock.add(handlers::provide(vec![BatchFeeRow {
             batch_id: 1,
             l1_block_number: 10,
+            l1_tx_hash: HashBytes([0u8; 32]),
             proposer: addr,
             priority_fee: 10,
             base_fee: 20,
@@ -2570,6 +2574,7 @@ mod tests {
     struct BatchFeeRow {
         batch_id: u64,
         l1_block_number: u64,
+        l1_tx_hash: HashBytes,
         proposer: AddressBytes,
         priority_fee: u128,
         base_fee: u128,
@@ -2582,6 +2587,7 @@ mod tests {
         mock.add(handlers::provide(vec![BatchFeeRow {
             batch_id: 1,
             l1_block_number: 10,
+            l1_tx_hash: HashBytes([0u8; 32]),
             proposer: AddressBytes([1u8; 20]),
             priority_fee: 10,
             base_fee: 20,
@@ -2599,6 +2605,7 @@ mod tests {
             vec![BatchFeeComponentRow {
                 batch_id: 1,
                 l1_block_number: 10,
+                l1_tx_hash: HashBytes([0u8; 32]),
                 sequencer: AddressBytes([1u8; 20]),
                 priority_fee: 10,
                 base_fee: 20,
@@ -2614,6 +2621,7 @@ mod tests {
             mock.add(handlers::provide(vec![BatchFeeRow {
                 batch_id: 1,
                 l1_block_number: 10,
+                l1_tx_hash: HashBytes([0u8; 32]),
                 proposer: AddressBytes([1u8; 20]),
                 priority_fee: 10,
                 base_fee: 20,

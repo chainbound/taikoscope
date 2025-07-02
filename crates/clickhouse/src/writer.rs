@@ -1,7 +1,7 @@
 //! `ClickHouse` writer functionality for taikoscope
 //! Handles database initialization, migrations, and data insertion
 
-use alloy::primitives::{Address, BlockNumber};
+use alloy::primitives::{Address, B256, BlockNumber};
 use clickhouse::Client;
 use derive_more::Debug;
 use eyre::{Context, Result};
@@ -398,9 +398,13 @@ impl ClickhouseWriter {
     }
 
     /// Insert a batch and its block mappings
-    pub async fn insert_batch(&self, batch: &chainio::ITaikoInbox::BatchProposed) -> Result<()> {
+    pub async fn insert_batch(
+        &self,
+        batch: &chainio::ITaikoInbox::BatchProposed,
+        l1_tx_hash: B256,
+    ) -> Result<()> {
         let client = self.base.clone();
-        let batch_row = BatchRow::try_from(batch)?;
+        let batch_row = BatchRow::try_from((batch, l1_tx_hash))?;
 
         // Insert the batch
         let mut insert = client.insert(&format!("{}.batches", self.db_name))?;
@@ -631,11 +635,12 @@ mod tests {
             ..Default::default()
         };
 
-        writer.insert_batch(&batch).await.unwrap();
+        writer.insert_batch(&batch, B256::ZERO).await.unwrap();
 
         let rows: Vec<BatchRow> = ctl.collect().await;
         let expected = BatchRow {
             l1_block_number: 2,
+            l1_tx_hash: HashBytes::from([0u8; 32]),
             batch_id: 7,
             batch_size: 1,
             last_l2_block_number: 100,
@@ -884,7 +889,7 @@ mod tests {
             ..Default::default()
         };
 
-        let result = writer.insert_batch(&batch).await;
+        let result = writer.insert_batch(&batch, B256::ZERO).await;
         assert!(result.is_err());
     }
 
