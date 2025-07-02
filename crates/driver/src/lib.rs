@@ -508,41 +508,24 @@ impl Driver {
         }
         self.last_proposed_l2_block = batch.last_block_number();
 
-        // Skip L1 data cost calculation for zero hash (test scenarios)
-        if l1_tx_hash.is_zero() {
-            tracing::debug!("Skipping L1 data cost calculation for zero transaction hash");
-            return;
-        }
-
-        // Calculate L1 data cost from the transaction that proposed this batch
-        match self.extractor.get_receipt(l1_tx_hash).await {
-            Ok(receipt) => {
-                let cost = primitives::l1_data_cost::cost_from_receipt(&receipt);
-                if let Err(e) = self
-                    .clickhouse
-                    .insert_l1_data_cost(batch.info.proposedIn, batch.meta.batchId, cost)
-                    .await
-                {
-                    tracing::error!(
-                        l1_block_number = batch.info.proposedIn,
-                        tx_hash = ?l1_tx_hash,
-                        err = %e,
-                        "Failed to insert L1 data cost"
-                    );
-                } else {
-                    info!(
-                        l1_block_number = batch.info.proposedIn,
-                        tx_hash = ?l1_tx_hash,
-                        cost,
-                        "Inserted L1 data cost"
-                    );
-                }
-            }
-            Err(e) => {
+        if let Some(cost) = self.fetch_transaction_cost(l1_tx_hash).await {
+            if let Err(e) = self
+                .clickhouse
+                .insert_l1_data_cost(batch.info.proposedIn, batch.meta.batchId, cost)
+                .await
+            {
                 tracing::error!(
+                    l1_block_number = batch.info.proposedIn,
                     tx_hash = ?l1_tx_hash,
                     err = %e,
-                    "Failed to fetch receipt for batch proposal transaction"
+                    "Failed to insert L1 data cost"
+                );
+            } else {
+                info!(
+                    l1_block_number = batch.info.proposedIn,
+                    tx_hash = ?l1_tx_hash,
+                    cost,
+                    "Inserted L1 data cost"
                 );
             }
         }
@@ -570,46 +553,31 @@ impl Driver {
             info!(batch_ids = ?proved.batch_ids_proved(), "Inserted proved batch");
         }
 
-        if tx_hash.is_zero() {
-            tracing::debug!("Skipping prove cost calculation for zero transaction hash");
-            return;
-        }
-
-        match self.extractor.get_receipt(tx_hash).await {
-            Ok(receipt) => {
-                let cost = primitives::l1_data_cost::cost_from_receipt(&receipt);
-                let cost_per_batch =
-                    Self::calculate_cost_per_batch(cost, proved.batch_ids_proved().len());
-                for batch_id in proved.batch_ids_proved() {
-                    if let Err(e) = self
-                        .clickhouse
-                        .insert_prove_cost(l1_block_number, *batch_id, cost_per_batch)
-                        .await
-                    {
-                        tracing::error!(
-                            l1_block_number,
-                            batch_id,
-                            tx_hash = ?tx_hash,
-                            err = %e,
-                            "Failed to insert prove cost"
-                        );
-                    } else {
-                        info!(
-                            l1_block_number,
-                            batch_id,
-                            tx_hash = ?tx_hash,
-                            cost = cost_per_batch,
-                            "Inserted prove cost"
-                        );
-                    }
+        if let Some(cost) = self.fetch_transaction_cost(tx_hash).await {
+            let cost_per_batch =
+                Self::average_cost_per_batch(cost, proved.batch_ids_proved().len());
+            for batch_id in proved.batch_ids_proved() {
+                if let Err(e) = self
+                    .clickhouse
+                    .insert_prove_cost(l1_block_number, *batch_id, cost_per_batch)
+                    .await
+                {
+                    tracing::error!(
+                        l1_block_number,
+                        batch_id,
+                        tx_hash = ?tx_hash,
+                        err = %e,
+                        "Failed to insert prove cost"
+                    );
+                } else {
+                    info!(
+                        l1_block_number,
+                        batch_id,
+                        tx_hash = ?tx_hash,
+                        cost = cost_per_batch,
+                        "Inserted prove cost"
+                    );
                 }
-            }
-            Err(e) => {
-                tracing::error!(
-                    tx_hash = ?tx_hash,
-                    err = %e,
-                    "Failed to fetch receipt for batch prove transaction"
-                );
             }
         }
     }
@@ -623,47 +591,45 @@ impl Driver {
             info!(batch_id = ?verified.batch_id, "Inserted verified batch");
         }
 
-        if tx_hash.is_zero() {
-            tracing::debug!("Skipping verify cost calculation for zero transaction hash");
-            return;
-        }
-
-        match self.extractor.get_receipt(tx_hash).await {
-            Ok(receipt) => {
-                let cost = primitives::l1_data_cost::cost_from_receipt(&receipt);
-                if let Err(e) = self
-                    .clickhouse
-                    .insert_verify_cost(l1_block_number, verified.batch_id, cost)
-                    .await
-                {
-                    tracing::error!(
-                        l1_block_number,
-                        batch_id = ?verified.batch_id,
-                        tx_hash = ?tx_hash,
-                        err = %e,
-                        "Failed to insert verify cost"
-                    );
-                } else {
-                    info!(
-                        l1_block_number,
-                        batch_id = ?verified.batch_id,
-                        tx_hash = ?tx_hash,
-                        cost,
-                        "Inserted verify cost"
-                    );
-                }
-            }
-            Err(e) => {
+        if let Some(cost) = self.fetch_transaction_cost(tx_hash).await {
+            if let Err(e) =
+                self.clickhouse.insert_verify_cost(l1_block_number, verified.batch_id, cost).await
+            {
                 tracing::error!(
+                    l1_block_number,
+                    batch_id = ?verified.batch_id,
                     tx_hash = ?tx_hash,
                     err = %e,
-                    "Failed to fetch receipt for batch verify transaction"
+                    "Failed to insert verify cost"
+                );
+            } else {
+                info!(
+                    l1_block_number,
+                    batch_id = ?verified.batch_id,
+                    tx_hash = ?tx_hash,
+                    cost,
+                    "Inserted verify cost"
                 );
             }
         }
     }
 
-    const fn calculate_cost_per_batch(total_cost: u128, num_batches: usize) -> u128 {
+    async fn fetch_transaction_cost(&self, tx_hash: B256) -> Option<u128> {
+        if tx_hash.is_zero() {
+            tracing::debug!("Skipping cost calculation for zero transaction hash");
+            return None;
+        }
+
+        match self.extractor.get_receipt(tx_hash).await {
+            Ok(receipt) => Some(primitives::l1_data_cost::cost_from_receipt(&receipt)),
+            Err(e) => {
+                tracing::error!(tx_hash = ?tx_hash, err = %e, "Failed to fetch receipt");
+                None
+            }
+        }
+    }
+
+    const fn average_cost_per_batch(total_cost: u128, num_batches: usize) -> u128 {
         if num_batches == 0 { 0 } else { total_cost / num_batches as u128 }
     }
 }
@@ -930,14 +896,14 @@ mod tests {
     }
 
     #[test]
-    fn calculate_cost_per_batch_even_split() {
-        let cost = Driver::calculate_cost_per_batch(100, 4);
+    fn average_cost_per_batch_even_split() {
+        let cost = Driver::average_cost_per_batch(100, 4);
         assert_eq!(cost, 25);
     }
 
     #[test]
-    fn calculate_cost_per_batch_rounds_down() {
-        let cost = Driver::calculate_cost_per_batch(10, 3);
+    fn average_cost_per_batch_rounds_down() {
+        let cost = Driver::average_cost_per_batch(10, 3);
         assert_eq!(cost, 3);
     }
 }
