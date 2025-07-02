@@ -59,6 +59,16 @@ const fetchJson = async <T>(
       clearTimeout(id);
       if (!res.ok) {
         if (res.status === 429) {
+          const retryAfterHeader =
+            res.headers.get('retry-after') ?? res.headers.get('RETRY_AFTER');
+          if (retryAfterHeader) {
+            const retrySecs = parseFloat(retryAfterHeader);
+            if (!Number.isNaN(retrySecs) && retrySecs > 0) {
+              showToast(`Too many requests, retrying in ${retrySecs}s.`);
+              await wait(retrySecs * 1000);
+              continue;
+            }
+          }
           showToast('Too many requests, please slow down.');
         } else if (res.status >= 500) {
           showToast('Server error, please try again later.');
