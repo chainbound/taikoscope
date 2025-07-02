@@ -106,8 +106,7 @@ async fn batch_fee_components_filters_unverified() {
                     "priority_fee": 10,
                     "base_fee": 20,
                     "l1_data_cost": 5,
-                    "amortized_prove_cost": null,
-                    "amortized_verify_cost": null
+                    "amortized_prove_cost": null
                 }
             ]
         })
@@ -485,8 +484,7 @@ async fn batch_fee_components_integration() {
                     "priority_fee": 10,
                     "base_fee": 20,
                     "l1_data_cost": 5,
-                    "amortized_prove_cost": null,
-                    "amortized_verify_cost": null
+                    "amortized_prove_cost": null
                 }
             ]
         })
