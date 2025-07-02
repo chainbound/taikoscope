@@ -185,4 +185,36 @@ describe('apiService', () => {
     expect(spy).toHaveBeenCalled();
     spy.mockRestore();
   });
+
+  it('waits when Retry-After header is provided', async () => {
+    vi.useFakeTimers();
+    let attempts = 0;
+    const spy = vi.spyOn(toast, 'showToast').mockImplementation(() => { });
+    globalThis.fetch = vi.fn(async () => {
+      attempts += 1;
+      if (attempts === 1) {
+        return {
+          ok: false,
+          status: 429,
+          headers: new Headers({ 'Retry-After': '2' }),
+          json: async () => ({}),
+        } as Response;
+      }
+      return {
+        ok: true,
+        status: 200,
+        headers: new Headers(),
+        json: async () => ({ avg_prove_time_ms: 7 }),
+      } as Response;
+    });
+
+    const promise = fetchAvgProveTime('1h');
+    await vi.advanceTimersByTimeAsync(2000);
+    const res = await promise;
+    expect(res.data).toBe(7);
+    expect(attempts).toBe(2);
+    expect(spy).toHaveBeenCalledWith('Too many requests, retrying in 2s.');
+    spy.mockRestore();
+    vi.useRealTimers();
+  });
 });
