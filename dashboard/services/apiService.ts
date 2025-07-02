@@ -851,7 +851,6 @@ export interface FeeComponent {
 
 export interface BatchFeeComponent {
   batch: number;
-  l1Block: number;
   txHash: string;
   sequencer: string;
   priority: number;
@@ -913,7 +912,6 @@ export const fetchBatchFeeComponents = async (
     data: res.data
       ? res.data.batches.map((b) => ({
         batch: b.batch_id,
-        l1Block: b.l1_block_number,
         txHash: b.l1_tx_hash,
         sequencer: getSequencerName(b.sequencer),
         priority: b.priority_fee,
