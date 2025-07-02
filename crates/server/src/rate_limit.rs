@@ -18,11 +18,12 @@ use runtime::rate_limiter::RateLimiter;
 #[derive(Clone, Debug)]
 pub(super) struct RateLimitLayer {
     limiter: RateLimiter,
+    period: Duration,
 }
 
 impl RateLimitLayer {
     pub fn new(max: u64, period: Duration) -> Self {
-        Self { limiter: RateLimiter::new(max, period) }
+        Self { limiter: RateLimiter::new(max, period), period }
     }
 }
 
@@ -30,7 +31,7 @@ impl<S> Layer<S> for RateLimitLayer {
     type Service = RateLimit<S>;
 
     fn layer(&self, inner: S) -> Self::Service {
-        RateLimit { inner, limiter: self.limiter.clone() }
+        RateLimit { inner, limiter: self.limiter.clone(), period: self.period }
     }
 }
 
@@ -38,6 +39,7 @@ impl<S> Layer<S> for RateLimitLayer {
 pub(super) struct RateLimit<S> {
     inner: S,
     limiter: RateLimiter,
+    period: Duration,
 }
 
 impl<S, ReqBody> Service<Request<ReqBody>> for RateLimit<S>
@@ -60,9 +62,38 @@ where
         } else {
             let resp = Response::builder()
                 .status(StatusCode::TOO_MANY_REQUESTS)
+                .header(axum::http::header::RETRY_AFTER, self.period.as_secs().to_string())
                 .body(Body::empty())
                 .unwrap();
             Box::pin(std::future::ready(Ok(resp)))
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::RateLimitLayer;
+    use axum::{
+        body::Body,
+        http::{Request, StatusCode},
+        response::Response,
+    };
+    use std::{convert::Infallible, time::Duration};
+    use tower::{Layer, Service, ServiceExt, service_fn};
+
+    #[tokio::test]
+    async fn sets_retry_after_header() {
+        let layer = RateLimitLayer::new(1, Duration::from_secs(30));
+        let inner = service_fn(|_req: Request<Body>| async move {
+            Ok::<_, Infallible>(Response::new(Body::empty()))
+        });
+        let mut svc = layer.layer(inner);
+
+        let _ = svc.ready().await.unwrap().call(Request::new(Body::empty())).await.unwrap();
+        let resp = svc.ready().await.unwrap().call(Request::new(Body::empty())).await.unwrap();
+
+        assert_eq!(resp.status(), StatusCode::TOO_MANY_REQUESTS);
+        let retry = resp.headers().get(axum::http::header::RETRY_AFTER).unwrap();
+        assert_eq!(retry.to_str().unwrap(), "30");
     }
 }
