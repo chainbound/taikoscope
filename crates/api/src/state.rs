@@ -24,6 +24,7 @@ pub const MAX_TABLE_LIMIT: u64 = 50000;
 #[derive(Clone)]
 pub struct ApiState {
     pub(crate) client: ClickhouseReader,
+    pub(crate) http_client: Client,
     max_requests: u64,
     rate_period: StdDuration,
     price_cache: Arc<Mutex<CachedPrice>>,
@@ -46,6 +47,7 @@ impl ApiState {
     pub fn new(client: ClickhouseReader, max_requests: u64, rate_period: StdDuration) -> Self {
         Self {
             client,
+            http_client: Client::new(),
             max_requests,
             rate_period,
             price_cache: Arc::new(Mutex::new(CachedPrice {
@@ -75,18 +77,17 @@ impl ApiState {
             }
         }
 
-        let price = fetch_eth_price().await?;
+        let price = fetch_eth_price(&self.http_client).await?;
         let mut cache = self.price_cache.lock().expect("lock poisoned");
         *cache = CachedPrice { value: price, updated_at: now };
         Ok(price)
     }
 }
 
-async fn fetch_eth_price() -> eyre::Result<f64> {
+async fn fetch_eth_price(client: &Client) -> eyre::Result<f64> {
     let url = std::env::var("ETH_PRICE_URL").unwrap_or_else(|_| {
         "https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd".to_owned()
     });
-    let client = Client::new();
     let price = http_retry::retry_op(|| async {
         let resp = client.get(&url).send().await?;
         let resp = resp.error_for_status()?;
