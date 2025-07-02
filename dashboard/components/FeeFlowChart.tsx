@@ -63,6 +63,8 @@ const createSankeyNode = (
       label = `${addressLabel} Profit`;
     } else if (payload.revenueNode && addressLabel) {
       label = `${addressLabel} Revenue`;
+    } else if (payload.subsidyNode && addressLabel) {
+      label = `${addressLabel} Subsidy`;
     }
 
     return (
@@ -412,6 +414,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
       0,
     );
     const totalSubsidy = seqData.reduce((acc, s) => acc + s.subsidyUsd, 0);
+    const totalSubsidyWei = seqData.reduce((acc, s) => acc + s.subsidyWei, 0);
     const totalActualProveCost = seqData.reduce(
       (acc, s) => acc + s.actualProveCost,
       0,
@@ -419,9 +422,10 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
 
     const totalL1Cost = totalActualL1Cost + totalSubsidy;
 
-    // Build Sankey data with one node per sequencer
-    const subsidyStartIndex = 0;
-    const priorityIndex = subsidyStartIndex + seqData.length;
+    // Build Sankey data with Total Subsidy node and individual subsidy nodes per sequencer
+    const totalSubsidyIndex = 0;
+    const individualSubsidyStartIndex = 1;
+    const priorityIndex = individualSubsidyStartIndex + seqData.length;
     const baseFeeIndex = priorityIndex + 1;
     const baseIndex = baseFeeIndex + 1; // first sequencer node index
     const hardwareIndex = baseIndex + seqData.length;
@@ -430,13 +434,23 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     let daoIndex = profitStartIndex + seqData.length;
 
     nodes = [
+      // Total Subsidy node at index 0
+      {
+        name: 'Total Subsidy',
+        value: totalSubsidy,
+        wei: totalSubsidyWei,
+        usd: true
+      },
+      // Individual subsidy nodes (indices 1 to seqData.length)
       ...seqData.map((s) => ({
         // use a unique name per sequencer so nodes don't get aggregated
         name: `${s.shortAddress} Subsidy`,
         address: s.address,
-        addressLabel: `${s.shortAddress} Subsidy`,
+        addressLabel: s.shortAddress,
         value: s.subsidyUsd,
+        wei: s.subsidyWei,
         usd: true,
+        subsidyNode: true,
       })),
       { name: 'Priority Fee', value: priorityFeeUsd, wei: priorityFee ?? 0 },
       { name: 'Base Fee', value: baseFeeUsd, wei: baseFee ?? 0 },
@@ -472,32 +486,45 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     daoIndex += (l1ProveCost > 0 ? 1 : 0);
 
     links = [
+      // Total Subsidy → Individual Subsidy nodes
+      ...seqData.map((s, i) => ({
+        source: totalSubsidyIndex,
+        target: individualSubsidyStartIndex + i,
+        value: s.subsidyUsd,
+      })),
+      // Priority Fee → Sequencer Revenue nodes
       ...seqData.map((s, i) => ({
         source: priorityIndex,
         target: baseIndex + i,
         value: s.priorityUsd,
       })),
+      // Base Fee → Sequencer Revenue nodes
       ...seqData.map((s, i) => ({
         source: baseFeeIndex,
         target: baseIndex + i,
         value: s.baseUsd,
       })),
+      // Base Fee → Taiko DAO
       { source: baseFeeIndex, target: daoIndex, value: baseFeeDaoUsd },
+      // Sequencer Revenue → Hardware Cost
       ...seqData.map((s, i) => ({
         source: baseIndex + i,
         target: hardwareIndex,
         value: s.actualHardwareCost,
       })),
+      // Sequencer Revenue → Propose Batch Cost
       ...seqData.map((s, i) => ({
         source: baseIndex + i,
         target: l1Index,
         value: s.actualL1Cost,
       })),
+      // Individual Subsidy → Propose Batch Cost
       ...seqData.map((s, i) => ({
-        source: subsidyStartIndex + i,
+        source: individualSubsidyStartIndex + i,
         target: l1Index,
         value: s.subsidyUsd,
       })),
+      // Sequencer Revenue → Profit
       ...seqData.map((s, i) => ({
         source: baseIndex + i,
         target: profitStartIndex + i,
@@ -615,6 +642,9 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
       }
       if (itemData.revenueNode && itemData.addressLabel) {
         return `${itemData.addressLabel} Revenue`;
+      }
+      if (itemData.subsidyNode && itemData.addressLabel) {
+        return `${itemData.addressLabel} Subsidy`;
       }
       return itemData.addressLabel ?? itemData.address ?? itemData.name;
     })();
