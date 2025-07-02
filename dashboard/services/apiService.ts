@@ -63,7 +63,7 @@ const fetchJson = async <T>(
             res.headers.get('retry-after') ?? res.headers.get('RETRY_AFTER');
           if (retryAfterHeader) {
             const retrySecs = parseFloat(retryAfterHeader);
-            if (!Number.isNaN(retrySecs) && retrySecs > 0) {
+            if (!Number.isNaN(retrySecs) && retrySecs > 0 && attempt < retries) {
               showToast(`Too many requests, retrying in ${retrySecs}s.`);
               await wait(retrySecs * 1000);
               continue;
