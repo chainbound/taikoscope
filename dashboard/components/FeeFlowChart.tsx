@@ -442,45 +442,33 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
 
     const totalL1Cost = totalActualL1Cost + totalSubsidy;
 
-    // Build Sankey data with Total Subsidy node and individual subsidy nodes per sequencer
+    // Build Sankey data with Subsidy node and combined sequencer nodes
     const totalSubsidyIndex = 0;
-    const individualSubsidyStartIndex = 1;
-    const priorityIndex = individualSubsidyStartIndex + seqData.length;
-    const baseFeeIndex = priorityIndex + 1;
-    const baseIndex = baseFeeIndex + 1; // first sequencer node index
-    const hardwareIndex = baseIndex + seqData.length;
+    const priorityIndex = 1;
+    const baseFeeIndex = 2;
+    const sequencerStartIndex = 3; // first sequencer node index
+    const hardwareIndex = sequencerStartIndex + seqData.length;
     const l1Index = hardwareIndex + 1;
     let profitStartIndex = l1Index + 1;
     let daoIndex = profitStartIndex + seqData.length;
 
     nodes = [
-      // Total Subsidy node at index 0
+      // Subsidy node at index 0
       {
-        name: 'Total Subsidy',
+        name: 'Subsidy',
         value: totalSubsidy,
         wei: totalSubsidyWei,
         usd: true
       },
-      // Individual subsidy nodes (indices 1 to seqData.length)
-      ...seqData.map((s) => ({
-        // use a unique name per sequencer so nodes don't get aggregated
-        name: `${s.shortAddress} Subsidy`,
-        address: s.address,
-        addressLabel: s.shortAddress,
-        value: s.subsidyUsd,
-        wei: s.subsidyWei,
-        usd: true,
-        subsidyNode: true,
-      })),
       { name: 'Priority Fee', value: priorityFeeUsd, wei: priorityFee ?? 0 },
       { name: 'Base Fee', value: baseFeeUsd, wei: baseFee ?? 0 },
+      // Combined sequencer nodes (revenue + subsidy)
       ...seqData.map((s) => ({
-        name: '',
+        name: s.shortAddress,
         address: s.address,
         addressLabel: s.shortAddress,
-        value: s.revenue,
-        wei: s.revenueWei,
-        revenueNode: true,
+        value: s.revenue + s.subsidyUsd,
+        wei: s.revenueWei + s.subsidyWei,
       })),
       { name: 'Hardware Cost', value: totalActualHardwareCost, usd: true },
       { name: 'Propose Batch Cost', value: totalL1Cost, usd: true },
@@ -506,47 +494,41 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     daoIndex += (l1ProveCost > 0 ? 1 : 0);
 
     links = [
-      // Total Subsidy → Individual Subsidy nodes
+      // Subsidy → Sequencer nodes (combined)
       ...seqData.map((s, i) => ({
         source: totalSubsidyIndex,
-        target: individualSubsidyStartIndex + i,
+        target: sequencerStartIndex + i,
         value: s.subsidyUsd,
       })),
-      // Priority Fee → Sequencer Revenue nodes
+      // Priority Fee → Sequencer nodes (combined)
       ...seqData.map((s, i) => ({
         source: priorityIndex,
-        target: baseIndex + i,
+        target: sequencerStartIndex + i,
         value: s.priorityUsd,
       })),
-      // Base Fee → Sequencer Revenue nodes
+      // Base Fee → Sequencer nodes (combined)
       ...seqData.map((s, i) => ({
         source: baseFeeIndex,
-        target: baseIndex + i,
+        target: sequencerStartIndex + i,
         value: s.baseUsd,
       })),
       // Base Fee → Taiko DAO
       { source: baseFeeIndex, target: daoIndex, value: baseFeeDaoUsd },
-      // Sequencer Revenue → Hardware Cost
+      // Sequencer nodes → Hardware Cost
       ...seqData.map((s, i) => ({
-        source: baseIndex + i,
+        source: sequencerStartIndex + i,
         target: hardwareIndex,
         value: s.actualHardwareCost,
       })),
-      // Sequencer Revenue → Propose Batch Cost
+      // Sequencer nodes → Propose Batch Cost
       ...seqData.map((s, i) => ({
-        source: baseIndex + i,
+        source: sequencerStartIndex + i,
         target: l1Index,
-        value: s.actualL1Cost,
+        value: s.l1CostUsd,
       })),
-      // Individual Subsidy → Propose Batch Cost
+      // Sequencer nodes → Profit
       ...seqData.map((s, i) => ({
-        source: individualSubsidyStartIndex + i,
-        target: l1Index,
-        value: s.subsidyUsd,
-      })),
-      // Sequencer Revenue → Profit
-      ...seqData.map((s, i) => ({
-        source: baseIndex + i,
+        source: sequencerStartIndex + i,
         target: profitStartIndex + i,
         value: s.profit,
       })),
@@ -555,7 +537,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     if (l1ProveCost > 0 && proveIndex >= 0) {
       links.push(
         ...seqData.map((s, i) => ({
-          source: baseIndex + i,
+          source: sequencerStartIndex + i,
           target: proveIndex,
           value: s.actualProveCost,
         })),
@@ -659,12 +641,6 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     const nodeLabel = (() => {
       if (itemData.profitNode && itemData.addressLabel) {
         return `${itemData.addressLabel} Profit`;
-      }
-      if (itemData.revenueNode && itemData.addressLabel) {
-        return `${itemData.addressLabel} Revenue`;
-      }
-      if (itemData.subsidyNode && itemData.addressLabel) {
-        return `${itemData.addressLabel} Subsidy`;
       }
       return itemData.addressLabel ?? itemData.address ?? itemData.name;
     })();
