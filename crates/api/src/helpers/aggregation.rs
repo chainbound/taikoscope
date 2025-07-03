@@ -258,7 +258,7 @@ pub fn aggregate_blobs_per_batch(
         .map(|(g, rs)| {
             let sum_blobs: u32 = rs.iter().map(|r| r.blob_count as u32).sum();
             let last_l1_block = rs.last().map(|r| r.l1_block_number).unwrap_or_default();
-            let avg_blobs = if !rs.is_empty() { (sum_blobs / rs.len() as u32) as u8 } else { 0 };
+            let avg_blobs = if rs.is_empty() { 0 } else { (sum_blobs / rs.len() as u32) as u8 };
             BatchBlobCountRow {
                 l1_block_number: last_l1_block,
                 batch_id: g * bucket,
