@@ -21,6 +21,8 @@ interface FeeFlowChartProps {
   address?: string;
   /** Height of the chart in pixels (defaults to 320) */
   height?: number;
+  /** Total number of sequencers (used for hardware cost scaling) */
+  totalSequencers?: number;
 }
 
 const MONTH_HOURS = 30 * 24;
@@ -166,6 +168,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
   proverCost,
   address,
   height = 480,
+  totalSequencers,
 }) => {
   const { theme } = useTheme();
   const textColor =
@@ -268,7 +271,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
 
   // Scale operational costs to the selected time range
   const hours = rangeToHours(timeRange);
-  const sequencerCount = Math.max(1, sequencerFees.length);
+  const sequencerCount = Math.max(1, totalSequencers ?? sequencerFees.length);
   const hardwareCostPerSeq = safeValue(
     ((cloudCost + proverCost) / MONTH_HOURS) * hours,
   );

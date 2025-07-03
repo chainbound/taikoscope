@@ -354,6 +354,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               proverCost={proverCost}
               address={selectedSequencer || undefined}
               height={400}
+              totalSequencers={chartsData.sequencerDistribution.length}
             />
             <div className="mt-6">
               <h3 className="text-lg font-semibold mb-2">PnL Trend per Batch</h3>
