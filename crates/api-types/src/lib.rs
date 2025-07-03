@@ -476,14 +476,6 @@ pub struct DashboardDataResponse {
     pub l2_head_block: Option<u64>,
     /// Number of the most recent L1 block.
     pub l1_head_block: Option<u64>,
-    /// Sum of priority fees for the range.
-    pub priority_fee: Option<u128>,
-    /// Sum of base fees for the range.
-    pub base_fee: Option<u128>,
-    /// Total prover cost for the range.
-    pub prove_cost: Option<u128>,
-    /// Estimated infrastructure cost in USD for the requested range.
-    pub cloud_cost: Option<f64>,
 }
 
 /// Current ETH price in USD.

@@ -71,6 +71,7 @@ export const fetchMainDashboardData = async (
 
   const [
     dashboardRes,
+    l2FeesRes,
     proveTimesRes,
     verifyTimesRes,
     l2TimesRes,
@@ -80,6 +81,7 @@ export const fetchMainDashboardData = async (
     batchBlobCountsRes,
   ] = await Promise.all([
     safe(fetchDashboardData(normalizedRange, address)),
+    safe(fetchL2Fees(normalizedRange, address)),
     safe(fetchProveTimesAggregated(normalizedRange)),
     safe(fetchVerifyTimesAggregated(normalizedRange)),
     safe(fetchL2BlockTimesAggregated(normalizedRange, address)),
@@ -93,6 +95,7 @@ export const fetchMainDashboardData = async (
 
   const allResults = [
     dashboardRes,
+    l2FeesRes,
     proveTimesRes,
     verifyTimesRes,
     l2TimesRes,
@@ -121,9 +124,9 @@ export const fetchMainDashboardData = async (
     sequencerDist: sequencerDistRes.data || [],
     txPerBlock: blockTxRes.data || [],
     blobsPerBatch: batchBlobCountsRes.data || [],
-    priorityFee: data?.priority_fee ?? null,
-    baseFee: data?.base_fee ?? null,
-    proveCost: data?.prove_cost ?? null,
+    priorityFee: l2FeesRes.data?.priority_fee ?? null,
+    baseFee: l2FeesRes.data?.base_fee ?? null,
+    proveCost: l2FeesRes.data?.prove_cost ?? null,
 
     badRequestResults: allResults.slice(1),
   };

@@ -22,7 +22,7 @@ use axum::{
 };
 use clickhouse_lib::{AddressBytes, BlockFeeComponentRow};
 use hex::encode;
-use primitives::{WEI_PER_GWEI, hardware::TOTAL_HARDWARE_COST_USD};
+use primitives::WEI_PER_GWEI;
 
 // Legacy type aliases for backward compatibility
 type RangeQuery = CommonQuery;
@@ -816,9 +816,6 @@ pub async fn dashboard_data(
         forced_inclusions,
         l2_head_block,
         l1_head_block,
-        priority_fee,
-        base_fee,
-        prove_cost,
     ) = tokio::try_join!(
         state.client.get_l2_block_cadence(address, time_range),
         state.client.get_batch_posting_cadence(time_range),
@@ -830,10 +827,7 @@ pub async fn dashboard_data(
         state.client.get_slashing_events_since(since),
         state.client.get_forced_inclusions_since(since),
         state.client.get_last_l2_block_number(),
-        state.client.get_last_l1_block_number(),
-        state.client.get_l2_priority_fee(address, time_range),
-        state.client.get_l2_base_fee(address, time_range),
-        state.client.get_total_prove_cost(address, time_range)
+        state.client.get_last_l1_block_number()
     )
     .map_err(|e| {
         tracing::error!(error = %e, "Failed to get dashboard data");
@@ -845,14 +839,6 @@ pub async fn dashboard_data(
         current_operator: d.current_operator.map(|a| format!("0x{}", encode(a))),
         next_operator: d.next_operator.map(|a| format!("0x{}", encode(a))),
     });
-
-    let priority_fee = priority_fee.map(|v| v / WEI_PER_GWEI);
-    let base_fee = base_fee.map(|v| v / WEI_PER_GWEI);
-    let prove_cost = prove_cost.map(|v| v / WEI_PER_GWEI);
-
-    let hours = time_range.seconds() as f64 / 3600.0;
-    let hourly_rate = TOTAL_HARDWARE_COST_USD / (30.0 * 24.0);
-    let cost = hourly_rate * hours;
 
     tracing::info!(
         l2_head_block,
@@ -875,11 +861,6 @@ pub async fn dashboard_data(
         forced_inclusions: forced_inclusions.len(),
         l2_head_block,
         l1_head_block,
-        priority_fee,
-        base_fee,
-        prove_cost,
-
-        cloud_cost: Some(cost),
     }))
 }
 

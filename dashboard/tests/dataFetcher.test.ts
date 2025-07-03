@@ -39,9 +39,13 @@ describe('dataFetcher', () => {
         forced_inclusions: 8,
         l2_head_block: 10,
         l1_head_block: 11,
+      }),
+      fetchL2Fees: ok({
         priority_fee: 12,
         base_fee: 5,
-        cloud_cost: 13,
+        l1_data_cost: null,
+        prove_cost: 13,
+        sequencers: [],
       }),
       fetchProveTimes: ok([{ name: '1', value: 1, timestamp: 0 }]),
       fetchL2BlockTimesAggregated: ok([{ value: 2, timestamp: 0 }]),
@@ -59,12 +63,13 @@ describe('dataFetcher', () => {
     expect(res.avgProve).toBe(3);
     expect(res.sequencerDist[0].name).toBe('foo');
     expect(res.txPerBlock).toHaveLength(1);
-    expect(res.badRequestResults).toHaveLength(7);
+    expect(res.badRequestResults).toHaveLength(8);
   });
 
   it('defaults to empty arrays when service data missing', async () => {
     setAll({
       fetchDashboardData: ok(null),
+      fetchL2Fees: ok(null),
       fetchProveTimes: ok(null),
       fetchL2BlockTimesAggregated: ok(null),
       fetchL2GasUsedAggregated: ok(null),
@@ -78,7 +83,7 @@ describe('dataFetcher', () => {
     expect(res.sequencerDist).toEqual([]);
     expect(res.txPerBlock).toEqual([]);
     expect(res.blobsPerBatch).toEqual([]);
-    expect(res.badRequestResults).toHaveLength(7);
+    expect(res.badRequestResults).toHaveLength(8);
   });
 
   it('fetches economics data', async () => {
