@@ -4,8 +4,8 @@ use api_types::BlockTransactionsItem;
 
 use api_types::BatchFeeComponentRow;
 use clickhouse_lib::{
-    BatchProveTimeRow, BatchVerifyTimeRow, BlockFeeComponentRow, L2BlockTimeRow, L2GasUsedRow,
-    L2TpsRow, TimeRange,
+    BatchBlobCountRow, BatchProveTimeRow, BatchVerifyTimeRow, BlockFeeComponentRow, L2BlockTimeRow,
+    L2GasUsedRow, L2TpsRow, TimeRange,
 };
 use std::collections::BTreeMap;
 
@@ -243,6 +243,31 @@ pub fn aggregate_verify_times(
         .collect()
 }
 
+/// Aggregate blobs per batch by bucket size
+pub fn aggregate_blobs_per_batch(
+    rows: Vec<BatchBlobCountRow>,
+    bucket: u64,
+) -> Vec<BatchBlobCountRow> {
+    let bucket = bucket.max(1);
+    let mut groups: BTreeMap<u64, Vec<BatchBlobCountRow>> = BTreeMap::new();
+    for row in rows {
+        groups.entry(row.batch_id / bucket).or_default().push(row);
+    }
+    groups
+        .into_iter()
+        .map(|(g, rs)| {
+            let sum_blobs: u32 = rs.iter().map(|r| r.blob_count as u32).sum();
+            let last_l1_block = rs.last().map(|r| r.l1_block_number).unwrap_or_default();
+            let avg_blobs = if !rs.is_empty() { (sum_blobs / rs.len() as u32) as u8 } else { 0 };
+            BatchBlobCountRow {
+                l1_block_number: last_l1_block,
+                batch_id: g * bucket,
+                blob_count: avg_blobs,
+            }
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -326,6 +351,14 @@ mod tests {
 
     fn create_l2_tps_row(block_num: u64, tps: f64) -> L2TpsRow {
         L2TpsRow { l2_block_number: block_num, tps }
+    }
+
+    fn create_batch_blob_count_row(
+        batch_id: u64,
+        l1_block_number: u64,
+        blob_count: u8,
+    ) -> BatchBlobCountRow {
+        BatchBlobCountRow { batch_id, l1_block_number, blob_count }
     }
 
     // Tests for bucket_size_from_range
@@ -1005,5 +1038,94 @@ mod tests {
         assert_eq!(result.len(), 2);
         assert_eq!(result[0].batch_id, 10);
         assert_eq!(result[0].seconds_to_verify, 60);
+    }
+
+    // Tests for aggregate_blobs_per_batch
+    #[test]
+    fn test_aggregate_blobs_per_batch_empty() {
+        let rows = vec![];
+        let result = aggregate_blobs_per_batch(rows, 5);
+        assert_eq!(result.len(), 0);
+    }
+
+    #[test]
+    fn test_aggregate_blobs_per_batch_single_row() {
+        let rows = vec![create_batch_blob_count_row(10, 100, 3)];
+        let result = aggregate_blobs_per_batch(rows, 5);
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].batch_id, 10);
+        assert_eq!(result[0].l1_block_number, 100);
+        assert_eq!(result[0].blob_count, 3);
+    }
+
+    #[test]
+    fn test_aggregate_blobs_per_batch_multiple_in_bucket() {
+        let rows = vec![
+            create_batch_blob_count_row(10, 100, 2),
+            create_batch_blob_count_row(11, 101, 4),
+            create_batch_blob_count_row(12, 102, 6),
+        ];
+        let result = aggregate_blobs_per_batch(rows, 5);
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].batch_id, 10); // bucket 2 * 5 = 10
+        assert_eq!(result[0].l1_block_number, 102); // last l1_block_number
+        assert_eq!(result[0].blob_count, 4); // (2 + 4 + 6) / 3 = 4
+    }
+
+    #[test]
+    fn test_aggregate_blobs_per_batch_multiple_buckets() {
+        let rows =
+            vec![create_batch_blob_count_row(2, 100, 2), create_batch_blob_count_row(7, 105, 6)];
+        let result = aggregate_blobs_per_batch(rows, 5);
+
+        assert_eq!(result.len(), 2);
+        // First bucket: batch 2 -> bucket 0
+        assert_eq!(result[0].batch_id, 0);
+        assert_eq!(result[0].l1_block_number, 100);
+        assert_eq!(result[0].blob_count, 2);
+        // Second bucket: batch 7 -> bucket 1
+        assert_eq!(result[1].batch_id, 5);
+        assert_eq!(result[1].l1_block_number, 105);
+        assert_eq!(result[1].blob_count, 6);
+    }
+
+    #[test]
+    fn test_aggregate_blobs_per_batch_zero_blobs() {
+        let rows =
+            vec![create_batch_blob_count_row(10, 100, 0), create_batch_blob_count_row(11, 101, 4)];
+        let result = aggregate_blobs_per_batch(rows, 5);
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].blob_count, 2); // (0 + 4) / 2 = 2
+    }
+
+    #[test]
+    fn test_aggregate_blobs_per_batch_zero_bucket() {
+        let rows =
+            vec![create_batch_blob_count_row(10, 100, 3), create_batch_blob_count_row(20, 200, 5)];
+        let result = aggregate_blobs_per_batch(rows, 0);
+
+        assert_eq!(result.len(), 2);
+        assert_eq!(result[0].batch_id, 10);
+        assert_eq!(result[0].blob_count, 3);
+        assert_eq!(result[1].batch_id, 20);
+        assert_eq!(result[1].blob_count, 5);
+    }
+
+    #[test]
+    fn test_aggregate_blobs_per_batch_large_values() {
+        let rows = vec![
+            create_batch_blob_count_row(1000, 5000, 255), // max u8 value
+            create_batch_blob_count_row(1001, 5001, 200),
+            create_batch_blob_count_row(1002, 5002, 100),
+        ];
+        let result = aggregate_blobs_per_batch(rows, 10);
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].batch_id, 1000);
+        assert_eq!(result[0].l1_block_number, 5002);
+        assert_eq!(result[0].blob_count, 185); // (255 + 200 + 100) / 3 = 185
     }
 }
