@@ -29,6 +29,7 @@ pub fn router(state: ApiState) -> Router {
         .route("/batch-posting-times", get(batch_posting_times))
         .route("/avg-blobs-per-batch", get(avg_blobs_per_batch))
         .route("/blobs-per-batch", get(blobs_per_batch))
+        .route("/blobs-per-batch/aggregated", get(blobs_per_batch_aggregated))
         .route("/prove-times", get(prove_times))
         .route("/prove-times/aggregated", get(prove_times_aggregated))
         .route("/verify-times", get(verify_times))

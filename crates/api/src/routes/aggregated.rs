@@ -2,10 +2,10 @@
 
 use crate::{
     helpers::{
-        aggregate_batch_fee_components, aggregate_block_transactions, aggregate_l2_block_times,
-        aggregate_l2_fee_components, aggregate_l2_gas_used, aggregate_l2_tps,
-        aggregate_prove_times, aggregate_verify_times, bucket_size_from_range, prove_bucket_size,
-        verify_bucket_size,
+        aggregate_batch_fee_components, aggregate_blobs_per_batch, aggregate_block_transactions,
+        aggregate_l2_block_times, aggregate_l2_fee_components, aggregate_l2_gas_used,
+        aggregate_l2_tps, aggregate_prove_times, aggregate_verify_times, bucket_size_from_range,
+        prove_bucket_size, verify_bucket_size,
     },
     state::{ApiState, MAX_BLOCK_TRANSACTIONS_LIMIT},
     validation::{
@@ -844,4 +844,40 @@ pub async fn dashboard_data(
 
         cloud_cost: Some(cost),
     }))
+}
+
+#[utoipa::path(
+    get,
+    path = "/blobs-per-batch/aggregated",
+    params(
+        RangeQuery
+    ),
+    responses(
+        (status = 200, description = "Aggregated blobs per batch", body = BatchBlobsResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
+    ),
+    tag = "taikoscope"
+)]
+/// Get aggregated blobs per batch with automatic bucketing based on time range
+pub async fn blobs_per_batch_aggregated(
+    Query(params): Query<RangeQuery>,
+    State(state): State<ApiState>,
+) -> Result<Json<BatchBlobsResponse>, ErrorResponse> {
+    validate_time_range(&params.time_range)?;
+    let has_time_range = has_time_range_params(&params.time_range);
+    validate_range_exclusivity(has_time_range, false)?;
+
+    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
+    let batches = match state.client.get_blobs_per_batch(time_range).await {
+        Ok(rows) => rows,
+        Err(e) => {
+            tracing::error!(error = %e, "Failed to get blobs per batch");
+            return Err(ErrorResponse::database_error());
+        }
+    };
+
+    let bucket = bucket_size_from_range(&time_range);
+    let batches = aggregate_blobs_per_batch(batches, bucket);
+    tracing::info!(count = batches.len(), "Returning aggregated blobs per batch");
+    Ok(Json(BatchBlobsResponse { batches }))
 }
