@@ -97,7 +97,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     const sequencerCount = chartsData.sequencerDistribution.length || 1;
     const costUsd =
       ((cloudCost + proverCost) * sequencerCount) / HOURS_IN_MONTH * hours;
-    const costWei = ethPrice > 0 ? (costUsd / ethPrice) * 1e18 : null;
+    const costWei = ethPrice > 0 ? (costUsd / ethPrice) * 1e9 : null;
     const hardwareMetric: MetricData = {
       title: 'Hardware Costs',
       value: costWei != null ? formatEth(costWei, 3) : 'N/A',
@@ -112,7 +112,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       const profitIdx = list.findIndex((m) => m.title === 'Profit');
       if (profitIdx >= 0) {
         const profitEth = parseEthValue(list[profitIdx].value);
-        const profitWei = profitEth * 1e18;
+        const profitWei = profitEth * 1e9;
         const newProfitWei = profitWei - costWei;
         list[profitIdx] = {
           ...list[profitIdx],

@@ -18,12 +18,12 @@ describe('metricsCreator', () => {
       l2Reorgs: 1,
       slashings: 2,
       forcedInclusions: 3,
-      priorityFee: 40e18,
-      baseFee: 2e18,
-      proveCost: 5e18,
+      priorityFee: 40e9,
+      baseFee: 2e9,
+      proveCost: 5e9,
 
-      l1DataCost: 3e18,
-      profit: 39e18,
+      l1DataCost: 3e9,
+      profit: 39e9,
       l2Block: 100,
       l1Block: 50,
     });

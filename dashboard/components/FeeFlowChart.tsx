@@ -24,7 +24,7 @@ interface FeeFlowChartProps {
 }
 
 const MONTH_HOURS = 30 * 24;
-const WEI_TO_ETH = 1e18;
+const WEI_TO_ETH = 1e9;
 
 // Format numbers as USD without grouping
 const formatUsd = (value: number) => `$${value.toFixed(1)}`;
