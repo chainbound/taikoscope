@@ -443,8 +443,8 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     );
 
     // Aggregate profit across all sequencers
-    const totalProfit = seqData.reduce((acc, s) => acc + s.profit, 0);
-    const totalProfitWei = seqData.reduce((acc, s) => acc + s.profitWei, 0);
+    const totalProfit = seqData.reduce((acc, s) => acc + (s.profit > 0 ? s.profit : 0), 0);
+    const totalProfitWei = seqData.reduce((acc, s) => acc + (s.profit > 0 ? s.profitWei : 0), 0);
 
     const totalL1Cost = totalActualL1Cost + totalSubsidy;
 
