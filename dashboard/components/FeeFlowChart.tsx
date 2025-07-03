@@ -204,9 +204,29 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     [ethPrice],
   );
 
+  // Node value formatter - shows only ETH values without USD
+  const formatNodeValue = React.useCallback(
+    (value: number, itemData?: any) => {
+      // If the item already has a `wei` value, use it directly
+      if (itemData?.wei != null) {
+        return formatEth(itemData.wei, 3);
+      }
+
+      // Otherwise, attempt to derive `wei` from USD using the current ETH price
+      if (ethPrice) {
+        const wei = (value / ethPrice) * WEI_TO_ETH;
+        return formatEth(wei, 3);
+      }
+
+      // Fallback (should rarely happen): return USD only
+      return formatUsd(value);
+    },
+    [ethPrice],
+  );
+
   const NodeComponent = React.useMemo(
-    () => createSankeyNode(textColor, formatTooltipValue),
-    [textColor, formatTooltipValue],
+    () => createSankeyNode(textColor, formatNodeValue),
+    [textColor, formatNodeValue],
   );
 
   if (!feeRes) {
