@@ -352,6 +352,9 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     };
   });
 
+  // Sort sequencer nodes by profitability (ascending) to reduce flow crossings
+  seqData.sort((a, b) => a.profit - b.profit);
+
   // Handle case when no sequencer data is available
   let nodes, links;
 
