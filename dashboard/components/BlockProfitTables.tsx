@@ -81,16 +81,16 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
     title: string,
     items:
       | {
-          batch: number;
-          txHash: string;
-          sequencer: string;
-          revenue: number;
-          cost: number;
-          profit: number;
-          profitEth: number;
-          revenueEth: number;
-          costEth: number;
-        }[]
+        batch: number;
+        txHash: string;
+        sequencer: string;
+        revenue: number;
+        cost: number;
+        profit: number;
+        profitEth: number;
+        revenueEth: number;
+        costEth: number;
+      }[]
       | null,
   ) => (
     <div>
@@ -143,7 +143,7 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
   );
 
   return (
-    <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+    <div className="mt-6 grid grid-cols-1 gap-4 md:gap-6">
       {renderTable('Top 5 Profitable Batches', topBatches)}
       {renderTable('Least 5 Profitable Batches', bottomBatches)}
     </div>
