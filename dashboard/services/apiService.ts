@@ -794,6 +794,30 @@ export const fetchBatchBlobCounts = async (
   };
 };
 
+export const fetchBatchBlobCountsAggregated = async (
+  range: TimeRange,
+): Promise<RequestResult<BatchBlobCount[]>> => {
+  const url = `${API_BASE}/blobs-per-batch/aggregated?${timeRangeToQuery(range)}`;
+  const res = await fetchJson<{
+    batches: {
+      l1_block_number?: number;
+      batch_id: number;
+      blob_count: number;
+    }[];
+  }>(url);
+  return {
+    data: res.data
+      ? res.data.batches.map((b) => ({
+        block: b.l1_block_number ?? b.batch_id, // Fallback to batch_id for backward compatibility
+        batch: b.batch_id,
+        blobs: b.blob_count,
+      }))
+      : null,
+    badRequest: res.badRequest,
+    error: res.error,
+  };
+};
+
 export const fetchAvgBlobsPerBatch = async (
   range: TimeRange,
 ): Promise<RequestResult<number>> => {

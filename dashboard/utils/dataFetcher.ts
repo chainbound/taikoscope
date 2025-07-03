@@ -9,7 +9,7 @@ import {
   fetchL2GasUsedAggregated,
   fetchSequencerDistribution,
   fetchBlockTransactionsAggregated,
-  fetchBatchBlobCounts,
+  fetchBatchBlobCountsAggregated,
   fetchL2Fees,
   fetchL2HeadBlock,
   fetchL1HeadBlock,
@@ -86,7 +86,7 @@ export const fetchMainDashboardData = async (
     safe(fetchL2GasUsedAggregated(normalizedRange, address)),
     safe(fetchSequencerDistribution(normalizedRange)),
     safe(fetchBlockTransactionsAggregated(normalizedRange, address)),
-    safe(fetchBatchBlobCounts(normalizedRange)),
+    safe(fetchBatchBlobCountsAggregated(normalizedRange)),
   ]);
 
   const data = dashboardRes.data;
