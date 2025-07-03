@@ -354,7 +354,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
   seqData.sort((a, b) => a.profit - b.profit);
 
   // Handle case when no sequencer data is available
-  let nodes, links;
+  let nodes: any[], links: { source: number; target: number; value: number }[];
 
   if (seqData.length === 0) {
     // Fallback: create a single "Sequencers" node to route fees through
@@ -535,15 +535,23 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
       })),
     ].filter((l) => l.value > 0);
 
-    if (l1ProveCost > 0 && proveIndex >= 0) {
-      links.push(
-        ...seqData.map((s, i) => ({
-          source: sequencerStartIndex + i,
-          target: proveIndex,
-          value: s.actualProveCost,
-        })),
+    // --- Ensure every sequencer node has at least one outgoing edge ---
+    // Use 10% of the smallest existing link so the line is always visible
+    const minPositive = links.length ? Math.min(...links.map(l => l.value)) : 0;
+    const EPSILON = minPositive > 0 ? minPositive * 0.1 : 1e-6;
+    seqData.forEach((_, i) => {
+      const seqIdx = sequencerStartIndex + i;
+      const hasOutflow = links.some(
+        (l) => l.source === seqIdx && l.value > 0,
       );
-    }
+      if (!hasOutflow) {
+        links.push({ source: seqIdx, target: profitIndex, value: EPSILON });
+        // keep mass-balance
+        if (nodes[profitIndex]) {
+          nodes[profitIndex].value += EPSILON;
+        }
+      }
+    });
 
   }
 
