@@ -441,6 +441,10 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
       0,
     );
 
+    // Aggregate profit across all sequencers
+    const totalProfit = seqData.reduce((acc, s) => acc + s.profit, 0);
+    const totalProfitWei = seqData.reduce((acc, s) => acc + s.profitWei, 0);
+
     const totalL1Cost = totalActualL1Cost + totalSubsidy;
 
     // Build Sankey data with Subsidy node and combined sequencer nodes
@@ -450,8 +454,9 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     const sequencerStartIndex = 3; // first sequencer node index
     const hardwareIndex = sequencerStartIndex + seqData.length;
     const l1Index = hardwareIndex + 1;
-    let profitStartIndex = l1Index + 1;
-    let daoIndex = profitStartIndex + seqData.length;
+    const proveIndex = l1ProveCost > 0 ? l1Index + 1 : -1;
+    const profitIndex = l1ProveCost > 0 ? proveIndex + 1 : l1Index + 1;
+    const daoIndex = profitIndex + 1;
 
     nodes = [
       // Subsidy node at index 0
@@ -476,23 +481,14 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
       ...(l1ProveCost > 0
         ? [{ name: 'L1 Prove Cost', value: totalActualProveCost, usd: true }]
         : []),
-
-      ...seqData.map((s) => ({
+      {
         name: 'Profit',
-        address: s.address,
-        addressLabel: s.shortAddress,
-        value: s.profit,
-        wei: s.profitWei,
+        value: totalProfit,
+        wei: totalProfitWei,
         profitNode: true,
-      })),
+      },
       { name: 'Taiko DAO', value: baseFeeDaoUsd, wei: (baseFee ?? 0) * 0.25 },
     ];
-
-    const proveIndex =
-      l1ProveCost > 0 ? l1Index + 1 : -1;
-
-    profitStartIndex += (l1ProveCost > 0 ? 1 : 0);
-    daoIndex += (l1ProveCost > 0 ? 1 : 0);
 
     links = [
       // Subsidy → Sequencer nodes (combined)
@@ -527,10 +523,10 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
         target: l1Index,
         value: s.l1CostUsd,
       })),
-      // Sequencer nodes → Profit
+      // Sequencer nodes → Profit (single aggregated node)
       ...seqData.map((s, i) => ({
         source: sequencerStartIndex + i,
-        target: profitStartIndex + i,
+        target: profitIndex,
         value: s.profit,
       })),
     ].filter((l) => l.value > 0);
