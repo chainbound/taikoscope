@@ -16,6 +16,7 @@ use url::Url;
 use api::{ApiState, DEFAULT_MAX_REQUESTS, DEFAULT_RATE_PERIOD};
 use axum::{extract::connect_info::IntoMakeServiceWithConnectInfo, serve};
 use clickhouse_lib::ClickhouseReader;
+use primitives::WEI_PER_GWEI;
 use server::{API_VERSION, router};
 use tokio::net::TcpListener;
 
@@ -79,8 +80,18 @@ async fn batch_fee_components_filters_unverified() {
         block_hash: HashBytes([0u8; 32]),
     }]));
     mock.add(handlers::provide(vec![
-        BatchFeeRow { batch_id: 1, priority_fee: 10, base_fee: 20, l1_data_cost: Some(5) },
-        BatchFeeRow { batch_id: 2, priority_fee: 1, base_fee: 2, l1_data_cost: Some(1) },
+        BatchFeeRow {
+            batch_id: 1,
+            priority_fee: 10 * WEI_PER_GWEI,
+            base_fee: 20 * WEI_PER_GWEI,
+            l1_data_cost: Some(5 * WEI_PER_GWEI),
+        },
+        BatchFeeRow {
+            batch_id: 2,
+            priority_fee: 1 * WEI_PER_GWEI,
+            base_fee: 2 * WEI_PER_GWEI,
+            l1_data_cost: Some(1 * WEI_PER_GWEI),
+        },
     ]));
 
     let url = Url::parse(mock.url()).unwrap();
@@ -103,9 +114,9 @@ async fn batch_fee_components_filters_unverified() {
             "batches": [
                 {
                     "batch_id": 1,
-                    "priority_fee": 0,
-                    "base_fee": 0,
-                    "l1_data_cost": 0,
+                    "priority_fee": 10,
+                    "base_fee": 20,
+                    "l1_data_cost": 5,
                     "amortized_prove_cost": null
                 }
             ]
@@ -344,8 +355,18 @@ async fn l1_block_times_success_and_invalid() {
 async fn l2_fee_components_aggregated_integration() {
     let mock = Mock::new();
     mock.add(handlers::provide(vec![
-        FeeRow { l2_block_number: 0, priority_fee: 1, base_fee: 2, l1_data_cost: Some(3) },
-        FeeRow { l2_block_number: 1, priority_fee: 4, base_fee: 6, l1_data_cost: None },
+        FeeRow {
+            l2_block_number: 0,
+            priority_fee: 10 * WEI_PER_GWEI,
+            base_fee: 20 * WEI_PER_GWEI,
+            l1_data_cost: Some(5 * WEI_PER_GWEI),
+        },
+        FeeRow {
+            l2_block_number: 1,
+            priority_fee: 1 * WEI_PER_GWEI,
+            base_fee: 2 * WEI_PER_GWEI,
+            l1_data_cost: None,
+        },
     ]));
 
     let url = Url::parse(mock.url()).unwrap();
@@ -364,7 +385,11 @@ async fn l2_fee_components_aggregated_integration() {
     let body: serde_json::Value = resp.json().await.unwrap();
     assert_eq!(
         body,
-        serde_json::json!({ "blocks": [ { "l2_block_number": 0, "priority_fee": 0, "base_fee": 0, "l1_data_cost": 0 } ] })
+        serde_json::json!({
+            "blocks": [
+                { "l2_block_number": 0, "priority_fee": 11, "base_fee": 22, "l1_data_cost": 5 }
+            ]
+        })
     );
 
     let resp = reqwest::get(
@@ -456,9 +481,9 @@ async fn batch_fee_components_integration() {
     }]));
     mock.add(handlers::provide(vec![BatchFeeRow {
         batch_id: 1,
-        priority_fee: 10,
-        base_fee: 20,
-        l1_data_cost: Some(5),
+        priority_fee: 10 * WEI_PER_GWEI,
+        base_fee: 20 * WEI_PER_GWEI,
+        l1_data_cost: Some(5 * WEI_PER_GWEI),
     }]));
 
     let url = Url::parse(mock.url()).unwrap();
@@ -481,9 +506,9 @@ async fn batch_fee_components_integration() {
             "batches": [
                 {
                     "batch_id": 1,
-                    "priority_fee": 0,
-                    "base_fee": 0,
-                    "l1_data_cost": 0,
+                    "priority_fee": 10,
+                    "base_fee": 20,
+                    "l1_data_cost": 5,
                     "amortized_prove_cost": null
                 }
             ]
@@ -532,7 +557,7 @@ async fn prove_cost_integration() {
     mock.add(handlers::provide(vec![clickhouse_lib::ProveCostRow {
         l1_block_number: 3,
         batch_id: 1,
-        cost: 123,
+        cost: 123 * WEI_PER_GWEI,
     }]));
 
     let url = Url::parse(mock.url()).unwrap();
@@ -552,7 +577,7 @@ async fn prove_cost_integration() {
     assert_eq!(
         body,
         serde_json::json!({
-            "batches": [ { "l1_block_number": 3, "batch_id": 1, "cost": 0 } ]
+            "batches": [ { "l1_block_number": 3, "batch_id": 1, "cost": 123 } ]
         })
     );
 
@@ -564,16 +589,16 @@ async fn prove_cost_integration() {
 #[tokio::test]
 async fn l2_fees_integration() {
     let mock = Mock::new();
-    mock.add(handlers::provide(vec![TotalRow { total: 600 }]));
-    mock.add(handlers::provide(vec![TotalRow { total: 400 }]));
-    mock.add(handlers::provide(vec![TotalRow { total: 10 }]));
+    mock.add(handlers::provide(vec![TotalRow { total: 600 * WEI_PER_GWEI }]));
+    mock.add(handlers::provide(vec![TotalRow { total: 400 * WEI_PER_GWEI }]));
+    mock.add(handlers::provide(vec![TotalRow { total: 10 * WEI_PER_GWEI }]));
     mock.add(handlers::provide::<clickhouse_lib::SequencerFeeRow>(vec![
         clickhouse_lib::SequencerFeeRow {
             sequencer: AddressBytes([1u8; 20]),
-            priority_fee: 600,
-            base_fee: 400,
-            l1_data_cost: Some(10),
-            prove_cost: Some(5),
+            priority_fee: 600 * WEI_PER_GWEI,
+            base_fee: 400 * WEI_PER_GWEI,
+            l1_data_cost: Some(10 * WEI_PER_GWEI),
+            prove_cost: Some(5 * WEI_PER_GWEI),
         },
     ]));
 
@@ -594,17 +619,17 @@ async fn l2_fees_integration() {
     assert_eq!(
         body,
         serde_json::json!({
-            "priority_fee": 0,
-            "base_fee": 0,
-            "l1_data_cost": 0,
-            "prove_cost": 0,
+            "priority_fee": 600,
+            "base_fee": 400,
+            "l1_data_cost": 10,
+            "prove_cost": 5,
             "sequencers": [
                 {
                     "address": format!("0x{}", hex::encode([1u8; 20])),
-                    "priority_fee": 0,
-                    "base_fee": 0,
-                    "l1_data_cost": 0,
-                    "prove_cost": 0
+                    "priority_fee": 600,
+                    "base_fee": 400,
+                    "l1_data_cost": 10,
+                    "prove_cost": 5
                 }
             ]
         })
@@ -616,16 +641,16 @@ async fn l2_fees_integration() {
 #[tokio::test]
 async fn batch_fees_integration() {
     let mock = Mock::new();
-    mock.add(handlers::provide(vec![TotalRow { total: 10 }]));
-    mock.add(handlers::provide(vec![TotalRow { total: 20 }]));
-    mock.add(handlers::provide(vec![TotalRow { total: 5 }]));
+    mock.add(handlers::provide(vec![TotalRow { total: 10 * WEI_PER_GWEI }]));
+    mock.add(handlers::provide(vec![TotalRow { total: 20 * WEI_PER_GWEI }]));
+    mock.add(handlers::provide(vec![TotalRow { total: 5 * WEI_PER_GWEI }]));
     mock.add(handlers::provide::<clickhouse_lib::SequencerFeeRow>(vec![
         clickhouse_lib::SequencerFeeRow {
             sequencer: AddressBytes([2u8; 20]),
-            priority_fee: 10,
-            base_fee: 20,
-            l1_data_cost: Some(5),
-            prove_cost: Some(1),
+            priority_fee: 10 * WEI_PER_GWEI,
+            base_fee: 20 * WEI_PER_GWEI,
+            l1_data_cost: Some(5 * WEI_PER_GWEI),
+            prove_cost: Some(1 * WEI_PER_GWEI),
         },
     ]));
 
@@ -646,17 +671,17 @@ async fn batch_fees_integration() {
     assert_eq!(
         body,
         serde_json::json!({
-            "priority_fee": 0,
-            "base_fee": 0,
-            "l1_data_cost": 0,
+            "priority_fee": 10,
+            "base_fee": 20,
+            "l1_data_cost": 5,
             "prove_cost": null,
             "sequencers": [
                 {
                     "address": format!("0x{}", hex::encode([2u8; 20])),
-                    "priority_fee": 0,
-                    "base_fee": 0,
-                    "l1_data_cost": 0,
-                    "prove_cost": 0
+                    "priority_fee": 10,
+                    "base_fee": 20,
+                    "l1_data_cost": 5,
+                    "prove_cost": 1
                 }
             ]
         })
@@ -670,7 +695,7 @@ async fn prove_costs_integration() {
     let mock = Mock::new();
     mock.add(handlers::provide(vec![AggregatedCostRow {
         proposer: AddressBytes([3u8; 20]),
-        total_cost: 123,
+        total_cost: 123 * WEI_PER_GWEI,
     }]));
 
     let url = Url::parse(mock.url()).unwrap();
@@ -693,7 +718,7 @@ async fn prove_costs_integration() {
             "proposers": [
                 {
                     "address": format!("0x{}", hex::encode([3u8; 20])),
-                    "cost": 0
+                    "cost": 123
                 }
             ]
         })
@@ -709,7 +734,7 @@ async fn l1_data_cost_paginated() {
     let mock = Mock::new();
     mock.add(handlers::provide(vec![clickhouse_lib::L1DataCostRow {
         l1_block_number: 1,
-        cost: 789,
+        cost: 789 * WEI_PER_GWEI,
     }]));
 
     let url = Url::parse(mock.url()).unwrap();
@@ -729,7 +754,7 @@ async fn l1_data_cost_paginated() {
     assert_eq!(
         body,
         serde_json::json!({
-            "blocks": [ { "l1_block_number": 1, "cost": 0 } ]
+            "blocks": [ { "l1_block_number": 1, "cost": 789 } ]
         })
     );
 
