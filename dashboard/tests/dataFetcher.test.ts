@@ -63,7 +63,7 @@ describe('dataFetcher', () => {
     expect(res.avgProve).toBe(3);
     expect(res.sequencerDist[0].name).toBe('foo');
     expect(res.txPerBlock).toHaveLength(1);
-    expect(res.badRequestResults).toHaveLength(8);
+    expect(res.badRequestResults).toHaveLength(7);
   });
 
   it('defaults to empty arrays when service data missing', async () => {
@@ -83,7 +83,7 @@ describe('dataFetcher', () => {
     expect(res.sequencerDist).toEqual([]);
     expect(res.txPerBlock).toEqual([]);
     expect(res.blobsPerBatch).toEqual([]);
-    expect(res.badRequestResults).toHaveLength(8);
+    expect(res.badRequestResults).toHaveLength(7);
   });
 
   it('fetches economics data', async () => {
