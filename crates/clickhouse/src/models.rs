@@ -277,7 +277,7 @@ pub struct L2GasUsedRow {
 pub struct L1DataCostRow {
     /// L1 block number
     pub l1_block_number: u64,
-    /// Total cost in wei for data posting transactions
+    /// Total cost in gwei for data posting transactions
     pub cost: u128,
 }
 
@@ -288,7 +288,7 @@ pub struct L1DataCostInsertRow {
     pub l1_block_number: u64,
     /// Batch ID this cost corresponds to
     pub batch_id: u64,
-    /// Total cost in wei for data posting transactions
+    /// Total cost in gwei for data posting transactions
     pub cost: u128,
 }
 
@@ -299,7 +299,7 @@ pub struct ProveCostRow {
     pub l1_block_number: u64,
     /// Batch ID
     pub batch_id: u64,
-    /// Cost in wei for proving the batch
+    /// Cost in gwei for proving the batch
     pub cost: u128,
 }
 
@@ -310,7 +310,7 @@ pub struct ProveCostInsertRow {
     pub l1_block_number: u64,
     /// Batch ID
     pub batch_id: u64,
-    /// Cost in wei for proving the batch
+    /// Cost in gwei for proving the batch
     pub cost: u128,
 }
 
@@ -321,7 +321,7 @@ pub struct VerifyCostRow {
     pub l1_block_number: u64,
     /// Batch ID
     pub batch_id: u64,
-    /// Cost in wei for verifying the batch
+    /// Cost in gwei for verifying the batch
     pub cost: u128,
 }
 
@@ -332,7 +332,7 @@ pub struct VerifyCostInsertRow {
     pub l1_block_number: u64,
     /// Batch ID
     pub batch_id: u64,
-    /// Cost in wei for verifying the batch
+    /// Cost in gwei for verifying the batch
     pub cost: u128,
 }
 

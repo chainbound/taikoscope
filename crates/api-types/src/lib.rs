@@ -358,7 +358,7 @@ pub struct BlockTransactionsResponse {
 pub struct BlockProfitItem {
     /// Block number.
     pub block: u64,
-    /// Profit in wei (priority + base - L1 cost).
+    /// Profit in gwei (priority + base - L1 cost).
     pub profit: i128,
 }
 
@@ -374,7 +374,7 @@ pub struct BlockProfitsResponse {
 pub struct ProposerCostItem {
     /// Proposer address.
     pub address: String,
-    /// Total cost in wei.
+    /// Total cost in gwei.
     pub cost: u128,
 }
 
