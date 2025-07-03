@@ -128,7 +128,7 @@ export const fetchMainDashboardData = async (
     baseFee: l2FeesRes.data?.base_fee ?? null,
     proveCost: l2FeesRes.data?.prove_cost ?? null,
 
-    badRequestResults: allResults.slice(1),
+    badRequestResults: allResults.slice(2),
   };
 };
 
