@@ -57,6 +57,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   const { navigateToDashboard, updateSearchParams } = useRouterNavigation();
   const { errorMessage } = useErrorHandler();
   const [searchParams] = useSearchParams();
+  const isEconomicsView = searchParams.get('view') === 'economics';
   React.useEffect(() => {
     if (errorMessage) {
       showToast(errorMessage);
@@ -115,11 +116,13 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
           lastRefresh={lastRefresh}
           onRefresh={onManualRefresh}
         />
-        <SequencerSelector
-          sequencers={sequencers}
-          value={selectedSequencer}
-          onChange={onSequencerChange}
-        />
+        {!isEconomicsView && (
+          <SequencerSelector
+            sequencers={sequencers}
+            value={selectedSequencer}
+            onChange={onSequencerChange}
+          />
+        )}
         {/* Dark mode toggle removed as per request */}
       </div>
     </header>

@@ -41,7 +41,7 @@ describe('DashboardHeader', () => {
     expect(html.includes('Economics')).toBe(true);
   });
 
-  it('shows sequencer selector in economics view', () => {
+  it('hides sequencer selector in economics view', () => {
     const html = renderToStaticMarkup(
       React.createElement(
         ThemeProvider,
@@ -67,6 +67,6 @@ describe('DashboardHeader', () => {
         ),
       ),
     );
-    expect(html.includes('All Sequencers')).toBe(true);
+    expect(html.includes('All Sequencers')).toBe(false);
   });
 });
