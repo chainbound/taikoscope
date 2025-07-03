@@ -341,19 +341,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         {isEconomicsView && (
           <>
-            <FeeFlowChart
-              timeRange={timeRange}
-              cloudCost={cloudCost}
-              proverCost={proverCost}
-              address={selectedSequencer || undefined}
-              height={400}
-            />
             <ProfitCalculator
               timeRange={timeRange}
               cloudCost={cloudCost}
               proverCost={proverCost}
               onCloudCostChange={setCloudCost}
               onProverCostChange={setProverCost}
+            />
+            <FeeFlowChart
+              timeRange={timeRange}
+              cloudCost={cloudCost}
+              proverCost={proverCost}
+              address={selectedSequencer || undefined}
+              height={400}
             />
             <div className="mt-6">
               <EconomicsChart
