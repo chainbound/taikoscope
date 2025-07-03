@@ -79,7 +79,7 @@ export const DashboardFooter: React.FC<DashboardFooterProps> = ({
       >
         X
       </a>
-      <span className="mx-1">|</span>
+      <span className="mx-2">|</span>
       <a
         href="https://github.com/chainbound/taikoscope/"
         target="_blank"
