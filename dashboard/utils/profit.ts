@@ -9,6 +9,10 @@ export interface ProfitParams {
 }
 
 export interface ProfitResult {
+  revenueEth: number;
+  revenueUsd: number;
+  costEth: number;
+  costUsd: number;
   profitEth: number;
   profitUsd: number;
 }
@@ -31,5 +35,12 @@ export const calculateProfit = ({
   const costUsd = costEth * ethPrice;
   const profitUsd = revenueUsd - costUsd;
   const profitEth = revenueEth - costEth;
-  return { profitEth, profitUsd };
+  return {
+    revenueEth,
+    revenueUsd,
+    costEth,
+    costUsd,
+    profitEth,
+    profitUsd,
+  };
 };

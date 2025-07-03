@@ -12,9 +12,11 @@ describe('calculateProfit', () => {
       hardwareCostUsd: 100,
       ethPrice: 10,
     });
-    expect(res.profitEth).toBeCloseTo(
-      (2 + 0.75) - (100 / 10 + (0.5 + 0.1))
-    );
+    expect(res.revenueEth).toBeCloseTo(2.75);
+    expect(res.costEth).toBeCloseTo(10.6);
+    expect(res.profitEth).toBeCloseTo(2.75 - 10.6);
+    expect(res.revenueUsd).toBeCloseTo(27.5);
+    expect(res.costUsd).toBeCloseTo(106);
     expect(res.profitUsd).toBeCloseTo(res.profitEth * 10);
   });
 
@@ -28,7 +30,11 @@ describe('calculateProfit', () => {
       hardwareCostUsd: 50,
       ethPrice: 5,
     });
-    expect(res.profitEth).toBeCloseTo(-((50 / 5) + 1));
-    expect(res.profitUsd).toBeCloseTo(res.profitEth * 5);
+    expect(res.revenueEth).toBeCloseTo(0);
+    expect(res.costEth).toBeCloseTo(11);
+    expect(res.profitEth).toBeCloseTo(-11);
+    expect(res.revenueUsd).toBeCloseTo(0);
+    expect(res.costUsd).toBeCloseTo(55);
+    expect(res.profitUsd).toBeCloseTo(-55);
   });
 });

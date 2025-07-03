@@ -44,7 +44,7 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
     : 0;
 
   const profits = batchData.map((b) => {
-    const { profitEth } = calculateProfit({
+    const { revenueEth, costEth, profitEth } = calculateProfit({
       priorityFee: b.priority,
       baseFee: b.base,
       l1DataCost: b.l1Cost ?? 0,
@@ -54,13 +54,19 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
       ethPrice,
     });
     const profitWei = profitEth * 1e9;
+    const revenueWei = revenueEth * 1e9;
+    const costWei = costEth * 1e9;
 
     return {
       batch: b.batch,
       txHash: b.txHash,
       sequencer: b.sequencer,
+      revenue: revenueWei,
+      cost: costWei,
       profit: profitWei, // Store as wei for consistency
       profitEth, // Store ETH value for sorting and display
+      revenueEth,
+      costEth,
     };
   });
 
@@ -74,7 +80,17 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
   const renderTable = (
     title: string,
     items:
-      | { batch: number; txHash: string; sequencer: string; profit: number; profitEth: number }[]
+      | {
+        batch: number;
+        txHash: string;
+        sequencer: string;
+        revenue: number;
+        cost: number;
+        profit: number;
+        profitEth: number;
+        revenueEth: number;
+        costEth: number;
+      }[]
       | null,
   ) => (
     <div>
@@ -85,6 +101,8 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
             <tr>
               <th className="px-2 py-1 text-left">Batch</th>
               <th className="px-2 py-1 text-left">Sequencer</th>
+              <th className="px-2 py-1 text-left">Revenue</th>
+              <th className="px-2 py-1 text-left">Cost</th>
               <th className="px-2 py-1 text-left">Profit</th>
             </tr>
           </thead>
@@ -100,6 +118,18 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
                 <td className="px-2 py-1">{b.sequencer}</td>
                 <td
                   className="px-2 py-1"
+                  title={`$${formatUsd(b.revenueEth * ethPrice)}`}
+                >
+                  {formatEth(b.revenue, 3)}
+                </td>
+                <td
+                  className="px-2 py-1"
+                  title={`$${formatUsd(b.costEth * ethPrice)}`}
+                >
+                  {formatEth(b.cost, 3)}
+                </td>
+                <td
+                  className="px-2 py-1"
                   title={`$${formatUsd(b.profitEth * ethPrice)}`}
                 >
                   {formatEth(b.profit, 3)}
@@ -113,7 +143,7 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
   );
 
   return (
-    <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+    <div className="mt-6 grid grid-cols-1 gap-4 md:gap-6">
       {renderTable('Top 5 Profitable Batches', topBatches)}
       {renderTable('Least 5 Profitable Batches', bottomBatches)}
     </div>
