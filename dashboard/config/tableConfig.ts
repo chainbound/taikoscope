@@ -277,7 +277,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
   },
 
   'l1-data-cost': {
-    title: 'Propose Batch Cost',
+    title: 'Proposing Cost',
     description: 'Data posting cost for each L1 block.',
     fetcher: fetchL1DataCost,
     columns: [

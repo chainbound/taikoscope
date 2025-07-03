@@ -48,8 +48,8 @@ const createSankeyNode = (
 
     const isCostNode =
       payload.name === 'Hardware Cost' ||
-      payload.name === 'Propose Batch Cost' ||
-      payload.name === 'L1 Prove Cost';
+      payload.name === 'Proposing Cost' ||
+      payload.name === 'Proving Cost';
     const isSubsidyNode = payload.name === 'Subsidy' || (typeof payload.name === 'string' && payload.name.includes('Subsidy'));
     const isProfitNode = payload.name === 'Profit' || payload.profitNode;
     const isPinkNode = payload.name === 'Taiko DAO';
@@ -138,8 +138,8 @@ const SankeyLink = (props: any) => {
 
   const isCost =
     payload.target.name === 'Hardware Cost' ||
-    payload.target.name === 'Propose Batch Cost' ||
-    payload.target.name === 'L1 Prove Cost' ||
+    payload.target.name === 'Proposing Cost' ||
+    payload.target.name === 'Proving Cost' ||
 
     payload.target.name === 'Subsidy' ||
     (typeof payload.target.name === 'string' &&
@@ -384,8 +384,8 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
       { name: 'Base Fee', value: baseFeeUsd, wei: baseFee ?? 0, depth: 0 },
       { name: 'Sequencers', value: sequencerRevenue, wei: sequencerRevenueWei, depth: 1 },
       { name: 'Hardware Cost', value: totalHardwareCost, usd: true, depth: 2 },
-      { name: 'L1 Prove Cost', value: actualProveCost, usd: true, depth: 2 },
-      { name: 'Propose Batch Cost', value: l1DataCostTotalUsd, usd: true, depth: 2 },
+      { name: 'Proving Cost', value: actualProveCost, usd: true, depth: 2 },
+      { name: 'Proposing Cost', value: l1DataCostTotalUsd, usd: true, depth: 2 },
       { name: 'Profit', value: sequencerProfit, wei: sequencerProfitWei, depth: 3 },
       { name: 'Taiko DAO', value: baseFeeDaoUsd, wei: (baseFee ?? 0) * 0.25, depth: 1 },
     ];
@@ -467,8 +467,8 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
         depth: 1,
       })),
       { name: 'Hardware Cost', value: totalActualHardwareCost, usd: true, depth: 2 },
-      ...(l1ProveCost > 0 ? [{ name: 'L1 Prove Cost', value: totalActualProveCost, usd: true, depth: 2 }] : []),
-      { name: 'Propose Batch Cost', value: totalL1Cost, usd: true, depth: 2 },
+      ...(l1ProveCost > 0 ? [{ name: 'Proving Cost', value: totalActualProveCost, usd: true, depth: 2 }] : []),
+      { name: 'Proposing Cost', value: totalL1Cost, usd: true, depth: 2 },
       {
         name: 'Profit',
         value: totalProfit,
@@ -506,7 +506,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
         target: hardwareIndex,
         value: s.actualHardwareCost,
       })),
-      // Sequencer nodes → L1 Prove Cost (if included)
+      // Sequencer nodes → Proving Cost (if included)
       ...(l1ProveCost > 0
         ? seqData.map((s, i) => ({
           source: sequencerStartIndex + i,
@@ -514,7 +514,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
           value: s.actualProveCost,
         }))
         : []),
-      // Sequencer nodes → Propose Batch Cost
+      // Sequencer nodes → Proposing Cost
       ...seqData.map((s, i) => ({
         source: sequencerStartIndex + i,
         target: l1Index,

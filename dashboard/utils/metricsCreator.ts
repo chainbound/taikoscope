@@ -131,7 +131,7 @@ export const createMetrics = (data: MetricInputData): MetricData[] => [
     group: 'Network Economics',
   },
   {
-    title: 'Propose Batch Cost',
+    title: 'Proposing Cost',
     value: data.l1DataCost != null ? formatEth(data.l1DataCost, 3) : 'N/A',
     group: 'Network Economics',
   },
