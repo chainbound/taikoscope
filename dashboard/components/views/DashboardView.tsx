@@ -109,7 +109,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     else list.push(hardwareMetric);
 
     if (costWei != null) {
-      const profitIdx = list.findIndex((m) => m.title === 'Profit');
+      const profitIdx = list.findIndex(
+        (m) => m.title === 'Total Sequencer Profit',
+      );
       if (profitIdx >= 0) {
         const profitEth = parseEthValue(list[profitIdx].value);
         const profitWei = profitEth * 1e9;
