@@ -1,6 +1,8 @@
 # API Design
 The API is organized around REST principles. It accepts JSON-encoded request bodies, returns JSON-encoded responses, and uses standard HTTP response codes.
 
+All fee-related fields in API responses are returned in gwei.
+
 ### Slot Range Parameters
 
 Slot range parameters cannot be used together with time range parameters.
