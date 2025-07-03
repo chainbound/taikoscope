@@ -83,7 +83,7 @@ export const useDataFetcher = ({
             data.l1DataCost != null &&
             data.proveCost != null
             ? data.priorityFee +
-            data.baseFee -
+            (data.baseFee * 0.75) -
             data.l1DataCost -
             data.proveCost
             : null,
