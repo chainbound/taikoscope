@@ -118,7 +118,7 @@ export const createMetrics = (data: MetricInputData): MetricData[] => [
     title: 'Net Sequencer Profit',
     value: data.profit != null ? formatEth(data.profit, 3) : 'N/A',
     group: 'Network Economics',
-    tooltip: 'This is profit minus subsidy.',
+    tooltip: 'Sequencer profit minus subsidy.',
   },
   {
     title: 'Priority Fee',

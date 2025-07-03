@@ -82,10 +82,9 @@ export const MetricsGrid: React.FC<MetricsGridProps> = ({
               )}
               <div className={economicsView ? economicsGrid : regularGrid}>
                 {groupedMetrics[group].map((m, idx) => {
-                  let tooltip = m.tooltip;
+                  let valueTooltip = undefined;
                   if (economicsView && /ETH/i.test(m.value)) {
-                    const usdTooltip = `$${formatUsd(parseEthValue(m.value) * ethPrice)}`;
-                    tooltip = tooltip ? `${tooltip} | ${usdTooltip}` : usdTooltip;
+                    valueTooltip = `$${formatUsd(parseEthValue(m.value) * ethPrice)}`;
                   }
                   return (
                     <MetricCard
@@ -98,7 +97,8 @@ export const MetricsGrid: React.FC<MetricsGridProps> = ({
                           ? onMetricAction(m.title)
                           : undefined
                       }
-                      tooltip={tooltip}
+                      tooltip={valueTooltip}
+                      titleTooltip={m.tooltip}
                     />
                   );
                 })}
