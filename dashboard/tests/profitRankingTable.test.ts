@@ -110,7 +110,7 @@ describe('ProfitRankingTable', () => {
     expect(html.includes('Revenue')).toBe(true);
     expect(html.includes('Batches')).toBe(true);
     expect(html.includes('Cost')).toBe(true);
-    expect(html.includes('Profit')).toBe(true);
+    expect(html.includes('Total Sequencer Profit')).toBe(true);
     expect(html.includes('Revenue-to-Cost Ratio')).toBe(true);
     expect(html.includes('↓')).toBe(true);
   });

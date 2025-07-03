@@ -115,7 +115,7 @@ export const createMetrics = (data: MetricInputData): MetricData[] => [
     group: 'Network Health',
   },
   {
-    title: 'Profit',
+    title: 'Total Sequencer Profit',
     value: data.profit != null ? formatEth(data.profit, 3) : 'N/A',
     group: 'Network Economics',
   },
