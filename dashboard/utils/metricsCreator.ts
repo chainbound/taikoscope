@@ -115,9 +115,10 @@ export const createMetrics = (data: MetricInputData): MetricData[] => [
     group: 'Network Health',
   },
   {
-    title: 'Total Sequencer Profit',
+    title: 'Net Sequencer Profit',
     value: data.profit != null ? formatEth(data.profit, 3) : 'N/A',
     group: 'Network Economics',
+    tooltip: 'This is profit minus subsidy.',
   },
   {
     title: 'Priority Fee',
