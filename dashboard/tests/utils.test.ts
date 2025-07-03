@@ -130,20 +130,20 @@ describe('utils', () => {
   });
 
   it('formats ETH amounts', () => {
-    expect(formatEth(42e18)).toBe('42 ETH');
+    expect(formatEth(42e9)).toBe('42 ETH');
     expect(formatEth(0)).toBe('0 ETH');
-    expect(formatEth(1e8)).toBe('0 ETH');
-    expect(formatEth(1334501e9)).toBe('0.001 ETH');
-    expect(formatEth(1422636.1e9)).toBe('0.001 ETH');
-    expect(formatEth(1422636.1e18)).toBe('1,422,636 ETH');
-    expect(formatEth(187788.9e9)).toBe('0 ETH');
-    expect(formatEth(-1e8)).toBe('0 ETH');
-    expect(formatEth(-345678.9e9)).toBe('0 ETH');
-    expect(formatEth(-1.2345e18)).toBe('-1.2 ETH');
-    expect(formatEth(0.01e18)).toBe('0.01 ETH');
-    expect(formatEth(0.012e18)).toBe('0.012 ETH');
-    expect(formatEth(-0.04e18)).toBe('-0.04 ETH');
-    expect(formatEth(1e18, 3)).toBe('1 ETH');
+    expect(formatEth(0.1)).toBe('0 ETH');
+    expect(formatEth(1334501)).toBe('0.001 ETH');
+    expect(formatEth(1422636.1)).toBe('0.001 ETH');
+    expect(formatEth(1422636.1e9)).toBe('1,422,636 ETH');
+    expect(formatEth(187788.9)).toBe('0 ETH');
+    expect(formatEth(-0.1)).toBe('0 ETH');
+    expect(formatEth(-345678.9)).toBe('0 ETH');
+    expect(formatEth(-1.2345e9)).toBe('-1.2 ETH');
+    expect(formatEth(0.01e9)).toBe('0.01 ETH');
+    expect(formatEth(0.012e9)).toBe('0.012 ETH');
+    expect(formatEth(-0.04e9)).toBe('-0.04 ETH');
+    expect(formatEth(1e9, 3)).toBe('1 ETH');
   });
 
   it('parses ETH values', () => {

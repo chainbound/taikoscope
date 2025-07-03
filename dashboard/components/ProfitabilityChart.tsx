@@ -90,7 +90,7 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
             stroke="#666666"
             fontSize={12}
             domain={['auto', 'auto']}
-            tickFormatter={(v: number) => formatEth(v * 1e18, 3)}
+            tickFormatter={(v: number) => formatEth(v * 1e9, 3)}
             label={{
               value: ' (ETH)',
               angle: -90,
@@ -103,7 +103,7 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
           <Tooltip
             labelFormatter={(v: number) => `Batch ${v}`}
             formatter={(value: number, _name: string, { payload }: Payload<number, string>) =>
-              [`${formatEth(value * 1e18, 3)} ($${payload.profitUsd.toFixed(3)})`, 'Profit']
+              [`${formatEth(value * 1e9, 3)} ($${payload.profitUsd.toFixed(3)})`, 'Profit']
             }
             contentStyle={{
               backgroundColor: 'rgba(255,255,255,0.8)',
