@@ -26,7 +26,7 @@ describe('utils', () => {
     expect(formatDecimal(12.345)).toBe('12.3');
 
     expect(formatSeconds(30)).toBe('30.0s');
-    expect(formatSeconds(150)).toBe('2:30min');
+    expect(formatSeconds(150)).toBe('2:30mins');
     expect(formatSeconds(7200)).toBe('2:00h');
     expect(formatHoursMinutes(9000)).toBe('2:30');
 
