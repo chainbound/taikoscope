@@ -13,7 +13,7 @@ export interface ProfitResult {
   profitUsd: number;
 }
 
-const WEI_TO_ETH = 1e18;
+const WEI_TO_ETH = 1e9;
 
 export const calculateProfit = ({
   priorityFee = 0,

@@ -40,7 +40,7 @@ export const RevenueChart: React.FC<RevenueChartProps> = ({
   }
 
   const data = feeData.map((b) => {
-    const revenueEth = (b.priority + b.base) / 1e18;
+    const revenueEth = (b.priority + b.base) / 1e9;
     const revenueUsd = revenueEth * ethPrice;
     return { batch: b.batch, revenueEth, revenueUsd };
   });
@@ -72,7 +72,7 @@ export const RevenueChart: React.FC<RevenueChartProps> = ({
             stroke="#666666"
             fontSize={12}
             domain={['auto', 'auto']}
-            tickFormatter={(v: number) => formatEth(v * 1e18, 3)}
+            tickFormatter={(v: number) => formatEth(v * 1e9, 3)}
             label={{
               value: 'Revenue (ETH)',
               angle: -90,
@@ -85,7 +85,7 @@ export const RevenueChart: React.FC<RevenueChartProps> = ({
           <Tooltip
             labelFormatter={(v: number) => `Batch ${v}`}
             formatter={(value: number, _name: string, { payload }: Payload<number, string>) =>
-              [`${formatEth(value * 1e18, 3)} ($${payload.revenueUsd.toFixed(3)})`, 'Revenue']
+              [`${formatEth(value * 1e9, 3)} ($${payload.revenueUsd.toFixed(3)})`, 'Revenue']
             }
             contentStyle={{
               backgroundColor: 'rgba(255,255,255,0.8)',

@@ -51,8 +51,8 @@ export const CostChart: React.FC<CostChartProps> = ({
   const baseCostPerBatchEth = baseCostEth / feeData.length;
 
   const data = feeData.map((b) => {
-    const l1CostEth = (b.l1Cost ?? 0) / 1e18;
-    const proveEth = (b.amortizedProveCost ?? 0) / 1e18;
+    const l1CostEth = (b.l1Cost ?? 0) / 1e9;
+    const proveEth = (b.amortizedProveCost ?? 0) / 1e9;
     const verifyEth = 0;
     const costEth = baseCostPerBatchEth + proveEth + verifyEth + l1CostEth;
     const costUsd = costEth * ethPrice;
@@ -86,7 +86,7 @@ export const CostChart: React.FC<CostChartProps> = ({
             stroke="#666666"
             fontSize={12}
             domain={['auto', 'auto']}
-            tickFormatter={(v: number) => formatEth(v * 1e18, 3)}
+            tickFormatter={(v: number) => formatEth(v * 1e9, 3)}
             label={{
               value: 'Cost (ETH)',
               angle: -90,
@@ -99,7 +99,7 @@ export const CostChart: React.FC<CostChartProps> = ({
           <Tooltip
             labelFormatter={(v: number) => `Batch ${v}`}
             formatter={(value: number, _name: string, { payload }: Payload<number, string>) =>
-              [`${formatEth(value * 1e18, 3)} ($${payload.costUsd.toFixed(3)})`, 'Cost']
+              [`${formatEth(value * 1e9, 3)} ($${payload.costUsd.toFixed(3)})`, 'Cost']
             }
             contentStyle={{
               backgroundColor: 'rgba(255,255,255,0.8)',

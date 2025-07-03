@@ -53,7 +53,7 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
       hardwareCostUsd: operationalCostPerBatchUsd,
       ethPrice,
     });
-    const profitWei = profitEth * 1e18;
+    const profitWei = profitEth * 1e9;
 
     return {
       batch: b.batch,
