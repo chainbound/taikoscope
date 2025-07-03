@@ -272,10 +272,9 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
   // Scale operational costs to the selected time range
   const hours = rangeToHours(timeRange);
   const sequencerCount = Math.max(1, totalSequencers ?? sequencerFees.length);
-  const hardwareCostPerSeq = safeValue(
-    ((cloudCost + proverCost) / MONTH_HOURS) * hours,
-  );
-  const totalHardwareCost = hardwareCostPerSeq * sequencerCount;
+  // Compute total hardware cost for the range, then derive per-sequencer share
+  const totalHardwareCost = safeValue(((cloudCost + proverCost) / MONTH_HOURS) * hours);
+  const hardwareCostPerSeq = safeValue(totalHardwareCost / sequencerCount);
 
   const seqData = sequencerFees.map((f) => {
     const priorityWei = f.priority_fee ?? 0;
@@ -304,7 +303,8 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     const profit = safeValue(Math.max(0, profitUsd));
     const profitWei = safeValue(profitEth * WEI_TO_ETH);
     let remaining = revenue;
-    const actualHardwareCost = safeValue(Math.min(hardwareCostPerSeq, remaining));
+    // Always allocate full hardware cost share per sequencer (sum will equal totalHardwareCost)
+    const actualHardwareCost = hardwareCostPerSeq;
     remaining -= actualHardwareCost;
     const actualProveCost = safeValue(Math.min(proveUsd, remaining));
     remaining -= actualProveCost;
