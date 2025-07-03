@@ -380,7 +380,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
       { name: 'Hardware Cost', value: totalHardwareCost, usd: true, depth: 2 },
       { name: 'Propose Batch Cost', value: l1DataCostTotalUsd, usd: true, depth: 2 },
       { name: 'Profit', value: sequencerProfit, wei: sequencerProfitWei, depth: 3 },
-      { name: 'Taiko DAO', value: baseFeeDaoUsd, wei: (baseFee ?? 0) * 0.25, depth: 3 },
+      { name: 'Taiko DAO', value: baseFeeDaoUsd, wei: (baseFee ?? 0) * 0.25, depth: 1 },
     ];
 
     let inserted = 0;
@@ -424,6 +424,17 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
 
     if (l1ProveCost > 0 && proveIndex >= 0) {
       links.push({ source: 3, target: proveIndex, value: actualProveCost });
+    }
+
+    // Ensure Taiko DAO is not a sink so it appears in the middle column
+    const minPositiveDao = links.length ? Math.min(...links.map(l => l.value)) : 0;
+    const DAO_EPSILON = minPositiveDao > 0 ? minPositiveDao * 0.1 : 1e-6;
+    const daoHasOutflow = links.some((l) => l.source === daoIndex && l.value > 0);
+    if (!daoHasOutflow) {
+      links.push({ source: daoIndex, target: profitIndex, value: DAO_EPSILON });
+      if (nodes[profitIndex]) {
+        nodes[profitIndex].value += DAO_EPSILON;
+      }
     }
 
   } else {
@@ -491,7 +502,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
         profitNode: true,
         depth: 3
       },
-      { name: 'Taiko DAO', value: baseFeeDaoUsd, wei: (baseFee ?? 0) * 0.25, depth: 3 },
+      { name: 'Taiko DAO', value: baseFeeDaoUsd, wei: (baseFee ?? 0) * 0.25, depth: 1 },
     ];
 
     links = [
@@ -552,6 +563,17 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
         }
       }
     });
+
+    // --- Ensure Taiko DAO node has an outgoing edge so it sits with sequencers ---
+    const daoHasOutflow2 = links.some(
+      (l) => l.source === daoIndex && l.value > 0,
+    );
+    if (!daoHasOutflow2) {
+      links.push({ source: daoIndex, target: profitIndex, value: EPSILON });
+      if (nodes[profitIndex]) {
+        nodes[profitIndex].value += EPSILON;
+      }
+    }
 
   }
 
