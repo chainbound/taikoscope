@@ -94,7 +94,7 @@ pub struct InstatusOpts {
     #[clap(long, env = "INSTATUS_MONITOR_POLL_INTERVAL_SECS", default_value = "30")]
     pub monitor_poll_interval_secs: u64,
     /// Instatus monitor threshold in seconds for detecting an outage
-    #[clap(long, env = "INSTATUS_MONITOR_THRESHOLD_SECS", default_value = "192")]
+    #[clap(long, env = "INSTATUS_MONITOR_THRESHOLD_SECS", default_value = "600")]
     pub monitor_threshold_secs: u64,
 
     /// Batch proof timeout threshold in seconds (default 3 hours)
@@ -260,7 +260,7 @@ mod tests {
         let opts = Opts::try_parse_from(args).expect("failed to parse opts");
 
         assert_eq!(opts.instatus.monitor_poll_interval_secs, 30);
-        assert_eq!(opts.instatus.monitor_threshold_secs, 192);
+        assert_eq!(opts.instatus.monitor_threshold_secs, 600);
         assert_eq!(opts.instatus.batch_proof_timeout_secs, 10800);
         assert_eq!(opts.api.host, "127.0.0.1");
         assert_eq!(opts.api.port, 3000);
