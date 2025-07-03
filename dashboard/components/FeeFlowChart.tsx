@@ -303,10 +303,10 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     let remaining = revenue;
     const actualHardwareCost = safeValue(Math.min(hardwareCostPerSeq, remaining));
     remaining -= actualHardwareCost;
-    const actualL1Cost = safeValue(Math.min(l1CostUsd, remaining));
-    remaining -= actualL1Cost;
     const actualProveCost = safeValue(Math.min(proveUsd, remaining));
     remaining -= actualProveCost;
+    const actualL1Cost = safeValue(Math.min(l1CostUsd, remaining));
+    remaining -= actualL1Cost;
     const deficitUsd = safeValue(Math.max(0, -profitUsd));
     const subsidyUsd = safeValue(Math.max(l1CostUsd - actualL1Cost, deficitUsd));
     const subsidyWei = safeValue(
@@ -360,17 +360,23 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     // Fallback: create a single "Sequencers" node to route fees through
     const sequencerRevenue = safeValue(priorityFeeUsd + baseFeeUsd * 0.75);
     let remaining = sequencerRevenue - totalHardwareCost;
+    const actualProveCost = safeValue(Math.min(l1ProveCost, Math.max(0, remaining)));
+    remaining -= actualProveCost;
     const actualL1Cost = safeValue(Math.min(l1DataCostTotalUsd, Math.max(0, remaining)));
     remaining -= actualL1Cost;
     const l1Subsidy = safeValue(l1DataCostTotalUsd - actualL1Cost);
-    const actualProveCost = safeValue(Math.min(l1ProveCost, Math.max(0, remaining)));
-    remaining -= actualProveCost;
-
     const sequencerProfit = safeValue(Math.max(0, remaining));
     const sequencerRevenueWei = safeValue((priorityFee ?? 0) + (baseFee ?? 0) * 0.75);
     const sequencerProfitWei = safeValue(
       ethPrice ? (sequencerProfit / ethPrice) * WEI_TO_ETH : 0,
     );
+
+    // Define node indices for easier reference
+    const hardwareIndex = 4;
+    const proveIndex = l1ProveCost > 0 ? 5 : -1;
+    const proposeIndex = l1ProveCost > 0 ? 6 : 5;
+    const profitIndex = proposeIndex + 1;
+    const daoIndex = profitIndex + 1;
 
     nodes = [
       { name: 'Subsidy', value: l1Subsidy, usd: true, depth: 0 },
@@ -378,53 +384,23 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
       { name: 'Base Fee', value: baseFeeUsd, wei: baseFee ?? 0, depth: 0 },
       { name: 'Sequencers', value: sequencerRevenue, wei: sequencerRevenueWei, depth: 1 },
       { name: 'Hardware Cost', value: totalHardwareCost, usd: true, depth: 2 },
+      { name: 'L1 Prove Cost', value: actualProveCost, usd: true, depth: 2 },
       { name: 'Propose Batch Cost', value: l1DataCostTotalUsd, usd: true, depth: 2 },
       { name: 'Profit', value: sequencerProfit, wei: sequencerProfitWei, depth: 3 },
       { name: 'Taiko DAO', value: baseFeeDaoUsd, wei: (baseFee ?? 0) * 0.25, depth: 1 },
     ];
 
-    let inserted = 0;
-    let proveIndex = -1;
-
-    if (l1ProveCost > 0) {
-      proveIndex = 6 + inserted;
-      nodes.splice(proveIndex, 0, {
-        name: 'L1 Prove Cost',
-        value: actualProveCost,
-        usd: true,
-        depth: 2,
-      });
-      inserted += 1;
-    }
-
-
-    const profitIndex = 6 + inserted;
-    const daoIndex = profitIndex + 1;
-
+    // Build links with updated indices
     links = [
-      { source: 1, target: 3, value: priorityFeeUsd }, // Priority Fee → Sequencers
-      { source: 2, target: 3, value: safeValue(baseFeeUsd * 0.75) }, // 75% Base Fee → Sequencers
-      { source: 2, target: daoIndex, value: baseFeeDaoUsd }, // 25% Base Fee → Taiko DAO
-      {
-        source: 3,
-        target: 4,
-        value: safeValue(Math.min(totalHardwareCost, sequencerRevenue)),
-      }, // Sequencers → Hardware Cost
-      {
-        source: 3,
-        target: 5,
-        value: safeValue(Math.min(
-          l1DataCostTotalUsd,
-          Math.max(0, sequencerRevenue - totalHardwareCost),
-        )),
-      }, // Sequencers → Propose Batch Cost
-      { source: 0, target: 5, value: l1Subsidy }, // Subsidy → Propose Batch Cost
-      { source: 3, target: profitIndex, value: sequencerProfit }, // Sequencers → Profit
+      { source: 1, target: 3, value: priorityFeeUsd },
+      { source: 2, target: 3, value: safeValue(baseFeeUsd * 0.75) },
+      { source: 2, target: daoIndex, value: baseFeeDaoUsd },
+      { source: 3, target: hardwareIndex, value: safeValue(Math.min(totalHardwareCost, sequencerRevenue)) },
+      { source: 3, target: proveIndex, value: actualProveCost },
+      { source: 3, target: proposeIndex, value: actualL1Cost },
+      { source: 0, target: proposeIndex, value: l1Subsidy },
+      { source: 3, target: profitIndex, value: sequencerProfit },
     ].filter((l) => l.value > 0);
-
-    if (l1ProveCost > 0 && proveIndex >= 0) {
-      links.push({ source: 3, target: proveIndex, value: actualProveCost });
-    }
 
     // Ensure Taiko DAO is not a sink so it appears in the middle column
     const minPositiveDao = links.length ? Math.min(...links.map(l => l.value)) : 0;
@@ -465,9 +441,9 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     const baseFeeIndex = 2;
     const sequencerStartIndex = 3; // first sequencer node index
     const hardwareIndex = sequencerStartIndex + seqData.length;
-    const l1Index = hardwareIndex + 1;
-    const proveIndex = l1ProveCost > 0 ? l1Index + 1 : -1;
-    const profitIndex = l1ProveCost > 0 ? proveIndex + 1 : l1Index + 1;
+    const proveIndex = l1ProveCost > 0 ? hardwareIndex + 1 : -1;
+    const l1Index = hardwareIndex + 1 + (l1ProveCost > 0 ? 1 : 0);
+    const profitIndex = l1ProveCost > 0 ? l1Index + 1 : hardwareIndex + 1;
     const daoIndex = profitIndex + 1;
 
     nodes = [
@@ -477,7 +453,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
         value: totalSubsidy,
         wei: totalSubsidyWei,
         usd: true,
-        depth: 0
+        depth: 0,
       },
       { name: 'Priority Fee', value: priorityFeeUsd, wei: priorityFee ?? 0, depth: 0 },
       { name: 'Base Fee', value: baseFeeUsd, wei: baseFee ?? 0, depth: 0 },
@@ -488,19 +464,17 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
         addressLabel: s.shortAddress,
         value: s.revenue + s.subsidyUsd,
         wei: s.revenueWei + s.subsidyWei,
-        depth: 1
+        depth: 1,
       })),
       { name: 'Hardware Cost', value: totalActualHardwareCost, usd: true, depth: 2 },
+      ...(l1ProveCost > 0 ? [{ name: 'L1 Prove Cost', value: totalActualProveCost, usd: true, depth: 2 }] : []),
       { name: 'Propose Batch Cost', value: totalL1Cost, usd: true, depth: 2 },
-      ...(l1ProveCost > 0
-        ? [{ name: 'L1 Prove Cost', value: totalActualProveCost, usd: true, depth: 2 }]
-        : []),
       {
         name: 'Profit',
         value: totalProfit,
         wei: totalProfitWei,
         profitNode: true,
-        depth: 3
+        depth: 3,
       },
       { name: 'Taiko DAO', value: baseFeeDaoUsd, wei: (baseFee ?? 0) * 0.25, depth: 1 },
     ];
@@ -532,6 +506,14 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
         target: hardwareIndex,
         value: s.actualHardwareCost,
       })),
+      // Sequencer nodes → L1 Prove Cost (if included)
+      ...(l1ProveCost > 0
+        ? seqData.map((s, i) => ({
+          source: sequencerStartIndex + i,
+          target: proveIndex,
+          value: s.actualProveCost,
+        }))
+        : []),
       // Sequencer nodes → Propose Batch Cost
       ...seqData.map((s, i) => ({
         source: sequencerStartIndex + i,
