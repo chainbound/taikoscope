@@ -59,7 +59,16 @@ export const DashboardFooter: React.FC<DashboardFooterProps> = ({
       </div>
     </div>
     <div className="mt-4 text-sm text-gray-500 dark:text-gray-400 text-center">
-      Made by Chainbound
+      Made by{' '}
+      <a
+        href="https://chainbound.io/"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="hover:underline"
+        style={{ color: TAIKO_PINK }}
+      >
+        Chainbound
+      </a>
       <span className="mx-2">|</span>
       <a
         href="https://x.com/chainbound_"
