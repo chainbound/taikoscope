@@ -356,6 +356,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               height={400}
             />
             <div className="mt-6">
+              <h3 className="text-lg font-semibold mb-2">Cost & Revenue Trends</h3>
               <EconomicsChart
                 timeRange={timeRange}
                 cloudCost={cloudCost}
