@@ -21,8 +21,9 @@ use axum::{
     extract::{Query, State},
     http::StatusCode,
 };
-use clickhouse_lib::AddressBytes;
+use clickhouse_lib::{AddressBytes, L1DataCostRow, ProveCostRow};
 use hex::encode;
+use primitives::WEI_PER_GWEI;
 
 // Legacy type aliases for backward compatibility
 type RangeQuery = CommonQuery;
@@ -504,6 +505,10 @@ pub async fn l1_data_cost(
             return Err(ErrorResponse::database_error());
         }
     };
+    let rows: Vec<L1DataCostRow> = rows
+        .into_iter()
+        .map(|r| L1DataCostRow { l1_block_number: r.l1_block_number, cost: r.cost / WEI_PER_GWEI })
+        .collect();
     tracing::info!(count = rows.len(), "Returning L1 data cost");
     Ok(Json(L1DataCostResponse { blocks: rows }))
 }
@@ -548,6 +553,14 @@ pub async fn prove_cost(
             return Err(ErrorResponse::database_error());
         }
     };
+    let rows: Vec<ProveCostRow> = rows
+        .into_iter()
+        .map(|r| ProveCostRow {
+            l1_block_number: r.l1_block_number,
+            batch_id: r.batch_id,
+            cost: r.cost / WEI_PER_GWEI,
+        })
+        .collect();
     tracing::info!(count = rows.len(), "Returning prove cost");
     Ok(Json(ProveCostResponse { batches: rows }))
 }

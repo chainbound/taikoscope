@@ -20,9 +20,9 @@ use axum::{
     extract::{Query, State},
     http::StatusCode,
 };
-use clickhouse_lib::AddressBytes;
+use clickhouse_lib::{AddressBytes, BlockFeeComponentRow};
 use hex::encode;
-use primitives::hardware::TOTAL_HARDWARE_COST_USD;
+use primitives::{WEI_PER_GWEI, hardware::TOTAL_HARDWARE_COST_USD};
 
 // Legacy type aliases for backward compatibility
 type RangeQuery = CommonQuery;
@@ -381,12 +381,17 @@ pub async fn l2_fees(
         .filter(|r| if let Some(target) = address { r.sequencer == target } else { true })
         .map(|r| SequencerFeeRow {
             address: format!("0x{}", encode(r.sequencer)),
-            priority_fee: r.priority_fee,
-            base_fee: r.base_fee,
-            l1_data_cost: r.l1_data_cost,
-            prove_cost: r.prove_cost,
+            priority_fee: r.priority_fee / WEI_PER_GWEI,
+            base_fee: r.base_fee / WEI_PER_GWEI,
+            l1_data_cost: r.l1_data_cost.map(|v| v / WEI_PER_GWEI),
+            prove_cost: r.prove_cost.map(|v| v / WEI_PER_GWEI),
         })
         .collect();
+
+    let priority_fee = priority_fee.map(|v| v / WEI_PER_GWEI);
+    let base_fee = base_fee.map(|v| v / WEI_PER_GWEI);
+    let l1_data_cost = l1_data_cost.map(|v| v / WEI_PER_GWEI);
+    let prove_cost = prove_cost.map(|v| v / WEI_PER_GWEI);
 
     tracing::info!(count = sequencers.len(), "Returning L2 fees and breakdown");
     Ok(Json(L2FeesResponse { priority_fee, base_fee, l1_data_cost, prove_cost, sequencers }))
@@ -448,12 +453,16 @@ pub async fn batch_fees(
         .filter(|r| if let Some(target) = address { r.sequencer == target } else { true })
         .map(|r| SequencerFeeRow {
             address: format!("0x{}", encode(r.sequencer)),
-            priority_fee: r.priority_fee,
-            base_fee: r.base_fee,
-            l1_data_cost: r.l1_data_cost,
-            prove_cost: r.prove_cost,
+            priority_fee: r.priority_fee / WEI_PER_GWEI,
+            base_fee: r.base_fee / WEI_PER_GWEI,
+            l1_data_cost: r.l1_data_cost.map(|v| v / WEI_PER_GWEI),
+            prove_cost: r.prove_cost.map(|v| v / WEI_PER_GWEI),
         })
         .collect();
+
+    let priority_fee = priority_fee.map(|v| v / WEI_PER_GWEI);
+    let base_fee = base_fee.map(|v| v / WEI_PER_GWEI);
+    let l1_data_cost = l1_data_cost.map(|v| v / WEI_PER_GWEI);
 
     tracing::info!(count = sequencers.len(), "Returning batch fees and breakdown");
     Ok(Json(L2FeesResponse { priority_fee, base_fee, l1_data_cost, prove_cost: None, sequencers }))
@@ -490,7 +499,10 @@ pub async fn prove_costs(
 
     let proposers: Vec<ProposerCostItem> = rows
         .into_iter()
-        .map(|(addr, cost)| ProposerCostItem { address: format!("0x{}", encode(addr)), cost })
+        .map(|(addr, cost)| ProposerCostItem {
+            address: format!("0x{}", encode(addr)),
+            cost: cost / WEI_PER_GWEI,
+        })
         .collect();
 
     tracing::info!(count = proposers.len(), "Returning prover costs");
@@ -542,6 +554,16 @@ pub async fn l2_fee_components(
         ErrorResponse::database_error()
     })?;
 
+    let blocks: Vec<BlockFeeComponentRow> = blocks
+        .into_iter()
+        .map(|r| BlockFeeComponentRow {
+            l2_block_number: r.l2_block_number,
+            priority_fee: r.priority_fee / WEI_PER_GWEI,
+            base_fee: r.base_fee / WEI_PER_GWEI,
+            l1_data_cost: r.l1_data_cost.map(|v| v / WEI_PER_GWEI),
+        })
+        .collect();
+
     Ok(Json(FeeComponentsResponse { blocks }))
 }
 
@@ -592,6 +614,15 @@ pub async fn l2_fee_components_aggregated(
 
     let bucket = bucket_size_from_range(&time_range);
     let blocks = aggregate_l2_fee_components(blocks, bucket);
+    let blocks: Vec<BlockFeeComponentRow> = blocks
+        .into_iter()
+        .map(|r| BlockFeeComponentRow {
+            l2_block_number: r.l2_block_number,
+            priority_fee: r.priority_fee / WEI_PER_GWEI,
+            base_fee: r.base_fee / WEI_PER_GWEI,
+            l1_data_cost: r.l1_data_cost.map(|v| v / WEI_PER_GWEI),
+        })
+        .collect();
 
     Ok(Json(FeeComponentsResponse { blocks }))
 }
@@ -647,7 +678,8 @@ pub async fn batch_fee_components(
             ErrorResponse::database_error()
         })?;
     let count = rows.len() as u128;
-    let amortized_prove = if count > 0 { prove_total.map(|c| c / count) } else { None };
+    let amortized_prove =
+        if count > 0 { prove_total.map(|c| (c / count) / WEI_PER_GWEI) } else { None };
 
     let batches: Vec<BatchFeeComponentRow> = rows
         .into_iter()
@@ -656,9 +688,9 @@ pub async fn batch_fee_components(
             l1_block_number: r.l1_block_number,
             l1_tx_hash: format!("0x{}", encode(r.l1_tx_hash)),
             sequencer: format!("0x{}", encode(r.sequencer)),
-            priority_fee: r.priority_fee,
-            base_fee: r.base_fee,
-            l1_data_cost: r.l1_data_cost,
+            priority_fee: r.priority_fee / WEI_PER_GWEI,
+            base_fee: r.base_fee / WEI_PER_GWEI,
+            l1_data_cost: r.l1_data_cost.map(|v| v / WEI_PER_GWEI),
             amortized_prove_cost: amortized_prove,
         })
         .collect();
@@ -717,7 +749,8 @@ pub async fn batch_fee_components_aggregated(
             ErrorResponse::database_error()
         })?;
     let count = rows.len() as u128;
-    let amortized_prove = if count > 0 { prove_total.map(|c| c / count) } else { None };
+    let amortized_prove =
+        if count > 0 { prove_total.map(|c| (c / count) / WEI_PER_GWEI) } else { None };
 
     let batches: Vec<BatchFeeComponentRow> = rows
         .into_iter()
@@ -726,9 +759,9 @@ pub async fn batch_fee_components_aggregated(
             l1_block_number: r.l1_block_number,
             l1_tx_hash: format!("0x{}", encode(r.l1_tx_hash)),
             sequencer: format!("0x{}", encode(r.sequencer)),
-            priority_fee: r.priority_fee,
-            base_fee: r.base_fee,
-            l1_data_cost: r.l1_data_cost,
+            priority_fee: r.priority_fee / WEI_PER_GWEI,
+            base_fee: r.base_fee / WEI_PER_GWEI,
+            l1_data_cost: r.l1_data_cost.map(|v| v / WEI_PER_GWEI),
             amortized_prove_cost: amortized_prove,
         })
         .collect();
@@ -812,6 +845,10 @@ pub async fn dashboard_data(
         current_operator: d.current_operator.map(|a| format!("0x{}", encode(a))),
         next_operator: d.next_operator.map(|a| format!("0x{}", encode(a))),
     });
+
+    let priority_fee = priority_fee.map(|v| v / WEI_PER_GWEI);
+    let base_fee = base_fee.map(|v| v / WEI_PER_GWEI);
+    let prove_cost = prove_cost.map(|v| v / WEI_PER_GWEI);
 
     let hours = time_range.seconds() as f64 / 3600.0;
     let hourly_rate = TOTAL_HARDWARE_COST_USD / (30.0 * 24.0);

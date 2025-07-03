@@ -9,3 +9,6 @@ pub mod hardware;
 pub mod headers;
 /// L1 data cost calculation helpers
 pub mod l1_data_cost;
+
+/// Number of wei in one gwei.
+pub const WEI_PER_GWEI: u128 = 1_000_000_000;
