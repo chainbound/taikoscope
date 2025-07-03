@@ -373,14 +373,14 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     );
 
     nodes = [
-      { name: 'Subsidy', value: l1Subsidy, usd: true },
-      { name: 'Priority Fee', value: priorityFeeUsd, wei: priorityFee ?? 0 },
-      { name: 'Base Fee', value: baseFeeUsd, wei: baseFee ?? 0 },
-      { name: 'Sequencers', value: sequencerRevenue, wei: sequencerRevenueWei },
-      { name: 'Hardware Cost', value: totalHardwareCost, usd: true },
-      { name: 'Propose Batch Cost', value: l1DataCostTotalUsd, usd: true },
-      { name: 'Profit', value: sequencerProfit, wei: sequencerProfitWei },
-      { name: 'Taiko DAO', value: baseFeeDaoUsd, wei: (baseFee ?? 0) * 0.25 },
+      { name: 'Subsidy', value: l1Subsidy, usd: true, depth: 0 },
+      { name: 'Priority Fee', value: priorityFeeUsd, wei: priorityFee ?? 0, depth: 0 },
+      { name: 'Base Fee', value: baseFeeUsd, wei: baseFee ?? 0, depth: 0 },
+      { name: 'Sequencers', value: sequencerRevenue, wei: sequencerRevenueWei, depth: 1 },
+      { name: 'Hardware Cost', value: totalHardwareCost, usd: true, depth: 2 },
+      { name: 'Propose Batch Cost', value: l1DataCostTotalUsd, usd: true, depth: 2 },
+      { name: 'Profit', value: sequencerProfit, wei: sequencerProfitWei, depth: 3 },
+      { name: 'Taiko DAO', value: baseFeeDaoUsd, wei: (baseFee ?? 0) * 0.25, depth: 3 },
     ];
 
     let inserted = 0;
@@ -392,6 +392,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
         name: 'L1 Prove Cost',
         value: actualProveCost,
         usd: true,
+        depth: 2,
       });
       inserted += 1;
     }
@@ -464,10 +465,11 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
         name: 'Subsidy',
         value: totalSubsidy,
         wei: totalSubsidyWei,
-        usd: true
+        usd: true,
+        depth: 0
       },
-      { name: 'Priority Fee', value: priorityFeeUsd, wei: priorityFee ?? 0 },
-      { name: 'Base Fee', value: baseFeeUsd, wei: baseFee ?? 0 },
+      { name: 'Priority Fee', value: priorityFeeUsd, wei: priorityFee ?? 0, depth: 0 },
+      { name: 'Base Fee', value: baseFeeUsd, wei: baseFee ?? 0, depth: 0 },
       // Combined sequencer nodes (revenue + subsidy)
       ...seqData.map((s) => ({
         name: s.shortAddress,
@@ -475,19 +477,21 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
         addressLabel: s.shortAddress,
         value: s.revenue + s.subsidyUsd,
         wei: s.revenueWei + s.subsidyWei,
+        depth: 1
       })),
-      { name: 'Hardware Cost', value: totalActualHardwareCost, usd: true },
-      { name: 'Propose Batch Cost', value: totalL1Cost, usd: true },
+      { name: 'Hardware Cost', value: totalActualHardwareCost, usd: true, depth: 2 },
+      { name: 'Propose Batch Cost', value: totalL1Cost, usd: true, depth: 2 },
       ...(l1ProveCost > 0
-        ? [{ name: 'L1 Prove Cost', value: totalActualProveCost, usd: true }]
+        ? [{ name: 'L1 Prove Cost', value: totalActualProveCost, usd: true, depth: 2 }]
         : []),
       {
         name: 'Profit',
         value: totalProfit,
         wei: totalProfitWei,
         profitNode: true,
+        depth: 3
       },
-      { name: 'Taiko DAO', value: baseFeeDaoUsd, wei: (baseFee ?? 0) * 0.25 },
+      { name: 'Taiko DAO', value: baseFeeDaoUsd, wei: (baseFee ?? 0) * 0.25, depth: 3 },
     ];
 
     links = [
