@@ -49,10 +49,8 @@ const createSankeyNode = (
     const isCostNode =
       payload.name === 'Hardware Cost' ||
       payload.name === 'Propose Batch Cost' ||
-      payload.name === 'L1 Prove Cost' ||
-
-      payload.name === 'Subsidy' ||
-      (typeof payload.name === 'string' && payload.name.includes('Subsidy'));
+      payload.name === 'L1 Prove Cost';
+    const isSubsidyNode = payload.name === 'Subsidy' || (typeof payload.name === 'string' && payload.name.includes('Subsidy'));
     const isProfitNode = payload.name === 'Profit' || payload.profitNode;
     const isPinkNode = payload.name === 'Taiko DAO';
     const hideLabel = payload.hideLabel;
@@ -74,7 +72,7 @@ const createSankeyNode = (
           y={safeY}
           width={safeWidth}
           height={safeHeight}
-          fill={isCostNode ? '#ef4444' : isPinkNode ? TAIKO_PINK : NODE_GREEN}
+          fill={isCostNode ? '#ef4444' : isPinkNode ? TAIKO_PINK : isSubsidyNode ? NODE_GREEN : NODE_GREEN}
           fillOpacity={0.8}
         />
         {!hideLabel && (
