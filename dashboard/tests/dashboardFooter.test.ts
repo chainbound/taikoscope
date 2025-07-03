@@ -17,5 +17,8 @@ describe('DashboardFooter', () => {
     expect(html.includes('3,951,872')).toBe(true);
     expect(html.includes('/block/409253')).toBe(true);
     expect(html.includes('/block/3951872')).toBe(true);
+    expect(html.includes('Made by Chainbound')).toBe(true);
+    expect(html.includes('https://x.com/chainbound_')).toBe(true);
+    expect(html.includes('https://github.com/chainbound/taikoscope/')).toBe(true);
   });
 });

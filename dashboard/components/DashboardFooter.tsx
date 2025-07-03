@@ -58,5 +58,28 @@ export const DashboardFooter: React.FC<DashboardFooterProps> = ({
         </p>
       </div>
     </div>
+    <div className="mt-4 text-sm text-gray-500 dark:text-gray-400 text-center">
+      Made by Chainbound
+      <span className="mx-2">|</span>
+      <a
+        href="https://x.com/chainbound_"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="hover:underline"
+        style={{ color: TAIKO_PINK }}
+      >
+        X
+      </a>
+      <span className="mx-1">|</span>
+      <a
+        href="https://github.com/chainbound/taikoscope/"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="hover:underline"
+        style={{ color: TAIKO_PINK }}
+      >
+        GitHub
+      </a>
+    </div>
   </footer>
 );
