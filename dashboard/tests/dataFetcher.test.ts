@@ -39,9 +39,13 @@ describe('dataFetcher', () => {
         forced_inclusions: 8,
         l2_head_block: 10,
         l1_head_block: 11,
+      }),
+      fetchL2Fees: ok({
         priority_fee: 12,
         base_fee: 5,
-        cloud_cost: 13,
+        l1_data_cost: null,
+        prove_cost: 13,
+        sequencers: [],
       }),
       fetchProveTimes: ok([{ name: '1', value: 1, timestamp: 0 }]),
       fetchL2BlockTimesAggregated: ok([{ value: 2, timestamp: 0 }]),
@@ -65,6 +69,7 @@ describe('dataFetcher', () => {
   it('defaults to empty arrays when service data missing', async () => {
     setAll({
       fetchDashboardData: ok(null),
+      fetchL2Fees: ok(null),
       fetchProveTimes: ok(null),
       fetchL2BlockTimesAggregated: ok(null),
       fetchL2GasUsedAggregated: ok(null),

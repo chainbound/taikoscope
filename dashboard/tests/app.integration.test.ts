@@ -167,10 +167,6 @@ const responses: Record<string, Record<string, unknown>> = {
     forced_inclusions: 8,
     l2_head_block: 9,
     l1_head_block: 10,
-    priority_fee: 11,
-    base_fee: 12,
-    prove_cost: 13,
-    cloud_cost: 14,
   },
   [`/v1/l2-fees?${q24h}`]: {
     priority_fee: 1200,
@@ -479,10 +475,6 @@ it('fetches dashboard data correctly', async () => {
     forced_inclusions: 8,
     l2_head_block: 9,
     l1_head_block: 10,
-    priority_fee: 11,
-    base_fee: 12,
-    prove_cost: 13,
-    cloud_cost: 14,
   });
 });
 
