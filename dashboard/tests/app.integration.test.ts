@@ -137,14 +137,14 @@ const responses: Record<string, Record<string, unknown>> = {
   [`/v1/l2-fees?${q1h}`]: {
     priority_fee: 600,
     base_fee: 400,
-    l1_data_cost: null,
+    l1_data_cost: 0,
     prove_cost: 5,
     sequencers: [],
   },
   [`/v1/l2-fees?${q15m}`]: {
     priority_fee: 600,
     base_fee: 400,
-    l1_data_cost: null,
+    l1_data_cost: 0,
     prove_cost: 5,
     sequencers: [],
   },
@@ -175,7 +175,7 @@ const responses: Record<string, Record<string, unknown>> = {
   [`/v1/l2-fees?${q24h}`]: {
     priority_fee: 1200,
     base_fee: 800,
-    l1_data_cost: null,
+    l1_data_cost: 0,
     prove_cost: 10,
     sequencers: [],
   },

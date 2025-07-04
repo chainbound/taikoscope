@@ -855,15 +855,15 @@ export interface SequencerFee {
   address: string;
   priority_fee: number;
   base_fee: number;
-  l1_data_cost: number | null;
-  prove_cost: number | null;
+  l1_data_cost: number;
+  prove_cost: number;
 }
 
 export interface L2FeesResponse {
   priority_fee: number | null;
   base_fee: number | null;
-  l1_data_cost: number | null;
-  prove_cost: number | null;
+  l1_data_cost: number;
+  prove_cost: number;
   sequencers: SequencerFee[];
 }
 

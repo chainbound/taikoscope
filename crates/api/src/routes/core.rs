@@ -730,15 +730,15 @@ pub async fn l2_fees(
             address: format!("0x{}", encode(r.sequencer)),
             priority_fee: r.priority_fee / WEI_PER_GWEI,
             base_fee: r.base_fee / WEI_PER_GWEI,
-            l1_data_cost: r.l1_data_cost.map(|v| v / WEI_PER_GWEI),
-            prove_cost: r.prove_cost.map(|v| v / WEI_PER_GWEI),
+            l1_data_cost: r.l1_data_cost.unwrap_or(0) / WEI_PER_GWEI,
+            prove_cost: r.prove_cost.unwrap_or(0) / WEI_PER_GWEI,
         })
         .collect();
 
     let priority_fee = priority_fee.map(|v| v / WEI_PER_GWEI);
     let base_fee = base_fee.map(|v| v / WEI_PER_GWEI);
-    let l1_data_cost = l1_data_cost.map(|v| v / WEI_PER_GWEI);
-    let prove_cost = prove_cost.map(|v| v / WEI_PER_GWEI);
+    let l1_data_cost = l1_data_cost.unwrap_or(0) / WEI_PER_GWEI;
+    let prove_cost = prove_cost.unwrap_or(0) / WEI_PER_GWEI;
 
     tracing::info!(count = sequencers.len(), "Returning L2 fees and breakdown");
     Ok(Json(L2FeesResponse { priority_fee, base_fee, l1_data_cost, prove_cost, sequencers }))
@@ -802,17 +802,17 @@ pub async fn batch_fees(
             address: format!("0x{}", encode(r.sequencer)),
             priority_fee: r.priority_fee / WEI_PER_GWEI,
             base_fee: r.base_fee / WEI_PER_GWEI,
-            l1_data_cost: r.l1_data_cost.map(|v| v / WEI_PER_GWEI),
-            prove_cost: r.prove_cost.map(|v| v / WEI_PER_GWEI),
+            l1_data_cost: r.l1_data_cost.unwrap_or(0) / WEI_PER_GWEI,
+            prove_cost: r.prove_cost.unwrap_or(0) / WEI_PER_GWEI,
         })
         .collect();
 
     let priority_fee = priority_fee.map(|v| v / WEI_PER_GWEI);
     let base_fee = base_fee.map(|v| v / WEI_PER_GWEI);
-    let l1_data_cost = l1_data_cost.map(|v| v / WEI_PER_GWEI);
+    let l1_data_cost = l1_data_cost.unwrap_or(0) / WEI_PER_GWEI;
 
     tracing::info!(count = sequencers.len(), "Returning batch fees and breakdown");
-    Ok(Json(L2FeesResponse { priority_fee, base_fee, l1_data_cost, prove_cost: None, sequencers }))
+    Ok(Json(L2FeesResponse { priority_fee, base_fee, l1_data_cost, prove_cost: 0, sequencers }))
 }
 
 #[utoipa::path(

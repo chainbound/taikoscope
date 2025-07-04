@@ -674,7 +674,7 @@ async fn batch_fees_integration() {
             "priority_fee": 10,
             "base_fee": 20,
             "l1_data_cost": 5,
-            "prove_cost": null,
+            "prove_cost": 0,
             "sequencers": [
                 {
                     "address": format!("0x{}", hex::encode([2u8; 20])),
