@@ -80,6 +80,26 @@ impl ClickhouseReader {
         )
     }
 
+    /// Helper to filter by the minimum L2 block number matching a timestamp.
+    /// Using `FINAL` ensures we read committed rows and improves index use when
+    /// sorting by `l2_block_number`.
+    fn min_l2_block_for_ts(&self, ts: i64) -> String {
+        format!(
+            "(SELECT min(l2_block_number) FROM {db}.l2_head_events FINAL WHERE block_ts >= {ts})",
+            db = self.db_name,
+            ts = ts,
+        )
+    }
+
+    /// Helper to filter by the minimum L1 block number matching a timestamp.
+    fn min_l1_block_for_ts(&self, ts: i64) -> String {
+        format!(
+            "(SELECT min(l1_block_number) FROM {db}.l1_head_events FINAL WHERE block_ts >= {ts})",
+            db = self.db_name,
+            ts = ts,
+        )
+    }
+
     /// Get last L2 head time
     pub async fn get_last_l2_head_time(&self) -> Result<Option<DateTime<Utc>>> {
         let client = self.base.clone();
@@ -622,18 +642,21 @@ impl ClickhouseReader {
         &self,
         since: DateTime<Utc>,
     ) -> Result<Vec<SequencerDistributionRow>> {
+        // SAMPLE clause can be adjusted for approximate counts on huge tables.
         let query = format!(
             "SELECT sequencer,\n\
                    count(DISTINCT h.l2_block_number) AS blocks,\n\
                    toUInt64(min(h.block_ts)) AS min_ts,\n\
                    toUInt64(max(h.block_ts)) AS max_ts,\n\
                    sum(sum_tx) AS tx_sum\n\
-             FROM {db}.l2_head_events h\n\
+             FROM {db}.l2_head_events FINAL SAMPLE 0.1 AS h\n\
              WHERE h.block_ts > {since}\n\
+               AND h.l2_block_number >= {min_block}\n\
                AND {filter}\n\
              GROUP BY sequencer\n\
              ORDER BY blocks DESC",
             since = since.timestamp(),
+            min_block = self.min_l2_block_for_ts(since.timestamp()),
             filter = self.reorg_filter("h"),
             db = self.db_name,
         );
@@ -650,10 +673,12 @@ impl ClickhouseReader {
         let query = format!(
             "SELECT sequencer, h.l2_block_number \
              FROM {db}.l2_head_events h \
-             WHERE h.block_ts > {} \
+             WHERE h.block_ts > {since} \
+               AND h.l2_block_number >= {min_block} \
                AND {filter} \
              ORDER BY sequencer, h.l2_block_number ASC",
-            since.timestamp(),
+            since = since.timestamp(),
+            min_block = self.min_l2_block_for_ts(since.timestamp()),
             filter = self.reorg_filter("h"),
             db = self.db_name,
         );
@@ -683,9 +708,11 @@ impl ClickhouseReader {
         let mut query = format!(
             "SELECT sequencer, h.l2_block_number, h.block_ts AS block_time, sum_tx \
              FROM {db}.l2_head_events h \
-             WHERE h.block_ts >= {} \
+             WHERE h.block_ts >= {since} \
+               AND h.l2_block_number >= {min_block} \
                AND {filter}",
-            since.timestamp(),
+            since = since.timestamp(),
+            min_block = self.min_l2_block_for_ts(since.timestamp()),
             filter = self.reorg_filter("h"),
             db = self.db_name,
         );
@@ -789,8 +816,10 @@ impl ClickhouseReader {
                         AS ms_since_prev_block \
              FROM {db}.l2_head_events h \
              WHERE h.block_ts >= {since} \
+               AND h.l2_block_number >= {min_block} \
                AND {filter}",
             since = since.timestamp(),
+            min_block = self.min_l2_block_for_ts(since.timestamp()),
             filter = self.reorg_filter("h"),
             db = self.db_name,
         );
@@ -841,8 +870,10 @@ impl ClickhouseReader {
             "SELECT h.l2_block_number, h.block_ts AS block_time, toUInt64(sum_gas_used) AS gas_used \
              FROM {db}.l2_head_events h \
              WHERE h.block_ts >= {since} \
+               AND h.l2_block_number >= {min_block} \
                AND {filter}",
             since = since.timestamp(),
+            min_block = self.min_l2_block_for_ts(since.timestamp()),
             filter = self.reorg_filter("h"),
             db = self.db_name,
         );
@@ -895,8 +926,10 @@ impl ClickhouseReader {
                         lagInFrame(toUnixTimestamp64Milli(h.inserted_at)) OVER (ORDER BY h.l2_block_number)))) AS ms_since_prev_block \
              FROM {db}.l2_head_events h \
              WHERE h.block_ts >= {since} \
+               AND h.l2_block_number >= {min_block} \
                AND {filter}",
             since = since.timestamp(),
+            min_block = self.min_l2_block_for_ts(since.timestamp()),
             filter = self.reorg_filter("h"),
             db = self.db_name,
         );
@@ -1717,8 +1750,10 @@ impl ClickhouseReader {
          FROM {db}.l1_data_costs c \
          INNER JOIN {db}.l1_head_events h \
            ON c.l1_block_number = h.l1_block_number \
-         WHERE h.block_ts >= {since}",
+         WHERE h.block_ts >= {since} \
+           AND c.l1_block_number >= {min_block}",
             since = since.timestamp(),
+            min_block = self.min_l1_block_for_ts(since.timestamp()),
             db = self.db_name,
         );
         if let Some(start) = starting_after {
