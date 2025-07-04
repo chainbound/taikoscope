@@ -137,31 +137,28 @@ export const TableRoute: React.FC = () => {
             ]);
           }
         } else if (config.supportsPagination) {
-          const address = fetcherArgs.pop();
-          // For l2-block-times, fetch one extra on first page so slicing off the first still yields PAGE_LIMIT items
+          // For paginated tables, determine if an address param is needed
           const fetchLimit = tableType === 'l2-block-times' && startingAfter === undefined && endingBefore === undefined
             ? PAGE_LIMIT + 1
             : PAGE_LIMIT;
+          const needsAddress = ['l2-block-times', 'l2-gas-used', 'l2-tps', 'block-tx'].includes(tableType);
+          const addressParam = needsAddress
+            ? (selectedSequencer ? getSequencerAddress(selectedSequencer) : undefined)
+            : undefined;
           if (config.aggregatedFetcher) {
             [res, aggRes] = await Promise.all([
-              config.fetcher(
-                range,
-                address,
-                fetchLimit,
-                startingAfter,
-                endingBefore,
-              ),
-              config.aggregatedFetcher(range, address),
+              needsAddress
+                ? config.fetcher(range, addressParam, fetchLimit, startingAfter, endingBefore)
+                : config.fetcher(range, fetchLimit, startingAfter, endingBefore),
+              needsAddress
+                ? config.aggregatedFetcher(range, addressParam)
+                : config.aggregatedFetcher(range),
             ]);
           } else {
             [res] = await Promise.all([
-              config.fetcher(
-                range,
-                address,
-                fetchLimit,
-                startingAfter,
-                endingBefore,
-              ),
+              needsAddress
+                ? config.fetcher(range, addressParam, fetchLimit, startingAfter, endingBefore)
+                : config.fetcher(range, fetchLimit, startingAfter, endingBefore),
             ]);
           }
         } else {
