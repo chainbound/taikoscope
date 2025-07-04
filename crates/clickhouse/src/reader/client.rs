@@ -1952,8 +1952,7 @@ impl ClickhouseReader {
                     sum(h.sum_priority_fee) AS priority_fee, \
                     sum(h.sum_base_fee) AS base_fee, \
                     toNullable(sum(if(b.batch_size > 0, intDiv(dc.cost, b.batch_size), NULL))) AS l1_data_cost, \
-                    toNullable(sum(if(b.batch_size > 0, intDiv(pc.cost, b.batch_size), NULL))) AS prove_cost, \
-                    toNullable(sum(if(b.batch_size > 0, intDiv(vc.cost, b.batch_size), NULL))) AS verify_cost \
+                    toNullable(sum(if(b.batch_size > 0, intDiv(pc.cost, b.batch_size), NULL))) AS prove_cost \
              FROM {db}.batch_blocks bb \
              INNER JOIN {db}.batches b \
                ON bb.batch_id = b.batch_id \
@@ -1965,8 +1964,6 @@ impl ClickhouseReader {
                ON b.batch_id = dc.batch_id \
              LEFT JOIN {db}.prove_costs pc \
                ON b.batch_id = pc.batch_id \
-             LEFT JOIN {db}.verify_costs vc \
-               ON b.batch_id = vc.batch_id \
              WHERE l1.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
                AND {filter} \
              GROUP BY b.proposer_addr \
