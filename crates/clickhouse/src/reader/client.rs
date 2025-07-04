@@ -2369,4 +2369,33 @@ impl ClickhouseReader {
 
         if row.avg.is_nan() { Ok(None) } else { Ok(Some(row.avg)) }
     }
+
+    /// Get the distribution of blocks and TPS across different sequencers within a specified time
+    /// window.
+    pub async fn get_sequencer_distribution_range(
+        &self,
+        since: DateTime<Utc>,
+        until: DateTime<Utc>,
+    ) -> Result<Vec<SequencerDistributionRow>> {
+        let query = format!(
+            "SELECT sequencer,\n\
+                   count(DISTINCT h.l2_block_number) AS blocks,\n\
+                   toUInt64(min(h.block_ts)) AS min_ts,\n\
+                   toUInt64(max(h.block_ts)) AS max_ts,\n\
+                   sum(sum_tx) AS tx_sum\n\
+             FROM {db}.l2_head_events h\n\
+             WHERE h.block_ts > {since}\n               AND h.block_ts <= {until}\n               AND {filter}\n\
+             GROUP BY sequencer\n\
+             ORDER BY blocks DESC",
+            db = self.db_name,
+            since = since.timestamp(),
+            until = until.timestamp(),
+            filter = self.reorg_filter("h"),
+        );
+        let rows = self
+            .execute::<SequencerDistributionRow>(&query)
+            .await
+            .context("fetching sequencer distribution failed")?;
+        Ok(rows)
+    }
 }
