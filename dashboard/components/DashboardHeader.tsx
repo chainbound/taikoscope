@@ -5,6 +5,7 @@ import { TAIKO_PINK } from '../theme';
 import { isValidRefreshRate } from '../utils';
 import { isValidTimeRange, formatTimeRangeDisplay } from '../utils/timeRange';
 import { useRouterNavigation } from '../hooks/useRouterNavigation';
+import { DEFAULT_VIEW } from '../constants';
 import { useErrorHandler } from '../hooks/useErrorHandler';
 import { useSearchParams } from 'react-router-dom';
 import { showToast } from '../utils/toast';
@@ -50,7 +51,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   const { navigateToDashboard, updateSearchParams } = useRouterNavigation();
   const { errorMessage } = useErrorHandler();
   const [searchParams] = useSearchParams();
-  const viewParam = searchParams.get('view') ?? 'economics';
+  const viewParam = searchParams.get('view') ?? DEFAULT_VIEW;
   React.useEffect(() => {
     if (errorMessage) {
       showToast(errorMessage);

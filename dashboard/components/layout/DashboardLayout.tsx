@@ -1,7 +1,9 @@
-import React from 'react';
-import { Outlet } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { Outlet, useSearchParams } from 'react-router-dom';
 import { DashboardFooter } from '../DashboardFooter';
 import { useDashboardController } from '../../hooks/useDashboardController';
+import { useRouterNavigation } from '../../hooks/useRouterNavigation';
+import { DEFAULT_VIEW } from '../../constants';
 
 export const DashboardLayout: React.FC = () => {
   const {
@@ -25,6 +27,14 @@ export const DashboardLayout: React.FC = () => {
     openTpsTable,
     openSequencerDistributionTable,
   } = useDashboardController();
+  const { updateSearchParams } = useRouterNavigation();
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    if (!searchParams.get('view')) {
+      updateSearchParams({ view: DEFAULT_VIEW });
+    }
+  }, [searchParams, updateSearchParams]);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 flex flex-col">
