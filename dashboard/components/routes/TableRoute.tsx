@@ -138,8 +138,10 @@ export const TableRoute: React.FC = () => {
           }
         } else if (config.supportsPagination) {
           const address = fetcherArgs.pop();
-          // For l2-block-times, fetch one extra so slicing off the first still yields PAGE_LIMIT items
-          const fetchLimit = tableType === 'l2-block-times' ? PAGE_LIMIT + 1 : PAGE_LIMIT;
+          // For l2-block-times, fetch one extra on first page so slicing off the first still yields PAGE_LIMIT items
+          const fetchLimit = tableType === 'l2-block-times' && startingAfter === undefined && endingBefore === undefined
+            ? PAGE_LIMIT + 1
+            : PAGE_LIMIT;
           if (config.aggregatedFetcher) {
             [res, aggRes] = await Promise.all([
               config.fetcher(
@@ -177,12 +179,20 @@ export const TableRoute: React.FC = () => {
         // Calculate pagination cursors from original data before reversing
         const originalData = data;
 
-        const getCursor = (item: Record<string, unknown>) =>
-          (item as { value?: number }).value ??
-          (item as { l2_block_number?: number }).l2_block_number ??
-          (item as { block?: number }).block ??
-          (item as { batch?: number }).batch;
-
+        const getCursor = (item: Record<string, unknown>) => {
+          // For prove-times and verify-times tables, the "name" field is the batch ID
+          if (tableType === 'prove-times' || tableType === 'verify-times') {
+            const name = (item as { name?: string }).name;
+            return name !== undefined ? Number(name) : undefined;
+          }
+          // Otherwise fall back to the numeric value or block/batch fields
+          return (
+            (item as { value?: number }).value ??
+            (item as { l2_block_number?: number }).l2_block_number ??
+            (item as { block?: number }).block ??
+            (item as { batch?: number }).batch
+          );
+        };
         const nextCursor =
           originalData.length > 0 ? getCursor(originalData[originalData.length - 1]) : undefined;
         const prevCursor =

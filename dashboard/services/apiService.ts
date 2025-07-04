@@ -484,7 +484,13 @@ export const fetchL2BlockTimes = async (
     return { data: null, badRequest: res.badRequest, error: res.error };
   }
 
-  const data = res.data.blocks.slice(1).map((b) => ({
+  // Only drop the first element on the first page (when no pagination params)
+  // This ensures we don't have gaps in pagination
+  const blocksToProcess = (startingAfter === undefined && endingBefore === undefined)
+    ? res.data.blocks.slice(1)
+    : res.data.blocks;
+
+  const data = blocksToProcess.map((b) => ({
     value: b.l2_block_number,
     timestamp: b.ms_since_prev_block / 1000,
     blockTime: new Date(b.block_time).getTime(),
