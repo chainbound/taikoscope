@@ -190,13 +190,13 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
 
       // If the item already has a `wei` value, use it directly
       if (itemData?.wei != null) {
-        return `${formatEth(itemData.wei, 3)} (${usd})`;
+        return `${formatEth(itemData.wei, 4)} (${usd})`;
       }
 
       // Otherwise, attempt to derive `wei` from USD using the current ETH price
       if (ethPrice) {
         const wei = (value / ethPrice) * WEI_TO_ETH;
-        return `${formatEth(wei, 3)} (${usd})`;
+        return `${formatEth(wei, 4)} (${usd})`;
       }
 
       // Fallback (should rarely happen): return USD only
@@ -210,13 +210,13 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     (value: number, itemData?: any) => {
       // If the item already has a `wei` value, use it directly
       if (itemData?.wei != null) {
-        return formatEth(itemData.wei, 3);
+        return formatEth(itemData.wei, 4);
       }
 
       // Otherwise, attempt to derive `wei` from USD using the current ETH price
       if (ethPrice) {
         const wei = (value / ethPrice) * WEI_TO_ETH;
-        return formatEth(wei, 3);
+        return formatEth(wei, 4);
       }
 
       // Fallback (should rarely happen): return USD only

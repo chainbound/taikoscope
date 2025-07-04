@@ -317,11 +317,11 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
                   }
                 >
                   {row.revenueEth != null
-                    ? formatEth(row.revenueEth * 1e9, 3)
+                    ? formatEth(row.revenueEth * 1e9, 4)
                     : 'N/A'}
                 </td>
                 <td className="px-2 py-1" title={`$${formatUsd(row.costUsd)}`}>
-                  {formatEth(row.costEth * 1e9, 3)}
+                  {formatEth(row.costEth * 1e9, 4)}
                 </td>
                 <td
                   className="px-2 py-1"
@@ -332,7 +332,7 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
                   }
                 >
                   {row.profitEth != null
-                    ? formatEth(row.profitEth * 1e9, 3)
+                    ? formatEth(row.profitEth * 1e9, 4)
                     : 'N/A'}
                 </td>
                 <td className="px-2 py-1">
