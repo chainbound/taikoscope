@@ -890,7 +890,7 @@ pub async fn dashboard_data(
         RangeQuery
     ),
     responses(
-        (status = 200, description = "Aggregated blobs per batch", body = BatchBlobsResponse),
+        (status = 200, description = "Aggregated blobs per batch", body = AvgBatchBlobsResponse),
         (status = 500, description = "Database error", body = ErrorResponse)
     ),
     tag = "taikoscope"
@@ -899,7 +899,7 @@ pub async fn dashboard_data(
 pub async fn blobs_per_batch_aggregated(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
-) -> Result<Json<BatchBlobsResponse>, ErrorResponse> {
+) -> Result<Json<AvgBatchBlobsResponse>, ErrorResponse> {
     validate_time_range(&params.time_range)?;
     let has_time_range = has_time_range_params(&params.time_range);
     validate_range_exclusivity(has_time_range, false)?;
@@ -916,5 +916,5 @@ pub async fn blobs_per_batch_aggregated(
     let bucket = bucket_size_from_range(&time_range);
     let batches = aggregate_blobs_per_batch(batches, bucket);
     tracing::info!(count = batches.len(), "Returning aggregated blobs per batch");
-    Ok(Json(BatchBlobsResponse { batches }))
+    Ok(Json(AvgBatchBlobsResponse { batches }))
 }
