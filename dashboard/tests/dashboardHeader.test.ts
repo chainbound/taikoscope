@@ -33,7 +33,7 @@ describe('DashboardHeader', () => {
         ),
       ),
     );
-    expect(html.includes('Taikoscope Masaya')).toBe(true);
+    expect(html.includes('Taikoscope Hekla')).toBe(true);
     expect(html.includes('1h')).toBe(true);
     expect(html.includes('Refresh')).toBe(true);
     expect(html.includes('Status')).toBe(true);
