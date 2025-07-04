@@ -138,12 +138,14 @@ export const TableRoute: React.FC = () => {
           }
         } else if (config.supportsPagination) {
           const address = fetcherArgs.pop();
+          // For l2-block-times, fetch one extra so slicing off the first still yields PAGE_LIMIT items
+          const fetchLimit = tableType === 'l2-block-times' ? PAGE_LIMIT + 1 : PAGE_LIMIT;
           if (config.aggregatedFetcher) {
             [res, aggRes] = await Promise.all([
               config.fetcher(
                 range,
                 address,
-                PAGE_LIMIT,
+                fetchLimit,
                 startingAfter,
                 endingBefore,
               ),
@@ -154,7 +156,7 @@ export const TableRoute: React.FC = () => {
               config.fetcher(
                 range,
                 address,
-                PAGE_LIMIT,
+                fetchLimit,
                 startingAfter,
                 endingBefore,
               ),
