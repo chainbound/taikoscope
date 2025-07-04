@@ -3,7 +3,9 @@ import { fetchDashboardData } from '../services/apiService';
 import { MetricData, BlockDataState } from '../types';
 import { TAIKOSCAN_BASE } from '../utils';
 
-export const useBlockData = (): BlockDataState => {
+import { TimeRange } from '../types';
+
+export const useBlockData = (timeRange: TimeRange): BlockDataState => {
   const [l2HeadBlock, setL2HeadBlock] = useState<string>('0');
   const [l1HeadBlock, setL1HeadBlock] = useState<string>('0');
   const [candidates, setCandidates] = useState<string[]>([]);
@@ -11,7 +13,7 @@ export const useBlockData = (): BlockDataState => {
 
   const updateBlockHeads = useCallback(async () => {
     try {
-      const res = await fetchDashboardData('1h');
+      const res = await fetchDashboardData(timeRange);
       if (res.data?.l1_head_block != null) {
         setL1HeadBlock(res.data.l1_head_block.toLocaleString());
       }
@@ -24,7 +26,7 @@ export const useBlockData = (): BlockDataState => {
     } catch (error) {
       console.error('Failed to update block heads:', error);
     }
-  }, []);
+  }, [timeRange]);
 
   const updateMetricsWithBlockHeads = useCallback(
     (metrics: MetricData[]): MetricData[] => {
