@@ -76,7 +76,7 @@ export const TableRoute: React.FC = () => {
     setMetrics: metricsData.setMetrics,
     setLoadingMetrics: metricsData.setLoadingMetrics,
     setErrorMessage: metricsData.setErrorMessage,
-    isEconomicsView: metricsData.isEconomicsView,
+    view: metricsData.view,
     refreshRate: refreshTimer.refreshRate,
     updateLastRefresh: refreshTimer.updateLastRefresh,
   });
@@ -125,7 +125,11 @@ export const TableRoute: React.FC = () => {
 
         let res;
         let aggRes;
-        if (tableType === 'reorgs' || tableType === 'prove-times' || tableType === 'verify-times') {
+        if (
+          tableType === 'reorgs' ||
+          tableType === 'prove-times' ||
+          tableType === 'verify-times'
+        ) {
           if (config.aggregatedFetcher) {
             [res, aggRes] = await Promise.all([
               config.fetcher(range, PAGE_LIMIT, startingAfter, endingBefore),
@@ -138,18 +142,39 @@ export const TableRoute: React.FC = () => {
           }
         } else if (config.supportsPagination) {
           // For paginated tables, determine if an address param is needed
-          const fetchLimit = tableType === 'l2-block-times' && startingAfter === undefined && endingBefore === undefined
-            ? PAGE_LIMIT + 1
-            : PAGE_LIMIT;
-          const needsAddress = ['l2-block-times', 'l2-gas-used', 'l2-tps', 'block-tx'].includes(tableType);
+          const fetchLimit =
+            tableType === 'l2-block-times' &&
+            startingAfter === undefined &&
+            endingBefore === undefined
+              ? PAGE_LIMIT + 1
+              : PAGE_LIMIT;
+          const needsAddress = [
+            'l2-block-times',
+            'l2-gas-used',
+            'l2-tps',
+            'block-tx',
+          ].includes(tableType);
           const addressParam = needsAddress
-            ? (selectedSequencer ? getSequencerAddress(selectedSequencer) : undefined)
+            ? selectedSequencer
+              ? getSequencerAddress(selectedSequencer)
+              : undefined
             : undefined;
           if (config.aggregatedFetcher) {
             [res, aggRes] = await Promise.all([
               needsAddress
-                ? config.fetcher(range, addressParam, fetchLimit, startingAfter, endingBefore)
-                : config.fetcher(range, fetchLimit, startingAfter, endingBefore),
+                ? config.fetcher(
+                    range,
+                    addressParam,
+                    fetchLimit,
+                    startingAfter,
+                    endingBefore,
+                  )
+                : config.fetcher(
+                    range,
+                    fetchLimit,
+                    startingAfter,
+                    endingBefore,
+                  ),
               needsAddress
                 ? config.aggregatedFetcher(range, addressParam)
                 : config.aggregatedFetcher(range),
@@ -157,16 +182,27 @@ export const TableRoute: React.FC = () => {
           } else {
             [res] = await Promise.all([
               needsAddress
-                ? config.fetcher(range, addressParam, fetchLimit, startingAfter, endingBefore)
-                : config.fetcher(range, fetchLimit, startingAfter, endingBefore),
+                ? config.fetcher(
+                    range,
+                    addressParam,
+                    fetchLimit,
+                    startingAfter,
+                    endingBefore,
+                  )
+                : config.fetcher(
+                    range,
+                    fetchLimit,
+                    startingAfter,
+                    endingBefore,
+                  ),
             ]);
           }
         } else {
           [res, aggRes] = await (config.aggregatedFetcher
             ? Promise.all([
-              config.fetcher(range, ...fetcherArgs),
-              config.aggregatedFetcher(range, ...fetcherArgs),
-            ])
+                config.fetcher(range, ...fetcherArgs),
+                config.aggregatedFetcher(range, ...fetcherArgs),
+              ])
             : Promise.all([config.fetcher(range, ...fetcherArgs)]));
         }
         if (currentFetchId !== fetchIdRef.current) return;
@@ -175,7 +211,8 @@ export const TableRoute: React.FC = () => {
 
         // For tables with aggregatedFetcher, use aggregated data on custom absolute time ranges
         const isCustomAbsoluteRange =
-          typeof currentTimeRange === 'string' && /^\d+-\d+$/.test(currentTimeRange);
+          typeof currentTimeRange === 'string' &&
+          /^\d+-\d+$/.test(currentTimeRange);
         if (config.aggregatedFetcher && isCustomAbsoluteRange) {
           data = chartData;
         }
@@ -198,7 +235,9 @@ export const TableRoute: React.FC = () => {
           );
         };
         const nextCursor =
-          originalData.length > 0 ? getCursor(originalData[originalData.length - 1]) : undefined;
+          originalData.length > 0
+            ? getCursor(originalData[originalData.length - 1])
+            : undefined;
         const prevCursor =
           originalData.length > 0 ? getCursor(originalData[0]) : undefined;
 
@@ -225,7 +264,10 @@ export const TableRoute: React.FC = () => {
             chart,
           };
           // Only show pagination controls when NOT in a custom range on l2-tps
-          if (config.supportsPagination && !(config.aggregatedFetcher && isCustomAbsoluteRange)) {
+          if (
+            config.supportsPagination &&
+            !(config.aggregatedFetcher && isCustomAbsoluteRange)
+          ) {
             const disablePrev = page === 0;
             const disableNext = originalData.length < PAGE_LIMIT;
             view.serverPagination = {
@@ -247,7 +289,8 @@ export const TableRoute: React.FC = () => {
                   params.delete('start');
                   params.delete('end');
                 } else {
-                  if (prevCursor !== undefined) params.set('end', String(prevCursor));
+                  if (prevCursor !== undefined)
+                    params.set('end', String(prevCursor));
                   params.delete('start');
                 }
                 setSearchParams(params);

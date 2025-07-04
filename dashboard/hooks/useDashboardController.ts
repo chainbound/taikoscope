@@ -27,7 +27,6 @@ export const useDashboardController = () => {
   const { selectedSequencer, setSelectedSequencer, sequencerList } =
     useSequencerHandler({ blockData, metricsData });
 
-
   // Table actions
   const {
     tableView,
@@ -48,7 +47,7 @@ export const useDashboardController = () => {
       setMetrics: metricsData.setMetrics,
       setLoadingMetrics: metricsData.setLoadingMetrics,
       setErrorMessage: metricsData.setErrorMessage,
-      isEconomicsView: metricsData.isEconomicsView,
+      view: metricsData.view,
       refreshRate: refreshTimer.refreshRate,
       updateLastRefresh: refreshTimer.updateLastRefresh,
     });

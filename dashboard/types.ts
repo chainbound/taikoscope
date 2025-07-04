@@ -97,6 +97,8 @@ export interface ChartsData {
   updateChartsData: (data: ChartsDataUpdate) => void;
 }
 
+export type DashboardViewType = 'performance' | 'economics' | 'health';
+
 export interface MetricsDataState {
   metrics: MetricData[];
   setMetrics: (metrics: MetricData[]) => void;
@@ -104,7 +106,7 @@ export interface MetricsDataState {
   setLoadingMetrics: (v: boolean) => void;
   errorMessage: string;
   setErrorMessage: (msg: string) => void;
-  isEconomicsView: boolean;
+  view: DashboardViewType;
 }
 
 export interface BlockDataState {

@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useErrorHandler } from './useErrorHandler';
-import type { MetricData, MetricsDataState } from '../types';
+import type { MetricData, MetricsDataState, DashboardViewType } from '../types';
 
 export const useMetricsData = (): MetricsDataState => {
   const [metrics, setMetrics] = useState<MetricData[]>([]);
@@ -11,8 +11,16 @@ export const useMetricsData = (): MetricsDataState => {
   const [searchParams] = useSearchParams();
 
   // Memoize the specific value we need to prevent infinite re-renders
-  const viewParam = searchParams.get('view');
-  const isEconomicsView = useMemo(() => viewParam === 'economics', [viewParam]);
+  const viewParam = searchParams.get('view') as DashboardViewType | null;
+  const view = useMemo<DashboardViewType>(
+    () =>
+      viewParam === 'performance' ||
+      viewParam === 'health' ||
+      viewParam === 'economics'
+        ? viewParam
+        : 'economics',
+    [viewParam],
+  );
 
   return useMemo(
     () => ({
@@ -22,8 +30,8 @@ export const useMetricsData = (): MetricsDataState => {
       setLoadingMetrics,
       errorMessage,
       setErrorMessage,
-      isEconomicsView,
+      view,
     }),
-    [metrics, loadingMetrics, errorMessage, isEconomicsView],
+    [metrics, loadingMetrics, errorMessage, view],
   );
 };

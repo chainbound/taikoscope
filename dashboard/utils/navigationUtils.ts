@@ -83,7 +83,10 @@ export const validateSearchParams = (params: URLSearchParams): boolean => {
   try {
     // Check for reasonable parameter values
     const view = params.get('view');
-    if (view && !['table', 'economics'].includes(view)) {
+    if (
+      view &&
+      !['table', 'economics', 'performance', 'health'].includes(view)
+    ) {
       console.warn('Invalid view parameter:', view);
       return false;
     }
@@ -129,7 +132,7 @@ export const cleanSearchParams = (params: URLSearchParams): URLSearchParams => {
 
   try {
     const validators: Record<string, (v: string) => boolean> = {
-      view: (v) => ['table', 'economics'].includes(v),
+      view: (v) => ['table', 'economics', 'performance', 'health'].includes(v),
       page: (v) => /^\d+$/.test(v),
       start: (v) => /^\d+$/.test(v),
       end: (v) => /^\d+$/.test(v),

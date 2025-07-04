@@ -15,9 +15,10 @@ const navSpy = vi.fn();
 let currentSearch = '?range=1h';
 
 vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual<typeof import('react-router-dom')>(
-    'react-router-dom',
-  );
+  const actual =
+    await vi.importActual<typeof import('react-router-dom')>(
+      'react-router-dom',
+    );
   return {
     ...actual,
     useNavigate: () => navSpy,
@@ -100,6 +101,12 @@ describe('navigationUtils', () => {
 
       const params2 = new URLSearchParams('view=economics');
       expect(validateSearchParams(params2)).toBe(true);
+
+      const params3 = new URLSearchParams('view=performance');
+      expect(validateSearchParams(params3)).toBe(true);
+
+      const params4 = new URLSearchParams('view=health');
+      expect(validateSearchParams(params4)).toBe(true);
     });
 
     it('should reject invalid view parameters', () => {
@@ -165,10 +172,10 @@ describe('navigationUtils', () => {
     });
 
     it('should trim parameter values', () => {
-      const params = new URLSearchParams('view= table &sequencer= test ');
+      const params = new URLSearchParams('view= performance &sequencer= test ');
       const cleaned = cleanSearchParams(params);
 
-      expect(cleaned.get('view')).toBe('table');
+      expect(cleaned.get('view')).toBe('performance');
       expect(cleaned.get('sequencer')).toBe('test');
     });
 
@@ -226,7 +233,10 @@ describe('navigationUtils', () => {
 
       renderToStaticMarkup(React.createElement(Wrapper));
       setFn('24h');
-      expect(navSpy).toHaveBeenCalledWith({ search: 'range=24h' }, { replace: true });
+      expect(navSpy).toHaveBeenCalledWith(
+        { search: 'range=24h' },
+        { replace: true },
+      );
       navSpy.mockClear();
 
       currentSearch = '?range=15m';

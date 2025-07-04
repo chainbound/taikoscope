@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useMemo } from 'react';
 import useSWR from 'swr';
 import { useSearchParams, useLocation } from 'react-router-dom';
-import { TimeRange, MetricData, ChartsDataUpdate } from '../types';
+import {
+  TimeRange,
+  MetricData,
+  ChartsDataUpdate,
+  DashboardViewType,
+} from '../types';
 import { TableViewState } from './useTableActions';
 import {
   fetchMainDashboardData,
@@ -18,7 +23,7 @@ interface UseDataFetcherProps {
   setMetrics: (metrics: MetricData[]) => void;
   setLoadingMetrics: (v: boolean) => void;
   setErrorMessage: (msg: string) => void;
-  isEconomicsView: boolean;
+  view: DashboardViewType;
   refreshRate: number;
   updateLastRefresh: () => void;
 }
@@ -31,7 +36,7 @@ export const useDataFetcher = ({
   setMetrics,
   setLoadingMetrics,
   setErrorMessage,
-  isEconomicsView,
+  view,
   refreshRate,
   updateLastRefresh,
 }: UseDataFetcherProps) => {
@@ -48,9 +53,10 @@ export const useDataFetcher = ({
 
   const selectedSequencerForFetch = selectedSequencer;
 
+  const isEconomicsView = view === 'economics';
   const fetchKey = isTableView
     ? null
-    : ['metrics', timeRange, selectedSequencerForFetch, isEconomicsView];
+    : ['metrics', timeRange, selectedSequencerForFetch, view];
 
   const fetcher = async () => {
     if (isEconomicsView) {
@@ -79,13 +85,13 @@ export const useDataFetcher = ({
 
         profit:
           data.priorityFee != null &&
-            data.baseFee != null &&
-            data.l1DataCost != null &&
-            data.proveCost != null
+          data.baseFee != null &&
+          data.l1DataCost != null &&
+          data.proveCost != null
             ? data.priorityFee +
-            (data.baseFee * 0.75) -
-            data.l1DataCost -
-            data.proveCost
+              data.baseFee * 0.75 -
+              data.l1DataCost -
+              data.proveCost
             : null,
         l2Block: data.l2Block,
         l1Block: data.l1Block,
