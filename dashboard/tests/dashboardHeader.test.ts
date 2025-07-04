@@ -25,9 +25,6 @@ describe('DashboardHeader', () => {
               onRefreshRateChange: () => { },
               lastRefresh: Date.now(),
               onManualRefresh: () => { },
-              sequencers: ['seq1', 'seq2'],
-              selectedSequencer: null,
-              onSequencerChange: () => { },
             }),
           ),
         ),
@@ -37,7 +34,6 @@ describe('DashboardHeader', () => {
     expect(html.includes('1h')).toBe(true);
     expect(html.includes('Refresh')).toBe(true);
     expect(html.includes('Status')).toBe(true);
-    expect(html.includes('All Sequencers')).toBe(true);
     expect(html.includes('Performance')).toBe(true);
     expect(html.includes('Economics')).toBe(true);
     expect(html.includes('Health')).toBe(true);
@@ -61,14 +57,11 @@ describe('DashboardHeader', () => {
               onRefreshRateChange: () => { },
               lastRefresh: Date.now(),
               onManualRefresh: () => { },
-              sequencers: ['seq1', 'seq2'],
-              selectedSequencer: null,
-              onSequencerChange: () => { },
             }),
           ),
         ),
       ),
     );
-    expect(html.includes('All Sequencers')).toBe(false);
+    expect(html.includes('Taikoscope Hekla')).toBe(true);
   });
 });

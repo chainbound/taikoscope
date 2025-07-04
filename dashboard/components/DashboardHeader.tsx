@@ -36,9 +36,6 @@ interface DashboardHeaderProps {
   lastRefresh: number;
   onManualRefresh: () => void;
   isTimeRangeChanging?: boolean;
-  sequencers: string[];
-  selectedSequencer: string | null;
-  onSequencerChange: (seq: string | null) => void;
 }
 
 export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
@@ -49,15 +46,11 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   lastRefresh,
   onManualRefresh,
   isTimeRangeChanging,
-  sequencers,
-  selectedSequencer,
-  onSequencerChange,
 }) => {
   const { navigateToDashboard, updateSearchParams } = useRouterNavigation();
   const { errorMessage } = useErrorHandler();
   const [searchParams] = useSearchParams();
   const viewParam = searchParams.get('view') ?? 'economics';
-  const isEconomicsView = viewParam === 'economics';
   React.useEffect(() => {
     if (errorMessage) {
       showToast(errorMessage);
@@ -120,13 +113,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
           lastRefresh={lastRefresh}
           onRefresh={onManualRefresh}
         />
-        {!isEconomicsView && (
-          <SequencerSelector
-            sequencers={sequencers}
-            value={selectedSequencer}
-            onChange={onSequencerChange}
-          />
-        )}
+        {/* Sequencer filter removed */}
         {/* Dark mode toggle removed as per request */}
       </div>
     </header>
@@ -356,37 +343,3 @@ export const RefreshRateInput: React.FC<RefreshRateInputProps> = ({
   );
 };
 
-export interface SequencerSelectorProps {
-  sequencers: string[];
-  value: string | null;
-  onChange: (seq: string | null) => void;
-}
-
-export const SequencerSelector: React.FC<SequencerSelectorProps> = ({
-  sequencers,
-  value,
-  onChange,
-}) => {
-  const sorted = React.useMemo(
-    () =>
-      [...sequencers]
-        .filter((s) => s.toLowerCase() !== 'all sequencers')
-        .sort(),
-    [sequencers],
-  );
-
-  return (
-    <select
-      value={value ?? ''}
-      onChange={(e) => onChange(e.target.value || null)}
-      className="p-1 border border-gray-300 dark:border-gray-600 rounded-md text-sm"
-    >
-      <option value="">All Sequencers</option>
-      {sorted.map((s) => (
-        <option key={s} value={s}>
-          {s}
-        </option>
-      ))}
-    </select>
-  );
-};
