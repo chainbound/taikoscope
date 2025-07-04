@@ -12,6 +12,7 @@ import { TimeRange, MetricData, ChartsData } from '../../types';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useEthPrice } from '../../services/priceService';
 import { rangeToHours } from '../../utils/timeRange';
+import { calculateHardwareCost } from '../../utils/hardwareCost';
 import { formatEth, parseEthValue } from '../../utils';
 
 const SequencerPieChart = lazy(() =>
@@ -92,11 +93,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const { data: ethPrice = 0 } = useEthPrice();
   const metricsWithHardware = React.useMemo(() => {
     if (!isEconomicsView) return metricsData.metrics;
-    const HOURS_IN_MONTH = 30 * 24;
     const hours = rangeToHours(timeRange);
     const sequencerCount = chartsData.sequencerDistribution.length || 1;
-    const costUsd =
-      ((cloudCost + proverCost) * sequencerCount) / HOURS_IN_MONTH * hours;
+    const { totalUsd: costUsd } = calculateHardwareCost(
+      cloudCost,
+      proverCost,
+      sequencerCount,
+      hours,
+    );
     const costWei = ethPrice > 0 ? (costUsd / ethPrice) * 1e9 : null;
     const hardwareMetric: MetricData = {
       title: 'Hardware Costs',

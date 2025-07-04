@@ -13,6 +13,7 @@ import { getSequencerName } from '../sequencerConfig';
 import { useEthPrice } from '../services/priceService';
 import { TimeRange } from '../types';
 import { rangeToHours } from '../utils/timeRange';
+import { calculateHardwareCost } from '../utils/hardwareCost';
 
 interface FeeFlowChartProps {
   timeRange: TimeRange;
@@ -25,7 +26,6 @@ interface FeeFlowChartProps {
   totalSequencers?: number;
 }
 
-const MONTH_HOURS = 30 * 24;
 const WEI_TO_ETH = 1e9;
 
 // Format numbers as USD without grouping
@@ -272,11 +272,12 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
   // Scale operational costs to the selected time range
   const hours = rangeToHours(timeRange);
   const sequencerCount = Math.max(1, totalSequencers ?? sequencerFees.length);
-  // Compute network-wide hardware cost for the range then derive per-sequencer share
-  const totalHardwareCost = safeValue(
-    ((cloudCost + proverCost) * sequencerCount) / MONTH_HOURS * hours,
-  );
-  const hardwareCostPerSeq = safeValue(totalHardwareCost / sequencerCount);
+  const {
+    totalUsd: rawTotalHardwareCost,
+    perSequencerUsd: rawHardwareCostPerSeq,
+  } = calculateHardwareCost(cloudCost, proverCost, sequencerCount, hours);
+  const totalHardwareCost = safeValue(rawTotalHardwareCost);
+  const hardwareCostPerSeq = safeValue(rawHardwareCostPerSeq);
 
   const seqData = sequencerFees.map((f) => {
     const priorityWei = f.priority_fee ?? 0;
