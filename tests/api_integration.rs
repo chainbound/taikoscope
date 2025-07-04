@@ -694,7 +694,7 @@ async fn l1_data_cost_paginated() {
     wait_for_server(addr).await;
 
     let resp = reqwest::get(format!(
-        "http://{addr}/{API_VERSION}/l1-data-cost?starting_after=0&ending_before=2&limit=1"
+        "http://{addr}/{API_VERSION}/l1-data-cost?starting_after=0&limit=1"
     ))
     .await
     .unwrap();
@@ -706,6 +706,27 @@ async fn l1_data_cost_paginated() {
             "blocks": [ { "l1_block_number": 1, "cost": 789 } ]
         })
     );
+
+    server.abort();
+}
+
+#[tokio::test]
+async fn l1_data_cost_pagination_both_params_returns_400() {
+    let mock = Mock::new();
+
+    let url = Url::parse(mock.url()).unwrap();
+    let client =
+        ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+    let (addr, server) = spawn_server(client).await;
+    wait_for_server(addr).await;
+
+    let resp = reqwest::get(format!(
+        "http://{addr}/{API_VERSION}/l1-data-cost?starting_after=0&ending_before=10&limit=1"
+    ))
+    .await
+    .unwrap();
+    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
 
     server.abort();
 }
