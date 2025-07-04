@@ -72,8 +72,8 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
       <div className="flex flex-wrap items-center gap-2 mt-4 md:mt-0 justify-center md:justify-end">
         <div className="flex gap-2">
           {[
-            { view: 'performance', label: 'Performance' },
             { view: 'economics', label: 'Economics' },
+            { view: 'performance', label: 'Performance' },
             { view: 'health', label: 'Health' },
           ].map((tab) => (
             <button
