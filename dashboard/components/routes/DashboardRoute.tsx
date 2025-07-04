@@ -31,8 +31,6 @@ export const DashboardRoute: React.FC = () => {
     timeRange,
     setTimeRange,
     selectedSequencer,
-    setSelectedSequencer,
-    sequencerList,
     chartsData,
     metricsData,
     refreshTimer,
@@ -54,9 +52,6 @@ export const DashboardRoute: React.FC = () => {
         lastRefresh={refreshTimer.lastRefresh}
         onManualRefresh={handleManualRefresh}
         isTimeRangeChanging={isTimeRangeChanging}
-        sequencers={sequencerList}
-        selectedSequencer={selectedSequencer}
-        onSequencerChange={setSelectedSequencer}
       />
       <DashboardView
         timeRange={timeRange}
