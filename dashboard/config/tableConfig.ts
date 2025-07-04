@@ -18,8 +18,6 @@ import {
   fetchVerifyTimesAggregated,
   fetchAllBlockTransactions,
   fetchBlockTransactionsAggregated,
-  fetchL2BlockTimes,
-  fetchL2BlockTimesAggregated,
   fetchL2GasUsed,
   fetchL2GasUsedAggregated,
   fetchL1DataCost,
@@ -216,35 +214,6 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     supportsPagination: true,
   },
 
-  'l2-block-times': {
-    title: 'L2 Block Times',
-    description: 'Interval between consecutive L2 blocks.',
-    fetcher: fetchL2BlockTimes,
-    aggregatedFetcher: fetchL2BlockTimesAggregated,
-    columns: [
-      { key: 'value', label: 'L2 Block Number' },
-      { key: 'timestamp', label: 'Interval (s)' },
-    ],
-    mapData: (data) =>
-      (data as { value: number; timestamp: number }[]).map((d) => ({
-        value: blockLink(d.value),
-        timestamp: d.timestamp.toLocaleString(),
-      })),
-    chart: (data) => {
-      const BlockTimeDistributionChart = React.lazy(() =>
-        import('../components/BlockTimeDistributionChart').then((m) => ({
-          default: m.BlockTimeDistributionChart,
-        })),
-      );
-      return React.createElement(BlockTimeDistributionChart, {
-        data,
-        barColor: '#FAA43A',
-      });
-    },
-    urlKey: 'l2-block-times',
-    reverseOrder: false,
-    supportsPagination: true,
-  },
 
   'l2-gas-used': {
     title: 'Gas Used Per Block',
