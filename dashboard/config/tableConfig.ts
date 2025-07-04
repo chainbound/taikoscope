@@ -242,7 +242,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
       });
     },
     urlKey: 'l2-block-times',
-    reverseOrder: true,
+    reverseOrder: false,
     supportsPagination: true,
   },
 
