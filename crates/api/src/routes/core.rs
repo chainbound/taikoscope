@@ -154,7 +154,9 @@ pub async fn active_gateways(
     ),
     tag = "taikoscope"
 )]
-/// Get batch posting timing metrics for the specified time range
+/// Get batch posting timing metrics for the specified time range.
+///
+/// Results are ordered by batch id in descending order.
 pub async fn batch_posting_times(
     Query(params): Query<PaginatedQuery>,
     State(state): State<ApiState>,
@@ -242,7 +244,9 @@ pub async fn avg_blobs_per_batch(
     ),
     tag = "taikoscope"
 )]
-/// Get batch proving time metrics for the specified time range
+/// Get batch proving time metrics for the specified time range.
+///
+/// Results are ordered by batch id in descending order.
 pub async fn prove_times(
     Query(params): Query<PaginatedQuery>,
     State(state): State<ApiState>,
@@ -289,7 +293,9 @@ pub async fn prove_times(
     ),
     tag = "taikoscope"
 )]
-/// Get batch verification time metrics for the specified time range
+/// Get batch verification time metrics for the specified time range.
+///
+/// Results are ordered by batch id in descending order.
 pub async fn verify_times(
     Query(params): Query<PaginatedQuery>,
     State(state): State<ApiState>,
@@ -477,7 +483,9 @@ pub async fn sequencer_blocks(
     ),
     tag = "taikoscope"
 )]
-/// Get L1 data posting cost information for the specified time range
+/// Get L1 data posting cost information for the specified time range.
+///
+/// Results are ordered by L1 block number in descending order.
 pub async fn l1_data_cost(
     Query(params): Query<PaginatedQuery>,
     State(state): State<ApiState>,
@@ -525,7 +533,9 @@ pub async fn l1_data_cost(
     ),
     tag = "taikoscope"
 )]
-/// Get prover cost information for the specified time range
+/// Get prover cost information for the specified time range.
+///
+/// Results are ordered by batch id in descending order.
 pub async fn prove_cost(
     Query(params): Query<PaginatedQuery>,
     State(state): State<ApiState>,
