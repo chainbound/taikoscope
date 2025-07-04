@@ -173,13 +173,11 @@ export const TableRoute: React.FC = () => {
         let data = res.data || [];
         const chartData = aggRes?.data || data;
 
-        // Use aggregated data for l2-tps when a custom absolute time range is provided
-        const isCustomRange =
-          tableType === 'l2-tps' &&
-          typeof currentTimeRange === 'string' &&
-          currentTimeRange.includes('-');
-        if (isCustomRange) {
-          data = aggRes?.data || [];
+        // For tables with aggregatedFetcher, use aggregated data on custom absolute time ranges
+        const isCustomAbsoluteRange =
+          typeof currentTimeRange === 'string' && currentTimeRange.includes('-');
+        if (config.aggregatedFetcher && isCustomAbsoluteRange) {
+          data = chartData;
         }
 
         // Calculate pagination cursors from original data before reversing
@@ -227,7 +225,7 @@ export const TableRoute: React.FC = () => {
             chart,
           };
           // Only show pagination controls when NOT in a custom range on l2-tps
-          if (config.supportsPagination && !isCustomRange) {
+          if (config.supportsPagination && !(config.aggregatedFetcher && isCustomAbsoluteRange)) {
             const disablePrev = page === 0;
             const disableNext = originalData.length < PAGE_LIMIT;
             view.serverPagination = {
