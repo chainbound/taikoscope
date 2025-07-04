@@ -21,6 +21,8 @@ interface CostChartProps {
   cloudCost: number;
   proverCost: number;
   address?: string;
+  /** Total number of sequencers for scaling network-wide costs */
+  totalSequencers?: number;
 }
 
 export const CostChart: React.FC<CostChartProps> = ({
@@ -28,6 +30,7 @@ export const CostChart: React.FC<CostChartProps> = ({
   cloudCost,
   proverCost,
   address,
+  totalSequencers,
 }) => {
   const { data: feeRes } = useSWR(
     ['batchFeeComponents', timeRange, address],
@@ -46,7 +49,8 @@ export const CostChart: React.FC<CostChartProps> = ({
 
   const hours = rangeToHours(timeRange);
   const HOURS_IN_MONTH = 30 * 24;
-  const baseCostUsd = ((cloudCost + proverCost) / HOURS_IN_MONTH) * hours;
+  const seqCount = address ? 1 : Math.max(1, totalSequencers ?? 1);
+  const baseCostUsd = ((cloudCost + proverCost) * seqCount) / HOURS_IN_MONTH * hours;
   const baseCostEth = ethPrice ? baseCostUsd / ethPrice : 0;
   const baseCostPerBatchEth = baseCostEth / feeData.length;
 

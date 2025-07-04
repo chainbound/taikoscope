@@ -12,6 +12,8 @@ interface BlockProfitTablesProps {
   cloudCost: number;
   proverCost: number;
   address?: string;
+  /** Total number of sequencers for scaling network-wide costs */
+  totalSequencers?: number;
 }
 
 const formatUsd = (value: number): string => {
@@ -28,6 +30,7 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
   cloudCost,
   proverCost,
   address,
+  totalSequencers,
 }) => {
   const { data: ethPrice = 0 } = useEthPrice();
   const { data: feeRes } = useSWR(
@@ -39,8 +42,9 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
   const HOURS_IN_MONTH = 30 * 24;
   const hours = rangeToHours(timeRange);
 
+  const seqCount = address ? 1 : Math.max(1, totalSequencers ?? 1);
   const operationalCostPerBatchUsd = batchCount > 0
-    ? ((cloudCost + proverCost) / HOURS_IN_MONTH) * (hours / batchCount)
+    ? ((cloudCost + proverCost) * seqCount) / HOURS_IN_MONTH * (hours / batchCount)
     : 0;
 
   const profits = batchData.map((b) => {

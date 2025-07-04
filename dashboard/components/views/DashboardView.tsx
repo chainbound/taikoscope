@@ -362,6 +362,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 cloudCost={cloudCost}
                 proverCost={proverCost}
                 address={selectedSequencer || undefined}
+                totalSequencers={chartsData.sequencerDistribution.length}
               />
             </div>
             <ProfitRankingTable
@@ -374,6 +375,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               cloudCost={cloudCost}
               proverCost={proverCost}
               address={selectedSequencer || undefined}
+              totalSequencers={chartsData.sequencerDistribution.length}
             />
           </>
         )}

@@ -22,6 +22,8 @@ interface ProfitabilityChartProps {
   cloudCost: number;
   proverCost: number;
   address?: string;
+  /** Total number of sequencers for scaling network-wide costs */
+  totalSequencers?: number;
 }
 
 export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
@@ -29,6 +31,7 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
   cloudCost,
   proverCost,
   address,
+  totalSequencers,
 }) => {
   const { data: feeRes } = useSWR(
     ['batchFeeComponents', timeRange, address],
@@ -47,8 +50,9 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
 
   const hours = rangeToHours(timeRange);
   const HOURS_IN_MONTH = 30 * 24;
+  const seqCount = address ? 1 : Math.max(1, totalSequencers ?? 1);
   const costPerBatchUsd =
-    ((cloudCost + proverCost) / HOURS_IN_MONTH) * (hours / feeData.length);
+    ((cloudCost + proverCost) * seqCount) / HOURS_IN_MONTH * (hours / feeData.length);
 
   const data = feeData.map((b) => {
     const { profitEth, profitUsd } = calculateProfit({
