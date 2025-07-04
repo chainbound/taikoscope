@@ -1926,7 +1926,7 @@ impl ClickhouseReader {
         }
 
         let query = format!(
-            "SELECT b.proposer_addr AS proposer, \
+            "SELECT b.proposer_addr AS sequencer, \
                     sum(pc.cost) AS total_cost \
              FROM {db}.prove_costs pc \
              INNER JOIN {db}.batches b ON pc.batch_id = b.batch_id \
@@ -1948,7 +1948,7 @@ impl ClickhouseReader {
         range: TimeRange,
     ) -> Result<Vec<SequencerFeeRow>> {
         let query = format!(
-            "SELECT b.proposer_addr AS proposer, \
+            "SELECT b.proposer_addr AS sequencer, \
                     sum(h.sum_priority_fee) AS priority_fee, \
                     sum(h.sum_base_fee) AS base_fee, \
                     toNullable(sum(if(b.batch_size > 0, intDiv(dc.cost, b.batch_size), NULL))) AS l1_data_cost, \
@@ -2281,8 +2281,8 @@ impl ClickhouseReader {
                     sequencer,
                     priority_fee,
                     base_fee,
-                    l1_data_cost: (l1_total_cost > 0).then_some(l1_total_cost),
-                    prove_cost: prove_map.get(&sequencer).copied(),
+                    l1_data_cost: l1_total_cost,
+                    prove_cost: prove_map.get(&sequencer).copied().unwrap_or_default(),
                 }
             })
             .collect();
