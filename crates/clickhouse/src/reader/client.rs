@@ -518,6 +518,7 @@ impl ClickhouseReader {
     pub async fn get_l2_reorgs_paginated(
         &self,
         since: DateTime<Utc>,
+        until: DateTime<Utc>,
         limit: u64,
         starting_after: Option<u64>,
         ending_before: Option<u64>,
@@ -535,9 +536,11 @@ impl ClickhouseReader {
             "SELECT l2_block_number, depth, old_sequencer, new_sequencer, \
                     toUInt64(toUnixTimestamp64Milli(inserted_at)) AS ts \
              FROM {db}.l2_reorgs \
-             WHERE inserted_at > toDateTime64({since}, 3)",
+             WHERE inserted_at > toDateTime64({since}, 3) \
+               AND inserted_at <= toDateTime64({until}, 3)",
             db = self.db_name,
             since = since.timestamp_millis() as f64 / 1000.0,
+            until = until.timestamp_millis() as f64 / 1000.0,
         );
 
         if let Some(start) = starting_after {

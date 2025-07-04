@@ -4,8 +4,8 @@ use crate::{
     state::{ApiState, MAX_TABLE_LIMIT},
     validation::{
         BlockPaginatedQuery, PaginatedQuery, has_block_range_params, has_time_range_params,
-        resolve_time_range_since, validate_block_range, validate_pagination,
-        validate_range_exclusivity, validate_time_range,
+        resolve_time_range_bounds, resolve_time_range_since, validate_block_range,
+        validate_pagination, validate_range_exclusivity, validate_time_range,
     },
 };
 use api_types::*;
@@ -50,10 +50,10 @@ pub async fn reorgs(
     let has_slot_range = params.starting_after.is_some() || params.ending_before.is_some();
     validate_range_exclusivity(has_time_range, has_slot_range)?;
 
-    let since = resolve_time_range_since(&params.common.range, &params.common.time_range);
+    let (since, until) = resolve_time_range_bounds(&params.common.range, &params.common.time_range);
     let rows = match state
         .client
-        .get_l2_reorgs_paginated(since, limit, params.starting_after, params.ending_before)
+        .get_l2_reorgs_paginated(since, until, limit, params.starting_after, params.ending_before)
         .await
     {
         Ok(rows) => rows,

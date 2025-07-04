@@ -51,8 +51,11 @@ async fn l2_reorgs_paginated_builds_query() {
     let reader = ClickhouseReader::new(url, "db".to_owned(), "user".into(), "pass".into()).unwrap();
 
     let since = Utc.timestamp_opt(0, 0).single().unwrap();
-    let _ = reader.get_l2_reorgs_paginated(since, 5, Some(100), Some(50)).await;
+    let until = Utc.timestamp_opt(1, 0).single().unwrap();
+    let _ = reader.get_l2_reorgs_paginated(since, until, 5, Some(100), Some(50)).await;
     let query = ctl.query().await;
+    assert!(query.contains("inserted_at > toDateTime64(0"));
+    assert!(query.contains("inserted_at <= toDateTime64(1"));
     assert!(query.contains("l2_block_number < 100"));
     assert!(query.contains("l2_block_number > 50"));
     assert!(query.contains("LIMIT 5"));

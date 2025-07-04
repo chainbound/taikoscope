@@ -334,6 +334,29 @@ pub fn resolve_time_range_since(
     now - range_duration(range)
 }
 
+/// Resolve time range to start and end `DateTime` values
+pub fn resolve_time_range_bounds(
+    range: &Option<String>,
+    time_params: &TimeRangeParams,
+) -> (DateTime<Utc>, DateTime<Utc>) {
+    let now = Utc::now();
+
+    let start = time_params
+        .created_gt
+        .map(|v| v + 1)
+        .or(time_params.created_gte)
+        .and_then(|ms| Utc.timestamp_millis_opt(ms as i64).single())
+        .unwrap_or_else(|| now - range_duration(range));
+
+    let end = time_params
+        .created_lt
+        .or(time_params.created_lte)
+        .and_then(|ms| Utc.timestamp_millis_opt(ms as i64).single())
+        .unwrap_or(now);
+
+    (start, end)
+}
+
 /// Custom deserializer that converts a URL-encoded form value into a `u64`.
 /// This accepts both bare numbers (e.g. `1750000`) and quoted numbers (e.g.
 /// `"1750000"`) to be tolerant of over-encoded clients.
