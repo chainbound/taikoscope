@@ -39,7 +39,7 @@ export const useDataFetcher = ({
   const location = useLocation();
 
   // Memoize the specific value we need to prevent infinite re-renders
-  const viewParam = searchParams.get('view');
+  const viewParam = searchParams.get('view') || 'economics';
   const isTableRoute = location.pathname.startsWith('/table/');
   const isTableView = useMemo(
     () => tableView || viewParam === 'table' || isTableRoute,
@@ -79,13 +79,13 @@ export const useDataFetcher = ({
 
         profit:
           data.priorityFee != null &&
-            data.baseFee != null &&
-            data.l1DataCost != null &&
-            data.proveCost != null
+          data.baseFee != null &&
+          data.l1DataCost != null &&
+          data.proveCost != null
             ? data.priorityFee +
-            (data.baseFee * 0.75) -
-            data.l1DataCost -
-            data.proveCost
+              data.baseFee * 0.75 -
+              data.l1DataCost -
+              data.proveCost
             : null,
         l2Block: data.l2Block,
         l1Block: data.l1Block,

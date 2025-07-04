@@ -6,6 +6,7 @@ import { isValidRefreshRate } from '../utils';
 import { isValidTimeRange, formatTimeRangeDisplay } from '../utils/timeRange';
 import { useRouterNavigation } from '../hooks/useRouterNavigation';
 import { useErrorHandler } from '../hooks/useErrorHandler';
+import { ViewTabs } from './ViewTabs';
 import { useSearchParams } from 'react-router-dom';
 import { showToast } from '../utils/toast';
 import { DayPicker } from 'react-day-picker';
@@ -53,10 +54,11 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   selectedSequencer,
   onSequencerChange,
 }) => {
-  const { navigateToDashboard, updateSearchParams } = useRouterNavigation();
+  const { navigateToDashboard } = useRouterNavigation();
   const { errorMessage } = useErrorHandler();
   const [searchParams] = useSearchParams();
-  const isEconomicsView = searchParams.get('view') === 'economics';
+  const viewParam = searchParams.get('view') || 'economics';
+  const isEconomicsView = viewParam === 'economics';
   React.useEffect(() => {
     if (errorMessage) {
       showToast(errorMessage);
@@ -78,20 +80,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
         </h1>
       </div>
       <div className="flex flex-wrap items-center gap-2 mt-4 md:mt-0 justify-center md:justify-end">
-        <button
-          onClick={() => {
-            const params = new URLSearchParams(searchParams);
-            if (params.get('view') === 'economics') {
-              navigateToDashboard(true);
-              return;
-            }
-            updateSearchParams({ view: 'economics', table: null });
-          }}
-          className="px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700"
-          style={{ color: TAIKO_PINK }}
-        >
-          Economics
-        </button>
+        <ViewTabs />
         <a
           href="https://status.taiko.xyz/"
           target="_blank"
