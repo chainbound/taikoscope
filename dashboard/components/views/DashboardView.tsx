@@ -85,7 +85,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 }) => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const isEconomicsView = searchParams.get('view') === 'economics';
+  const viewParam = searchParams.get('view') ?? 'economics';
+  const isEconomicsView = viewParam === 'economics';
+  const isHealthView = viewParam === 'health';
+  const isPerformanceView = viewParam === 'performance';
   // Default monthly costs in USD
   const [cloudCost, setCloudCost] = useState(0);
   const [proverCost, setProverCost] = useState(0);
@@ -135,9 +138,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       metricsWithHardware.filter((m) => {
         if (selectedSequencer && m.group === 'Sequencers') return false;
         if (isEconomicsView) return m.group === 'Network Economics';
+        if (isHealthView) return m.group === 'Network Health';
+        if (isPerformanceView) return m.group === 'Network Performance';
         return m.group !== 'Network Economics';
       }),
-    [metricsWithHardware, selectedSequencer, isEconomicsView],
+    [metricsWithHardware, selectedSequencer, isEconomicsView, isHealthView, isPerformanceView],
   );
 
   const groupedMetrics = React.useMemo(
@@ -153,15 +158,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const groupOrder = isEconomicsView
     ? ['Network Economics']
-    : ['Network Performance', 'Network Health', 'Sequencers', 'Other'];
+    : isHealthView
+      ? ['Network Health']
+      : ['Network Performance', 'Network Health', 'Sequencers', 'Other'];
 
   const skeletonGroupCounts: Record<string, number> = isEconomicsView
     ? { 'Network Economics': 6 }
-    : {
-      'Network Performance': 3,
-      'Network Health': 5,
-      Sequencers: 3,
-    };
+    : isHealthView
+      ? { 'Network Health': 5 }
+      : {
+        'Network Performance': 3,
+        'Network Health': 5,
+        Sequencers: 3,
+      };
 
   const displayGroupName = useCallback(
     (group: string): string => {
@@ -285,12 +294,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       </ChartCard>,
     ];
 
-    const groups: Record<string, React.ReactNode[]> = {
-      'Network Performance': performance,
-      'Network Health': health,
-    };
+    const groups: Record<string, React.ReactNode[]> = {};
 
-    if (!selectedSequencer) {
+    if (!isHealthView) {
+      groups['Network Performance'] = performance;
+    }
+
+    if (!isPerformanceView) {
+      groups['Network Health'] = health;
+    }
+
+    if (!selectedSequencer && isPerformanceView) {
       groups['Sequencers'] = [
         <ChartCard
           key="seq-dist"
@@ -313,6 +327,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     selectedSequencer,
     isLoadingData,
     isEconomicsView,
+    isHealthView,
+    isPerformanceView,
     onOpenTable,
     onOpenSequencerDistributionTable,
   ]);
