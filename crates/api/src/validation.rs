@@ -2,7 +2,7 @@
 
 use crate::ErrorResponse;
 use axum::http::StatusCode;
-use chrono::{DateTime, Duration as ChronoDuration, TimeZone, Utc};
+use chrono::{Duration as ChronoDuration, TimeZone};
 use clickhouse_lib::TimeRange;
 use serde::Deserialize;
 use utoipa::{IntoParams, ToSchema};
