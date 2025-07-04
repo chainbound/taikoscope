@@ -756,7 +756,8 @@ pub async fn l2_fees(
     ),
     tag = "taikoscope"
 )]
-/// Get batch fee breakdown including priority fees, base fees, and L1 data costs by proposer
+/// Get batch fee breakdown including priority fees, base fees, L1 data costs, and prove costs by
+/// proposer
 pub async fn batch_fees(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
@@ -784,10 +785,11 @@ pub async fn batch_fees(
         None
     };
 
-    let (priority_fee, base_fee, l1_data_cost, rows) = tokio::try_join!(
+    let (priority_fee, base_fee, l1_data_cost, prove_cost, rows) = tokio::try_join!(
         state.client.get_batch_priority_fee(address, time_range),
         state.client.get_batch_base_fee(address, time_range),
         state.client.get_batch_total_data_cost(address, time_range),
+        state.client.get_total_prove_cost(address, time_range),
         state.client.get_batch_fees_by_proposer(time_range)
     )
     .map_err(|e| {
@@ -810,9 +812,10 @@ pub async fn batch_fees(
     let priority_fee = priority_fee.map(|v| v / WEI_PER_GWEI);
     let base_fee = base_fee.map(|v| v / WEI_PER_GWEI);
     let l1_data_cost = l1_data_cost.unwrap_or(0) / WEI_PER_GWEI;
+    let prove_cost = prove_cost.unwrap_or(0) / WEI_PER_GWEI;
 
     tracing::info!(count = sequencers.len(), "Returning batch fees and breakdown");
-    Ok(Json(L2FeesResponse { priority_fee, base_fee, l1_data_cost, prove_cost: 0, sequencers }))
+    Ok(Json(L2FeesResponse { priority_fee, base_fee, l1_data_cost, prove_cost, sequencers }))
 }
 
 #[utoipa::path(
