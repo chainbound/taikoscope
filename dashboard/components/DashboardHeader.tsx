@@ -48,7 +48,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   onManualRefresh,
   isTimeRangeChanging,
 }) => {
-  const { navigateToDashboard, updateSearchParams } = useRouterNavigation();
+  const { updateSearchParams } = useRouterNavigation();
   const { errorMessage } = useErrorHandler();
   const [searchParams] = useSearchParams();
   const viewParam = searchParams.get('view') ?? DEFAULT_VIEW;
@@ -61,11 +61,8 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
     <header className="flex flex-col md:flex-row justify-between items-center pb-4 border-b border-gray-200 dark:border-gray-700">
       <div className="flex items-baseline space-x-4">
         <h1
-          className="text-3xl font-bold cursor-pointer hover:underline"
+          className="text-3xl font-bold"
           style={{ color: TAIKO_PINK }}
-          onClick={() => {
-            navigateToDashboard(true);
-          }}
         >
           {' '}
           {/* Updated Taiko Pink */}
