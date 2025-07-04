@@ -119,23 +119,24 @@ pub async fn l2_tps(
     };
     let end_block = params.block_range.block_lt.or(params.block_range.block_lte);
 
-    let mut blocks = match state.client.get_l2_tps_block_range(None, start_block, end_block).await {
+    let blocks = match state
+        .client
+        .get_l2_tps_block_range(
+            None,
+            start_block,
+            end_block,
+            limit,
+            params.starting_after,
+            params.ending_before,
+        )
+        .await
+    {
         Ok(rows) => rows,
         Err(e) => {
             tracing::error!("Failed to get L2 TPS: {}", e);
             return Err(ErrorResponse::database_error());
         }
     };
-    if let Some(start) = params.starting_after {
-        blocks.retain(|b| b.l2_block_number < start);
-    }
-    if let Some(end) = params.ending_before {
-        blocks.retain(|b| b.l2_block_number > end);
-    }
-    blocks.sort_by(|a, b| b.l2_block_number.cmp(&a.l2_block_number));
-    if blocks.len() > limit as usize {
-        blocks.truncate(limit as usize);
-    }
     tracing::info!(count = blocks.len(), "Returning L2 TPS");
     Ok(Json(L2TpsResponse { blocks }))
 }
@@ -182,25 +183,24 @@ pub async fn l2_block_times(
     };
     let end_block = params.block_range.block_lt.or(params.block_range.block_lte);
 
-    let mut rows =
-        match state.client.get_l2_block_times_block_range(None, start_block, end_block).await {
-            Ok(r) => r,
-            Err(e) => {
-                tracing::error!(error = %e, "Failed to get L2 block times");
-                return Err(ErrorResponse::database_error());
-            }
-        };
-
-    if let Some(start) = params.starting_after {
-        rows.retain(|b| b.l2_block_number < start);
-    }
-    if let Some(end) = params.ending_before {
-        rows.retain(|b| b.l2_block_number > end);
-    }
-    rows.sort_by(|a, b| b.l2_block_number.cmp(&a.l2_block_number));
-    if rows.len() > limit as usize {
-        rows.truncate(limit as usize);
-    }
+    let rows = match state
+        .client
+        .get_l2_block_times_block_range(
+            None,
+            start_block,
+            end_block,
+            limit,
+            params.starting_after,
+            params.ending_before,
+        )
+        .await
+    {
+        Ok(r) => r,
+        Err(e) => {
+            tracing::error!(error = %e, "Failed to get L2 block times");
+            return Err(ErrorResponse::database_error());
+        }
+    };
 
     tracing::info!(count = rows.len(), "Returning table L2 block times");
     Ok(Json(L2BlockTimesResponse { blocks: rows }))
@@ -248,25 +248,24 @@ pub async fn l2_gas_used(
     };
     let end_block = params.block_range.block_lt.or(params.block_range.block_lte);
 
-    let mut rows =
-        match state.client.get_l2_gas_used_block_range(None, start_block, end_block).await {
-            Ok(r) => r,
-            Err(e) => {
-                tracing::error!("Failed to get L2 gas used: {}", e);
-                return Err(ErrorResponse::database_error());
-            }
-        };
-
-    if let Some(start) = params.starting_after {
-        rows.retain(|b| b.l2_block_number < start);
-    }
-    if let Some(end) = params.ending_before {
-        rows.retain(|b| b.l2_block_number > end);
-    }
-    rows.sort_by(|a, b| b.l2_block_number.cmp(&a.l2_block_number));
-    if rows.len() > limit as usize {
-        rows.truncate(limit as usize);
-    }
+    let rows = match state
+        .client
+        .get_l2_gas_used_block_range(
+            None,
+            start_block,
+            end_block,
+            limit,
+            params.starting_after,
+            params.ending_before,
+        )
+        .await
+    {
+        Ok(r) => r,
+        Err(e) => {
+            tracing::error!("Failed to get L2 gas used: {}", e);
+            return Err(ErrorResponse::database_error());
+        }
+    };
 
     tracing::info!(count = rows.len(), "Returning table L2 gas used");
     Ok(Json(L2GasUsedResponse { blocks: rows }))
@@ -314,25 +313,24 @@ pub async fn block_transactions(
     };
     let end_block = params.block_range.block_lt.or(params.block_range.block_lte);
 
-    let mut rows =
-        match state.client.get_block_transactions_block_range(start_block, end_block, None).await {
-            Ok(r) => r,
-            Err(e) => {
-                tracing::error!(error = %e, "Failed to get block transactions");
-                return Err(ErrorResponse::database_error());
-            }
-        };
-
-    if let Some(start) = params.starting_after {
-        rows.retain(|b| b.l2_block_number < start);
-    }
-    if let Some(end) = params.ending_before {
-        rows.retain(|b| b.l2_block_number > end);
-    }
-    rows.sort_by(|a, b| b.l2_block_number.cmp(&a.l2_block_number));
-    if rows.len() > limit as usize {
-        rows.truncate(limit as usize);
-    }
+    let rows = match state
+        .client
+        .get_block_transactions_block_range(
+            start_block,
+            end_block,
+            None,
+            limit,
+            params.starting_after,
+            params.ending_before,
+        )
+        .await
+    {
+        Ok(r) => r,
+        Err(e) => {
+            tracing::error!(error = %e, "Failed to get block transactions");
+            return Err(ErrorResponse::database_error());
+        }
+    };
 
     let blocks: Vec<BlockTransactionsItem> = rows
         .into_iter()
