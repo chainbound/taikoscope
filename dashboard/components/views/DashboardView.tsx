@@ -10,6 +10,7 @@ import { ChartCard } from '../ChartCard';
 import { TAIKO_PINK } from '../../theme';
 import { TimeRange, MetricData, ChartsData } from '../../types';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { DEFAULT_VIEW } from '../../constants';
 import { useEthPrice } from '../../services/priceService';
 import { rangeToHours } from '../../utils/timeRange';
 import { calculateHardwareCost } from '../../utils/hardwareCost';
@@ -85,7 +86,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 }) => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const viewParam = searchParams.get('view') ?? 'economics';
+  const viewParam = searchParams.get('view') ?? DEFAULT_VIEW;
   const isEconomicsView = viewParam === 'economics';
   const isHealthView = viewParam === 'health';
   const isPerformanceView = viewParam === 'performance';

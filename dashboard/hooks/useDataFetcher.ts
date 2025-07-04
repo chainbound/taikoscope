@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo } from 'react';
 import useSWR from 'swr';
 import { useSearchParams, useLocation } from 'react-router-dom';
+import { DEFAULT_VIEW } from '../constants';
 import { TimeRange, MetricData, ChartsDataUpdate } from '../types';
 import { TableViewState } from './useTableActions';
 import {
@@ -39,7 +40,7 @@ export const useDataFetcher = ({
   const location = useLocation();
 
   // Memoize the specific value we need to prevent infinite re-renders
-  const viewParam = searchParams.get('view');
+  const viewParam = searchParams.get('view') ?? DEFAULT_VIEW;
   const isTableRoute = location.pathname.startsWith('/table/');
   const isTableView = useMemo(
     () => tableView || viewParam === 'table' || isTableRoute,
