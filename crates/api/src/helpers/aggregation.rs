@@ -2,7 +2,7 @@
 
 use api_types::BlockTransactionsItem;
 
-use api_types::BatchFeeComponentRow;
+use api_types::{AvgBatchBlobCountRow, BatchFeeComponentRow};
 use clickhouse_lib::{
     BatchBlobCountRow, BatchProveTimeRow, BatchVerifyTimeRow, BlockFeeComponentRow, L2BlockTimeRow,
     L2GasUsedRow, L2TpsRow, TimeRange,
@@ -247,7 +247,7 @@ pub fn aggregate_verify_times(
 pub fn aggregate_blobs_per_batch(
     rows: Vec<BatchBlobCountRow>,
     bucket: u64,
-) -> Vec<BatchBlobCountRow> {
+) -> Vec<AvgBatchBlobCountRow> {
     let bucket = bucket.max(1);
     let mut groups: BTreeMap<u64, Vec<BatchBlobCountRow>> = BTreeMap::new();
     for row in rows {
@@ -258,8 +258,8 @@ pub fn aggregate_blobs_per_batch(
         .map(|(g, rs)| {
             let sum_blobs: u32 = rs.iter().map(|r| r.blob_count as u32).sum();
             let last_l1_block = rs.last().map(|r| r.l1_block_number).unwrap_or_default();
-            let avg_blobs = if rs.is_empty() { 0 } else { (sum_blobs / rs.len() as u32) as u8 };
-            BatchBlobCountRow {
+            let avg_blobs = if rs.is_empty() { 0.0 } else { sum_blobs as f64 / rs.len() as f64 };
+            AvgBatchBlobCountRow {
                 l1_block_number: last_l1_block,
                 batch_id: g * bucket,
                 blob_count: avg_blobs,
@@ -1056,7 +1056,7 @@ mod tests {
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].batch_id, 10);
         assert_eq!(result[0].l1_block_number, 100);
-        assert_eq!(result[0].blob_count, 3);
+        assert_eq!(result[0].blob_count, 3.0);
     }
 
     #[test]
@@ -1071,7 +1071,7 @@ mod tests {
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].batch_id, 10); // bucket 2 * 5 = 10
         assert_eq!(result[0].l1_block_number, 102); // last l1_block_number
-        assert_eq!(result[0].blob_count, 4); // (2 + 4 + 6) / 3 = 4
+        assert_eq!(result[0].blob_count, 4.0); // (2 + 4 + 6) / 3 = 4
     }
 
     #[test]
@@ -1084,11 +1084,11 @@ mod tests {
         // First bucket: batch 2 -> bucket 0
         assert_eq!(result[0].batch_id, 0);
         assert_eq!(result[0].l1_block_number, 100);
-        assert_eq!(result[0].blob_count, 2);
+        assert_eq!(result[0].blob_count, 2.0);
         // Second bucket: batch 7 -> bucket 1
         assert_eq!(result[1].batch_id, 5);
         assert_eq!(result[1].l1_block_number, 105);
-        assert_eq!(result[1].blob_count, 6);
+        assert_eq!(result[1].blob_count, 6.0);
     }
 
     #[test]
@@ -1098,7 +1098,7 @@ mod tests {
         let result = aggregate_blobs_per_batch(rows, 5);
 
         assert_eq!(result.len(), 1);
-        assert_eq!(result[0].blob_count, 2); // (0 + 4) / 2 = 2
+        assert_eq!(result[0].blob_count, 2.0); // (0 + 4) / 2 = 2
     }
 
     #[test]
@@ -1109,9 +1109,9 @@ mod tests {
 
         assert_eq!(result.len(), 2);
         assert_eq!(result[0].batch_id, 10);
-        assert_eq!(result[0].blob_count, 3);
+        assert_eq!(result[0].blob_count, 3.0);
         assert_eq!(result[1].batch_id, 20);
-        assert_eq!(result[1].blob_count, 5);
+        assert_eq!(result[1].blob_count, 5.0);
     }
 
     #[test]
@@ -1126,6 +1126,6 @@ mod tests {
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].batch_id, 1000);
         assert_eq!(result[0].l1_block_number, 5002);
-        assert_eq!(result[0].blob_count, 185); // (255 + 200 + 100) / 3 = 185
+        assert_eq!(result[0].blob_count, 185.0); // (255 + 200 + 100) / 3 = 185
     }
 }

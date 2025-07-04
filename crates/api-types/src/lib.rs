@@ -407,6 +407,24 @@ pub struct BatchBlobsResponse {
     pub batches: Vec<BatchBlobCountRow>,
 }
 
+/// Aggregated blob count per batch.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct AvgBatchBlobCountRow {
+    /// L1 block number
+    pub l1_block_number: u64,
+    /// Batch ID
+    pub batch_id: u64,
+    /// Average number of blobs in the bucket
+    pub blob_count: f64,
+}
+
+/// Aggregated blob count per batch response.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct AvgBatchBlobsResponse {
+    /// Aggregated blob count per batch.
+    pub batches: Vec<AvgBatchBlobCountRow>,
+}
+
 /// Mapping entry of a batch to its corresponding L1 block number.
 #[derive(Debug, Serialize, ToSchema)]
 pub struct BatchBlockItem {
