@@ -175,7 +175,7 @@ export const TableRoute: React.FC = () => {
 
         // For tables with aggregatedFetcher, use aggregated data on custom absolute time ranges
         const isCustomAbsoluteRange =
-          typeof currentTimeRange === 'string' && currentTimeRange.includes('-');
+          typeof currentTimeRange === 'string' && /^\d+-\d+$/.test(currentTimeRange);
         if (config.aggregatedFetcher && isCustomAbsoluteRange) {
           data = chartData;
         }
