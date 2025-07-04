@@ -88,7 +88,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
             }
             updateSearchParams({ view: 'economics', table: null });
           }}
-          className="text-sm hover:underline"
+          className="px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700"
           style={{ color: TAIKO_PINK }}
         >
           Economics
