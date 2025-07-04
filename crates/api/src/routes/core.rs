@@ -3,9 +3,9 @@
 use crate::{
     state::{ApiState, MAX_TABLE_LIMIT},
     validation::{
-        CommonQuery, PaginatedQuery, ProfitQuery, has_time_range_params, resolve_time_range_enum,
-        resolve_time_range_since, validate_pagination, validate_range_exclusivity,
-        validate_time_range,
+        CommonQuery, PaginatedQuery, ProfitQuery, has_time_range_params, resolve_time_range_bounds,
+        resolve_time_range_enum, resolve_time_range_since, validate_pagination,
+        validate_range_exclusivity, validate_time_range,
     },
 };
 use alloy_primitives::Address;
@@ -390,8 +390,10 @@ pub async fn sequencer_distribution(
     let has_time_range = has_time_range_params(&params.time_range);
     validate_range_exclusivity(has_time_range, false)?;
 
-    let since = resolve_time_range_since(&params.range, &params.time_range);
-    let rows = state.client.get_sequencer_distribution_since(since).await.map_err(|e| {
+    // Determine the exact start and end timestamps for the range
+    let (since, until) = resolve_time_range_bounds(&params.range, &params.time_range);
+    // Fetch distribution within the specified window
+    let rows = state.client.get_sequencer_distribution_range(since, until).await.map_err(|e| {
         tracing::error!(error = %e, "Failed to get sequencer distribution");
         ErrorResponse::database_error()
     })?;

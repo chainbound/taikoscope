@@ -2,7 +2,7 @@
 
 use crate::ErrorResponse;
 use axum::http::StatusCode;
-use chrono::{DateTime, Duration as ChronoDuration, TimeZone, Utc};
+use chrono::{Duration as ChronoDuration, TimeZone};
 use clickhouse_lib::TimeRange;
 use serde::Deserialize;
 use utoipa::{IntoParams, ToSchema};
@@ -286,26 +286,54 @@ pub fn range_duration(range: &Option<String>) -> ChronoDuration {
     ChronoDuration::hours(1)
 }
 
+/// Attempt to parse an absolute "start–end" range (milliseconds since epoch).
+fn parse_custom_range(
+    range: &Option<String>,
+) -> Option<(chrono::DateTime<chrono::Utc>, chrono::DateTime<chrono::Utc>)> {
+    if let Some(r) = range.as_deref() {
+        let trimmed = r.trim();
+        if let Some((start_str, end_str)) = trimmed.split_once('-') {
+            if let (Ok(start_ms), Ok(end_ms)) = (start_str.parse::<i64>(), end_str.parse::<i64>()) {
+                if end_ms > start_ms {
+                    if let (Some(start_dt), Some(end_dt)) = (
+                        chrono::Utc.timestamp_millis_opt(start_ms).single(),
+                        chrono::Utc.timestamp_millis_opt(end_ms).single(),
+                    ) {
+                        return Some((start_dt, end_dt));
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
 /// Resolve time range to `TimeRange` enum, prioritizing explicit time range params
 pub fn resolve_time_range_enum(range: &Option<String>, time_params: &TimeRangeParams) -> TimeRange {
     // If explicit time range parameters are provided, derive the duration from them
     if has_time_range_params(time_params) {
-        let now = Utc::now();
+        let now = chrono::Utc::now();
 
         let start = time_params
             .created_gt
             .map(|v| v + 1)
             .or(time_params.created_gte)
-            .and_then(|ms| Utc.timestamp_millis_opt(ms as i64).single())
-            .unwrap_or_else(|| now - ChronoDuration::hours(1));
+            .and_then(|ms| chrono::Utc.timestamp_millis_opt(ms as i64).single())
+            .unwrap_or_else(|| now - chrono::Duration::hours(1));
 
         let end = time_params
             .created_lt
             .or(time_params.created_lte)
-            .and_then(|ms| Utc.timestamp_millis_opt(ms as i64).single())
+            .and_then(|ms| chrono::Utc.timestamp_millis_opt(ms as i64).single())
             .unwrap_or(now);
 
-        let duration = end.signed_duration_since(start).max(ChronoDuration::zero());
+        let duration = end.signed_duration_since(start).max(chrono::Duration::zero());
+        return TimeRange::from_duration(duration);
+    }
+
+    // If range looks like "start–end", use that exact window
+    if let Some((start, end)) = parse_custom_range(range) {
+        let duration = end.signed_duration_since(start).max(chrono::Duration::zero());
         return TimeRange::from_duration(duration);
     }
 
@@ -317,21 +345,54 @@ pub fn resolve_time_range_enum(range: &Option<String>, time_params: &TimeRangePa
 pub fn resolve_time_range_since(
     range: &Option<String>,
     time_params: &TimeRangeParams,
-) -> DateTime<Utc> {
-    let now = Utc::now();
+) -> chrono::DateTime<chrono::Utc> {
+    let now = chrono::Utc::now();
 
     // If explicit time range parameters are provided, use them
     let lower_bound = time_params.created_gt.map(|v| v + 1).or(time_params.created_gte);
 
     if let Some(timestamp_ms) = lower_bound {
-        if let Some(dt) = Utc.timestamp_millis_opt(timestamp_ms as i64).single() {
+        if let Some(dt) = chrono::Utc.timestamp_millis_opt(timestamp_ms as i64).single() {
             // No time limit enforcement - return the requested time
             return dt;
         }
     }
 
+    // If we have an absolute "start–end" range, use its start
+    if let Some((start, _)) = parse_custom_range(range) {
+        return start;
+    }
+
     // Fall back to range parameter or default - no time limit enforcement
     now - range_duration(range)
+}
+
+/// Resolve time range to start and end `DateTime` values
+pub fn resolve_time_range_bounds(
+    range: &Option<String>,
+    time_params: &TimeRangeParams,
+) -> (chrono::DateTime<chrono::Utc>, chrono::DateTime<chrono::Utc>) {
+    let now = chrono::Utc::now();
+
+    // If we have an absolute "start–end" range, use it directly
+    if let Some((start, end)) = parse_custom_range(range) {
+        return (start, end);
+    }
+
+    let start = time_params
+        .created_gt
+        .map(|v| v + 1)
+        .or(time_params.created_gte)
+        .and_then(|ms| chrono::Utc.timestamp_millis_opt(ms as i64).single())
+        .unwrap_or_else(|| now - range_duration(range));
+
+    let end = time_params
+        .created_lt
+        .or(time_params.created_lte)
+        .and_then(|ms| chrono::Utc.timestamp_millis_opt(ms as i64).single())
+        .unwrap_or(now);
+
+    (start, end)
 }
 
 /// Custom deserializer that converts a URL-encoded form value into a `u64`.
