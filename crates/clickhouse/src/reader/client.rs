@@ -722,6 +722,9 @@ impl ClickhouseReader {
         start_block: Option<u64>,
         end_block: Option<u64>,
         sequencer: Option<AddressBytes>,
+        limit: u64,
+        starting_after: Option<u64>,
+        ending_before: Option<u64>,
     ) -> Result<Vec<BlockTransactionRow>> {
         #[derive(Row, Deserialize)]
         struct RawRow {
@@ -751,7 +754,16 @@ impl ClickhouseReader {
             query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
         }
 
-        query.push_str(" ORDER BY l2_block_number ASC");
+        if let Some(start) = starting_after {
+            query.push_str(&format!(" AND l2_block_number < {}", start));
+        }
+
+        if let Some(end) = ending_before {
+            query.push_str(&format!(" AND l2_block_number > {}", end));
+        }
+
+        query.push_str(" ORDER BY l2_block_number DESC");
+        query.push_str(&format!(" LIMIT {}", limit));
 
         let rows = self.execute::<RawRow>(&query).await?;
         Ok(rows
@@ -1486,6 +1498,9 @@ impl ClickhouseReader {
         sequencer: Option<AddressBytes>,
         start_block: Option<u64>,
         end_block: Option<u64>,
+        limit: u64,
+        starting_after: Option<u64>,
+        ending_before: Option<u64>,
     ) -> Result<Vec<L2BlockTimeRow>> {
         #[derive(Row, Deserialize)]
         struct RawRow {
@@ -1520,7 +1535,16 @@ impl ClickhouseReader {
             query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
         }
 
-        query.push_str(" ORDER BY l2_block_number ASC");
+        if let Some(start) = starting_after {
+            query.push_str(&format!(" AND l2_block_number < {}", start));
+        }
+
+        if let Some(end) = ending_before {
+            query.push_str(&format!(" AND l2_block_number > {}", end));
+        }
+
+        query.push_str(" ORDER BY l2_block_number DESC");
+        query.push_str(&format!(" LIMIT {}", limit));
 
         let rows = self.execute::<RawRow>(&query).await?;
         Ok(rows
@@ -1625,6 +1649,9 @@ impl ClickhouseReader {
         sequencer: Option<AddressBytes>,
         start_block: Option<u64>,
         end_block: Option<u64>,
+        limit: u64,
+        starting_after: Option<u64>,
+        ending_before: Option<u64>,
     ) -> Result<Vec<L2GasUsedRow>> {
         #[derive(Row, Deserialize)]
         struct RawRow {
@@ -1653,7 +1680,16 @@ impl ClickhouseReader {
             query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
         }
 
-        query.push_str(" ORDER BY l2_block_number ASC");
+        if let Some(start) = starting_after {
+            query.push_str(&format!(" AND l2_block_number < {}", start));
+        }
+
+        if let Some(end) = ending_before {
+            query.push_str(&format!(" AND l2_block_number > {}", end));
+        }
+
+        query.push_str(" ORDER BY l2_block_number DESC");
+        query.push_str(&format!(" LIMIT {}", limit));
 
         let rows = self.execute::<RawRow>(&query).await?;
         Ok(rows
@@ -2093,6 +2129,9 @@ impl ClickhouseReader {
         sequencer: Option<AddressBytes>,
         start_block: Option<u64>,
         end_block: Option<u64>,
+        limit: u64,
+        starting_after: Option<u64>,
+        ending_before: Option<u64>,
     ) -> Result<Vec<L2TpsRow>> {
         #[derive(Row, Deserialize)]
         struct RawRow {
@@ -2124,7 +2163,16 @@ impl ClickhouseReader {
             query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
         }
 
-        query.push_str(" ORDER BY l2_block_number ASC");
+        if let Some(start) = starting_after {
+            query.push_str(&format!(" AND l2_block_number < {}", start));
+        }
+
+        if let Some(end) = ending_before {
+            query.push_str(&format!(" AND l2_block_number > {}", end));
+        }
+
+        query.push_str(" ORDER BY l2_block_number DESC");
+        query.push_str(&format!(" LIMIT {}", limit));
 
         let rows = self.execute::<RawRow>(&query).await?;
         Ok(rows

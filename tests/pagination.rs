@@ -79,6 +79,82 @@ async fn batch_posting_times_paginated_builds_query() {
 }
 
 #[tokio::test]
+async fn l2_tps_block_range_builds_query() {
+    let mock = Mock::new();
+    let ctl = mock.add(handlers::record_ddl());
+    let url = Url::parse(mock.url()).unwrap();
+    let reader = ClickhouseReader::new(url, "db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+    let _ = reader
+        .get_l2_tps_block_range(None, Some(1), Some(10), 5, Some(8), Some(2))
+        .await;
+    let query = ctl.query().await;
+    assert!(query.contains("h.l2_block_number >= 1"));
+    assert!(query.contains("h.l2_block_number <= 10"));
+    assert!(query.contains("l2_block_number < 8"));
+    assert!(query.contains("l2_block_number > 2"));
+    assert!(query.contains("LIMIT 5"));
+    assert!(query.contains("ORDER BY l2_block_number DESC"));
+}
+
+#[tokio::test]
+async fn l2_block_times_block_range_builds_query() {
+    let mock = Mock::new();
+    let ctl = mock.add(handlers::record_ddl());
+    let url = Url::parse(mock.url()).unwrap();
+    let reader = ClickhouseReader::new(url, "db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+    let _ = reader
+        .get_l2_block_times_block_range(None, Some(1), Some(10), 7, Some(9), Some(3))
+        .await;
+    let query = ctl.query().await;
+    assert!(query.contains("h.l2_block_number >= 1"));
+    assert!(query.contains("h.l2_block_number <= 10"));
+    assert!(query.contains("l2_block_number < 9"));
+    assert!(query.contains("l2_block_number > 3"));
+    assert!(query.contains("LIMIT 7"));
+    assert!(query.contains("ORDER BY l2_block_number DESC"));
+}
+
+#[tokio::test]
+async fn l2_gas_used_block_range_builds_query() {
+    let mock = Mock::new();
+    let ctl = mock.add(handlers::record_ddl());
+    let url = Url::parse(mock.url()).unwrap();
+    let reader = ClickhouseReader::new(url, "db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+    let _ = reader
+        .get_l2_gas_used_block_range(None, Some(1), Some(10), 6, Some(8), Some(4))
+        .await;
+    let query = ctl.query().await;
+    assert!(query.contains("h.l2_block_number >= 1"));
+    assert!(query.contains("h.l2_block_number <= 10"));
+    assert!(query.contains("l2_block_number < 8"));
+    assert!(query.contains("l2_block_number > 4"));
+    assert!(query.contains("LIMIT 6"));
+    assert!(query.contains("ORDER BY l2_block_number DESC"));
+}
+
+#[tokio::test]
+async fn block_transactions_block_range_builds_query() {
+    let mock = Mock::new();
+    let ctl = mock.add(handlers::record_ddl());
+    let url = Url::parse(mock.url()).unwrap();
+    let reader = ClickhouseReader::new(url, "db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+    let _ = reader
+        .get_block_transactions_block_range(Some(1), Some(10), None, 4, Some(9), Some(5))
+        .await;
+    let query = ctl.query().await;
+    assert!(query.contains("h.l2_block_number >= 1"));
+    assert!(query.contains("h.l2_block_number <= 10"));
+    assert!(query.contains("l2_block_number < 9"));
+    assert!(query.contains("l2_block_number > 5"));
+    assert!(query.contains("LIMIT 4"));
+    assert!(query.contains("ORDER BY l2_block_number DESC"));
+}
+
+#[tokio::test]
 async fn reorgs_endpoint_returns_items_with_pagination() {
     #[derive(Serialize, Row)]
     struct RawRow {
@@ -382,3 +458,4 @@ async fn block_range_overflow_returns_400() {
 
     server.abort();
 }
+
