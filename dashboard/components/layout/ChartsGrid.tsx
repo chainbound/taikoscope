@@ -131,11 +131,7 @@ export const ChartsGrid: React.FC<ChartsGridProps> = ({
           barColor="#A0CBE8"
         />
       </ChartCard>
-      <ChartCard
-        title="L2 Block Time Distribution"
-        onMore={() => onOpenTable('l2-block-times', timeRange)}
-        loading={isLoading}
-      >
+      <ChartCard title="L2 Block Time Distribution" loading={isLoading}>
         <BlockTimeDistributionChart
           key={timeRange}
           data={chartsData.l2BlockTimeData}

@@ -115,9 +115,7 @@ export const TableRoute: React.FC = () => {
             fetcherArgs.push(address);
             extraParams.address = address;
           }
-        } else if (
-          ['l2-block-times', 'l2-gas-used', 'l2-tps'].includes(tableType)
-        ) {
+        } else if (['l2-gas-used', 'l2-tps'].includes(tableType)) {
           fetcherArgs.push(
             selectedSequencer
               ? getSequencerAddress(selectedSequencer)

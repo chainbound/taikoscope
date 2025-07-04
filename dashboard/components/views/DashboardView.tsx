@@ -271,7 +271,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       <ChartCard
         key="block-times"
         title="L2 Block Time Distribution"
-        onMore={() => onOpenTable('l2-block-times', timeRange)}
         loading={isLoadingData}
       >
         <BlockTimeDistributionChart
