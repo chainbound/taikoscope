@@ -98,7 +98,7 @@ export const EconomicsChart: React.FC<EconomicsChartProps> = ({
             stroke="#666666"
             fontSize={12}
             domain={['auto', 'auto']}
-            tickFormatter={(v: number) => formatEth(v * 1e9, 3)}
+            tickFormatter={(v: number) => formatEth(v * 1e9, 4)}
             label={{
               value: 'ETH',
               angle: -90,
@@ -116,16 +116,16 @@ export const EconomicsChart: React.FC<EconomicsChartProps> = ({
             formatter={(value: number, name: string, { payload }: Payload<number, string>) => {
               if (name === 'Revenue')
                 return [
-                  `${formatEth(value * 1e9, 3)} ($${payload.revenueUsd.toFixed(3)})`,
+                  `${formatEth(value * 1e9, 4)} ($${payload.revenueUsd.toFixed(3)})`,
                   name,
                 ];
               if (name === 'Cost')
                 return [
-                  `${formatEth(value * 1e9, 3)} ($${payload.costUsd.toFixed(3)})`,
+                  `${formatEth(value * 1e9, 4)} ($${payload.costUsd.toFixed(3)})`,
                   name,
                 ];
               return [
-                `${formatEth(value * 1e9, 3)} ($${payload.profitUsd.toFixed(3)})`,
+                `${formatEth(value * 1e9, 4)} ($${payload.profitUsd.toFixed(3)})`,
                 name,
               ];
             }}

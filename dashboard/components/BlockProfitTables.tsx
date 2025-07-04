@@ -120,19 +120,19 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
                   className="px-2 py-1"
                   title={`$${formatUsd(b.revenueEth * ethPrice)}`}
                 >
-                  {formatEth(b.revenue, 3)}
+                  {formatEth(b.revenue, 4)}
                 </td>
                 <td
                   className="px-2 py-1"
                   title={`$${formatUsd(b.costEth * ethPrice)}`}
                 >
-                  {formatEth(b.cost, 3)}
+                  {formatEth(b.cost, 4)}
                 </td>
                 <td
                   className="px-2 py-1"
                   title={`$${formatUsd(b.profitEth * ethPrice)}`}
                 >
-                  {formatEth(b.profit, 3)}
+                  {formatEth(b.profit, 4)}
                 </td>
               </tr>
             ))}

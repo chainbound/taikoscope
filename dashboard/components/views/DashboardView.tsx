@@ -100,7 +100,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     const costWei = ethPrice > 0 ? (costUsd / ethPrice) * 1e9 : null;
     const hardwareMetric: MetricData = {
       title: 'Hardware Costs',
-      value: costWei != null ? formatEth(costWei, 3) : 'N/A',
+      value: costWei != null ? formatEth(costWei, 4) : 'N/A',
       group: 'Network Economics',
     };
     const idx = metricsData.metrics.findIndex((m) => m.title === 'Prove Cost');
@@ -118,7 +118,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         const newProfitWei = profitWei - costWei;
         list[profitIdx] = {
           ...list[profitIdx],
-          value: formatEth(newProfitWei, 3),
+          value: formatEth(newProfitWei, 4),
         };
       }
     }
