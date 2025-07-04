@@ -177,7 +177,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
         timestamp: d.timestamp,
       })),
     urlKey: 'batch-posting-cadence',
-    reverseOrder: true,
+    reverseOrder: false,
     supportsPagination: true,
   },
 

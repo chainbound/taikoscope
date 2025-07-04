@@ -192,7 +192,9 @@ pub async fn l2_tps_aggregated(
     ),
     tag = "taikoscope"
 )]
-/// Get aggregated block transaction counts with automatic bucketing based on time range
+/// Get aggregated block transaction counts with automatic bucketing based on time range.
+///
+/// Results are ordered by block number in descending order before aggregation.
 pub async fn block_transactions_aggregated(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,

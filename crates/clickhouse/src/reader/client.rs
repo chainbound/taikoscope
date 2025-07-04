@@ -1152,7 +1152,7 @@ impl ClickhouseReader {
     }
 
     /// Get the interval between consecutive batch proposals since the given cutoff
-    /// time with cursor-based pagination. Results are returned in ascending order
+    /// time with cursor-based pagination. Results are returned in descending order
     /// by batch id.
     pub async fn get_batch_posting_times_paginated(
         &self,
@@ -1187,12 +1187,16 @@ impl ClickhouseReader {
             db = self.db_name,
         );
         if let Some(start) = starting_after {
-            query.push_str(&format!(" AND batch_id > {}", start));
+            // For descending order we fetch records with id less than the
+            // cursor provided in `starting_after`.
+            query.push_str(&format!(" AND batch_id < {}", start));
         }
         if let Some(end) = ending_before {
-            query.push_str(&format!(" AND batch_id < {}", end));
+            // When `ending_before` is set we only return records with id
+            // greater than the provided cursor.
+            query.push_str(&format!(" AND batch_id > {}", end));
         }
-        query.push_str(" ORDER BY batch_id ASC");
+        query.push_str(" ORDER BY batch_id DESC");
         query.push_str(&format!(" LIMIT {}", limit));
 
         let rows = self.execute::<RawRow>(&query).await?;

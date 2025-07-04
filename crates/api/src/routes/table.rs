@@ -32,7 +32,9 @@ type BlockTransactionsQuery = BlockPaginatedQuery;
     ),
     tag = "taikoscope"
 )]
-/// Get paginated list of L2 blockchain reorganization events
+/// Get paginated list of L2 blockchain reorganization events.
+///
+/// Results are ordered by insertion time in descending order.
 pub async fn reorgs(
     Query(params): Query<PaginatedQuery>,
     State(state): State<ApiState>,
@@ -89,7 +91,9 @@ pub async fn reorgs(
     ),
     tag = "taikoscope"
 )]
-/// Get paginated L2 transactions per second data
+/// Get paginated L2 transactions per second data.
+///
+/// Results are ordered by block number in descending order.
 pub async fn l2_tps(
     Query(params): Query<BlockPaginatedQuery>,
     State(state): State<ApiState>,
@@ -152,7 +156,9 @@ pub async fn l2_tps(
     ),
     tag = "taikoscope"
 )]
-/// Get paginated L2 block timing information
+/// Get paginated L2 block timing information.
+///
+/// Results are ordered by block number in descending order.
 pub async fn l2_block_times(
     Query(params): Query<BlockPaginatedQuery>,
     State(state): State<ApiState>,
@@ -218,7 +224,9 @@ pub async fn l2_block_times(
     ),
     tag = "taikoscope"
 )]
-/// Get paginated L2 gas usage information per block
+/// Get paginated L2 gas usage information per block.
+///
+/// Results are ordered by block number in descending order.
 pub async fn l2_gas_used(
     Query(params): Query<BlockPaginatedQuery>,
     State(state): State<ApiState>,
@@ -284,7 +292,9 @@ pub async fn l2_gas_used(
     ),
     tag = "taikoscope"
 )]
-/// Get paginated transaction count information per block with sequencer details
+/// Get paginated transaction count information per block with sequencer details.
+///
+/// Results are ordered by block number in descending order.
 pub async fn block_transactions(
     Query(params): Query<BlockTransactionsQuery>,
     State(state): State<ApiState>,
@@ -360,7 +370,9 @@ pub async fn block_transactions(
     ),
     tag = "taikoscope"
 )]
-/// Get paginated blob count information for each batch
+/// Get paginated blob count information for each batch.
+///
+/// Results are ordered by batch id in descending order.
 pub async fn blobs_per_batch(
     Query(params): Query<PaginatedQuery>,
     State(state): State<ApiState>,
