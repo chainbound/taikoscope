@@ -47,6 +47,15 @@ pub const fn verify_bucket_size(range: &TimeRange) -> u64 {
     if size == 0 { 1 } else { size }
 }
 
+/// Determine bucket size for blobs-per-batch aggregation. Uses a slightly
+/// smaller bucket than [`bucket_size_from_range`] so that charts show more
+/// detail without overwhelming the client.
+pub const fn blobs_bucket_size(range: &TimeRange) -> u64 {
+    let base = bucket_size_from_range(range);
+    let size = base / 5;
+    if size == 0 { 1 } else { size }
+}
+
 /// Aggregate L2 block times by bucket size
 pub fn aggregate_l2_block_times(rows: Vec<L2BlockTimeRow>, bucket: u64) -> Vec<L2BlockTimeRow> {
     let bucket = bucket.max(1);
@@ -426,6 +435,12 @@ mod tests {
     fn test_verify_bucket_size_smaller() {
         let range = TimeRange::Custom(6 * 3600); // 6 hours
         assert_eq!(verify_bucket_size(&range), 1); // base 5 / 25 = 0 -> 1
+    }
+
+    #[test]
+    fn test_blobs_bucket_size_smaller() {
+        let range = TimeRange::Custom(12 * 3600); // 12 hours
+        assert_eq!(blobs_bucket_size(&range), 2); // base 10 / 5 = 2
     }
 
     // Tests for aggregate_l2_block_times
