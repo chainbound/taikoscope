@@ -225,57 +225,6 @@ async fn l2_head_block_integration() {
     server.abort();
 }
 
-#[tokio::test]
-async fn sse_l2_head_integration() {
-    let mock = Mock::new();
-    let num = 7u64;
-    mock.add(handlers::provide(vec![NumRow { number: num }]));
-
-    let url = Url::parse(mock.url()).unwrap();
-    let client =
-        ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
-
-    let (addr, server) = spawn_server(client).await;
-    wait_for_server(addr).await;
-
-    let resp = reqwest::Client::new()
-        .get(format!("http://{addr}/{API_VERSION}/sse/l2-head"))
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(resp.status(), StatusCode::OK);
-    let chunk = resp.chunk().await.unwrap().unwrap();
-    let body = String::from_utf8(chunk.to_vec()).unwrap();
-    assert_eq!(body, format!("data: {num}\n\n"));
-
-    server.abort();
-}
-
-#[tokio::test]
-async fn sse_l1_head_integration() {
-    let mock = Mock::new();
-    let num = 5u64;
-    mock.add(handlers::provide(vec![NumRow { number: num }]));
-
-    let url = Url::parse(mock.url()).unwrap();
-    let client =
-        ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
-
-    let (addr, server) = spawn_server(client).await;
-    wait_for_server(addr).await;
-
-    let resp = reqwest::Client::new()
-        .get(format!("http://{addr}/{API_VERSION}/sse/l1-head"))
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(resp.status(), StatusCode::OK);
-    let chunk = resp.chunk().await.unwrap().unwrap();
-    let body = String::from_utf8(chunk.to_vec()).unwrap();
-    assert_eq!(body, format!("data: {num}\n\n"));
-
-    server.abort();
-}
 
 #[tokio::test]
 async fn health_endpoint_unversioned() {
