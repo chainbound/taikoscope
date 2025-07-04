@@ -22,7 +22,7 @@ interface ImportMeta {
 
 const metaEnv = (import.meta as ImportMeta).env;
 const rawNetworkName =
-  metaEnv?.VITE_NETWORK_NAME ?? metaEnv?.NETWORK_NAME ?? 'Masaya';
+  metaEnv?.VITE_NETWORK_NAME ?? metaEnv?.NETWORK_NAME ?? 'Hekla';
 const NETWORK_NAME =
   rawNetworkName.charAt(0).toUpperCase() +
   rawNetworkName.slice(1).toLowerCase();
