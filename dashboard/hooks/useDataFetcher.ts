@@ -39,7 +39,7 @@ export const useDataFetcher = ({
   const location = useLocation();
 
   // Memoize the specific value we need to prevent infinite re-renders
-  const viewParam = searchParams.get('view');
+  const viewParam = searchParams.get('view') ?? 'economics';
   const isTableRoute = location.pathname.startsWith('/table/');
   const isTableView = useMemo(
     () => tableView || viewParam === 'table' || isTableRoute,

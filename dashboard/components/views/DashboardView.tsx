@@ -84,7 +84,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 }) => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const isEconomicsView = searchParams.get('view') === 'economics';
+  const currentView = searchParams.get('view') ?? 'economics';
+  const isEconomicsView = currentView === 'economics';
+  const isPerformanceView = currentView === 'performance';
+  const isHealthView = currentView === 'health';
   // Default monthly costs in USD
   const [cloudCost, setCloudCost] = useState(0);
   const [proverCost, setProverCost] = useState(0);
@@ -96,7 +99,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     const hours = rangeToHours(timeRange);
     const sequencerCount = chartsData.sequencerDistribution.length || 1;
     const costUsd =
-      ((cloudCost + proverCost) * sequencerCount) / HOURS_IN_MONTH * hours;
+      (((cloudCost + proverCost) * sequencerCount) / HOURS_IN_MONTH) * hours;
     const costWei = ethPrice > 0 ? (costUsd / ethPrice) * 1e9 : null;
     const hardwareMetric: MetricData = {
       title: 'Hardware Costs',
@@ -124,16 +127,42 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     }
 
     return list;
-  }, [metricsData.metrics, isEconomicsView, cloudCost, proverCost, ethPrice, timeRange]);
+  }, [
+    metricsData.metrics,
+    isEconomicsView,
+    cloudCost,
+    proverCost,
+    ethPrice,
+    timeRange,
+  ]);
 
   const visibleMetrics = React.useMemo(
     () =>
       metricsWithHardware.filter((m) => {
         if (selectedSequencer && m.group === 'Sequencers') return false;
-        if (isEconomicsView) return m.group === 'Network Economics';
-        return m.group !== 'Network Economics';
+        if (isEconomicsView)
+          return (
+            m.group === 'Network Economics' || m.group === 'Block Information'
+          );
+        if (isPerformanceView)
+          return (
+            m.group === 'Network Performance' ||
+            m.group === 'Sequencers' ||
+            m.group === 'Block Information'
+          );
+        if (isHealthView)
+          return (
+            m.group === 'Network Health' || m.group === 'Block Information'
+          );
+        return true;
       }),
-    [metricsWithHardware, selectedSequencer, isEconomicsView],
+    [
+      metricsWithHardware,
+      selectedSequencer,
+      isEconomicsView,
+      isPerformanceView,
+      isHealthView,
+    ],
   );
 
   const groupedMetrics = React.useMemo(
@@ -147,17 +176,46 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     [visibleMetrics],
   );
 
-  const groupOrder = isEconomicsView
-    ? ['Network Economics']
-    : ['Network Performance', 'Network Health', 'Sequencers', 'Other'];
+  const groupOrder = React.useMemo(() => {
+    if (isEconomicsView) return ['Network Economics', 'Block Information'];
+    if (isPerformanceView)
+      return [
+        'Network Performance',
+        'Sequencers',
+        'Block Information',
+        'Other',
+      ];
+    if (isHealthView) return ['Network Health', 'Block Information', 'Other'];
+    return ['Network Performance', 'Network Health', 'Sequencers', 'Other'];
+  }, [isEconomicsView, isPerformanceView, isHealthView]);
 
-  const skeletonGroupCounts: Record<string, number> = isEconomicsView
-    ? { 'Network Economics': 6 }
-    : {
+  const skeletonGroupCounts: Record<string, number> = React.useMemo(() => {
+    if (isEconomicsView) {
+      return { 'Network Economics': 6, 'Block Information': 2 } as Record<
+        string,
+        number
+      >;
+    }
+    if (isPerformanceView) {
+      return {
+        'Network Performance': 3,
+        Sequencers: 3,
+        'Block Information': 2,
+      } as Record<string, number>;
+    }
+    if (isHealthView) {
+      return { 'Network Health': 5, 'Block Information': 2 } as Record<
+        string,
+        number
+      >;
+    }
+    return {
       'Network Performance': 3,
       'Network Health': 5,
       Sequencers: 3,
-    };
+      'Block Information': 2,
+    } as Record<string, number>;
+  }, [isEconomicsView, isPerformanceView, isHealthView]);
 
   const displayGroupName = useCallback(
     (group: string): string => {
@@ -356,7 +414,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               totalSequencers={chartsData.sequencerDistribution.length}
             />
             <div className="mt-6">
-              <h3 className="text-lg font-semibold mb-2">PnL Trend per Batch</h3>
+              <h3 className="text-lg font-semibold mb-2">
+                PnL Trend per Batch
+              </h3>
               <EconomicsChart
                 timeRange={timeRange}
                 cloudCost={cloudCost}

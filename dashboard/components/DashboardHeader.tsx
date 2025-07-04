@@ -56,7 +56,8 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   const { navigateToDashboard, updateSearchParams } = useRouterNavigation();
   const { errorMessage } = useErrorHandler();
   const [searchParams] = useSearchParams();
-  const isEconomicsView = searchParams.get('view') === 'economics';
+  const currentView = searchParams.get('view') ?? 'economics';
+  const isEconomicsView = currentView === 'economics';
   React.useEffect(() => {
     if (errorMessage) {
       showToast(errorMessage);
@@ -78,20 +79,20 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
         </h1>
       </div>
       <div className="flex flex-wrap items-center gap-2 mt-4 md:mt-0 justify-center md:justify-end">
-        <button
-          onClick={() => {
-            const params = new URLSearchParams(searchParams);
-            if (params.get('view') === 'economics') {
-              navigateToDashboard(true);
-              return;
-            }
-            updateSearchParams({ view: 'economics', table: null });
-          }}
-          className="px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700"
-          style={{ color: TAIKO_PINK }}
-        >
-          Economics
-        </button>
+        <div className="flex gap-2">
+          {['performance', 'economics', 'health'].map((view) => (
+            <button
+              key={view}
+              onClick={() => {
+                updateSearchParams({ view, table: null });
+              }}
+              className={`px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 ${currentView === view ? 'font-bold underline' : ''}`}
+              style={{ color: TAIKO_PINK }}
+            >
+              {view.charAt(0).toUpperCase() + view.slice(1)}
+            </button>
+          ))}
+        </div>
         <a
           href="https://status.taiko.xyz/"
           target="_blank"

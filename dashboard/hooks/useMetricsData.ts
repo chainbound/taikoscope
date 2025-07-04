@@ -11,8 +11,11 @@ export const useMetricsData = (): MetricsDataState => {
   const [searchParams] = useSearchParams();
 
   // Memoize the specific value we need to prevent infinite re-renders
-  const viewParam = searchParams.get('view');
-  const isEconomicsView = useMemo(() => viewParam === 'economics', [viewParam]);
+  const viewParam = searchParams.get('view') ?? 'economics';
+  const isEconomicsView = useMemo(
+    () => viewParam === 'economics',
+    [viewParam],
+  );
 
   return useMemo(
     () => ({
