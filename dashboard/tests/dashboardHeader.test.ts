@@ -17,7 +17,7 @@ describe('DashboardHeader', () => {
           null,
           React.createElement(
             MemoryRouter,
-            null,
+            { initialEntries: ['/?view=performance'] },
             React.createElement(DashboardHeader, {
               timeRange: '1h',
               onTimeRangeChange: () => { },
@@ -38,7 +38,9 @@ describe('DashboardHeader', () => {
     expect(html.includes('Refresh')).toBe(true);
     expect(html.includes('Status')).toBe(true);
     expect(html.includes('All Sequencers')).toBe(true);
+    expect(html.includes('Performance')).toBe(true);
     expect(html.includes('Economics')).toBe(true);
+    expect(html.includes('Health')).toBe(true);
   });
 
   it('hides sequencer selector in economics view', () => {

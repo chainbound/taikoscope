@@ -100,6 +100,12 @@ describe('navigationUtils', () => {
 
       const params2 = new URLSearchParams('view=economics');
       expect(validateSearchParams(params2)).toBe(true);
+
+      const params3 = new URLSearchParams('view=performance');
+      expect(validateSearchParams(params3)).toBe(true);
+
+      const params4 = new URLSearchParams('view=health');
+      expect(validateSearchParams(params4)).toBe(true);
     });
 
     it('should reject invalid view parameters', () => {
