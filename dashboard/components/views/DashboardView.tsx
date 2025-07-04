@@ -135,9 +135,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         if (selectedSequencer && m.group === 'Sequencers') return false;
         if (isEconomicsView) return m.group === 'Network Economics';
         if (isHealthView) return m.group === 'Network Health';
+        if (isPerformanceView) return m.group === 'Network Performance';
         return m.group !== 'Network Economics';
       }),
-    [metricsWithHardware, selectedSequencer, isEconomicsView, isHealthView],
+    [metricsWithHardware, selectedSequencer, isEconomicsView, isHealthView, isPerformanceView],
   );
 
   const groupedMetrics = React.useMemo(
@@ -162,10 +163,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     : isHealthView
       ? { 'Network Health': 5 }
       : {
-          'Network Performance': 3,
-          'Network Health': 5,
-          Sequencers: 3,
-        };
+        'Network Performance': 3,
+        'Network Health': 5,
+        Sequencers: 3,
+      };
 
   const displayGroupName = useCallback(
     (group: string): string => {
