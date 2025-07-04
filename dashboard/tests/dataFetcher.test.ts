@@ -109,7 +109,7 @@ describe('dataFetcher', () => {
     expect(res.badRequestResults).toHaveLength(4);
   });
 
-  it('defaults economics costs to null when missing', async () => {
+  it('defaults economics costs to zero when missing', async () => {
     setAll({
       fetchL2Fees: ok({
         priority_fee: null,
@@ -126,8 +126,8 @@ describe('dataFetcher', () => {
     const res = await fetchEconomicsData('1h', null);
     expect(res.priorityFee).toBeNull();
     expect(res.baseFee).toBeNull();
-    expect(res.l1DataCost).toBeNull();
-    expect(res.proveCost).toBeNull();
+    expect(res.l1DataCost).toBe(0);
+    expect(res.proveCost).toBe(0);
 
     expect(res.badRequestResults).toHaveLength(4);
   });
