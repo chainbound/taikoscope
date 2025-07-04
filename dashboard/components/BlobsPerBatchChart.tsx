@@ -37,12 +37,12 @@ const BlobsPerBatchChartComponent: React.FC<BlobsPerBatchChartProps> = ({
       >
         <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
         <XAxis
-          dataKey="block"
+          dataKey="batch"
           tickFormatter={(v: number) => v.toLocaleString()}
           stroke="#666666"
           fontSize={12}
           label={{
-            value: 'L1 Block',
+            value: 'Batch',
             position: 'insideBottom',
             offset: -35,
             fontSize: 10,
@@ -66,11 +66,11 @@ const BlobsPerBatchChartComponent: React.FC<BlobsPerBatchChartProps> = ({
         />
         <Tooltip
           labelFormatter={(label: number, payload) => {
-            const batch = payload?.[0]?.payload?.batch as number;
-            if (batch && label) {
-              return `Block ${label.toLocaleString()} (Batch ${batch.toLocaleString()})`;
+            const block = payload?.[0]?.payload?.block as number;
+            if (block && label) {
+              return `Batch ${label.toLocaleString()} (Block ${block.toLocaleString()})`;
             }
-            return label ? `Block ${label.toLocaleString()}` : 'Unknown';
+            return label ? `Batch ${label.toLocaleString()}` : 'Unknown';
           }}
           formatter={(value: number) => [value.toLocaleString(), 'blobs']}
           contentStyle={{
