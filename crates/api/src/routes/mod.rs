@@ -2,7 +2,6 @@
 
 pub mod aggregated;
 pub mod core;
-pub mod sse;
 pub mod table;
 
 use crate::{ApiDoc, state::ApiState};
@@ -12,7 +11,6 @@ use utoipa_swagger_ui::SwaggerUi;
 
 use aggregated::*;
 use core::*;
-use sse::*;
 use table::*;
 
 /// Build the router with all API endpoints.
@@ -22,8 +20,6 @@ pub fn router(state: ApiState) -> Router {
         .route("/l1-head", get(l1_head))
         .route("/l2-head-block", get(l2_head_block))
         .route("/l1-head-block", get(l1_head_block))
-        .route("/sse/l1-head", get(sse_l1_head))
-        .route("/sse/l2-head", get(sse_l2_head))
         .route("/reorgs", get(reorgs))
         .route("/active-gateways", get(active_gateways))
         .route("/batch-posting-times", get(batch_posting_times))
