@@ -620,7 +620,16 @@ impl ClickhouseReader {
         since: DateTime<Utc>,
     ) -> Result<Vec<SequencerDistributionRow>> {
         let query = format!(
-            "SELECT sequencer,\n                    count(DISTINCT h.l2_block_number) AS blocks,\n                    toUInt64(min(h.block_ts)) AS min_ts,\n                    toUInt64(max(h.block_ts)) AS max_ts,\n                    sum(sum_tx) AS tx_sum\n             FROM {db}.l2_head_events h\n             WHERE h.block_ts > {since} AND {filter}\n             GROUP BY sequencer ORDER BY blocks DESC",
+            "SELECT sequencer,\n\
+                   count(DISTINCT h.l2_block_number) AS blocks,\n\
+                   toUInt64(min(h.block_ts)) AS min_ts,\n\
+                   toUInt64(max(h.block_ts)) AS max_ts,\n\
+                   sum(sum_tx) AS tx_sum\n\
+             FROM {db}.l2_head_events h\n\
+             WHERE h.block_ts > {since}\n\
+               AND {filter}\n\
+             GROUP BY sequencer\n\
+             ORDER BY blocks DESC",
             since = since.timestamp(),
             filter = self.reorg_filter("h"),
             db = self.db_name,
