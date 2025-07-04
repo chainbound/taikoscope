@@ -52,7 +52,6 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   const { errorMessage } = useErrorHandler();
   const [searchParams] = useSearchParams();
   const viewParam = searchParams.get('view') ?? DEFAULT_VIEW;
-  const isEconomicsView = viewParam === 'economics';
   React.useEffect(() => {
     if (errorMessage) {
       showToast(errorMessage);
