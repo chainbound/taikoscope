@@ -235,10 +235,16 @@ export const TableRoute: React.FC = () => {
               },
               onPrev: () => {
                 const params = new URLSearchParams(searchParams);
-                params.set('page', String(page - 1));
-                if (prevCursor !== undefined)
-                  params.set('end', String(prevCursor));
-                params.delete('start');
+                const newPage = page - 1;
+                params.set('page', String(newPage));
+                if (newPage === 0) {
+                  // On first page, clear all cursor params
+                  params.delete('start');
+                  params.delete('end');
+                } else {
+                  if (prevCursor !== undefined) params.set('end', String(prevCursor));
+                  params.delete('start');
+                }
                 setSearchParams(params);
               },
               disableNext,
