@@ -24,12 +24,20 @@ CREATE TABLE IF NOT EXISTS ${DB}.l1_head_events_p (
 PARTITION BY toDate(fromUnixTimestamp(block_ts))
 ORDER BY (block_ts, l1_block_number);
 
-INSERT INTO l2_head_events_p
+-- Backfill last 30 days of data
+INSERT INTO ${DB}.l2_head_events_p
 SELECT *
-FROM l2_head_events
+FROM ${DB}.l2_head_events
 WHERE block_ts >= (toUInt64(now()) - 30*24*3600);
 
-INSERT INTO l1_head_events_p
+INSERT INTO ${DB}.l1_head_events_p
 SELECT *
-FROM l1_head_events
+FROM ${DB}.l1_head_events
 WHERE block_ts >= (toUInt64(now()) - 30*24*3600);
+
+-- Atomic swap: rename old tables and move partitioned tables into place
+RENAME TABLE
+    ${DB}.l2_head_events TO ${DB}.l2_head_events_old,
+    ${DB}.l2_head_events_p TO ${DB}.l2_head_events,
+    ${DB}.l1_head_events TO ${DB}.l1_head_events_old,
+    ${DB}.l1_head_events_p TO ${DB}.l1_head_events;
