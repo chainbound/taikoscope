@@ -23,3 +23,13 @@ CREATE TABLE IF NOT EXISTS ${DB}.l1_head_events_p (
 ) ENGINE = MergeTree()
 PARTITION BY toDate(fromUnixTimestamp(block_ts))
 ORDER BY (block_ts, l1_block_number);
+
+INSERT INTO l2_head_events_p
+SELECT *
+FROM l2_head_events
+WHERE block_ts >= (toUInt64(now()) - 30*24*3600);
+
+INSERT INTO l1_head_events_p
+SELECT *
+FROM l1_head_events
+WHERE block_ts >= (toUInt64(now()) - 30*24*3600);
