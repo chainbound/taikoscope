@@ -64,15 +64,12 @@ pub async fn reorgs(
     };
     let events: Vec<L2ReorgEvent> = rows
         .into_iter()
-        .filter_map(|e| {
-            let inserted_at = e.inserted_at?;
-            Some(L2ReorgEvent {
-                l2_block_number: e.l2_block_number,
-                depth: e.depth,
-                old_sequencer: format!("0x{}", encode(e.old_sequencer)),
-                new_sequencer: format!("0x{}", encode(e.new_sequencer)),
-                inserted_at,
-            })
+        .map(|e| L2ReorgEvent {
+            l2_block_number: e.l2_block_number,
+            depth: e.depth,
+            old_sequencer: format!("0x{}", encode(e.old_sequencer)),
+            new_sequencer: format!("0x{}", encode(e.new_sequencer)),
+            inserted_at: e.inserted_at,
         })
         .collect();
     tracing::info!(count = events.len(), "Returning reorg events");

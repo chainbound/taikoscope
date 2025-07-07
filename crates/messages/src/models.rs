@@ -149,7 +149,7 @@ pub struct L2ReorgRow {
     pub new_sequencer: AddressBytes,
     /// Time the reorg was recorded.
     /// This is populated when reading from the database.
-    pub inserted_at: Option<DateTime<Utc>>,
+    pub inserted_at: DateTime<Utc>,
 }
 
 /// Forced inclusion processed row
