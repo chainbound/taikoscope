@@ -91,7 +91,6 @@ fn fees_by_sequencer_query_has_proper_spacing() {
                 sum(sum_base_fee) AS base_fee, \
                 toNullable(sum(if(b.batch_size > 0, intDiv(dc.cost, b.batch_size), NULL))) AS l1_data_cost, \
                 toNullable(sum(if(b.batch_size > 0, intDiv(pc.cost, b.batch_size), NULL))) AS prove_cost, \
-                toNullable(sum(if(b.batch_size > 0, intDiv(vc.cost, b.batch_size), NULL))) AS verify_cost \
          FROM {db}.l2_head_events h \
          LEFT JOIN {db}.batch_blocks bb \
            ON h.l2_block_number = bb.l2_block_number \
@@ -101,8 +100,6 @@ fn fees_by_sequencer_query_has_proper_spacing() {
            ON b.batch_id = dc.batch_id \
          LEFT JOIN {db}.prove_costs pc \
            ON b.batch_id = pc.batch_id \
-         LEFT JOIN {db}.verify_costs vc \
-           ON b.batch_id = vc.batch_id \
          WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
            AND bb.batch_id IS NOT NULL \
          GROUP BY h.sequencer \
@@ -120,7 +117,6 @@ fn fees_by_sequencer_query_has_proper_spacing() {
     assert!(query.contains("batch_blocks bb ON"), "Query should have space between 'bb' and 'ON'",);
     assert!(query.contains("batches b ON"), "Query should have space between 'b' and 'ON'",);
     assert!(query.contains("prove_costs pc ON"), "Query should have space between 'pc' and 'ON'",);
-    assert!(query.contains("verify_costs vc ON"), "Query should have space between 'vc' and 'ON'",);
     assert!(
         query.contains("bb.l2_block_number LEFT JOIN"),
         "Query should have space between 'l2_block_number' and 'LEFT JOIN'"

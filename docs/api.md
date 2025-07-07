@@ -26,15 +26,3 @@ All time range parameters are in milliseconds. Time range parameters cannot be u
 | `created[gte]` | integer | No       | Return results created **at or after** this Unix timestamp  |
 | `created[lt]`  | integer | No       | Return results created **before** this Unix timestamp       |
 | `created[lte]` | integer | No       | Return results created **at or before** this Unix timestamp |
-
-### `/l2-fees`
-
-Returns total priority fee, base fee, proving cost, verifying cost and optional L1 data cost for the selected address (or all sequencers). The response also includes a `sequencers` array with the fee breakdown for each sequencer including their proving and verifying costs.
-
-### `/prove-cost`
-
-Returns the prover cost for each batch within the selected time range. Supports cursor-based pagination using `starting_after`, `ending_before` and `limit`.
-
-### `/verify-cost`
-
-Returns the verifier cost for each batch within the selected time range. The pagination parameters are the same as for `/prove-cost`.
