@@ -53,24 +53,14 @@ async fn fees_by_sequencer_returns_expected_rows() {
     let mock = Mock::new();
     let addr = AddressBytes([1u8; 20]);
 
-    // Mock for get_batch_fee_components
-    mock.add(handlers::provide(vec![BatchFeeRow {
-        batch_id: 1,
-        l1_block_number: 10,
-        l1_tx_hash: HashBytes([0u8; 32]),
-        proposer: addr,
+    // Mock the one SQL call for get_l2_fees_by_sequencer
+    mock.add(handlers::provide(vec![SeqFeeRow {
+        sequencer: addr,
         priority_fee: 10,
         base_fee: 20,
         l1_data_cost: Some(5),
+        prove_cost: Some(3),
     }]));
-
-    // Mock for get_prove_costs_by_proposer
-    #[derive(Row, serde::Serialize)]
-    struct ProposerCostRow {
-        proposer: AddressBytes,
-        total_cost: u128,
-    }
-    mock.add(handlers::provide(vec![ProposerCostRow { proposer: addr, total_cost: 3 }]));
 
     let url = url::Url::parse(mock.url()).unwrap();
     let reader = ClickhouseReader::new(url, "db".to_owned(), "user".into(), "pass".into()).unwrap();
