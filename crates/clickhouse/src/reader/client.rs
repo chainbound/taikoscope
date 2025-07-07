@@ -2260,44 +2260,54 @@ impl ClickhouseReader {
 
     /// Get aggregated L2 fees grouped by sequencer for the given range
     pub async fn get_l2_fees_by_sequencer(&self, range: TimeRange) -> Result<Vec<SequencerFeeRow>> {
-        let batch_components = self.get_batch_fee_components(None, range).await?;
-        let prove_rows = self.get_prove_costs_by_proposer(range).await?;
+        let query = format!(
+            "WITH fees AS ( \
+                SELECT b.proposer_addr as sequencer, \
+                       sum(h.sum_priority_fee) as priority_fee, \
+                       sum(h.sum_base_fee) as base_fee \
+                FROM {db}.batches b \
+                INNER JOIN {db}.l1_head_events l1 ON b.l1_block_number = l1.l1_block_number \
+                LEFT JOIN {db}.batch_blocks bb ON b.batch_id = bb.batch_id \
+                LEFT JOIN {db}.l2_head_events h ON bb.l2_block_number = h.l2_block_number \
+                WHERE l1.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
+                  AND {reorg_filter_h} \
+                GROUP BY b.proposer_addr \
+            ), \
+            data_costs AS ( \
+                SELECT b.proposer_addr as sequencer, \
+                       sum(dc.cost) as l1_data_cost \
+                FROM {db}.batches b \
+                INNER JOIN {db}.l1_head_events l1 ON b.l1_block_number = l1.l1_block_number \
+                LEFT JOIN {db}.l1_data_costs dc ON b.batch_id = dc.batch_id \
+                WHERE l1.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
+                GROUP BY b.proposer_addr \
+            ), \
+            prove_costs AS ( \
+                SELECT b.proposer_addr as sequencer, \
+                       sum(pc.cost) as prove_cost \
+                FROM {db}.batches b \
+                INNER JOIN {db}.l1_head_events l1 ON b.l1_block_number = l1.l1_block_number \
+                LEFT JOIN {db}.prove_costs pc ON b.batch_id = pc.batch_id \
+                WHERE l1.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
+                GROUP BY b.proposer_addr \
+            ) \
+            SELECT \
+                f.sequencer, \
+                f.priority_fee, \
+                f.base_fee, \
+                toNullable(dc.l1_data_cost), \
+                toNullable(pc.prove_cost) \
+            FROM fees f \
+            LEFT JOIN data_costs dc ON f.sequencer = dc.sequencer \
+            LEFT JOIN prove_costs pc ON f.sequencer = pc.sequencer \
+            ORDER BY f.priority_fee DESC",
+            db = self.db_name,
+            interval = range.interval(),
+            reorg_filter_h = self.reorg_filter("h")
+        );
 
-        let prove_map: HashMap<AddressBytes, u128> = prove_rows.into_iter().collect();
-
-        // Aggregate fees from batch components
-        let mut fees_by_sequencer: HashMap<AddressBytes, (u128, u128, u128)> = HashMap::new();
-        for component in batch_components {
-            let entry = fees_by_sequencer.entry(component.sequencer).or_default();
-            entry.0 += component.priority_fee;
-            entry.1 += component.base_fee;
-            entry.2 += component.l1_data_cost.unwrap_or(0);
-        }
-
-        // Create a unique set of all sequencers from all data sources
-        let all_sequencers: BTreeSet<AddressBytes> =
-            fees_by_sequencer.keys().copied().chain(prove_map.keys().copied()).collect();
-
-        let mut results: Vec<SequencerFeeRow> = all_sequencers
-            .into_iter()
-            .map(|sequencer| {
-                let (priority_fee, base_fee, l1_total_cost) =
-                    fees_by_sequencer.get(&sequencer).copied().unwrap_or_default();
-
-                SequencerFeeRow {
-                    sequencer,
-                    priority_fee,
-                    base_fee,
-                    l1_data_cost: (l1_total_cost > 0).then_some(l1_total_cost),
-                    prove_cost: prove_map.get(&sequencer).copied(),
-                }
-            })
-            .collect();
-
-        // Sort by priority fee in descending order as the original query did
-        results.sort_by(|a, b| b.priority_fee.cmp(&a.priority_fee));
-
-        Ok(results)
+        let rows = self.execute::<SequencerFeeRow>(&query).await?;
+        Ok(rows)
     }
 
     /// Get the blob count for each batch within the given range
