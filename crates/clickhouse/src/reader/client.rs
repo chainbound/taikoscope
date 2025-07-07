@@ -13,7 +13,7 @@ use hyper_util::{
 };
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::{BTreeSet, HashMap},
+    collections::BTreeSet,
     time::{Duration, Instant},
 };
 use tracing::{debug, error};
