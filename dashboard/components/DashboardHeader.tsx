@@ -9,7 +9,7 @@ import { DEFAULT_VIEW } from '../constants';
 import { useErrorHandler } from '../hooks/useErrorHandler';
 import { useSearchParams } from 'react-router-dom';
 import { showToast } from '../utils/toast';
-import { DayPicker } from 'react-day-picker';
+import { DayPicker, DateRange } from 'react-day-picker';
 import * as Popover from '@radix-ui/react-popover';
 
 interface ImportMetaEnv {
@@ -141,12 +141,12 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
   ];
   const isCustom = /^\d+-\d+$/.test(currentTimeRange);
   const [open, setOpen] = React.useState(false);
-  const [date, setDate] = React.useState<Date | undefined>(() => {
+  const [range, setRange] = React.useState<DateRange | undefined>(() => {
     if (isCustom) {
       const [s, e] = currentTimeRange
         .split('-')
         .map((t) => new Date(Number(t)));
-      if (s.toDateString() === e.toDateString()) return s;
+      return { from: s, to: e };
     }
     return undefined;
   });
@@ -177,21 +177,19 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
       const [s, e] = currentTimeRange
         .split('-')
         .map((t) => new Date(Number(t)));
-      if (s.toDateString() === e.toDateString()) {
-        setDate(s);
-        setFromTime(
-          `${s.getHours().toString().padStart(2, '0')}:${s
-            .getMinutes()
-            .toString()
-            .padStart(2, '0')}`,
-        );
-        setToTime(
-          `${e.getHours().toString().padStart(2, '0')}:${e
-            .getMinutes()
-            .toString()
-            .padStart(2, '0')}`,
-        );
-      }
+      setRange({ from: s, to: e });
+      setFromTime(
+        `${s.getHours().toString().padStart(2, '0')}:${s
+          .getMinutes()
+          .toString()
+          .padStart(2, '0')}`,
+      );
+      setToTime(
+        `${e.getHours().toString().padStart(2, '0')}:${e
+          .getMinutes()
+          .toString()
+          .padStart(2, '0')}`,
+      );
     }
   }, [currentTimeRange, isCustom]);
 
@@ -202,14 +200,14 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
   };
 
   const applyCustom = () => {
-    if (!date) return;
+    if (!range?.from || !range?.to) return;
     const from = fromTime || '00:00';
     const to = toTime || '23:59';
     const [fh, fm] = from.split(':').map(Number);
     const [th, tm] = to.split(':').map(Number);
-    const start = new Date(date);
+    const start = new Date(range.from);
     start.setHours(fh, fm, 0, 0);
-    const end = new Date(date);
+    const end = new Date(range.to);
     end.setHours(th, tm, 0, 0);
     if (end <= start) {
       end.setDate(end.getDate() + 1);
@@ -251,17 +249,17 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
         ))}
         <div className="pt-1 border-t border-gray-200 dark:border-gray-700 mt-1 space-y-1">
           <DayPicker
-            mode="single"
-            selected={date}
-            onSelect={(d) => {
-              const newDate = d ?? undefined;
-              setDate(newDate);
-              if (d && !fromTime && !toTime) {
+            mode="range"
+            selected={range}
+            onSelect={(r) => {
+              const newRange = r ?? undefined;
+              setRange(newRange);
+              if (newRange && !fromTime && !toTime) {
                 setFromTime('00:00');
                 setToTime('23:59');
               }
             }}
-            defaultMonth={date}
+            defaultMonth={range?.from}
           />
           <div className="flex items-center space-x-2">
             <input
@@ -284,7 +282,7 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
           </div>
           <button
             onClick={applyCustom}
-            disabled={isChanging || !date || !fromTime || !toTime}
+            disabled={isChanging || !range?.from || !range?.to || !fromTime || !toTime}
             className="mt-1 px-2 py-1 text-sm rounded-md bg-gray-200 dark:bg-gray-700 w-full"
           >
             Apply
