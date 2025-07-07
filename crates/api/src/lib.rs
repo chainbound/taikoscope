@@ -20,12 +20,9 @@ use utoipa::OpenApi;
 #[derive(Debug, OpenApi)]
 #[openapi(
     paths(
-        routes::core::l2_head,
-        routes::core::l1_head,
         routes::core::l2_head_block,
         routes::core::l1_head_block,
         routes::table::reorgs,
-        routes::core::active_gateways,
         routes::core::batch_posting_times,
         routes::core::avg_blobs_per_batch,
         routes::table::blobs_per_batch,
@@ -43,10 +40,8 @@ use utoipa::OpenApi;
         routes::core::sequencer_distribution,
         routes::core::sequencer_blocks,
         routes::core::l2_fees,
-        routes::core::batch_fees,
         routes::core::l2_fee_components,
         routes::core::batch_fee_components,
-        routes::aggregated::batch_fee_components_aggregated,
         routes::aggregated::dashboard_data,
         routes::core::l1_data_cost,
         routes::core::eth_price
@@ -58,12 +53,9 @@ use utoipa::OpenApi;
             validation::BlockPaginatedQuery,
             validation::TimeRangeParams,
             validation::BlockRangeParams,
-            L2HeadResponse,
-            L1HeadResponse,
             L2HeadBlockResponse,
             L1HeadBlockResponse,
             ReorgEventsResponse,
-            ActiveGatewaysResponse,
             BatchPostingTimesResponse,
             AvgBlobsPerBatchResponse,
             BatchBlobsResponse,

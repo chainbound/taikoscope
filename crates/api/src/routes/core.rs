@@ -10,13 +10,12 @@ use crate::{
 };
 use alloy_primitives::Address;
 use api_types::{
-    ActiveGatewaysResponse, AvgBlobsPerBatchResponse, BatchFeeComponentRow,
-    BatchFeeComponentsResponse, BatchPostingTimesResponse, BlockProfitItem, BlockProfitsResponse,
-    ErrorResponse, EthPriceResponse, FeeComponentsResponse, L1BlockTimesResponse,
-    L1DataCostResponse, L1HeadBlockResponse, L1HeadResponse, L2FeesResponse, L2HeadBlockResponse,
-    L2HeadResponse, ProveCostResponse, ProveTimesResponse, SequencerBlocksItem,
-    SequencerBlocksResponse, SequencerDistributionItem, SequencerDistributionResponse,
-    SequencerFeeRow, VerifyTimesResponse,
+    AvgBlobsPerBatchResponse, BatchFeeComponentRow, BatchFeeComponentsResponse,
+    BatchPostingTimesResponse, BlockProfitItem, BlockProfitsResponse, ErrorResponse,
+    EthPriceResponse, FeeComponentsResponse, L1BlockTimesResponse, L1DataCostResponse,
+    L1HeadBlockResponse, L2FeesResponse, L2HeadBlockResponse, ProveCostResponse,
+    ProveTimesResponse, SequencerBlocksItem, SequencerBlocksResponse, SequencerDistributionItem,
+    SequencerDistributionResponse, SequencerFeeRow, VerifyTimesResponse,
 };
 use axum::{
     Json,
@@ -29,46 +28,6 @@ use primitives::WEI_PER_GWEI;
 
 // Legacy type aliases for backward compatibility
 type RangeQuery = CommonQuery;
-
-#[utoipa::path(
-    get,
-    path = "/l2-head",
-    responses(
-        (status = 200, description = "L2 head timestamp", body = L2HeadResponse),
-        (status = 500, description = "Database error", body = ErrorResponse)
-    ),
-    tag = "taikoscope"
-)]
-/// Get the timestamp of the latest L2 block
-pub async fn l2_head(State(state): State<ApiState>) -> Result<Json<L2HeadResponse>, ErrorResponse> {
-    let ts = state.client.get_last_l2_head_time().await.map_err(|e| {
-        tracing::error!("Failed to get L2 head time: {}", e);
-        ErrorResponse::database_error()
-    })?;
-
-    let resp = L2HeadResponse { last_l2_head_time: ts.map(|t| t.to_rfc3339()) };
-    Ok(Json(resp))
-}
-
-#[utoipa::path(
-    get,
-    path = "/l1-head",
-    responses(
-        (status = 200, description = "L1 head timestamp", body = L1HeadResponse),
-        (status = 500, description = "Database error", body = ErrorResponse)
-    ),
-    tag = "taikoscope"
-)]
-/// Get the timestamp of the latest L1 block
-pub async fn l1_head(State(state): State<ApiState>) -> Result<Json<L1HeadResponse>, ErrorResponse> {
-    let ts = state.client.get_last_l1_head_time().await.map_err(|e| {
-        tracing::error!("Failed to get L1 head time: {}", e);
-        ErrorResponse::database_error()
-    })?;
-
-    let resp = L1HeadResponse { last_l1_head_time: ts.map(|t| t.to_rfc3339()) };
-    Ok(Json(resp))
-}
 
 #[utoipa::path(
     get,
@@ -108,40 +67,6 @@ pub async fn l1_head_block(
         ErrorResponse::database_error()
     })?;
     Ok(Json(L1HeadBlockResponse { l1_head_block: num }))
-}
-
-#[utoipa::path(
-    get,
-    path = "/active-gateways",
-    params(
-        PaginatedQuery
-    ),
-    responses(
-        (status = 200, description = "Active gateways", body = ActiveGatewaysResponse),
-        (status = 500, description = "Database error", body = ErrorResponse)
-    ),
-    tag = "taikoscope"
-)]
-/// Get list of gateway addresses that have been active in the specified time range
-pub async fn active_gateways(
-    Query(params): Query<RangeQuery>,
-    State(state): State<ApiState>,
-) -> Result<Json<ActiveGatewaysResponse>, ErrorResponse> {
-    // Validate time range parameters
-    validate_time_range(&params.time_range)?;
-
-    // Check for range exclusivity
-    let has_time_range = has_time_range_params(&params.time_range);
-    validate_range_exclusivity(has_time_range, false)?;
-
-    let since = resolve_time_range_since(&params.range, &params.time_range);
-    let gateways = state.client.get_active_gateways_since(since).await.map_err(|e| {
-        tracing::error!(error = %e, "Failed to get active gateways");
-        ErrorResponse::database_error()
-    })?;
-    let gateways: Vec<String> = gateways.into_iter().map(|a| format!("0x{}", encode(a))).collect();
-    tracing::info!(count = gateways.len(), "Returning active gateways");
-    Ok(Json(ActiveGatewaysResponse { gateways }))
 }
 
 #[utoipa::path(
@@ -741,80 +666,6 @@ pub async fn l2_fees(
     let prove_cost = prove_cost.unwrap_or(0) / WEI_PER_GWEI;
 
     tracing::info!(count = sequencers.len(), "Returning L2 fees and breakdown");
-    Ok(Json(L2FeesResponse { priority_fee, base_fee, l1_data_cost, prove_cost, sequencers }))
-}
-
-#[utoipa::path(
-    get,
-    path = "/batch-fees",
-    params(
-        RangeQuery
-    ),
-    responses(
-        (status = 200, description = "Priority and base fees per batch", body = L2FeesResponse),
-        (status = 500, description = "Database error", body = ErrorResponse)
-    ),
-    tag = "taikoscope"
-)]
-/// Get batch fee breakdown including priority fees, base fees, L1 data costs, and prove costs by
-/// proposer
-pub async fn batch_fees(
-    Query(params): Query<RangeQuery>,
-    State(state): State<ApiState>,
-) -> Result<Json<L2FeesResponse>, ErrorResponse> {
-    validate_time_range(&params.time_range)?;
-
-    let has_time_range = has_time_range_params(&params.time_range);
-    validate_range_exclusivity(has_time_range, false)?;
-
-    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
-    let address = if let Some(addr) = params.address.as_ref() {
-        match addr.parse::<Address>() {
-            Ok(a) => Some(AddressBytes::from(a)),
-            Err(e) => {
-                tracing::warn!(error = %e, "Failed to parse address");
-                return Err(ErrorResponse::new(
-                    "invalid-params",
-                    "Bad Request",
-                    StatusCode::BAD_REQUEST,
-                    e.to_string(),
-                ));
-            }
-        }
-    } else {
-        None
-    };
-
-    let (priority_fee, base_fee, l1_data_cost, prove_cost, rows) = tokio::try_join!(
-        state.client.get_batch_priority_fee(address, time_range),
-        state.client.get_batch_base_fee(address, time_range),
-        state.client.get_batch_total_data_cost(address, time_range),
-        state.client.get_total_prove_cost(address, time_range),
-        state.client.get_batch_fees_by_proposer(time_range)
-    )
-    .map_err(|e| {
-        tracing::error!(error = %e, "Failed to get batch fees");
-        ErrorResponse::database_error()
-    })?;
-
-    let sequencers: Vec<SequencerFeeRow> = rows
-        .into_iter()
-        .filter(|r| if let Some(target) = address { r.sequencer == target } else { true })
-        .map(|r| SequencerFeeRow {
-            address: format!("0x{}", encode(r.sequencer)),
-            priority_fee: r.priority_fee / WEI_PER_GWEI,
-            base_fee: r.base_fee / WEI_PER_GWEI,
-            l1_data_cost: r.l1_data_cost.unwrap_or(0) / WEI_PER_GWEI,
-            prove_cost: r.prove_cost.unwrap_or(0) / WEI_PER_GWEI,
-        })
-        .collect();
-
-    let priority_fee = priority_fee.map(|v| v / WEI_PER_GWEI);
-    let base_fee = base_fee.map(|v| v / WEI_PER_GWEI);
-    let l1_data_cost = l1_data_cost.unwrap_or(0) / WEI_PER_GWEI;
-    let prove_cost = prove_cost.unwrap_or(0) / WEI_PER_GWEI;
-
-    tracing::info!(count = sequencers.len(), "Returning batch fees and breakdown");
     Ok(Json(L2FeesResponse { priority_fee, base_fee, l1_data_cost, prove_cost, sequencers }))
 }
 

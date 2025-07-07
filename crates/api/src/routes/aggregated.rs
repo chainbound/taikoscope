@@ -2,10 +2,10 @@
 
 use crate::{
     helpers::{
-        aggregate_batch_fee_components, aggregate_blobs_per_batch, aggregate_block_transactions,
-        aggregate_l2_block_times, aggregate_l2_fee_components, aggregate_l2_gas_used,
-        aggregate_l2_tps, aggregate_prove_times, aggregate_verify_times, blobs_bucket_size,
-        bucket_size_from_range, prove_bucket_size, verify_bucket_size,
+        aggregate_blobs_per_batch, aggregate_block_transactions, aggregate_l2_block_times,
+        aggregate_l2_fee_components, aggregate_l2_gas_used, aggregate_l2_tps,
+        aggregate_prove_times, aggregate_verify_times, blobs_bucket_size, bucket_size_from_range,
+        prove_bucket_size, verify_bucket_size,
     },
     state::{ApiState, MAX_BLOCK_TRANSACTIONS_LIMIT},
     validation::{
@@ -421,80 +421,6 @@ pub async fn l2_fee_components_aggregated(
         .collect();
 
     Ok(Json(FeeComponentsResponse { blocks }))
-}
-
-#[utoipa::path(
-    get,
-    path = "/batch-fee-components/aggregated",
-    params(
-        RangeQuery
-    ),
-    responses(
-        (status = 200, description = "Aggregated batch fee components", body = BatchFeeComponentsResponse),
-        (status = 500, description = "Database error", body = ErrorResponse)
-    ),
-    tag = "taikoscope"
-)]
-/// Get aggregated fee components per batch with automatic bucketing based on time range
-pub async fn batch_fee_components_aggregated(
-    Query(params): Query<RangeQuery>,
-    State(state): State<ApiState>,
-) -> Result<Json<BatchFeeComponentsResponse>, ErrorResponse> {
-    validate_time_range(&params.time_range)?;
-
-    let has_time_range = has_time_range_params(&params.time_range);
-    validate_range_exclusivity(has_time_range, false)?;
-
-    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
-    let address = if let Some(addr) = params.address.as_ref() {
-        match addr.parse::<Address>() {
-            Ok(a) => Some(AddressBytes::from(a)),
-            Err(e) => {
-                tracing::warn!(error = %e, "Failed to parse address");
-                return Err(ErrorResponse::new(
-                    "invalid-params",
-                    "Bad Request",
-                    StatusCode::BAD_REQUEST,
-                    e.to_string(),
-                ));
-            }
-        }
-    } else {
-        None
-    };
-
-    let rows = state.client.get_batch_fee_components(address, time_range).await.map_err(|e| {
-        tracing::error!(error = %e, "Failed to get batch fee components");
-        ErrorResponse::database_error()
-    })?;
-
-    let prove_total =
-        state.client.get_total_prove_cost(address, time_range).await.map_err(|e| {
-            tracing::error!(error = %e, "Failed to get prove cost");
-            ErrorResponse::database_error()
-        })?;
-    let count = rows.len() as u128;
-    let amortized_prove =
-        if count > 0 { prove_total.map(|c| (c / count) / WEI_PER_GWEI) } else { None };
-
-    let batches: Vec<BatchFeeComponentRow> = rows
-        .into_iter()
-        .map(|r| BatchFeeComponentRow {
-            batch_id: r.batch_id,
-            l1_block_number: r.l1_block_number,
-            l1_tx_hash: format!("0x{}", encode(r.l1_tx_hash)),
-            sequencer: format!("0x{}", encode(r.sequencer)),
-            priority_fee: r.priority_fee / WEI_PER_GWEI,
-            base_fee: r.base_fee / WEI_PER_GWEI,
-            l1_data_cost: r.l1_data_cost.map(|v| v / WEI_PER_GWEI),
-            amortized_prove_cost: amortized_prove,
-        })
-        .collect();
-
-    let bucket = bucket_size_from_range(&time_range);
-    let batches = aggregate_batch_fee_components(batches, bucket);
-
-    Ok(Json(BatchFeeComponentsResponse { batches }))
 }
 
 #[utoipa::path(

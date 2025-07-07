@@ -49,27 +49,6 @@ async fn wait_for_server(addr: SocketAddr) {
     }
 }
 
-#[tokio::test]
-async fn l2_head_integration() {
-    let mock = Mock::new();
-    let ts = 42u64;
-    mock.add(handlers::provide(vec![MaxRow { block_ts: ts }]));
-
-    let url = Url::parse(mock.url()).unwrap();
-    let client =
-        ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
-
-    let (addr, server) = spawn_server(client).await;
-    wait_for_server(addr).await;
-
-    let resp = reqwest::get(format!("http://{addr}/{API_VERSION}/l2-head")).await.unwrap();
-    assert_eq!(resp.status(), StatusCode::OK);
-    let body: serde_json::Value = resp.json().await.unwrap();
-    let expected = chrono::Utc.timestamp_opt(ts as i64, 0).single().unwrap().to_rfc3339();
-    assert_eq!(body, serde_json::json!({ "last_l2_head_time": expected }));
-
-    server.abort();
-}
 
 #[tokio::test]
 async fn batch_fee_components_filters_unverified() {
@@ -126,27 +105,6 @@ async fn batch_fee_components_filters_unverified() {
     server.abort();
 }
 
-#[tokio::test]
-async fn l1_head_integration() {
-    let mock = Mock::new();
-    let ts = 24u64;
-    mock.add(handlers::provide(vec![MaxRow { block_ts: ts }]));
-
-    let url = Url::parse(mock.url()).unwrap();
-    let client =
-        ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
-
-    let (addr, server) = spawn_server(client).await;
-    wait_for_server(addr).await;
-
-    let resp = reqwest::get(format!("http://{addr}/{API_VERSION}/l1-head")).await.unwrap();
-    assert_eq!(resp.status(), StatusCode::OK);
-    let body: serde_json::Value = resp.json().await.unwrap();
-    let expected = chrono::Utc.timestamp_opt(ts as i64, 0).single().unwrap().to_rfc3339();
-    assert_eq!(body, serde_json::json!({ "last_l1_head_time": expected }));
-
-    server.abort();
-}
 
 #[derive(Serialize, Row)]
 struct NumRow {
@@ -587,57 +545,6 @@ async fn l2_fees_integration() {
     server.abort();
 }
 
-#[tokio::test]
-async fn batch_fees_integration() {
-    let mock = Mock::new();
-    mock.add(handlers::provide(vec![TotalRow { total: 10 * WEI_PER_GWEI }]));
-    mock.add(handlers::provide(vec![TotalRow { total: 20 * WEI_PER_GWEI }]));
-    mock.add(handlers::provide(vec![TotalRow { total: 5 * WEI_PER_GWEI }]));
-    mock.add(handlers::provide::<clickhouse_lib::SequencerFeeRow>(vec![
-        clickhouse_lib::SequencerFeeRow {
-            sequencer: AddressBytes([2u8; 20]),
-            priority_fee: 10 * WEI_PER_GWEI,
-            base_fee: 20 * WEI_PER_GWEI,
-            l1_data_cost: Some(5 * WEI_PER_GWEI),
-            prove_cost: Some(1 * WEI_PER_GWEI),
-        },
-    ]));
-
-    let url = Url::parse(mock.url()).unwrap();
-    let client =
-        ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
-
-    let (addr, server) = spawn_server(client).await;
-    wait_for_server(addr).await;
-
-    let resp = reqwest::get(format!(
-        "http://{addr}/{API_VERSION}/batch-fees?created[gte]=0&created[lte]=3600000"
-    ))
-    .await
-    .unwrap();
-    assert_eq!(resp.status(), StatusCode::OK);
-    let body: serde_json::Value = resp.json().await.unwrap();
-    assert_eq!(
-        body,
-        serde_json::json!({
-            "priority_fee": 10,
-            "base_fee": 20,
-            "l1_data_cost": 5,
-            "prove_cost": 0,
-            "sequencers": [
-                {
-                    "address": format!("0x{}", hex::encode([2u8; 20])),
-                    "priority_fee": 10,
-                    "base_fee": 20,
-                    "l1_data_cost": 5,
-                    "prove_cost": 1
-                }
-            ]
-        })
-    );
-
-    server.abort();
-}
 
 #[tokio::test]
 async fn prove_costs_integration() {
