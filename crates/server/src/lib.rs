@@ -86,7 +86,6 @@ mod tests {
         body::{self, Body},
         http::{Request, StatusCode},
     };
-    use chrono::{TimeZone, Utc};
     use clickhouse::{
         Row,
         test::{Mock, handlers},
@@ -97,8 +96,8 @@ mod tests {
     use url::Url;
 
     #[derive(Serialize, Row)]
-    struct MaxRow {
-        block_ts: u64,
+    struct NumRow {
+        l2_block_number: u64,
     }
 
     fn build_app(mock_url: &str, allowed: Vec<String>) -> Router {
@@ -113,7 +112,7 @@ mod tests {
         let response = app
             .oneshot(
                 Request::builder()
-                    .uri(format!("/{API_VERSION}/l2-head"))
+                    .uri(format!("/{API_VERSION}/l2-head-block"))
                     .header("Origin", origin)
                     .body(Body::empty())
                     .unwrap(),
@@ -134,14 +133,14 @@ mod tests {
     #[tokio::test]
     async fn allows_default_origin() {
         let mock = Mock::new();
-        mock.add(handlers::provide(vec![MaxRow { block_ts: 1 }]));
+        mock.add(handlers::provide(vec![NumRow { l2_block_number: 1 }]));
         let app = build_app(
             mock.url(),
             config::DEFAULT_ALLOWED_ORIGINS.split(',').map(|s| s.to_owned()).collect(),
         );
         let (status, body, cors) = send_request(app, "https://masaya.taikoscope.xyz").await;
         let expected = json!({
-            "last_l2_head_time": Utc.timestamp_opt(1, 0).single().unwrap().to_rfc3339()
+            "l2_head_block": 1
         });
         assert_eq!(status, StatusCode::OK);
         assert_eq!(body, expected);
@@ -151,7 +150,7 @@ mod tests {
     #[tokio::test]
     async fn allows_extra_origin() {
         let mock = Mock::new();
-        mock.add(handlers::provide(vec![MaxRow { block_ts: 1 }]));
+        mock.add(handlers::provide(vec![NumRow { l2_block_number: 1 }]));
         let mut origins =
             config::DEFAULT_ALLOWED_ORIGINS.split(',').map(|s| s.to_owned()).collect::<Vec<_>>();
         origins.push("https://example.com".to_owned());
@@ -164,7 +163,7 @@ mod tests {
     #[tokio::test]
     async fn allows_localhost_origin() {
         let mock = Mock::new();
-        mock.add(handlers::provide(vec![MaxRow { block_ts: 1 }]));
+        mock.add(handlers::provide(vec![NumRow { l2_block_number: 1 }]));
         let app = build_app(
             mock.url(),
             config::DEFAULT_ALLOWED_ORIGINS.split(',').map(|s| s.to_owned()).collect(),
@@ -177,7 +176,7 @@ mod tests {
     #[tokio::test]
     async fn allows_127_0_0_1_origin() {
         let mock = Mock::new();
-        mock.add(handlers::provide(vec![MaxRow { block_ts: 1 }]));
+        mock.add(handlers::provide(vec![NumRow { l2_block_number: 1 }]));
         let app = build_app(
             mock.url(),
             config::DEFAULT_ALLOWED_ORIGINS.split(',').map(|s| s.to_owned()).collect(),
@@ -190,7 +189,7 @@ mod tests {
     #[tokio::test]
     async fn denies_other_origin() {
         let mock = Mock::new();
-        mock.add(handlers::provide(vec![MaxRow { block_ts: 1 }]));
+        mock.add(handlers::provide(vec![NumRow { l2_block_number: 1 }]));
         let app = build_app(
             mock.url(),
             config::DEFAULT_ALLOWED_ORIGINS.split(',').map(|s| s.to_owned()).collect(),
