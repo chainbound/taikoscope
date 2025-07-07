@@ -711,21 +711,28 @@ pub async fn l2_fees(
         None
     };
 
-    let (priority_fee, base_fee, l1_data_cost, prove_cost, rows) = tokio::try_join!(
-        state.client.get_l2_priority_fee(address, time_range),
-        state.client.get_l2_base_fee(address, time_range),
-        state.client.get_l1_total_data_cost(address, time_range),
-        state.client.get_total_prove_cost(address, time_range),
-        state.client.get_l2_fees_by_sequencer(time_range)
-    )
-    .map_err(|e| {
+    let rows = state.client.get_l2_fees_by_sequencer(time_range).await.map_err(|e| {
         tracing::error!(error = %e, "Failed to get L2 fees");
         ErrorResponse::database_error()
     })?;
 
-    let sequencers: Vec<SequencerFeeRow> = rows
+    let filtered: Vec<_> = rows
         .into_iter()
         .filter(|r| if let Some(target) = address { r.sequencer == target } else { true })
+        .collect();
+
+    let (priority_sum, base_sum, data_sum, prove_sum) =
+        filtered.iter().fold((0u128, 0u128, 0u128, 0u128), |(p_acc, b_acc, d_acc, pr_acc), r| {
+            (
+                p_acc + r.priority_fee,
+                b_acc + r.base_fee,
+                d_acc + r.l1_data_cost.unwrap_or(0),
+                pr_acc + r.prove_cost.unwrap_or(0),
+            )
+        });
+
+    let sequencers: Vec<SequencerFeeRow> = filtered
+        .into_iter()
         .map(|r| SequencerFeeRow {
             address: format!("0x{}", encode(r.sequencer)),
             priority_fee: r.priority_fee / WEI_PER_GWEI,
@@ -735,10 +742,11 @@ pub async fn l2_fees(
         })
         .collect();
 
-    let priority_fee = priority_fee.map(|v| v / WEI_PER_GWEI);
-    let base_fee = base_fee.map(|v| v / WEI_PER_GWEI);
-    let l1_data_cost = l1_data_cost.unwrap_or(0) / WEI_PER_GWEI;
-    let prove_cost = prove_cost.unwrap_or(0) / WEI_PER_GWEI;
+    let has_rows = !sequencers.is_empty();
+    let priority_fee = has_rows.then_some(priority_sum / WEI_PER_GWEI);
+    let base_fee = has_rows.then_some(base_sum / WEI_PER_GWEI);
+    let l1_data_cost = data_sum / WEI_PER_GWEI;
+    let prove_cost = prove_sum / WEI_PER_GWEI;
 
     tracing::info!(count = sequencers.len(), "Returning L2 fees and breakdown");
     Ok(Json(L2FeesResponse { priority_fee, base_fee, l1_data_cost, prove_cost, sequencers }))
