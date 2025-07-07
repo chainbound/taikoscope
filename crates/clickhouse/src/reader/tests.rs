@@ -1,5 +1,6 @@
 use super::*;
 use crate::*;
+use chrono::TimeZone;
 use clickhouse::{
     Row,
     test::{Mock, handlers},
@@ -228,6 +229,37 @@ async fn batch_fees_by_proposer_returns_expected_rows() {
             base_fee: 20,
             l1_data_cost: Some(5),
             prove_cost: None,
+        }]
+    );
+}
+
+#[derive(Row, serde::Serialize)]
+struct AggRow {
+    l2_block_number: u64,
+    block_time: u64,
+    ms_since_prev_block: u64,
+}
+
+#[tokio::test]
+async fn l2_block_times_aggregated_returns_expected_rows() {
+    let mock = Mock::new();
+    mock.add(handlers::provide(vec![AggRow {
+        l2_block_number: 0,
+        block_time: 1000,
+        ms_since_prev_block: 500,
+    }]));
+
+    let url = url::Url::parse(mock.url()).unwrap();
+    let reader = ClickhouseReader::new(url, "db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+    let rows = reader.get_l2_block_times_aggregated(None, TimeRange::LastHour, 5).await.unwrap();
+
+    assert_eq!(
+        rows,
+        vec![L2BlockTimeRow {
+            l2_block_number: 0,
+            block_time: chrono::Utc.timestamp_opt(1000, 0).single().unwrap(),
+            ms_since_prev_block: 500,
         }]
     );
 }

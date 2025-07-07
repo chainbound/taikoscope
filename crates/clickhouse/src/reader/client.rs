@@ -8,7 +8,10 @@ use derive_more::Debug;
 use eyre::{Context, Result};
 use hex::encode;
 use serde::{Deserialize, Serialize};
-use std::{collections::BTreeSet, time::Instant};
+use std::{
+    collections::{BTreeSet, HashMap},
+    time::Instant,
+};
 use tracing::{debug, error};
 use url::Url;
 
@@ -1485,6 +1488,62 @@ impl ClickhouseReader {
                     block_time: dt,
                     ms_since_prev_block: ms,
                 })
+            })
+            .collect())
+    }
+
+    /// Get aggregated L2 block times using SQL grouping
+    pub async fn get_l2_block_times_aggregated(
+        &self,
+        sequencer: Option<AddressBytes>,
+        range: TimeRange,
+        bucket: u64,
+    ) -> Result<Vec<L2BlockTimeRow>> {
+        #[derive(Row, Deserialize)]
+        struct RawRow {
+            l2_block_number: u64,
+            block_time: u64,
+            ms_since_prev_block: u64,
+        }
+
+        let bucket = bucket.max(1);
+        let mut query = format!(
+            "SELECT grp * {bucket} AS l2_block_number, \
+                    toUInt64(max(block_time)) AS block_time, \
+                    toUInt64(avg(ms_since_prev_block)) AS ms_since_prev_block \
+             FROM (\
+                 SELECT h.l2_block_number, \
+                        h.block_ts AS block_time, \
+                        toUInt64OrNull(toString((toUnixTimestamp64Milli(h.inserted_at) - \
+                            lagInFrame(toUnixTimestamp64Milli(h.inserted_at)) OVER (ORDER BY h.l2_block_number)))) AS ms_since_prev_block, \
+                        intDiv(h.l2_block_number, {bucket}) AS grp \
+                   FROM {db}.l2_head_events h \
+                   WHERE h.inserted_at >= (now64() - INTERVAL {interval}) \
+                     AND {filter}",
+            bucket = bucket,
+            interval = range.interval(),
+            filter = self.reorg_filter("h"),
+            db = self.db_name,
+        );
+
+        if let Some(addr) = sequencer {
+            query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
+        }
+
+        query.push_str(
+            " ORDER BY h.l2_block_number ASC) \
+             WHERE ms_since_prev_block IS NOT NULL \
+             GROUP BY grp \
+             ORDER BY grp ASC",
+        );
+
+        let rows = self.execute::<RawRow>(&query).await?;
+        Ok(rows
+            .into_iter()
+            .map(|r| L2BlockTimeRow {
+                l2_block_number: r.l2_block_number,
+                block_time: Utc.timestamp_opt(r.block_time as i64, 0).unwrap(),
+                ms_since_prev_block: r.ms_since_prev_block,
             })
             .collect())
     }

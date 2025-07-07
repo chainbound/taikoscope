@@ -4,6 +4,7 @@ use clickhouse::{
     Row,
     test::{Mock, handlers},
 };
+use chrono::Utc;
 use mockito;
 use reqwest::StatusCode;
 use serde::Serialize;
@@ -305,6 +306,52 @@ async fn l2_fee_components_aggregated_integration() {
     .await
     .unwrap();
     assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+
+    server.abort();
+}
+
+#[tokio::test]
+async fn l2_block_times_aggregated_integration() {
+    #[derive(Serialize, Row)]
+    struct AggRow {
+        l2_block_number: u64,
+        block_time: u64,
+        ms_since_prev_block: u64,
+    }
+
+    let mock = Mock::new();
+    mock.add(handlers::provide(vec![AggRow {
+        l2_block_number: 0,
+        block_time: 1000,
+        ms_since_prev_block: 500,
+    }]));
+
+    let url = Url::parse(mock.url()).unwrap();
+    let client =
+        ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+    let (addr, server) = spawn_server(client).await;
+    wait_for_server(addr).await;
+
+    let resp = reqwest::get(
+        format!("http://{addr}/{API_VERSION}/l2-block-times/aggregated?created[gte]=0&created[lte]=86400000"),
+    )
+    .await
+    .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body: serde_json::Value = resp.json().await.unwrap();
+    assert_eq!(
+        body,
+        serde_json::json!({
+            "blocks": [
+                {
+                    "l2_block_number": 0,
+                    "block_time": Utc.timestamp_opt(1000, 0).single().unwrap().to_rfc3339(),
+                    "ms_since_prev_block": 500
+                }
+            ]
+        })
+    );
 
     server.abort();
 }
