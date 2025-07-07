@@ -36,8 +36,11 @@ FROM ${DB}.l1_head_events
 WHERE block_ts >= (toUInt64(now()) - 30*24*3600);
 
 -- Atomic swap: rename old tables and move partitioned tables into place
-RENAME TABLE
-    ${DB}.l2_head_events TO ${DB}.l2_head_events_old,
-    ${DB}.l2_head_events_p TO ${DB}.l2_head_events,
-    ${DB}.l1_head_events TO ${DB}.l1_head_events_old,
-    ${DB}.l1_head_events_p TO ${DB}.l1_head_events;
+
+-- Swap l2_head_events first (single-table renames only)
+RENAME TABLE ${DB}.l2_head_events TO ${DB}.l2_head_events_old;
+RENAME TABLE ${DB}.l2_head_events_p TO ${DB}.l2_head_events;
+
+-- Then swap l1_head_events (single-table renames only)
+RENAME TABLE ${DB}.l1_head_events TO ${DB}.l1_head_events_old;
+RENAME TABLE ${DB}.l1_head_events_p TO ${DB}.l1_head_events;
