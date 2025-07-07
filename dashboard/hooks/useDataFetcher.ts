@@ -125,9 +125,9 @@ export const useDataFetcher = ({
       l2Reorgs: data.l2Reorgs,
       slashings: data.slashings,
       forcedInclusions: data.forcedInclusions,
-      priorityFee: data.priorityFee,
-      baseFee: data.baseFee,
-      proveCost: data.proveCost,
+      priorityFee: null,
+      baseFee: null,
+      proveCost: null,
 
       l1DataCost: null,
       profit: null,

@@ -137,22 +137,20 @@ describe('apiService', () => {
     expect(res.data).toBeNull();
   });
 
-  it('fetchDashboardData returns prove cost', async () => {
-    globalThis.fetch = mockFetch({ prove_cost: 10 });
+  it('fetchDashboardData returns data', async () => {
+    globalThis.fetch = mockFetch({});
     const res = await fetchDashboardData('1h');
     expect(res.badRequest).toBe(false);
     expect(res.error).toBeNull();
-    expect(res.data?.prove_cost).toBe(10);
-
+    expect(res.data).toEqual({});
   });
 
-  it('fetchDashboardData 15m returns prove cost', async () => {
-    globalThis.fetch = mockFetch({ prove_cost: 11 });
+  it('fetchDashboardData 15m returns data', async () => {
+    globalThis.fetch = mockFetch({});
     const res = await fetchDashboardData('15m');
     expect(res.badRequest).toBe(false);
     expect(res.error).toBeNull();
-    expect(res.data?.prove_cost).toBe(11);
-
+    expect(res.data).toEqual({});
   });
 
   it('retries failed fetches and then throws', async () => {

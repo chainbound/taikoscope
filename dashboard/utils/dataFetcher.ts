@@ -39,9 +39,6 @@ export interface MainDashboardData {
   sequencerDist: SequencerDistributionDataItem[];
   txPerBlock: BlockTransaction[];
   blobsPerBatch: BatchBlobCount[];
-  priorityFee: number | null;
-  baseFee: number | null;
-  proveCost: number | null;
   badRequestResults: RequestResult<unknown>[];
 }
 
@@ -121,10 +118,7 @@ export const fetchMainDashboardData = async (
     sequencerDist: sequencerDistRes.data || [],
     txPerBlock: blockTxRes.data || [],
     blobsPerBatch: batchBlobCountsRes.data || [],
-    priorityFee: data?.priority_fee ?? null,
-    baseFee: data?.base_fee ?? null,
-    proveCost: data?.prove_cost ?? 0,
-
+    
     badRequestResults: allResults.slice(1),
   };
 };
