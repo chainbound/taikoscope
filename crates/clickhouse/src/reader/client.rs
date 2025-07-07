@@ -477,6 +477,70 @@ impl ClickhouseReader {
         Ok(rows)
     }
 
+    /// Get slashing events with pagination in descending order by time.
+    pub async fn get_slashing_events_paginated(
+        &self,
+        since: DateTime<Utc>,
+        until: DateTime<Utc>,
+        limit: u64,
+        starting_after: Option<u64>,
+        ending_before: Option<u64>,
+    ) -> Result<Vec<SlashingEventRow>> {
+        let mut query = format!(
+            "SELECT l1_block_number, validator_addr \
+             FROM {db}.slashing_events \
+             WHERE inserted_at > toDateTime64({since}, 3) \
+               AND inserted_at <= toDateTime64({until}, 3)",
+            db = self.db_name,
+            since = since.timestamp_millis() as f64 / 1000.0,
+            until = until.timestamp_millis() as f64 / 1000.0,
+        );
+
+        if let Some(start) = starting_after {
+            query.push_str(&format!(" AND l1_block_number < {}", start));
+        }
+        if let Some(end) = ending_before {
+            query.push_str(&format!(" AND l1_block_number > {}", end));
+        }
+
+        query.push_str(" ORDER BY inserted_at DESC");
+        query.push_str(&format!(" LIMIT {}", limit));
+
+        self.execute::<SlashingEventRow>(&query).await
+    }
+
+    /// Get forced inclusion events with pagination in descending order by time.
+    pub async fn get_forced_inclusions_paginated(
+        &self,
+        since: DateTime<Utc>,
+        until: DateTime<Utc>,
+        limit: u64,
+        starting_after: Option<u64>,
+        ending_before: Option<u64>,
+    ) -> Result<Vec<ForcedInclusionProcessedRow>> {
+        let mut query = format!(
+            "SELECT blob_hash \
+             FROM {db}.forced_inclusion_processed \
+             WHERE inserted_at > toDateTime64({since}, 3) \
+               AND inserted_at <= toDateTime64({until}, 3)",
+            db = self.db_name,
+            since = since.timestamp_millis() as f64 / 1000.0,
+            until = until.timestamp_millis() as f64 / 1000.0,
+        );
+
+        if let Some(start) = starting_after {
+            query.push_str(&format!(" AND inserted_at < toDateTime64({}, 3)", start));
+        }
+        if let Some(end) = ending_before {
+            query.push_str(&format!(" AND inserted_at > toDateTime64({}, 3)", end));
+        }
+
+        query.push_str(" ORDER BY inserted_at DESC");
+        query.push_str(&format!(" LIMIT {}", limit));
+
+        self.execute::<ForcedInclusionProcessedRow>(&query).await
+    }
+
     /// Get all L2 reorg events that occurred after the given cutoff time
     pub async fn get_l2_reorgs_since(&self, since: DateTime<Utc>) -> Result<Vec<L2ReorgRow>> {
         #[derive(Row, Deserialize)]

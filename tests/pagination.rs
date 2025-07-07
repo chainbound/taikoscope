@@ -63,6 +63,44 @@ async fn l2_reorgs_paginated_builds_query() {
 }
 
 #[tokio::test]
+async fn slashing_events_paginated_builds_query() {
+    let mock = Mock::new();
+    let ctl = mock.add(handlers::record_ddl());
+    let url = Url::parse(mock.url()).unwrap();
+    let reader = ClickhouseReader::new(url, "db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+    let since = Utc.timestamp_opt(0, 0).single().unwrap();
+    let until = Utc.timestamp_opt(1, 0).single().unwrap();
+    let _ = reader.get_slashing_events_paginated(since, until, 5, Some(10), Some(5)).await;
+    let query = ctl.query().await;
+    assert!(query.contains("inserted_at > toDateTime64(0"));
+    assert!(query.contains("inserted_at <= toDateTime64(1"));
+    assert!(query.contains("l1_block_number < 10"));
+    assert!(query.contains("l1_block_number > 5"));
+    assert!(query.contains("LIMIT 5"));
+    assert!(query.contains("ORDER BY inserted_at DESC"));
+}
+
+#[tokio::test]
+async fn forced_inclusions_paginated_builds_query() {
+    let mock = Mock::new();
+    let ctl = mock.add(handlers::record_ddl());
+    let url = Url::parse(mock.url()).unwrap();
+    let reader = ClickhouseReader::new(url, "db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+    let since = Utc.timestamp_opt(0, 0).single().unwrap();
+    let until = Utc.timestamp_opt(1, 0).single().unwrap();
+    let _ = reader.get_forced_inclusions_paginated(since, until, 5, Some(1000), Some(500)).await;
+    let query = ctl.query().await;
+    assert!(query.contains("inserted_at > toDateTime64(0"));
+    assert!(query.contains("inserted_at <= toDateTime64(1"));
+    assert!(query.contains("inserted_at < toDateTime64(1000"));
+    assert!(query.contains("inserted_at > toDateTime64(500"));
+    assert!(query.contains("LIMIT 5"));
+    assert!(query.contains("ORDER BY inserted_at DESC"));
+}
+
+#[tokio::test]
 async fn batch_posting_times_paginated_builds_query() {
     let mock = Mock::new();
     let ctl = mock.add(handlers::record_ddl());
@@ -257,6 +295,81 @@ async fn batch_posting_times_endpoint_returns_items_with_pagination() {
                 "inserted_at": Utc.timestamp_millis_opt(1000).single().unwrap().to_rfc3339(),
                 "ms_since_prev_batch": 500
             }
+        ]
+    });
+    assert_eq!(body, expected);
+
+    server.abort();
+}
+
+#[tokio::test]
+async fn slashing_events_endpoint_returns_items_with_pagination() {
+    #[derive(Serialize, Row)]
+    struct RawRow {
+        l1_block_number: u64,
+        validator_addr: AddressBytes,
+    }
+
+    let mock = Mock::new();
+    mock.add(handlers::provide(vec![
+        RawRow { l1_block_number: 9, validator_addr: AddressBytes::from(Address::repeat_byte(1)) },
+        RawRow { l1_block_number: 8, validator_addr: AddressBytes::from(Address::repeat_byte(2)) },
+    ]));
+
+    let url = Url::parse(mock.url()).unwrap();
+    let client = ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+    let (addr, server) = spawn_server(client).await;
+    wait_for_server(addr).await;
+
+    let resp = reqwest::get(format!(
+        "http://{addr}/{API_VERSION}/slashing-events?starting_after=7&ending_before=10&limit=2"
+    ))
+    .await
+    .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body: serde_json::Value = resp.json().await.unwrap();
+    let expected = serde_json::json!({
+        "events": [
+            { "l1_block_number": 8, "validator_addr": "0x0202020202020202020202020202020202020202" },
+            { "l1_block_number": 9, "validator_addr": "0x0101010101010101010101010101010101010101" }
+        ]
+    });
+    assert_eq!(body, expected);
+
+    server.abort();
+}
+
+#[tokio::test]
+async fn forced_inclusions_endpoint_returns_items_with_pagination() {
+    #[derive(Serialize, Row)]
+    struct RawRow {
+        blob_hash: HashBytes,
+    }
+
+    let mock = Mock::new();
+    mock.add(handlers::provide(vec![
+        RawRow { blob_hash: HashBytes::from([1u8; 32]) },
+        RawRow { blob_hash: HashBytes::from([2u8; 32]) },
+    ]));
+
+    let url = Url::parse(mock.url()).unwrap();
+    let client = ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+    let (addr, server) = spawn_server(client).await;
+    wait_for_server(addr).await;
+
+    let resp = reqwest::get(format!(
+        "http://{addr}/{API_VERSION}/forced-inclusions?starting_after=0&ending_before=2000&limit=2"
+    ))
+    .await
+    .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body: serde_json::Value = resp.json().await.unwrap();
+    let expected = serde_json::json!({
+        "events": [
+            { "blob_hash": "0x0202020202020202020202020202020202020202020202020202020202020202" },
+            { "blob_hash": "0x0101010101010101010101010101010101010101010101010101010101010101" }
         ]
     });
     assert_eq!(body, expected);

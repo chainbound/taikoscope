@@ -81,6 +81,100 @@ pub async fn reorgs(
 
 #[utoipa::path(
     get,
+    path = "/slashing-events",
+    params(
+        PaginatedQuery
+    ),
+    responses(
+        (status = 200, description = "Slashing events", body = SlashingEventsResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
+    ),
+    tag = "taikoscope"
+)]
+/// Get paginated list of validator slashing events.
+pub async fn slashing_events(
+    Query(params): Query<PaginatedQuery>,
+    State(state): State<ApiState>,
+) -> Result<Json<SlashingEventsResponse>, ErrorResponse> {
+    validate_time_range(&params.common.time_range)?;
+    let limit = validate_pagination(
+        params.starting_after.as_ref(),
+        params.ending_before.as_ref(),
+        params.limit.as_ref(),
+        MAX_TABLE_LIMIT,
+    )?;
+    let has_time_range = has_time_range_params(&params.common.time_range);
+    let has_slot_range = params.starting_after.is_some() || params.ending_before.is_some();
+    validate_range_exclusivity(has_time_range, has_slot_range)?;
+
+    let (since, until) = resolve_time_range_bounds(&params.common.range, &params.common.time_range);
+    let rows = state
+        .client
+        .get_slashing_events_paginated(
+            since,
+            until,
+            limit,
+            params.starting_after,
+            params.ending_before,
+        )
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "Failed to get slashing events");
+            ErrorResponse::database_error()
+        })?;
+    tracing::info!(count = rows.len(), "Returning slashing events");
+    Ok(Json(SlashingEventsResponse { events: rows }))
+}
+
+#[utoipa::path(
+    get,
+    path = "/forced-inclusions",
+    params(
+        PaginatedQuery
+    ),
+    responses(
+        (status = 200, description = "Forced inclusion events", body = ForcedInclusionEventsResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
+    ),
+    tag = "taikoscope"
+)]
+/// Get paginated list of forced inclusion events.
+pub async fn forced_inclusions(
+    Query(params): Query<PaginatedQuery>,
+    State(state): State<ApiState>,
+) -> Result<Json<ForcedInclusionEventsResponse>, ErrorResponse> {
+    validate_time_range(&params.common.time_range)?;
+    let limit = validate_pagination(
+        params.starting_after.as_ref(),
+        params.ending_before.as_ref(),
+        params.limit.as_ref(),
+        MAX_TABLE_LIMIT,
+    )?;
+    let has_time_range = has_time_range_params(&params.common.time_range);
+    let has_slot_range = params.starting_after.is_some() || params.ending_before.is_some();
+    validate_range_exclusivity(has_time_range, has_slot_range)?;
+
+    let (since, until) = resolve_time_range_bounds(&params.common.range, &params.common.time_range);
+    let rows = state
+        .client
+        .get_forced_inclusions_paginated(
+            since,
+            until,
+            limit,
+            params.starting_after,
+            params.ending_before,
+        )
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "Failed to get forced inclusion events");
+            ErrorResponse::database_error()
+        })?;
+    tracing::info!(count = rows.len(), "Returning forced inclusion events");
+    Ok(Json(ForcedInclusionEventsResponse { events: rows }))
+}
+
+#[utoipa::path(
+    get,
     path = "/l2-tps",
     params(
         BlockPaginatedQuery
