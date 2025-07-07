@@ -209,7 +209,7 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
     start.setHours(fh, fm, 0, 0);
     const end = new Date(range.to);
     end.setHours(th, tm, 0, 0);
-    if (end <= start) {
+    if (isSameDay(start, end) && end <= start) {
       end.setDate(end.getDate() + 1);
     }
     const s = start.getTime();
