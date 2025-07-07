@@ -2202,6 +2202,10 @@ impl ClickhouseReader {
             total: u128,
         }
 
+        // Compute static cutoff so ClickHouse can prune by partition
+        let now = chrono::Utc::now().timestamp() as u64;
+        let cutoff = now.saturating_sub(range.seconds());
+
         let mut query = format!(
             "SELECT sum(h.sum_priority_fee + h.sum_base_fee) AS total \
              FROM {db}.batch_blocks bb \
@@ -2209,11 +2213,11 @@ impl ClickhouseReader {
                  ON bb.batch_id = b.batch_id \
              INNER JOIN {db}.l2_head_events h \
                  ON bb.l2_block_number = h.l2_block_number \
-             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
+             WHERE h.block_ts >= {cutoff} \
                AND {filter}",
-            interval = range.interval(),
+            db = self.db_name,
+            cutoff = cutoff,
             filter = self.reorg_filter("h"),
-            db = self.db_name
         );
         if let Some(addr) = sequencer {
             query.push_str(&format!(" AND h.sequencer = unhex('{}')", encode(addr)));
@@ -2238,6 +2242,9 @@ impl ClickhouseReader {
             total: u128,
         }
 
+        let now = chrono::Utc::now().timestamp() as u64;
+        let cutoff = now.saturating_sub(range.seconds());
+
         let mut query = format!(
             "SELECT sum(h.sum_priority_fee) AS total \
              FROM {db}.batch_blocks bb \
@@ -2245,11 +2252,11 @@ impl ClickhouseReader {
                  ON bb.batch_id = b.batch_id \
              INNER JOIN {db}.l2_head_events h \
              ON bb.l2_block_number = h.l2_block_number \
-             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
+             WHERE h.block_ts >= {cutoff} \
                AND {filter}",
-            interval = range.interval(),
+            db = self.db_name,
+            cutoff = cutoff,
             filter = self.reorg_filter("h"),
-            db = self.db_name
         );
         if let Some(addr) = sequencer {
             query.push_str(&format!(" AND h.sequencer = unhex('{}')", encode(addr)));
@@ -2274,6 +2281,9 @@ impl ClickhouseReader {
             total: u128,
         }
 
+        let now = chrono::Utc::now().timestamp() as u64;
+        let cutoff = now.saturating_sub(range.seconds());
+
         let mut query = format!(
             "SELECT sum(h.sum_base_fee) AS total \
              FROM {db}.batch_blocks bb \
@@ -2281,11 +2291,11 @@ impl ClickhouseReader {
                  ON bb.batch_id = b.batch_id \
              INNER JOIN {db}.l2_head_events h \
                  ON bb.l2_block_number = h.l2_block_number \
-             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
+             WHERE h.block_ts >= {cutoff} \
                  AND {filter}",
-            interval = range.interval(),
+            db = self.db_name,
+            cutoff = cutoff,
             filter = self.reorg_filter("h"),
-            db = self.db_name
         );
         if let Some(addr) = sequencer {
             query.push_str(&format!(" AND h.sequencer = unhex('{}')", encode(addr)));
