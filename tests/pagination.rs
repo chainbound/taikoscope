@@ -165,14 +165,14 @@ async fn reorgs_endpoint_returns_items_with_pagination() {
     let mock = Mock::new();
     mock.add(handlers::provide(vec![
         RawRow {
-            l2_block_number: 9,
+            l2_block_number: 12,
             depth: 1,
             old_sequencer: AddressBytes::from(Address::repeat_byte(1)),
             new_sequencer: AddressBytes::from(Address::repeat_byte(2)),
             ts: 1000,
         },
         RawRow {
-            l2_block_number: 8,
+            l2_block_number: 11,
             depth: 2,
             old_sequencer: AddressBytes::from(Address::repeat_byte(3)),
             new_sequencer: AddressBytes::from(Address::repeat_byte(4)),
@@ -197,14 +197,14 @@ async fn reorgs_endpoint_returns_items_with_pagination() {
     let expected = serde_json::json!({
         "events": [
             {
-                "l2_block_number": 8,
+                "l2_block_number": 11,
                 "depth": 2,
                 "old_sequencer": "0x0303030303030303030303030303030303030303",
                 "new_sequencer": "0x0404040404040404040404040404040404040404",
                 "inserted_at": Utc.timestamp_millis_opt(2000).single().unwrap().to_rfc3339()
             },
             {
-                "l2_block_number": 9,
+                "l2_block_number": 12,
                 "depth": 1,
                 "old_sequencer": "0x0101010101010101010101010101010101010101",
                 "new_sequencer": "0x0202020202020202020202020202020202020202",
