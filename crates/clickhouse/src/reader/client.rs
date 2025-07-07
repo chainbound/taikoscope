@@ -2207,14 +2207,16 @@ impl ClickhouseReader {
 
         let mut query = format!(
             "SELECT sum(h.sum_priority_fee) AS total \
-             FROM {db}.l2_head_events AS h \
-             ANY LEFT JOIN {db}.l2_reorgs AS r \
-               ON h.l2_block_number = r.l2_block_number \
-             PREWHERE h.block_ts >= {cutoff} \
-             WHERE r.l2_block_number IS NULL",
+                 FROM {db}.l2_head_events AS h \
+                 ANY LEFT JOIN {db}.l2_reorgs AS r \
+                   ON h.l2_block_number = r.l2_block_number \
+                 PREWHERE h.block_ts >= {cutoff} \
+                 WHERE r.l2_block_number IS NULL",
             db = self.db_name,
             cutoff = cutoff,
         );
+
+        // If you also need to filter by sequencer, it's still just another WHERE clause:
         if let Some(addr) = sequencer {
             query.push_str(&format!(" AND h.sequencer = unhex('{}')", encode(addr)));
         }
@@ -2239,14 +2241,15 @@ impl ClickhouseReader {
 
         let mut query = format!(
             "SELECT sum(h.sum_base_fee) AS total \
-             FROM {db}.l2_head_events AS h \
-             ANY LEFT JOIN {db}.l2_reorgs AS r \
-               ON h.l2_block_number = r.l2_block_number \
-             PREWHERE h.block_ts >= {cutoff} \
-             WHERE r.l2_block_number IS NULL",
+                 FROM {db}.l2_head_events AS h \
+                 ANY LEFT JOIN {db}.l2_reorgs AS r \
+                   ON h.l2_block_number = r.l2_block_number \
+                 PREWHERE h.block_ts >= {cutoff} \
+                 WHERE r.l2_block_number IS NULL",
             db = self.db_name,
             cutoff = cutoff,
         );
+
         if let Some(addr) = sequencer {
             query.push_str(&format!(" AND h.sequencer = unhex('{}')", encode(addr)));
         }

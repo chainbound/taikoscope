@@ -78,6 +78,7 @@ pub const TABLE_SCHEMAS: &[TableSchema] = &[
     TableSchema {
         name: "batches",
         columns: "l1_block_number UInt64,
+                 l1_tx_hash FixedString(32),
                  batch_id UInt64,
                  batch_size UInt16,
                  last_l2_block_number UInt64,
@@ -85,7 +86,7 @@ pub const TABLE_SCHEMAS: &[TableSchema] = &[
                  blob_count UInt8,
                  blob_total_bytes UInt32,
                  inserted_at DateTime64(3) DEFAULT now64()",
-        order_by: "l1_block_number, batch_id",
+        order_by: "toStartOfDay(inserted_at), l1_block_number, batch_id",
     },
     TableSchema {
         name: "batch_blocks",
@@ -178,5 +179,18 @@ pub const TABLE_SCHEMAS: &[TableSchema] = &[
                  block_ts UInt64,
                  inserted_at DateTime64(3) DEFAULT now64()",
         order_by: "block_ts, l1_block_number",
+    },
+    TableSchema {
+        name: "batches_p",
+        columns: "l1_block_number UInt64,
+                 l1_tx_hash FixedString(32),
+                 batch_id UInt64,
+                 batch_size UInt16,
+                 last_l2_block_number UInt64,
+                 proposer_addr FixedString(20),
+                 blob_count UInt8,
+                 blob_total_bytes UInt32,
+                 inserted_at DateTime64(3) DEFAULT now64()",
+        order_by: "toStartOfDay(inserted_at), l1_block_number, batch_id",
     },
 ];
