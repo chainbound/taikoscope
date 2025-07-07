@@ -208,7 +208,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         'Avg. Prove Time': () => onOpenTable('prove-times', timeRange),
         'Avg. Verify Time': () => onOpenTable('verify-times', timeRange),
         'Propose Batch Cost': () => onOpenTable('l1-data-cost', timeRange),
-        'Prove Cost': () => onOpenTable('prove-cost', timeRange),
       };
       return actions[title];
     },
