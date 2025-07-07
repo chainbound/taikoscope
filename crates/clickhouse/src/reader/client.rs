@@ -507,7 +507,7 @@ impl ClickhouseReader {
                     depth: r.depth,
                     old_sequencer: r.old_sequencer,
                     new_sequencer: r.new_sequencer,
-                    inserted_at: Some(ts),
+                    inserted_at: ts,
                 })
             })
             .collect())
@@ -563,7 +563,7 @@ impl ClickhouseReader {
                     depth: r.depth,
                     old_sequencer: r.old_sequencer,
                     new_sequencer: r.new_sequencer,
-                    inserted_at: Some(ts),
+                    inserted_at: ts,
                 })
             })
             .collect())
