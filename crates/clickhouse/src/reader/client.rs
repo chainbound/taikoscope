@@ -826,7 +826,7 @@ impl ClickhouseReader {
                 r.ms_since_prev_block.map(|ms| L2BlockTimeRow {
                     l2_block_number: r.l2_block_number,
                     block_time: dt,
-                    ms_since_prev_block: Some(ms),
+                    ms_since_prev_block: ms,
                 })
             })
             .collect())
@@ -1160,7 +1160,7 @@ impl ClickhouseReader {
                 r.ms_since_prev_batch.map(|ms| BatchPostingTimeRow {
                     batch_id: r.batch_id,
                     inserted_at: dt,
-                    ms_since_prev_batch: Some(ms),
+                    ms_since_prev_batch: ms,
                 })
             })
             .collect())
@@ -1222,7 +1222,7 @@ impl ClickhouseReader {
                 r.ms_since_prev_batch.map(|ms| BatchPostingTimeRow {
                     batch_id: r.batch_id,
                     inserted_at: dt,
-                    ms_since_prev_batch: Some(ms),
+                    ms_since_prev_batch: ms,
                 })
             })
             .collect())
@@ -1486,7 +1486,7 @@ impl ClickhouseReader {
                 r.ms_since_prev_block.map(|ms| L2BlockTimeRow {
                     l2_block_number: r.l2_block_number,
                     block_time: dt,
-                    ms_since_prev_block: Some(ms),
+                    ms_since_prev_block: ms,
                 })
             })
             .collect())
@@ -1554,7 +1554,7 @@ impl ClickhouseReader {
                 r.ms_since_prev_block.map(|ms| L2BlockTimeRow {
                     l2_block_number: r.l2_block_number,
                     block_time: dt,
-                    ms_since_prev_block: Some(ms),
+                    ms_since_prev_block: ms,
                 })
             })
             .collect())

@@ -251,7 +251,7 @@ pub struct L2BlockTimeRow {
     /// Timestamp of the L2 block
     pub block_time: DateTime<Utc>,
     /// Milliseconds since the previous block
-    pub ms_since_prev_block: Option<u64>,
+    pub ms_since_prev_block: u64,
 }
 
 /// Row representing the gas used in each L2 block
@@ -402,5 +402,5 @@ pub struct BatchPostingTimeRow {
     /// Time the batch was inserted
     pub inserted_at: DateTime<Utc>,
     /// Milliseconds since the previous batch
-    pub ms_since_prev_batch: Option<u64>,
+    pub ms_since_prev_batch: u64,
 }
