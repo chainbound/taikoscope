@@ -1332,6 +1332,8 @@ dependencies = [
  "derive_more 1.0.0",
  "eyre",
  "hex",
+ "hyper-tls",
+ "hyper-util",
  "include_dir",
  "primitives",
  "regex",
@@ -1341,6 +1343,7 @@ dependencies = [
  "tracing",
  "url",
  "utoipa",
+ "uuid",
 ]
 
 [[package]]
@@ -4729,6 +4732,17 @@ name = "utoipa-swagger-ui-vendored"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2eebbbfe4093922c2b6734d7c679ebfebd704a0d7e56dfcb0d05818ce28977d"
+
+[[package]]
+name = "uuid"
+version = "1.17.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3cf4199d1e5d15ddd86a694e4d0dffa9c323ce759fea589f00fef9d81cc1931d"
+dependencies = [
+ "getrandom 0.3.3",
+ "js-sys",
+ "wasm-bindgen",
+]
 
 [[package]]
 name = "valuable"

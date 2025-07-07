@@ -7,10 +7,18 @@ use clickhouse::{Client, Row, sql::Identifier};
 use derive_more::Debug;
 use eyre::{Context, Result};
 use hex::encode;
+use hyper_util::{
+    client::legacy::{Client as HyperClient, connect::HttpConnector},
+    rt::TokioExecutor,
+};
 use serde::{Deserialize, Serialize};
-use std::{collections::BTreeSet, time::Instant};
+use std::{
+    collections::{BTreeSet, HashMap},
+    time::{Duration, Instant},
+};
 use tracing::{debug, error};
 use url::Url;
+use uuid::Uuid;
 
 use crate::{
     models::{
@@ -41,7 +49,24 @@ pub struct ClickhouseReader {
 impl ClickhouseReader {
     /// Create a new `ClickHouse` reader client
     pub fn new(url: Url, db_name: String, username: String, password: String) -> Result<Self> {
-        let client = Client::default().with_url(url).with_user(username).with_password(password);
+        let mut connector = HttpConnector::new();
+        connector.set_keepalive(Some(Duration::from_secs(60)));
+
+        let connector = hyper_tls::HttpsConnector::new_with_connector(connector);
+
+        let hyper_client = HyperClient::builder(TokioExecutor::new())
+            .pool_idle_timeout(Duration::from_secs(60))
+            .http2_keep_alive_interval(Duration::from_secs(30))
+            .build(connector);
+
+        let session_id = Uuid::new_v4().to_string();
+
+        let client = Client::with_http_client(hyper_client)
+            .with_url(url)
+            .with_user(username)
+            .with_password(password)
+            .with_option("session_id", session_id)
+            .with_option("session_timeout", "60");
 
         Ok(Self { base: client, db_name })
     }
