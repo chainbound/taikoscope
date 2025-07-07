@@ -2202,33 +2202,25 @@ impl ClickhouseReader {
             total: u128,
         }
 
-        // Compute static cutoff so ClickHouse can prune by partition
         let now = chrono::Utc::now().timestamp() as u64;
         let cutoff = now.saturating_sub(range.seconds());
 
         let mut query = format!(
             "SELECT sum(h.sum_priority_fee + h.sum_base_fee) AS total \
-             FROM {db}.batch_blocks bb \
-             INNER JOIN {db}.batches b \
-                 ON bb.batch_id = b.batch_id \
-             INNER JOIN {db}.l2_head_events h \
-                 ON bb.l2_block_number = h.l2_block_number \
-             WHERE h.block_ts >= {cutoff} \
-               AND {filter}",
+             FROM {db}.l2_head_events AS h \
+             ANY LEFT JOIN {db}.l2_reorgs AS r \
+               ON h.l2_block_number = r.l2_block_number \
+             PREWHERE h.block_ts >= {cutoff} \
+             WHERE r.l2_block_number IS NULL",
             db = self.db_name,
             cutoff = cutoff,
-            filter = self.reorg_filter("h"),
         );
         if let Some(addr) = sequencer {
             query.push_str(&format!(" AND h.sequencer = unhex('{}')", encode(addr)));
         }
 
         let rows = self.execute::<SumRow>(&query).await?;
-        let row = match rows.into_iter().next() {
-            Some(r) => r,
-            None => return Ok(None),
-        };
-        Ok(Some(row.total))
+        Ok(rows.into_iter().next().map(|r| r.total))
     }
 
     /// Get the total priority fee for the given range
@@ -2247,27 +2239,20 @@ impl ClickhouseReader {
 
         let mut query = format!(
             "SELECT sum(h.sum_priority_fee) AS total \
-             FROM {db}.batch_blocks bb \
-             INNER JOIN {db}.batches b \
-                 ON bb.batch_id = b.batch_id \
-             INNER JOIN {db}.l2_head_events h \
-             ON bb.l2_block_number = h.l2_block_number \
-             WHERE h.block_ts >= {cutoff} \
-               AND {filter}",
+             FROM {db}.l2_head_events AS h \
+             ANY LEFT JOIN {db}.l2_reorgs AS r \
+               ON h.l2_block_number = r.l2_block_number \
+             PREWHERE h.block_ts >= {cutoff} \
+             WHERE r.l2_block_number IS NULL",
             db = self.db_name,
             cutoff = cutoff,
-            filter = self.reorg_filter("h"),
         );
         if let Some(addr) = sequencer {
             query.push_str(&format!(" AND h.sequencer = unhex('{}')", encode(addr)));
         }
 
         let rows = self.execute::<SumRow>(&query).await?;
-        let row = match rows.into_iter().next() {
-            Some(r) => r,
-            None => return Ok(None),
-        };
-        Ok(Some(row.total))
+        Ok(rows.into_iter().next().map(|r| r.total))
     }
 
     /// Get the total base fee for the given range
@@ -2286,27 +2271,20 @@ impl ClickhouseReader {
 
         let mut query = format!(
             "SELECT sum(h.sum_base_fee) AS total \
-             FROM {db}.batch_blocks bb \
-             INNER JOIN {db}.batches b \
-                 ON bb.batch_id = b.batch_id \
-             INNER JOIN {db}.l2_head_events h \
-                 ON bb.l2_block_number = h.l2_block_number \
-             WHERE h.block_ts >= {cutoff} \
-                 AND {filter}",
+             FROM {db}.l2_head_events AS h \
+             ANY LEFT JOIN {db}.l2_reorgs AS r \
+               ON h.l2_block_number = r.l2_block_number \
+             PREWHERE h.block_ts >= {cutoff} \
+             WHERE r.l2_block_number IS NULL",
             db = self.db_name,
             cutoff = cutoff,
-            filter = self.reorg_filter("h"),
         );
         if let Some(addr) = sequencer {
             query.push_str(&format!(" AND h.sequencer = unhex('{}')", encode(addr)));
         }
 
         let rows = self.execute::<SumRow>(&query).await?;
-        let row = match rows.into_iter().next() {
-            Some(r) => r,
-            None => return Ok(None),
-        };
-        Ok(Some(row.total))
+        Ok(rows.into_iter().next().map(|r| r.total))
     }
 
     /// Get aggregated L2 fees grouped by sequencer for the given range
