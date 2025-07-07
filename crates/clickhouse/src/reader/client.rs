@@ -2280,8 +2280,8 @@ impl ClickhouseReader {
         ) \
         SELECT \
             eb.proposer_addr as sequencer, \
-            sum(fpb.priority_fee) as priority_fee, \
-            sum(fpb.base_fee) as base_fee, \
+            coalesce(sum(fpb.priority_fee), toUInt128(0)) as priority_fee, \
+            coalesce(sum(fpb.base_fee), toUInt128(0)) as base_fee, \
             toNullable(sum(dc.cost)) as l1_data_cost, \
             toNullable(sum(pc.cost)) as prove_cost \
         FROM eligible_batches eb \
