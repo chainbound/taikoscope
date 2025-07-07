@@ -2191,38 +2191,6 @@ impl ClickhouseReader {
             .collect())
     }
 
-    /// Get the total L2 transaction fee for the given range
-    pub async fn get_l2_tx_fee(
-        &self,
-        sequencer: Option<AddressBytes>,
-        range: TimeRange,
-    ) -> Result<Option<u128>> {
-        #[derive(Row, Deserialize)]
-        struct SumRow {
-            total: u128,
-        }
-
-        let now = chrono::Utc::now().timestamp() as u64;
-        let cutoff = now.saturating_sub(range.seconds());
-
-        let mut query = format!(
-            "SELECT sum(h.sum_priority_fee + h.sum_base_fee) AS total \
-             FROM {db}.l2_head_events AS h \
-             ANY LEFT JOIN {db}.l2_reorgs AS r \
-               ON h.l2_block_number = r.l2_block_number \
-             PREWHERE h.block_ts >= {cutoff} \
-             WHERE r.l2_block_number IS NULL",
-            db = self.db_name,
-            cutoff = cutoff,
-        );
-        if let Some(addr) = sequencer {
-            query.push_str(&format!(" AND h.sequencer = unhex('{}')", encode(addr)));
-        }
-
-        let rows = self.execute::<SumRow>(&query).await?;
-        Ok(rows.into_iter().next().map(|r| r.total))
-    }
-
     /// Get the total priority fee for the given range
     pub async fn get_l2_priority_fee(
         &self,
