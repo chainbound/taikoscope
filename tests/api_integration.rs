@@ -496,9 +496,6 @@ async fn prove_cost_integration() {
 #[tokio::test]
 async fn l2_fees_integration() {
     let mock = Mock::new();
-    mock.add(handlers::provide(vec![TotalRow { total: 600 * WEI_PER_GWEI }]));
-    mock.add(handlers::provide(vec![TotalRow { total: 400 * WEI_PER_GWEI }]));
-    mock.add(handlers::provide(vec![TotalRow { total: 10 * WEI_PER_GWEI }]));
     mock.add(handlers::provide::<clickhouse_lib::SequencerFeeRow>(vec![
         clickhouse_lib::SequencerFeeRow {
             sequencer: AddressBytes([1u8; 20]),
