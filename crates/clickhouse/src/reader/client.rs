@@ -8,10 +8,7 @@ use derive_more::Debug;
 use eyre::{Context, Result};
 use hex::encode;
 use serde::{Deserialize, Serialize};
-use std::{
-    collections::{BTreeSet, HashMap},
-    time::Instant,
-};
+use std::{collections::BTreeSet, time::Instant};
 use tracing::{debug, error};
 use url::Url;
 
@@ -2269,8 +2266,9 @@ impl ClickhouseReader {
                 INNER JOIN {db}.l1_head_events l1 ON b.l1_block_number = l1.l1_block_number \
                 LEFT JOIN {db}.batch_blocks bb ON b.batch_id = bb.batch_id \
                 LEFT JOIN {db}.l2_head_events h ON bb.l2_block_number = h.l2_block_number \
-                WHERE l1.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
-                  AND {reorg_filter_h} \
+                ANY LEFT JOIN {db}.l2_reorgs r ON h.l2_block_number = r.l2_block_number \
+                PREWHERE l1.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
+                WHERE r.l2_block_number IS NULL \
                 GROUP BY b.proposer_addr \
             ), \
             data_costs AS ( \
@@ -2303,7 +2301,6 @@ impl ClickhouseReader {
             ORDER BY f.priority_fee DESC",
             db = self.db_name,
             interval = range.interval(),
-            reorg_filter_h = self.reorg_filter("h")
         );
 
         let rows = self.execute::<SequencerFeeRow>(&query).await?;
