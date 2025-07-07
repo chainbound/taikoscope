@@ -2203,12 +2203,12 @@ impl ClickhouseReader {
         }
 
         let mut query = format!(
-            "SELECT sum(sum_priority_fee + sum_base_fee) AS total \
-             FROM {db}.l2_head_events h \
-             INNER JOIN {db}.batch_blocks bb \
-               ON h.l2_block_number = bb.l2_block_number \
+            "SELECT sum(h.sum_priority_fee + h.sum_base_fee) AS total \
+             FROM {db}.batch_blocks bb \
              INNER JOIN {db}.batches b \
-               ON bb.batch_id = b.batch_id \
+                 ON bb.batch_id = b.batch_id \
+             INNER JOIN {db}.l2_head_events h \
+                 ON bb.l2_block_number = h.l2_block_number \
              WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
                AND {filter}",
             interval = range.interval(),
@@ -2239,12 +2239,12 @@ impl ClickhouseReader {
         }
 
         let mut query = format!(
-            "SELECT sum(sum_priority_fee) AS total \
-             FROM {db}.l2_head_events h \
-             INNER JOIN {db}.batch_blocks bb \
-               ON h.l2_block_number = bb.l2_block_number \
+            "SELECT sum(h.sum_priority_fee) AS total \
+             FROM {db}.batch_blocks bb \
              INNER JOIN {db}.batches b \
-               ON bb.batch_id = b.batch_id \
+                 ON bb.batch_id = b.batch_id \
+             INNER JOIN {db}.l2_head_events h \
+             ON bb.l2_block_number = h.l2_block_number \
              WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
                AND {filter}",
             interval = range.interval(),
@@ -2275,14 +2275,14 @@ impl ClickhouseReader {
         }
 
         let mut query = format!(
-            "SELECT sum(sum_base_fee) AS total \
-             FROM {db}.l2_head_events h \
-             INNER JOIN {db}.batch_blocks bb \
-               ON h.l2_block_number = bb.l2_block_number \
+            "SELECT sum(h.sum_base_fee) AS total \
+             FROM {db}.batch_blocks bb \
              INNER JOIN {db}.batches b \
-               ON bb.batch_id = b.batch_id \
+                 ON bb.batch_id = b.batch_id \
+             INNER JOIN {db}.l2_head_events h \
+                 ON bb.l2_block_number = h.l2_block_number \
              WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
-               AND {filter}",
+                 AND {filter}",
             interval = range.interval(),
             filter = self.reorg_filter("h"),
             db = self.db_name
