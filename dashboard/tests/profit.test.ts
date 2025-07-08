@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calculateProfit } from '../utils/profit';
+import { calculateProfit, calculateNetProfit } from '../utils/profit';
 
 describe('calculateProfit', () => {
   it('computes positive profit', () => {
@@ -36,5 +36,15 @@ describe('calculateProfit', () => {
     expect(res.revenueUsd).toBeCloseTo(0);
     expect(res.costUsd).toBeCloseTo(55);
     expect(res.profitUsd).toBeCloseTo(-55);
+  });
+
+  it('calculates net profit in gwei', () => {
+    const profit = calculateNetProfit({
+      priorityFee: 10,
+      baseFee: 20,
+      l1DataCost: 5,
+      proveCost: 5,
+    });
+    expect(profit).toBeCloseTo(10 + 20 * 0.75 - 5 - 5);
   });
 });

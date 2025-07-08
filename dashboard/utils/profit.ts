@@ -44,3 +44,27 @@ export const calculateProfit = ({
     profitUsd,
   };
 };
+
+export interface NetProfitParams {
+  priorityFee?: number | null;
+  baseFee?: number | null;
+  l1DataCost?: number | null;
+  proveCost?: number | null;
+}
+
+/**
+ * Calculate net profit in gwei without hardware costs.
+ */
+export const calculateNetProfit = ({
+  priorityFee = 0,
+  baseFee = 0,
+  l1DataCost = 0,
+  proveCost = 0,
+}: NetProfitParams): number => {
+  return (
+    (priorityFee ?? 0) +
+    (baseFee ?? 0) * 0.75 -
+    (l1DataCost ?? 0) -
+    (proveCost ?? 0)
+  );
+};
