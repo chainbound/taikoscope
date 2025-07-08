@@ -695,6 +695,12 @@ impl ClickhouseReader {
             if let Some(addr) = sequencer {
                 query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
             }
+            if let Some(start) = starting_after {
+                query.push_str(&format!(" AND l2_block_number < {}", start));
+            }
+            if let Some(end) = ending_before {
+                query.push_str(&format!(" AND l2_block_number > {}", end));
+            }
             query.push_str(" GROUP BY l2_block_number ORDER BY l2_block_number DESC LIMIT ");
             query.push_str(&limit.to_string());
             let rows = self.execute::<RawRow>(&query).await?;
@@ -1386,7 +1392,8 @@ impl ClickhouseReader {
                    AND l1_verified.block_ts > l1_proved.block_ts \
                    AND (l1_verified.block_ts - l1_proved.block_ts) > 60 \
                    AND pb.batch_id != 0 \
-                 GROUP BY batch_id",
+                 GROUP BY batch_id \
+                 ORDER BY batch_id ASC",
                 b = b,
                 secs = range.seconds(),
                 db = self.db_name,
@@ -1998,15 +2005,15 @@ impl ClickhouseReader {
 
         if let Some(bucket) = bucket {
             let mut query = format!(
-                "SELECT intDiv(h.l2_block_number, {bucket}) * {bucket} AS l2_block_number,\
-                        sum(sum_priority_fee) AS priority_fee,\
-                        sum(sum_base_fee) AS base_fee,\
-                        toNullable(sum(if(b.batch_size > 0, intDiv(dc.cost, b.batch_size), NULL))) AS l1_data_cost\
-                 FROM {db}.l2_head_events h\
-                 LEFT JOIN {db}.batch_blocks bb ON h.l2_block_number = bb.l2_block_number\
-                 LEFT JOIN {db}.batches b ON bb.batch_id = b.batch_id\
-                 LEFT JOIN {db}.l1_data_costs dc ON b.batch_id = dc.batch_id AND b.l1_block_number = dc.l1_block_number\
-                 WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})\
+                "SELECT intDiv(h.l2_block_number, {bucket}) * {bucket} AS l2_block_number, \
+                        sum(sum_priority_fee) AS priority_fee, \
+                        sum(sum_base_fee) AS base_fee, \
+                        toNullable(sum(if(b.batch_size > 0, intDiv(dc.cost, b.batch_size), NULL))) AS l1_data_cost \
+                 FROM {db}.l2_head_events h \
+                 LEFT JOIN {db}.batch_blocks bb ON h.l2_block_number = bb.l2_block_number \
+                 LEFT JOIN {db}.batches b ON bb.batch_id = b.batch_id \
+                 LEFT JOIN {db}.l1_data_costs dc ON b.batch_id = dc.batch_id AND b.l1_block_number = dc.l1_block_number \
+                 WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
                    AND {filter}",
                 bucket = bucket,
                 interval = range.interval(),
@@ -2299,14 +2306,20 @@ impl ClickhouseReader {
         }
 
         if let Some(bucket) = bucket {
+            #[derive(Row, Deserialize)]
+            struct AggRow {
+                l2_block_number: u64,
+                tps: f64,
+            }
+
             let mut query = format!(
-                "SELECT intDiv(l2_block_number, {bucket}) * {bucket} AS l2_block_number,\
-                        avg(sum_tx / (ms / 1000.0)) AS tps\
-                 FROM (\
-                    SELECT l2_block_number, sum_tx,\
-                           toUInt64OrNull(toString((toUnixTimestamp64Milli(inserted_at) - lagInFrame(toUnixTimestamp64Milli(inserted_at)) OVER (ORDER BY l2_block_number)))) AS ms\
-                    FROM {db}.l2_head_events h\
-                    WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})\
+                "SELECT intDiv(l2_block_number, {bucket}) * {bucket} AS l2_block_number, \
+                        avg(sum_tx / (ms / 1000.0)) AS tps \
+                 FROM ( \
+                    SELECT l2_block_number, sum_tx, \
+                           toUInt64OrNull(toString((toUnixTimestamp64Milli(inserted_at) - lagInFrame(toUnixTimestamp64Milli(inserted_at)) OVER (ORDER BY l2_block_number)))) AS ms \
+                    FROM {db}.l2_head_events h \
+                    WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
                       AND {filter}",
                 bucket = bucket,
                 interval = range.interval(),
@@ -2316,17 +2329,11 @@ impl ClickhouseReader {
             if let Some(addr) = sequencer {
                 query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
             }
-            query
-                .push_str(") ) WHERE ms > 0 GROUP BY l2_block_number ORDER BY l2_block_number ASC");
-            let rows = self.execute::<RawRow>(&query).await?;
+            query.push_str(") WHERE ms > 0 GROUP BY l2_block_number ORDER BY l2_block_number ASC");
+            let rows = self.execute::<AggRow>(&query).await?;
             Ok(rows
                 .into_iter()
-                .filter_map(|r| {
-                    r.ms_since_prev_block.map(|_| L2TpsRow {
-                        l2_block_number: r.l2_block_number,
-                        tps: r.sum_tx as f64,
-                    })
-                })
+                .map(|r| L2TpsRow { l2_block_number: r.l2_block_number, tps: r.tps })
                 .collect())
         } else {
             let mut query = format!(
@@ -2547,13 +2554,13 @@ impl ClickhouseReader {
     ) -> Result<Vec<BatchBlobCountRow>> {
         let query = if let Some(b) = bucket {
             format!(
-                "SELECT argMax(b.l1_block_number, b.batch_id) AS l1_block_number,\
-                        intDiv(b.batch_id, {b}) * {b} AS batch_id,\
-                        avg(b.blob_count) AS blob_count\
-                 FROM {db}.batches b\
-                 INNER JOIN {db}.l1_head_events l1_events ON b.l1_block_number = l1_events.l1_block_number\
-                 WHERE l1_events.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})\
-                 GROUP BY batch_id\
+                "SELECT argMax(b.l1_block_number, b.batch_id) AS l1_block_number, \
+                        intDiv(b.batch_id, {b}) * {b} AS batch_id, \
+                        avg(b.blob_count) AS blob_count \
+                 FROM {db}.batches b \
+                 INNER JOIN {db}.l1_head_events l1_events ON b.l1_block_number = l1_events.l1_block_number \
+                 WHERE l1_events.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
+                 GROUP BY batch_id \
                  ORDER BY l1_block_number ASC",
                 b = b,
                 interval = range.interval(),
