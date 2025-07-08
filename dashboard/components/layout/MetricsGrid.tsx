@@ -56,7 +56,7 @@ export const MetricsGrid: React.FC<MetricsGridProps> = ({
           isLoading ? (
             <React.Fragment key={group}>
               {group !== 'Other' && (
-                <h2 className="mt-6 mb-2 text-lg font-semibold">
+                <h2 className={`${group === 'Network Economics' ? 'mt-2' : 'mt-6'} mb-2 text-lg font-semibold`}>
                   {displayGroupName(group)}
                 </h2>
               )}
@@ -76,7 +76,7 @@ export const MetricsGrid: React.FC<MetricsGridProps> = ({
           ) : groupedMetrics[group] && groupedMetrics[group].length > 0 ? (
             <React.Fragment key={group}>
               {group !== 'Other' && (
-                <h2 className="mt-6 mb-2 text-lg font-semibold">
+                <h2 className={`${group === 'Network Economics' ? 'mt-2' : 'mt-6'} mb-2 text-lg font-semibold`}>
                   {displayGroupName(group)}
                 </h2>
               )}
