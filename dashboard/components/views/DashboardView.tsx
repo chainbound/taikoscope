@@ -119,7 +119,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
     if (costWei != null) {
       const profitIdx = list.findIndex(
-        (m) => m.title === 'Total Sequencer Profit',
+        (m) => m.title === 'Net Sequencer Profit',
       );
       if (profitIdx >= 0) {
         const profitEth = parseEthValue(list[profitIdx].value);
