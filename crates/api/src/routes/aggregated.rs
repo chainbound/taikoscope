@@ -1,12 +1,7 @@
 //! Aggregated data endpoints with complex processing
 
 use crate::{
-    helpers::{
-        aggregate_blobs_per_batch, aggregate_block_transactions, aggregate_l2_block_times,
-        aggregate_l2_fee_components, aggregate_l2_gas_used, aggregate_l2_tps,
-        aggregate_prove_times, aggregate_verify_times, blobs_bucket_size, bucket_size_from_range,
-        prove_bucket_size, verify_bucket_size,
-    },
+    helpers::{blobs_bucket_size, bucket_size_from_range, prove_bucket_size, verify_bucket_size},
     state::{ApiState, MAX_BLOCK_TRANSACTIONS_LIMIT},
     validation::{
         CommonQuery, has_time_range_params, resolve_time_range_enum, resolve_time_range_since,
@@ -65,15 +60,14 @@ pub async fn l2_block_times_aggregated(
     } else {
         None
     };
-    let blocks = match state.client.get_l2_block_times(address, time_range).await {
+    let bucket = bucket_size_from_range(&time_range);
+    let blocks = match state.client.get_l2_block_times(address, time_range, Some(bucket)).await {
         Ok(rows) => rows,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get L2 block times");
             return Err(ErrorResponse::database_error());
         }
     };
-    let bucket = bucket_size_from_range(&time_range);
-    let blocks = aggregate_l2_block_times(blocks, bucket);
     tracing::info!(count = blocks.len(), "Returning aggregated L2 block times");
     Ok(Json(L2BlockTimesResponse { blocks }))
 }
@@ -116,15 +110,14 @@ pub async fn l2_gas_used_aggregated(
     } else {
         None
     };
-    let blocks = match state.client.get_l2_gas_used(address, time_range).await {
+    let bucket = bucket_size_from_range(&time_range);
+    let blocks = match state.client.get_l2_gas_used(address, time_range, Some(bucket)).await {
         Ok(rows) => rows,
         Err(e) => {
             tracing::error!("Failed to get L2 gas used: {}", e);
             return Err(ErrorResponse::database_error());
         }
     };
-    let bucket = bucket_size_from_range(&time_range);
-    let blocks = aggregate_l2_gas_used(blocks, bucket);
     tracing::info!(count = blocks.len(), "Returning aggregated L2 gas used");
     Ok(Json(L2GasUsedResponse { blocks }))
 }
@@ -167,15 +160,14 @@ pub async fn l2_tps_aggregated(
     } else {
         None
     };
-    let blocks = match state.client.get_l2_tps(address, time_range).await {
+    let bucket = bucket_size_from_range(&time_range);
+    let blocks = match state.client.get_l2_tps(address, time_range, Some(bucket)).await {
         Ok(rows) => rows,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get L2 TPS");
             return Err(ErrorResponse::database_error());
         }
     };
-    let bucket = bucket_size_from_range(&time_range);
-    let blocks = aggregate_l2_tps(blocks, bucket);
     tracing::info!(count = blocks.len(), "Returning aggregated L2 TPS");
     Ok(Json(L2TpsResponse { blocks }))
 }
@@ -221,9 +213,19 @@ pub async fn block_transactions_aggregated(
         None
     };
 
+    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
+    let bucket = bucket_size_from_range(&time_range);
+
     let rows = match state
         .client
-        .get_block_transactions_paginated(since, MAX_BLOCK_TRANSACTIONS_LIMIT, None, None, address)
+        .get_block_transactions_paginated(
+            since,
+            MAX_BLOCK_TRANSACTIONS_LIMIT,
+            None,
+            None,
+            address,
+            Some(bucket),
+        )
         .await
     {
         Ok(r) => r,
@@ -242,10 +244,6 @@ pub async fn block_transactions_aggregated(
             block_time: r.block_time,
         })
         .collect();
-
-    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
-    let bucket = bucket_size_from_range(&time_range);
-    let blocks = aggregate_block_transactions(blocks, bucket);
     tracing::info!(count = blocks.len(), "Returning aggregated block transactions");
     Ok(Json(BlockTransactionsResponse { blocks }))
 }
@@ -272,16 +270,14 @@ pub async fn prove_times_aggregated(
     validate_range_exclusivity(has_time_range, false)?;
 
     let time_range = resolve_time_range_enum(&params.range, &params.time_range);
-    let batches = match state.client.get_prove_times(time_range).await {
+    let bucket = prove_bucket_size(&time_range);
+    let batches = match state.client.get_prove_times(time_range, Some(bucket)).await {
         Ok(rows) => rows,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get prove times");
             return Err(ErrorResponse::database_error());
         }
     };
-
-    let bucket = prove_bucket_size(&time_range);
-    let batches = aggregate_prove_times(batches, bucket);
     tracing::info!(count = batches.len(), "Returning aggregated prove times");
     Ok(Json(ProveTimesResponse { batches }))
 }
@@ -308,16 +304,14 @@ pub async fn verify_times_aggregated(
     validate_range_exclusivity(has_time_range, false)?;
 
     let time_range = resolve_time_range_enum(&params.range, &params.time_range);
-    let batches = match state.client.get_verify_times(time_range).await {
+    let bucket = verify_bucket_size(&time_range);
+    let batches = match state.client.get_verify_times(time_range, Some(bucket)).await {
         Ok(rows) => rows,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get verify times");
             return Err(ErrorResponse::database_error());
         }
     };
-
-    let bucket = verify_bucket_size(&time_range);
-    let batches = aggregate_verify_times(batches, bucket);
     tracing::info!(count = batches.len(), "Returning aggregated verify times");
     Ok(Json(VerifyTimesResponse { batches }))
 }
@@ -403,13 +397,14 @@ pub async fn l2_fee_components_aggregated(
         None
     };
 
-    let blocks = state.client.get_l2_fee_components(address, time_range).await.map_err(|e| {
-        tracing::error!(error = %e, "Failed to get fee components");
-        ErrorResponse::database_error()
-    })?;
-
     let bucket = bucket_size_from_range(&time_range);
-    let blocks = aggregate_l2_fee_components(blocks, bucket);
+    let blocks =
+        state.client.get_l2_fee_components(address, time_range, Some(bucket)).await.map_err(
+            |e| {
+                tracing::error!(error = %e, "Failed to get fee components");
+                ErrorResponse::database_error()
+            },
+        )?;
     let blocks: Vec<BlockFeeComponentRow> = blocks
         .into_iter()
         .map(|r| BlockFeeComponentRow {
@@ -537,16 +532,22 @@ pub async fn blobs_per_batch_aggregated(
     validate_range_exclusivity(has_time_range, false)?;
 
     let time_range = resolve_time_range_enum(&params.range, &params.time_range);
-    let batches = match state.client.get_blobs_per_batch(time_range).await {
+    let bucket = blobs_bucket_size(&time_range);
+    let batches = match state.client.get_blobs_per_batch(time_range, Some(bucket)).await {
         Ok(rows) => rows,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get blobs per batch");
             return Err(ErrorResponse::database_error());
         }
     };
-
-    let bucket = blobs_bucket_size(&time_range);
-    let batches = aggregate_blobs_per_batch(batches, bucket);
+    let batches: Vec<AvgBatchBlobCountRow> = batches
+        .into_iter()
+        .map(|r| AvgBatchBlobCountRow {
+            l1_block_number: r.l1_block_number,
+            batch_id: r.batch_id,
+            blob_count: r.blob_count as f64,
+        })
+        .collect();
     tracing::info!(count = batches.len(), "Returning aggregated blobs per batch");
     Ok(Json(AvgBatchBlobsResponse { batches }))
 }

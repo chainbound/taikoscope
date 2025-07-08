@@ -546,10 +546,11 @@ pub async fn block_profits(
         None
     };
 
-    let rows = state.client.get_l2_fee_components(address, time_range).await.map_err(|e| {
-        tracing::error!(error = %e, "Failed to get fee components");
-        ErrorResponse::database_error()
-    })?;
+    let rows =
+        state.client.get_l2_fee_components(address, time_range, None).await.map_err(|e| {
+            tracing::error!(error = %e, "Failed to get fee components");
+            ErrorResponse::database_error()
+        })?;
 
     let mut blocks: Vec<BlockProfitItem> = rows
         .into_iter()
@@ -717,10 +718,11 @@ pub async fn l2_fee_components(
         None
     };
 
-    let blocks = state.client.get_l2_fee_components(address, time_range).await.map_err(|e| {
-        tracing::error!(error = %e, "Failed to get fee components");
-        ErrorResponse::database_error()
-    })?;
+    let blocks =
+        state.client.get_l2_fee_components(address, time_range, None).await.map_err(|e| {
+            tracing::error!(error = %e, "Failed to get fee components");
+            ErrorResponse::database_error()
+        })?;
 
     let blocks: Vec<BlockFeeComponentRow> = blocks
         .into_iter()
