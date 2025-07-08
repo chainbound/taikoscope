@@ -14,8 +14,8 @@ describe('normalizeTimeRange', () => {
     expect(normalizeTimeRange('1000-2000', now)).toBe('1000-2000');
   });
 
-  it('trims whitespace and defaults to one hour for invalid input', () => {
+  it('trims whitespace and defaults to 24 hours for invalid input', () => {
     expect(normalizeTimeRange(' 1h ', now)).toBe(`${now - 3_600_000}-${now}`);
-    expect(normalizeTimeRange('foo', now)).toBe(`${now - 3_600_000}-${now}`);
+    expect(normalizeTimeRange('foo', now)).toBe(`${now - 86_400_000}-${now}`);
   });
 });

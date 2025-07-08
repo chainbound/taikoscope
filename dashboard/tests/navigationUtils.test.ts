@@ -232,12 +232,12 @@ describe('navigationUtils', () => {
 
       renderToStaticMarkup(React.createElement(Wrapper));
       setFn('24h');
-      expect(navSpy).toHaveBeenCalledWith({ search: 'range=24h' }, { replace: true });
+      expect(navSpy).toHaveBeenCalledWith({ search: '' }, { replace: true });
       navSpy.mockClear();
 
       currentSearch = '?range=15m';
       renderToStaticMarkup(React.createElement(Wrapper));
-      setFn('1h');
+      setFn('24h');
       expect(navSpy).toHaveBeenCalledWith({ search: '' }, { replace: true });
     });
   });

@@ -36,16 +36,16 @@ export const rangeToHours = (range: string): number => {
   if (custom) {
     const start = parseInt(custom[1], 10);
     const end = parseInt(custom[2], 10);
-    if (isNaN(start) || isNaN(end) || end <= start) return 1;
+    if (isNaN(start) || isNaN(end) || end <= start) return 24;
     return (end - start) / 3_600_000;
   }
 
-  return 1;
+  return 24;
 };
 
 export const timeRangeToQuery = (range: string): string => {
   const now = Date.now();
-  let start = now - 3600_000;
+  let start = now - 86_400_000;
   let end = now;
 
   const trimmed = range.trim();
@@ -119,7 +119,7 @@ export const normalizeTimeRange = (
   range: string,
   now: number = Date.now(),
 ): string => {
-  let start = now - 3600_000;
+  let start = now - 86_400_000;
   let end = now;
 
   const trimmed = range.trim();
