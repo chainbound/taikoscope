@@ -2129,6 +2129,7 @@ impl ClickhouseReader {
         &self,
         sequencer: Option<AddressBytes>,
         range: TimeRange,
+        bucket: Option<u64>,
     ) -> Result<Vec<L2TpsRow>> {
         #[derive(Row, Deserialize)]
         struct RawRow {
@@ -2136,12 +2137,52 @@ impl ClickhouseReader {
             sum_tx: u32,
             ms_since_prev_block: Option<u64>,
         }
+        #[derive(Row, Deserialize)]
+        struct AggRow {
+            l2_block_number: u64,
+            tps: f64,
+        }
 
-        let mut query = format!(
-            "SELECT h.l2_block_number, sum_tx, \
+        let bucket = bucket.unwrap_or(1);
+        if bucket <= 1 {
+            let mut query = format!(
+                "SELECT h.l2_block_number, sum_tx, \
+                        toUInt64OrNull(toString((toUnixTimestamp64Milli(h.inserted_at) - \
+                            lagInFrame(toUnixTimestamp64Milli(h.inserted_at)) OVER (ORDER BY h.l2_block_number)))) \
+                            AS ms_since_prev_block \
+                 FROM {db}.l2_head_events h \
+                 WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
+                   AND {filter}",
+                interval = range.interval(),
+                filter = self.reorg_filter("h"),
+                db = self.db_name,
+            );
+            if let Some(addr) = sequencer {
+                query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
+            }
+            query.push_str(" ORDER BY l2_block_number ASC");
+
+            let rows = self.execute::<RawRow>(&query).await?;
+            return Ok(rows
+                .into_iter()
+                .filter_map(|r| {
+                    let ms = r.ms_since_prev_block?;
+                    if ms == 0 {
+                        return None;
+                    }
+                    Some(L2TpsRow {
+                        l2_block_number: r.l2_block_number,
+                        tps: r.sum_tx as f64 / (ms as f64 / 1000.0),
+                    })
+                })
+                .collect());
+        }
+
+        let mut inner = format!(
+            "SELECT h.l2_block_number, \
+                    sum_tx, \
                     toUInt64OrNull(toString((toUnixTimestamp64Milli(h.inserted_at) - \
-                        lagInFrame(toUnixTimestamp64Milli(h.inserted_at)) OVER (ORDER BY h.l2_block_number)))) \
-                        AS ms_since_prev_block \
+                        lagInFrame(toUnixTimestamp64Milli(h.inserted_at)) OVER (ORDER BY h.l2_block_number)))) AS ms_since_prev_block \
              FROM {db}.l2_head_events h \
              WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
                AND {filter}",
@@ -2150,23 +2191,27 @@ impl ClickhouseReader {
             db = self.db_name,
         );
         if let Some(addr) = sequencer {
-            query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
+            inner.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
         }
-        query.push_str(" ORDER BY l2_block_number ASC");
+        let query = format!(
+            "SELECT l2_bucket AS l2_block_number, \
+                    avg(tps) AS tps \
+             FROM ( \
+                SELECT intDiv(l2_block_number, {bucket}) * {bucket} AS l2_bucket, \
+                       toFloat64(sum_tx) * 1000.0 / ms_since_prev_block AS tps \
+                  FROM ({inner}) AS base \
+                 WHERE ms_since_prev_block > 0 \
+             ) AS sub \
+             GROUP BY l2_bucket \
+             ORDER BY l2_bucket ASC",
+            bucket = bucket,
+            inner = inner,
+        );
 
-        let rows = self.execute::<RawRow>(&query).await?;
+        let rows = self.execute::<AggRow>(&query).await?;
         Ok(rows
             .into_iter()
-            .filter_map(|r| {
-                let ms = r.ms_since_prev_block?;
-                if ms == 0 {
-                    return None;
-                }
-                Some(L2TpsRow {
-                    l2_block_number: r.l2_block_number,
-                    tps: r.sum_tx as f64 / (ms as f64 / 1000.0),
-                })
-            })
+            .map(|r| L2TpsRow { l2_block_number: r.l2_block_number, tps: r.tps })
             .collect())
     }
 
