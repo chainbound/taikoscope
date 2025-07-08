@@ -1451,53 +1451,13 @@ impl ClickhouseReader {
         bucket: Option<u64>,
     ) -> Result<Vec<L2BlockTimeRow>> {
         #[derive(Row, Deserialize)]
-        struct RawRow {
-            l2_block_number: u64,
-            block_time: u64,
-            ms_since_prev_block: Option<u64>,
-        }
-        #[derive(Row, Deserialize)]
         struct AggRow {
             l2_block_number: u64,
             block_time: u64,
             ms_since_prev_block: u64,
         }
 
-        let bucket = bucket.unwrap_or(1);
-        if bucket <= 1 {
-            let mut query = format!(
-                "SELECT h.l2_block_number, \
-                        h.block_ts AS block_time, \
-                        toUInt64OrNull(toString( \
-                            (toUnixTimestamp64Milli(h.inserted_at) - \
-                             lagInFrame(toUnixTimestamp64Milli(h.inserted_at)) OVER (ORDER BY \
-                             h.l2_block_number)) \
-                        )) AS ms_since_prev_block \
-                 FROM {db}.l2_head_events h \
-                 WHERE h.inserted_at >= (now64() - INTERVAL {interval}) \
-                   AND {filter}",
-                interval = range.interval(),
-                filter = self.reorg_filter("h"),
-                db = self.db_name,
-            );
-            if let Some(addr) = sequencer {
-                query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
-            }
-            query.push_str(" ORDER BY l2_block_number ASC");
-
-            let rows = self.execute::<RawRow>(&query).await?;
-            return Ok(rows
-                .into_iter()
-                .filter_map(|r| {
-                    let dt = Utc.timestamp_opt(r.block_time as i64, 0).single()?;
-                    r.ms_since_prev_block.map(|ms| L2BlockTimeRow {
-                        l2_block_number: r.l2_block_number,
-                        block_time: dt,
-                        ms_since_prev_block: ms,
-                    })
-                })
-                .collect());
-        }
+        let bucket = bucket.unwrap_or(1).max(1);
 
         let mut inner = format!(
             "SELECT h.l2_block_number, \
@@ -1522,6 +1482,7 @@ impl ClickhouseReader {
                     max(block_time) AS block_time, \
                     toUInt64(avg(ms_since_prev_block)) AS ms_since_prev_block \
              FROM ({inner}) as sub \
+             WHERE ms_since_prev_block IS NOT NULL \
              GROUP BY l2_block_number \
              ORDER BY l2_block_number ASC",
             bucket = bucket,
