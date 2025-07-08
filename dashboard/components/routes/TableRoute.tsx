@@ -44,7 +44,7 @@ export const TableRoute: React.FC = () => {
   const handleTimeRangeChange = useCallback(
     (newRange: TimeRange) => {
       const newParams = new URLSearchParams(searchParams);
-      if (newRange === '1h') {
+      if (newRange === '24h') {
         newParams.delete('range');
       } else {
         newParams.set('range', newRange);

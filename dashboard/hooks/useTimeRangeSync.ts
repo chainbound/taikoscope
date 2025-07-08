@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { TimeRange } from '../types';
 import { isValidTimeRange } from '../utils/timeRange';
 
-const DEFAULT_TIME_RANGE: TimeRange = '1h';
+const DEFAULT_TIME_RANGE: TimeRange = '24h';
 
 /**
  * Hook that synchronizes time range state with URL parameters to prevent navigation loops
