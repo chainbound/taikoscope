@@ -9,6 +9,7 @@ import {
   fetchEconomicsData,
 } from '../utils/dataFetcher';
 import { createMetrics, type MetricInputData } from '../utils/metricsCreator';
+import { calculateNetProfit } from '../utils/profit';
 import { hasBadRequest, getErrorMessage } from '../utils/errorHandler';
 
 interface UseDataFetcherProps {
@@ -83,10 +84,12 @@ export const useDataFetcher = ({
             data.baseFee != null &&
             data.l1DataCost != null &&
             data.proveCost != null
-            ? data.priorityFee +
-            (data.baseFee * 0.75) -
-            data.l1DataCost -
-            data.proveCost
+            ? calculateNetProfit({
+              priorityFee: data.priorityFee,
+              baseFee: data.baseFee,
+              l1DataCost: data.l1DataCost,
+              proveCost: data.proveCost,
+            })
             : null,
         l2Block: data.l2Block,
         l1Block: data.l1Block,
