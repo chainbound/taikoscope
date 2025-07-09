@@ -2804,4 +2804,93 @@ impl ClickhouseReader {
             .context("fetching sequencer distribution failed")?;
         Ok(rows)
     }
+
+    /// Get aggregated block transactions with automatic bucketing based on time range
+    pub async fn get_block_transactions(
+        &self,
+        sequencer: Option<AddressBytes>,
+        since: DateTime<Utc>,
+        until: DateTime<Utc>,
+        bucket: Option<u64>,
+    ) -> Result<Vec<BlockTransactionRow>> {
+        #[derive(Row, Deserialize)]
+        struct RawRow {
+            sequencer: AddressBytes,
+            l2_block_number: u64,
+            block_time: u64,
+            sum_tx: u32,
+        }
+        #[derive(Row, Deserialize)]
+        struct AggRow {
+            sequencer: AddressBytes,
+            l2_block_number: u64,
+            block_time: u64,
+            sum_tx: u32,
+        }
+
+        let bucket = bucket.unwrap_or(1);
+        if bucket <= 1 {
+            let mut query = format!(
+                "SELECT sequencer, h.l2_block_number, h.block_ts AS block_time, sum_tx \
+                 FROM {db}.l2_head_events h \
+                 WHERE h.block_ts >= {} AND h.block_ts <= {} \
+                   AND {filter}",
+                since.timestamp(),
+                until.timestamp(),
+                filter = self.reorg_filter("h"),
+                db = self.db_name,
+            );
+            if let Some(addr) = sequencer {
+                query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
+            }
+            query.push_str(" ORDER BY l2_block_number ASC");
+
+            let rows = self.execute::<RawRow>(&query).await?;
+            return Ok(rows
+                .into_iter()
+                .map(|r| BlockTransactionRow {
+                    sequencer: r.sequencer,
+                    l2_block_number: r.l2_block_number,
+                    block_time: Utc.timestamp_opt(r.block_time as i64, 0).unwrap(),
+                    sum_tx: r.sum_tx,
+                })
+                .collect());
+        }
+
+        let mut inner = format!(
+            "SELECT sequencer, h.l2_block_number, h.block_ts AS block_time, sum_tx \
+             FROM {db}.l2_head_events h \
+             WHERE h.block_ts >= {} AND h.block_ts <= {} \
+               AND {filter}",
+            since.timestamp(),
+            until.timestamp(),
+            filter = self.reorg_filter("h"),
+            db = self.db_name,
+        );
+        if let Some(addr) = sequencer {
+            inner.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
+        }
+        let query = format!(
+            "SELECT intDiv(l2_block_number, {bucket}) * {bucket} AS l2_block_number, \
+                    any(sequencer) AS sequencer, \
+                    max(block_time) AS block_time, \
+                    toUInt32(avg(sum_tx)) AS sum_tx \
+             FROM ({inner}) AS sub \
+             GROUP BY l2_block_number \
+             ORDER BY l2_block_number ASC",
+            bucket = bucket,
+            inner = inner,
+        );
+
+        let rows = self.execute::<AggRow>(&query).await?;
+        Ok(rows
+            .into_iter()
+            .map(|r| BlockTransactionRow {
+                sequencer: r.sequencer,
+                l2_block_number: r.l2_block_number,
+                block_time: Utc.timestamp_opt(r.block_time as i64, 0).unwrap(),
+                sum_tx: r.sum_tx,
+            })
+            .collect())
+    }
 }

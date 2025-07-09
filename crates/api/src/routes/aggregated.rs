@@ -5,10 +5,10 @@ use crate::{
         aggregate_blobs_per_batch, blobs_bucket_size, bucket_size_from_range, prove_bucket_size,
         verify_bucket_size,
     },
-    state::{ApiState, MAX_BLOCK_TRANSACTIONS_LIMIT},
+    state::ApiState,
     validation::{
-        CommonQuery, has_time_range_params, resolve_time_range_enum, resolve_time_range_since,
-        validate_range_exclusivity, validate_time_range,
+        CommonQuery, has_time_range_params, resolve_time_range_bounds, resolve_time_range_enum,
+        resolve_time_range_since, validate_range_exclusivity, validate_time_range,
     },
 };
 use alloy_primitives::Address;
@@ -198,7 +198,7 @@ pub async fn block_transactions_aggregated(
     let has_time_range = has_time_range_params(&params.time_range);
     validate_range_exclusivity(has_time_range, false)?;
 
-    let since = resolve_time_range_since(&params.range, &params.time_range);
+    let (since, until) = resolve_time_range_bounds(&params.range, &params.time_range);
     let address = if let Some(addr) = params.address.as_ref() {
         match addr.parse::<Address>() {
             Ok(a) => Some(AddressBytes::from(a)),
@@ -218,17 +218,7 @@ pub async fn block_transactions_aggregated(
 
     let time_range = resolve_time_range_enum(&params.range, &params.time_range);
     let bucket = bucket_size_from_range(&time_range);
-    let rows = match state
-        .client
-        .get_block_transactions_paginated(
-            since,
-            MAX_BLOCK_TRANSACTIONS_LIMIT,
-            None,
-            None,
-            address,
-            Some(bucket),
-        )
-        .await
+    let rows = match state.client.get_block_transactions(address, since, until, Some(bucket)).await
     {
         Ok(r) => r,
         Err(e) => {
