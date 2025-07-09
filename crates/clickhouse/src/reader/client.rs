@@ -1520,7 +1520,7 @@ impl ClickhouseReader {
         let query = format!(
             "SELECT intDiv(l2_block_number, {bucket}) * {bucket} AS l2_block_number, \
                     max(block_time) AS block_time, \
-                    toUInt64(avg(ms_since_prev_block)) AS ms_since_prev_block \
+                    toUInt64(ifNull(avg(ms_since_prev_block), 0)) AS ms_since_prev_block \
              FROM ({inner}) as sub \
              GROUP BY l2_block_number \
              ORDER BY l2_block_number ASC",
