@@ -3,7 +3,7 @@
 use crate::{
     helpers::{
         aggregate_blobs_per_batch, aggregate_block_transactions, aggregate_l2_fee_components,
-        aggregate_l2_gas_used, aggregate_l2_tps, aggregate_prove_times, aggregate_verify_times,
+        aggregate_l2_gas_used, aggregate_prove_times, aggregate_verify_times,
         blobs_bucket_size, bucket_size_from_range, prove_bucket_size, verify_bucket_size,
     },
     state::{ApiState, MAX_BLOCK_TRANSACTIONS_LIMIT},
@@ -165,15 +165,18 @@ pub async fn l2_tps_aggregated(
     } else {
         None
     };
-    let blocks = match state.client.get_l2_tps(address, time_range).await {
+    let bucket = bucket_size_from_range(&time_range);
+    let blocks = match state
+        .client
+        .get_l2_tps(address, time_range, Some(bucket))
+        .await
+    {
         Ok(rows) => rows,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get L2 TPS");
             return Err(ErrorResponse::database_error());
         }
     };
-    let bucket = bucket_size_from_range(&time_range);
-    let blocks = aggregate_l2_tps(blocks, bucket);
     tracing::info!(count = blocks.len(), "Returning aggregated L2 TPS");
     Ok(Json(L2TpsResponse { blocks }))
 }
