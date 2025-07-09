@@ -7,8 +7,8 @@ use crate::{
     },
     state::ApiState,
     validation::{
-        CommonQuery, has_time_range_params, resolve_time_range_bounds, resolve_time_range_enum,
-        resolve_time_range_since, validate_range_exclusivity, validate_time_range,
+        CommonQuery, has_time_range_params, resolve_time_range_enum, resolve_time_range_since,
+        validate_range_exclusivity, validate_time_range,
     },
 };
 use alloy_primitives::Address;
@@ -189,7 +189,7 @@ pub async fn l2_tps_aggregated(
 )]
 /// Get aggregated block transaction counts with automatic bucketing based on time range.
 ///
-/// Results are ordered by block number in descending order before aggregation.
+/// Results are ordered by block number in ascending order before aggregation.
 pub async fn block_transactions_aggregated(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
@@ -198,7 +198,7 @@ pub async fn block_transactions_aggregated(
     let has_time_range = has_time_range_params(&params.time_range);
     validate_range_exclusivity(has_time_range, false)?;
 
-    let (since, until) = resolve_time_range_bounds(&params.range, &params.time_range);
+    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
     let address = if let Some(addr) = params.address.as_ref() {
         match addr.parse::<Address>() {
             Ok(a) => Some(AddressBytes::from(a)),
@@ -216,10 +216,8 @@ pub async fn block_transactions_aggregated(
         None
     };
 
-    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
     let bucket = bucket_size_from_range(&time_range);
-    let rows = match state.client.get_block_transactions(address, since, until, Some(bucket)).await
-    {
+    let rows = match state.client.get_block_transactions(address, time_range, Some(bucket)).await {
         Ok(r) => r,
         Err(e) => {
             tracing::error!(error = %e, "Failed to get block transactions");

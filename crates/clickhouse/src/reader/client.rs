@@ -2809,8 +2809,7 @@ impl ClickhouseReader {
     pub async fn get_block_transactions(
         &self,
         sequencer: Option<AddressBytes>,
-        since: DateTime<Utc>,
-        until: DateTime<Utc>,
+        range: TimeRange,
         bucket: Option<u64>,
     ) -> Result<Vec<BlockTransactionRow>> {
         #[derive(Row, Deserialize)]
@@ -2833,10 +2832,9 @@ impl ClickhouseReader {
             let mut query = format!(
                 "SELECT sequencer, h.l2_block_number, h.block_ts AS block_time, sum_tx \
                  FROM {db}.l2_head_events h \
-                 WHERE h.block_ts >= {} AND h.block_ts <= {} \
+                 WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
                    AND {filter}",
-                since.timestamp(),
-                until.timestamp(),
+                interval = range.interval(),
                 filter = self.reorg_filter("h"),
                 db = self.db_name,
             );
@@ -2860,10 +2858,9 @@ impl ClickhouseReader {
         let mut inner = format!(
             "SELECT sequencer, h.l2_block_number, h.block_ts AS block_time, sum_tx \
              FROM {db}.l2_head_events h \
-             WHERE h.block_ts >= {} AND h.block_ts <= {} \
+             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
                AND {filter}",
-            since.timestamp(),
-            until.timestamp(),
+            interval = range.interval(),
             filter = self.reorg_filter("h"),
             db = self.db_name,
         );
