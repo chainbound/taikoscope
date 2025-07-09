@@ -2871,9 +2871,9 @@ impl ClickhouseReader {
             "SELECT intDiv(l2_block_number, {bucket}) * {bucket} AS l2_block_number, \
                     any(sequencer) AS sequencer, \
                     max(block_time) AS block_time, \
-                    toUInt32(avg(sum_tx)) AS sum_tx \
+                    toUInt32(sum(sum_tx)) AS sum_tx \
              FROM ({inner}) AS sub \
-             GROUP BY l2_block_number \
+             GROUP BY intDiv(l2_block_number, {bucket}) \
              ORDER BY l2_block_number ASC",
             bucket = bucket,
             inner = inner,
