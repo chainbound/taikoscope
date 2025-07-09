@@ -668,16 +668,66 @@ impl ClickhouseReader {
         starting_after: Option<u64>,
         ending_before: Option<u64>,
         sequencer: Option<AddressBytes>,
+        bucket: Option<u64>,
     ) -> Result<Vec<BlockTransactionRow>> {
+        let bucket = bucket.unwrap_or(1);
+
+        if bucket <= 1 {
+            // Non-bucketed implementation
+            #[derive(Row, Deserialize)]
+            struct RawRow {
+                sequencer: AddressBytes,
+                l2_block_number: u64,
+                block_time: u64,
+                sum_tx: u32,
+            }
+
+            let mut query = format!(
+                "SELECT sequencer, h.l2_block_number, h.block_ts AS block_time, sum_tx \
+                 FROM {db}.l2_head_events h \
+                 WHERE h.block_ts >= {} \
+                   AND {filter}",
+                since.timestamp(),
+                filter = self.reorg_filter("h"),
+                db = self.db_name,
+            );
+            if let Some(addr) = sequencer {
+                query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
+            }
+
+            if let Some(start) = starting_after {
+                query.push_str(&format!(" AND l2_block_number < {}", start));
+            }
+
+            if let Some(end) = ending_before {
+                query.push_str(&format!(" AND l2_block_number > {}", end));
+            }
+
+            query.push_str(" ORDER BY l2_block_number DESC");
+            query.push_str(&format!(" LIMIT {}", limit));
+
+            let rows = self.execute::<RawRow>(&query).await?;
+            return Ok(rows
+                .into_iter()
+                .map(|r| BlockTransactionRow {
+                    sequencer: r.sequencer,
+                    l2_block_number: r.l2_block_number,
+                    block_time: Utc.timestamp_opt(r.block_time as i64, 0).unwrap(),
+                    sum_tx: r.sum_tx,
+                })
+                .collect());
+        }
+
+        // Bucketed implementation using SQL aggregation
         #[derive(Row, Deserialize)]
-        struct RawRow {
+        struct AggRow {
             sequencer: AddressBytes,
             l2_block_number: u64,
             block_time: u64,
             sum_tx: u32,
         }
 
-        let mut query = format!(
+        let mut inner = format!(
             "SELECT sequencer, h.l2_block_number, h.block_ts AS block_time, sum_tx \
              FROM {db}.l2_head_events h \
              WHERE h.block_ts >= {} \
@@ -687,21 +737,39 @@ impl ClickhouseReader {
             db = self.db_name,
         );
         if let Some(addr) = sequencer {
-            query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
+            inner.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
         }
 
         if let Some(start) = starting_after {
-            query.push_str(&format!(" AND l2_block_number < {}", start));
+            inner.push_str(&format!(" AND l2_block_number < {}", start));
         }
 
         if let Some(end) = ending_before {
-            query.push_str(&format!(" AND l2_block_number > {}", end));
+            inner.push_str(&format!(" AND l2_block_number > {}", end));
         }
 
-        query.push_str(" ORDER BY l2_block_number DESC");
-        query.push_str(&format!(" LIMIT {}", limit));
+        let query = format!(
+            "SELECT l2_bucket AS l2_block_number, \
+                    argMax(sequencer, l2_block_number) AS sequencer, \
+                    max(block_time) AS block_time, \
+                    toUInt32(avg(sum_tx)) AS sum_tx \
+             FROM ( \
+                SELECT intDiv(l2_block_number, {bucket}) * {bucket} AS l2_bucket, \
+                       sequencer, \
+                       l2_block_number, \
+                       block_time, \
+                       sum_tx \
+                FROM ({inner}) AS base \
+             ) AS sub \
+             GROUP BY l2_bucket \
+             ORDER BY l2_bucket DESC \
+             LIMIT {limit}",
+            bucket = bucket,
+            inner = inner,
+            limit = limit,
+        );
 
-        let rows = self.execute::<RawRow>(&query).await?;
+        let rows = self.execute::<AggRow>(&query).await?;
         Ok(rows
             .into_iter()
             .map(|r| BlockTransactionRow {
@@ -1226,13 +1294,64 @@ impl ClickhouseReader {
     }
 
     /// Get prove times in seconds for batches proved within the given range
-    pub async fn get_prove_times(&self, range: TimeRange) -> Result<Vec<BatchProveTimeRow>> {
+    pub async fn get_prove_times(
+        &self,
+        range: TimeRange,
+        bucket: Option<u64>,
+    ) -> Result<Vec<BatchProveTimeRow>> {
+        let bucket = bucket.unwrap_or(1);
+
+        if bucket <= 1 {
+            // Non-bucketed implementation
+            let mv_query = format!(
+                "SELECT batch_id, toUInt64(prove_time_ms / 1000) AS seconds_to_prove \
+                 FROM {db}.batch_prove_times_mv \
+                 WHERE proved_at >= now64() - INTERVAL {interval} \
+                   AND batch_id != 0 \
+                 ORDER BY batch_id ASC",
+                interval = range.interval(),
+                db = self.db_name,
+            );
+
+            let rows = self.execute::<BatchProveTimeRow>(&mv_query).await?;
+            if !rows.is_empty() {
+                return Ok(rows);
+            }
+
+            let fallback_query = format!(
+                "SELECT toUInt64(b.batch_id) AS batch_id, \
+                        (l1_proved.block_ts - l1_proposed.block_ts) AS seconds_to_prove \
+                 FROM {db}.batches b \
+                 JOIN {db}.proved_batches pb ON b.batch_id = pb.batch_id \
+                 JOIN {db}.l1_head_events l1_proposed \
+                   ON b.l1_block_number = l1_proposed.l1_block_number \
+                 JOIN {db}.l1_head_events l1_proved \
+                   ON pb.l1_block_number = l1_proved.l1_block_number \
+                 WHERE l1_proved.block_ts >= (toUInt64(now()) - {secs}) \
+                   AND b.batch_id != 0 \
+                 ORDER BY b.batch_id ASC",
+                secs = range.seconds(),
+                db = self.db_name,
+            );
+
+            let rows = self.execute::<BatchProveTimeRow>(&fallback_query).await?;
+            return Ok(rows);
+        }
+
+        // Bucketed implementation using SQL aggregation
         let mv_query = format!(
-            "SELECT batch_id, toUInt64(prove_time_ms / 1000) AS seconds_to_prove \
-             FROM {db}.batch_prove_times_mv \
-             WHERE proved_at >= now64() - INTERVAL {interval} \
-               AND batch_id != 0 \
-             ORDER BY batch_id ASC",
+            "SELECT batch_bucket AS batch_id, \
+                    toUInt64(avg(seconds_to_prove)) AS seconds_to_prove \
+             FROM ( \
+                SELECT intDiv(batch_id, {bucket}) * {bucket} AS batch_bucket, \
+                       toUInt64(prove_time_ms / 1000) AS seconds_to_prove \
+                FROM {db}.batch_prove_times_mv \
+                WHERE proved_at >= now64() - INTERVAL {interval} \
+                  AND batch_id != 0 \
+             ) AS sub \
+             GROUP BY batch_bucket \
+             ORDER BY batch_bucket ASC",
+            bucket = bucket,
             interval = range.interval(),
             db = self.db_name,
         );
@@ -1242,18 +1361,25 @@ impl ClickhouseReader {
             return Ok(rows);
         }
 
+        // Fallback with bucketing
         let fallback_query = format!(
-            "SELECT toUInt64(b.batch_id) AS batch_id, \
-                    (l1_proved.block_ts - l1_proposed.block_ts) AS seconds_to_prove \
-             FROM {db}.batches b \
-             JOIN {db}.proved_batches pb ON b.batch_id = pb.batch_id \
-             JOIN {db}.l1_head_events l1_proposed \
-               ON b.l1_block_number = l1_proposed.l1_block_number \
-             JOIN {db}.l1_head_events l1_proved \
-               ON pb.l1_block_number = l1_proved.l1_block_number \
-             WHERE l1_proved.block_ts >= (toUInt64(now()) - {secs}) \
-               AND b.batch_id != 0 \
-             ORDER BY b.batch_id ASC",
+            "SELECT batch_bucket AS batch_id, \
+                    toUInt64(avg(seconds_to_prove)) AS seconds_to_prove \
+             FROM ( \
+                SELECT intDiv(b.batch_id, {bucket}) * {bucket} AS batch_bucket, \
+                       (l1_proved.block_ts - l1_proposed.block_ts) AS seconds_to_prove \
+                FROM {db}.batches b \
+                JOIN {db}.proved_batches pb ON b.batch_id = pb.batch_id \
+                JOIN {db}.l1_head_events l1_proposed \
+                  ON b.l1_block_number = l1_proposed.l1_block_number \
+                JOIN {db}.l1_head_events l1_proved \
+                  ON pb.l1_block_number = l1_proved.l1_block_number \
+                WHERE l1_proved.block_ts >= (toUInt64(now()) - {secs}) \
+                  AND b.batch_id != 0 \
+             ) AS sub \
+             GROUP BY batch_bucket \
+             ORDER BY batch_bucket ASC",
+            bucket = bucket,
             secs = range.seconds(),
             db = self.db_name,
         );
@@ -1263,14 +1389,68 @@ impl ClickhouseReader {
     }
 
     /// Get verify times in seconds for batches verified within the given range
-    pub async fn get_verify_times(&self, range: TimeRange) -> Result<Vec<BatchVerifyTimeRow>> {
+    pub async fn get_verify_times(
+        &self,
+        range: TimeRange,
+        bucket: Option<u64>,
+    ) -> Result<Vec<BatchVerifyTimeRow>> {
+        let bucket = bucket.unwrap_or(1);
+
+        if bucket <= 1 {
+            // Non-bucketed implementation
+            let mv_query = format!(
+                "SELECT batch_id, toUInt64(verify_time_ms / 1000) AS seconds_to_verify \
+                 FROM {db}.batch_verify_times_mv \
+                 WHERE verified_at >= now64() - INTERVAL {interval} \
+                   AND verify_time_ms > 60000 \
+                   AND batch_id != 0 \
+                 ORDER BY batch_id ASC",
+                interval = range.interval(),
+                db = self.db_name,
+            );
+
+            let rows = self.execute::<BatchVerifyTimeRow>(&mv_query).await?;
+            if !rows.is_empty() {
+                return Ok(rows);
+            }
+
+            let fallback_query = format!(
+                "SELECT toUInt64(pb.batch_id) AS batch_id, \
+                        (l1_verified.block_ts - l1_proved.block_ts) AS seconds_to_verify \
+                 FROM {db}.proved_batches pb \
+                 INNER JOIN {db}.verified_batches vb \
+                    ON pb.batch_id = vb.batch_id AND pb.block_hash = vb.block_hash \
+                 INNER JOIN {db}.l1_head_events l1_proved \
+                    ON pb.l1_block_number = l1_proved.l1_block_number \
+                 INNER JOIN {db}.l1_head_events l1_verified \
+                    ON vb.l1_block_number = l1_verified.l1_block_number \
+                 WHERE l1_verified.block_ts >= (toUInt64(now()) - {}) \
+                   AND l1_verified.block_ts > l1_proved.block_ts \
+                   AND (l1_verified.block_ts - l1_proved.block_ts) > 60 \
+                   AND pb.batch_id != 0",
+                range.seconds(),
+                db = self.db_name
+            );
+
+            let rows = self.execute::<BatchVerifyTimeRow>(&fallback_query).await?;
+            return Ok(rows);
+        }
+
+        // Bucketed implementation using SQL aggregation
         let mv_query = format!(
-            "SELECT batch_id, toUInt64(verify_time_ms / 1000) AS seconds_to_verify \
-             FROM {db}.batch_verify_times_mv \
-             WHERE verified_at >= now64() - INTERVAL {interval} \
-               AND verify_time_ms > 60000 \
-               AND batch_id != 0 \
-             ORDER BY batch_id ASC",
+            "SELECT batch_bucket AS batch_id, \
+                    toUInt64(avg(seconds_to_verify)) AS seconds_to_verify \
+             FROM ( \
+                SELECT intDiv(batch_id, {bucket}) * {bucket} AS batch_bucket, \
+                       toUInt64(verify_time_ms / 1000) AS seconds_to_verify \
+                FROM {db}.batch_verify_times_mv \
+                WHERE verified_at >= now64() - INTERVAL {interval} \
+                  AND verify_time_ms > 60000 \
+                  AND batch_id != 0 \
+             ) AS sub \
+             GROUP BY batch_bucket \
+             ORDER BY batch_bucket ASC",
+            bucket = bucket,
             interval = range.interval(),
             db = self.db_name,
         );
@@ -1280,21 +1460,29 @@ impl ClickhouseReader {
             return Ok(rows);
         }
 
+        // Fallback with bucketing
         let fallback_query = format!(
-            "SELECT toUInt64(pb.batch_id) AS batch_id, \
-                    (l1_verified.block_ts - l1_proved.block_ts) AS seconds_to_verify \
-             FROM {db}.proved_batches pb \
-             INNER JOIN {db}.verified_batches vb \
-                ON pb.batch_id = vb.batch_id AND pb.block_hash = vb.block_hash \
-             INNER JOIN {db}.l1_head_events l1_proved \
-                ON pb.l1_block_number = l1_proved.l1_block_number \
-             INNER JOIN {db}.l1_head_events l1_verified \
-                ON vb.l1_block_number = l1_verified.l1_block_number \
-             WHERE l1_verified.block_ts >= (toUInt64(now()) - {}) \
-               AND l1_verified.block_ts > l1_proved.block_ts \
-               AND (l1_verified.block_ts - l1_proved.block_ts) > 60 \
-               AND pb.batch_id != 0",
-            range.seconds(),
+            "SELECT batch_bucket AS batch_id, \
+                    toUInt64(avg(seconds_to_verify)) AS seconds_to_verify \
+             FROM ( \
+                SELECT intDiv(pb.batch_id, {bucket}) * {bucket} AS batch_bucket, \
+                       (l1_verified.block_ts - l1_proved.block_ts) AS seconds_to_verify \
+                FROM {db}.proved_batches pb \
+                INNER JOIN {db}.verified_batches vb \
+                   ON pb.batch_id = vb.batch_id AND pb.block_hash = vb.block_hash \
+                INNER JOIN {db}.l1_head_events l1_proved \
+                   ON pb.l1_block_number = l1_proved.l1_block_number \
+                INNER JOIN {db}.l1_head_events l1_verified \
+                   ON vb.l1_block_number = l1_verified.l1_block_number \
+                WHERE l1_verified.block_ts >= (toUInt64(now()) - {secs}) \
+                  AND l1_verified.block_ts > l1_proved.block_ts \
+                  AND (l1_verified.block_ts - l1_proved.block_ts) > 60 \
+                  AND pb.batch_id != 0 \
+             ) AS sub \
+             GROUP BY batch_bucket \
+             ORDER BY batch_bucket ASC",
+            bucket = bucket,
+            secs = range.seconds(),
             db = self.db_name
         );
 
@@ -1654,15 +1842,56 @@ impl ClickhouseReader {
         &self,
         sequencer: Option<AddressBytes>,
         range: TimeRange,
+        bucket: Option<u64>,
     ) -> Result<Vec<L2GasUsedRow>> {
+        let bucket = bucket.unwrap_or(1);
+
+        if bucket <= 1 {
+            // Non-bucketed implementation
+            #[derive(Row, Deserialize)]
+            struct RawRow {
+                l2_block_number: u64,
+                block_time: u64,
+                gas_used: u64,
+            }
+
+            let mut query = format!(
+                "SELECT h.l2_block_number, h.block_ts AS block_time, toUInt64(sum_gas_used) AS gas_used \
+                 FROM {db}.l2_head_events h \
+                 WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
+                   AND {filter}",
+                interval = range.interval(),
+                filter = self.reorg_filter("h"),
+                db = self.db_name,
+            );
+            if let Some(addr) = sequencer {
+                query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
+            }
+            query.push_str(" ORDER BY l2_block_number ASC");
+
+            let rows = self.execute::<RawRow>(&query).await?;
+            return Ok(rows
+                .into_iter()
+                .map(|r| {
+                    let dt = Utc.timestamp_opt(r.block_time as i64, 0).unwrap();
+                    L2GasUsedRow {
+                        l2_block_number: r.l2_block_number,
+                        block_time: dt,
+                        gas_used: r.gas_used,
+                    }
+                })
+                .collect());
+        }
+
+        // Bucketed implementation using SQL aggregation
         #[derive(Row, Deserialize)]
-        struct RawRow {
+        struct AggRow {
             l2_block_number: u64,
             block_time: u64,
             gas_used: u64,
         }
 
-        let mut query = format!(
+        let mut inner = format!(
             "SELECT h.l2_block_number, h.block_ts AS block_time, toUInt64(sum_gas_used) AS gas_used \
              FROM {db}.l2_head_events h \
              WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
@@ -1672,11 +1901,26 @@ impl ClickhouseReader {
             db = self.db_name,
         );
         if let Some(addr) = sequencer {
-            query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
+            inner.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
         }
-        query.push_str(" ORDER BY l2_block_number ASC");
 
-        let rows = self.execute::<RawRow>(&query).await?;
+        let query = format!(
+            "SELECT l2_bucket AS l2_block_number, \
+                    max(block_time) AS block_time, \
+                    toUInt64(avg(gas_used)) AS gas_used \
+             FROM ( \
+                SELECT intDiv(l2_block_number, {bucket}) * {bucket} AS l2_bucket, \
+                       block_time, \
+                       gas_used \
+                FROM ({inner}) AS base \
+             ) AS sub \
+             GROUP BY l2_bucket \
+             ORDER BY l2_bucket ASC",
+            bucket = bucket,
+            inner = inner,
+        );
+
+        let rows = self.execute::<AggRow>(&query).await?;
         Ok(rows
             .into_iter()
             .map(|r| {
@@ -1860,16 +2104,65 @@ impl ClickhouseReader {
         &self,
         sequencer: Option<AddressBytes>,
         range: TimeRange,
+        bucket: Option<u64>,
     ) -> Result<Vec<BlockFeeComponentRow>> {
+        let bucket = bucket.unwrap_or(1);
+
+        if bucket <= 1 {
+            // Non-bucketed implementation
+            #[derive(Row, Deserialize)]
+            struct RawRow {
+                l2_block_number: u64,
+                priority_fee: u128,
+                base_fee: u128,
+                l1_data_cost: Option<u128>,
+            }
+
+            let mut query = format!(
+                "SELECT h.l2_block_number, \
+                        sum_priority_fee AS priority_fee, \
+                        sum_base_fee AS base_fee, \
+                        toNullable(if(b.batch_size > 0, intDiv(dc.cost, b.batch_size), NULL)) AS l1_data_cost \
+                 FROM {db}.l2_head_events h \
+                 LEFT JOIN {db}.batch_blocks bb \
+                   ON h.l2_block_number = bb.l2_block_number \
+                 LEFT JOIN {db}.batches b \
+                   ON bb.batch_id = b.batch_id \
+                 LEFT JOIN {db}.l1_data_costs dc \
+                   ON b.batch_id = dc.batch_id AND b.l1_block_number = dc.l1_block_number \
+                 WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
+                   AND {filter}",
+                interval = range.interval(),
+                filter = self.reorg_filter("h"),
+                db = self.db_name,
+            );
+            if let Some(addr) = sequencer {
+                query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
+            }
+            query.push_str(" ORDER BY l2_block_number ASC");
+
+            let rows = self.execute::<RawRow>(&query).await?;
+            return Ok(rows
+                .into_iter()
+                .map(|r| BlockFeeComponentRow {
+                    l2_block_number: r.l2_block_number,
+                    priority_fee: r.priority_fee,
+                    base_fee: r.base_fee,
+                    l1_data_cost: r.l1_data_cost,
+                })
+                .collect());
+        }
+
+        // Bucketed implementation using SQL aggregation
         #[derive(Row, Deserialize)]
-        struct RawRow {
+        struct AggRow {
             l2_block_number: u64,
             priority_fee: u128,
             base_fee: u128,
             l1_data_cost: Option<u128>,
         }
 
-        let mut query = format!(
+        let mut inner = format!(
             "SELECT h.l2_block_number, \
                     sum_priority_fee AS priority_fee, \
                     sum_base_fee AS base_fee, \
@@ -1888,11 +2181,28 @@ impl ClickhouseReader {
             db = self.db_name,
         );
         if let Some(addr) = sequencer {
-            query.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
+            inner.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
         }
-        query.push_str(" ORDER BY l2_block_number ASC");
 
-        let rows = self.execute::<RawRow>(&query).await?;
+        let query = format!(
+            "SELECT l2_bucket AS l2_block_number, \
+                    sum(priority_fee) AS priority_fee, \
+                    sum(base_fee) AS base_fee, \
+                    if(sum(if(l1_data_cost IS NOT NULL, 1, 0)) > 0, sum(l1_data_cost), NULL) AS l1_data_cost \
+             FROM ( \
+                SELECT intDiv(l2_block_number, {bucket}) * {bucket} AS l2_bucket, \
+                       priority_fee, \
+                       base_fee, \
+                       l1_data_cost \
+                FROM ({inner}) AS base \
+             ) AS sub \
+             GROUP BY l2_bucket \
+             ORDER BY l2_bucket ASC",
+            bucket = bucket,
+            inner = inner,
+        );
+
+        let rows = self.execute::<AggRow>(&query).await?;
         Ok(rows
             .into_iter()
             .map(|r| BlockFeeComponentRow {

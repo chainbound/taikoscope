@@ -26,7 +26,7 @@ async fn fee_components_returns_expected_rows() {
     let url = url::Url::parse(mock.url()).unwrap();
     let reader = ClickhouseReader::new(url, "db".to_owned(), "user".into(), "pass".into()).unwrap();
 
-    let rows = reader.get_l2_fee_components(None, TimeRange::LastHour).await.unwrap();
+    let rows = reader.get_l2_fee_components(None, TimeRange::LastHour, None).await.unwrap();
 
     assert_eq!(
         rows,
