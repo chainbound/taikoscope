@@ -1,12 +1,7 @@
 //! Data aggregation utilities
 
-use api_types::BlockTransactionsItem;
-
 use api_types::{AvgBatchBlobCountRow, BatchFeeComponentRow};
-use clickhouse_lib::{
-    BatchBlobCountRow, BatchProveTimeRow, BatchVerifyTimeRow, BlockFeeComponentRow, L2BlockTimeRow,
-    L2GasUsedRow, L2TpsRow, TimeRange,
-};
+use clickhouse_lib::{BatchBlobCountRow, L2BlockTimeRow, L2TpsRow, TimeRange};
 use std::collections::BTreeMap;
 
 /// Determine bucket size based on time range
@@ -82,53 +77,6 @@ pub fn aggregate_l2_block_times(rows: Vec<L2BlockTimeRow>, bucket: u64) -> Vec<L
         .collect()
 }
 
-/// Aggregate L2 gas used by bucket size
-pub fn aggregate_l2_gas_used(rows: Vec<L2GasUsedRow>, bucket: u64) -> Vec<L2GasUsedRow> {
-    let bucket = bucket.max(1);
-    let mut groups: BTreeMap<u64, Vec<L2GasUsedRow>> = BTreeMap::new();
-    for row in rows {
-        groups.entry(row.l2_block_number / bucket).or_default().push(row);
-    }
-    groups
-        .into_iter()
-        .map(|(g, mut rs)| {
-            rs.sort_by_key(|r| r.l2_block_number);
-            let last_time = rs.last().map(|r| r.block_time).unwrap_or_default();
-            let (sum, count) = rs.iter().fold((0u64, 0u64), |(s, c), r| (s + r.gas_used, c + 1));
-            let avg = if count > 0 { sum / count } else { 0 };
-            L2GasUsedRow { l2_block_number: g * bucket, block_time: last_time, gas_used: avg }
-        })
-        .collect()
-}
-
-/// Aggregate L2 fee components by bucket size
-pub fn aggregate_l2_fee_components(
-    rows: Vec<BlockFeeComponentRow>,
-    bucket: u64,
-) -> Vec<BlockFeeComponentRow> {
-    let bucket = bucket.max(1);
-    let mut groups: BTreeMap<u64, Vec<BlockFeeComponentRow>> = BTreeMap::new();
-    for row in rows {
-        groups.entry(row.l2_block_number / bucket).or_default().push(row);
-    }
-    groups
-        .into_iter()
-        .map(|(g, rs)| {
-            let sum_priority: u128 = rs.iter().map(|r| r.priority_fee).sum();
-            let sum_base: u128 = rs.iter().map(|r| r.base_fee).sum();
-            let (sum_l1, any): (u128, bool) = rs.iter().fold((0, false), |(s, a), r| {
-                (s + r.l1_data_cost.unwrap_or(0), a || r.l1_data_cost.is_some())
-            });
-            BlockFeeComponentRow {
-                l2_block_number: g * bucket,
-                priority_fee: sum_priority,
-                base_fee: sum_base,
-                l1_data_cost: any.then_some(sum_l1),
-            }
-        })
-        .collect()
-}
-
 /// Aggregate batch fee components by bucket size
 pub fn aggregate_batch_fee_components(
     rows: Vec<BatchFeeComponentRow>,
@@ -185,73 +133,6 @@ pub fn aggregate_l2_tps(rows: Vec<L2TpsRow>, bucket: u64) -> Vec<L2TpsRow> {
         .collect()
 }
 
-/// Aggregate block transactions by bucket size
-pub fn aggregate_block_transactions(
-    rows: Vec<BlockTransactionsItem>,
-    bucket: u64,
-) -> Vec<BlockTransactionsItem> {
-    let bucket = bucket.max(1);
-    let mut groups: BTreeMap<u64, Vec<BlockTransactionsItem>> = BTreeMap::new();
-    for row in rows {
-        groups.entry(row.block / bucket).or_default().push(row);
-    }
-    groups
-        .into_iter()
-        .map(|(g, mut rs)| {
-            rs.sort_by_key(|r| r.block);
-            let last_seq = rs.last().map(|r| r.sequencer.clone()).unwrap_or_default();
-            let last_time = rs.last().map(|r| r.block_time).unwrap_or_default();
-            let (sum, count) = rs.iter().fold((0u64, 0u64), |(s, c), r| (s + r.txs as u64, c + 1));
-            let avg = if count > 0 { (sum / count) as u32 } else { 0 };
-            BlockTransactionsItem {
-                block: g * bucket,
-                txs: avg,
-                sequencer: last_seq,
-                block_time: last_time,
-            }
-        })
-        .collect()
-}
-
-/// Aggregate prove times by bucket size
-pub fn aggregate_prove_times(rows: Vec<BatchProveTimeRow>, bucket: u64) -> Vec<BatchProveTimeRow> {
-    let bucket = bucket.max(1);
-    let mut groups: BTreeMap<u64, Vec<BatchProveTimeRow>> = BTreeMap::new();
-    for row in rows {
-        groups.entry(row.batch_id / bucket).or_default().push(row);
-    }
-    groups
-        .into_iter()
-        .map(|(g, rs)| {
-            let (sum, count) =
-                rs.iter().fold((0u64, 0u64), |(s, c), r| (s + r.seconds_to_prove, c + 1));
-            let avg = if count > 0 { sum / count } else { 0 };
-            BatchProveTimeRow { batch_id: g * bucket, seconds_to_prove: avg }
-        })
-        .collect()
-}
-
-/// Aggregate verify times by bucket size
-pub fn aggregate_verify_times(
-    rows: Vec<BatchVerifyTimeRow>,
-    bucket: u64,
-) -> Vec<BatchVerifyTimeRow> {
-    let bucket = bucket.max(1);
-    let mut groups: BTreeMap<u64, Vec<BatchVerifyTimeRow>> = BTreeMap::new();
-    for row in rows {
-        groups.entry(row.batch_id / bucket).or_default().push(row);
-    }
-    groups
-        .into_iter()
-        .map(|(g, rs)| {
-            let (sum, count) =
-                rs.iter().fold((0u64, 0u64), |(s, c), r| (s + r.seconds_to_verify, c + 1));
-            let avg = if count > 0 { sum / count } else { 0 };
-            BatchVerifyTimeRow { batch_id: g * bucket, seconds_to_verify: avg }
-        })
-        .collect()
-}
-
 /// Aggregate blobs per batch by bucket size
 pub fn aggregate_blobs_per_batch(
     rows: Vec<BatchBlobCountRow>,
@@ -295,32 +176,6 @@ mod tests {
         }
     }
 
-    fn create_l2_gas_used_row(
-        block_num: u64,
-        gas_used: u64,
-        time_offset_secs: i64,
-    ) -> L2GasUsedRow {
-        L2GasUsedRow {
-            l2_block_number: block_num,
-            block_time: Utc::now() + chrono::Duration::seconds(time_offset_secs),
-            gas_used,
-        }
-    }
-
-    fn create_block_fee_component_row(
-        block_num: u64,
-        priority_fee: u128,
-        base_fee: u128,
-        l1_cost: Option<u128>,
-    ) -> BlockFeeComponentRow {
-        BlockFeeComponentRow {
-            l2_block_number: block_num,
-            priority_fee,
-            base_fee,
-            l1_data_cost: l1_cost,
-        }
-    }
-
     #[allow(clippy::too_many_arguments)]
     fn create_batch_fee_component_row(
         batch_id: u64,
@@ -341,20 +196,6 @@ mod tests {
             base_fee,
             l1_data_cost: l1_cost,
             amortized_prove_cost: prove_cost,
-        }
-    }
-
-    fn create_block_transactions_item(
-        block: u64,
-        txs: u32,
-        sequencer: &str,
-        time_offset_secs: i64,
-    ) -> BlockTransactionsItem {
-        BlockTransactionsItem {
-            block,
-            txs,
-            sequencer: sequencer.to_owned(),
-            block_time: Utc::now() + chrono::Duration::seconds(time_offset_secs),
         }
     }
 
@@ -498,104 +339,6 @@ mod tests {
         assert_eq!(result[0].l2_block_number, 10); // bucket becomes 1
     }
 
-    // Tests for aggregate_l2_gas_used
-    #[test]
-    fn test_aggregate_l2_gas_used_empty() {
-        let rows = vec![];
-        let result = aggregate_l2_gas_used(rows, 5);
-        assert_eq!(result.len(), 0);
-    }
-
-    #[test]
-    fn test_aggregate_l2_gas_used_single_row() {
-        let rows = vec![create_l2_gas_used_row(10, 1000000, 0)];
-        let result = aggregate_l2_gas_used(rows, 5);
-
-        assert_eq!(result.len(), 1);
-        assert_eq!(result[0].l2_block_number, 10);
-        assert_eq!(result[0].gas_used, 1000000);
-    }
-
-    #[test]
-    fn test_aggregate_l2_gas_used_averaging() {
-        let rows = vec![
-            create_l2_gas_used_row(10, 1000000, 0),
-            create_l2_gas_used_row(11, 2000000, 1),
-            create_l2_gas_used_row(12, 3000000, 2),
-        ];
-        let result = aggregate_l2_gas_used(rows, 5);
-
-        assert_eq!(result.len(), 1);
-        assert_eq!(result[0].gas_used, 2000000); // (1M + 2M + 3M) / 3 = 2M
-    }
-
-    #[test]
-    fn test_aggregate_l2_gas_used_zero_gas() {
-        let rows = vec![create_l2_gas_used_row(10, 0, 0), create_l2_gas_used_row(11, 1000000, 1)];
-        let result = aggregate_l2_gas_used(rows, 5);
-
-        assert_eq!(result.len(), 1);
-        assert_eq!(result[0].gas_used, 500000); // (0 + 1M) / 2 = 500K
-    }
-
-    // Tests for aggregate_l2_fee_components
-    #[test]
-    fn test_aggregate_l2_fee_components_empty() {
-        let rows = vec![];
-        let result = aggregate_l2_fee_components(rows, 5);
-        assert_eq!(result.len(), 0);
-    }
-
-    #[test]
-    fn test_aggregate_l2_fee_components_single_row() {
-        let rows = vec![create_block_fee_component_row(10, 1000, 2000, Some(500))];
-        let result = aggregate_l2_fee_components(rows, 5);
-
-        assert_eq!(result.len(), 1);
-        assert_eq!(result[0].l2_block_number, 10);
-        assert_eq!(result[0].priority_fee, 1000);
-        assert_eq!(result[0].base_fee, 2000);
-        assert_eq!(result[0].l1_data_cost, Some(500));
-    }
-
-    #[test]
-    fn test_aggregate_l2_fee_components_summation() {
-        let rows = vec![
-            create_block_fee_component_row(10, 1000, 2000, Some(500)),
-            create_block_fee_component_row(11, 1500, 2500, Some(600)),
-        ];
-        let result = aggregate_l2_fee_components(rows, 5);
-
-        assert_eq!(result.len(), 1);
-        assert_eq!(result[0].priority_fee, 2500); // 1000 + 1500
-        assert_eq!(result[0].base_fee, 4500); // 2000 + 2500
-        assert_eq!(result[0].l1_data_cost, Some(1100)); // 500 + 600
-    }
-
-    #[test]
-    fn test_aggregate_l2_fee_components_all_none_l1_cost() {
-        let rows = vec![
-            create_block_fee_component_row(10, 1000, 2000, None),
-            create_block_fee_component_row(11, 1500, 2500, None),
-        ];
-        let result = aggregate_l2_fee_components(rows, 5);
-
-        assert_eq!(result.len(), 1);
-        assert_eq!(result[0].l1_data_cost, None); // Should remain None
-    }
-
-    #[test]
-    fn test_aggregate_l2_fee_components_mixed_l1_cost() {
-        let rows = vec![
-            create_block_fee_component_row(10, 1000, 2000, None),
-            create_block_fee_component_row(11, 1500, 2500, Some(600)),
-        ];
-        let result = aggregate_l2_fee_components(rows, 5);
-
-        assert_eq!(result.len(), 1);
-        assert_eq!(result[0].l1_data_cost, Some(600)); // Should be Some due to any=true
-    }
-
     // Tests for aggregate_batch_fee_components
     #[test]
     fn test_aggregate_batch_fee_components_empty() {
@@ -696,118 +439,6 @@ mod tests {
         assert_eq!(result[0].amortized_prove_cost, Some(300)); // any=true due to first row
     }
 
-    // Tests for aggregate_block_transactions
-    #[test]
-    fn test_aggregate_block_transactions_empty() {
-        let rows = vec![];
-        let result = aggregate_block_transactions(rows, 5);
-        assert_eq!(result.len(), 0);
-    }
-
-    #[test]
-    fn test_aggregate_block_transactions_single_row() {
-        let rows = vec![create_block_transactions_item(10, 25, "seq1", 0)];
-        let result = aggregate_block_transactions(rows, 5);
-
-        assert_eq!(result.len(), 1);
-        assert_eq!(result[0].block, 10);
-        assert_eq!(result[0].txs, 25);
-        assert_eq!(result[0].sequencer, "seq1");
-    }
-
-    #[test]
-    fn test_aggregate_block_transactions_averaging() {
-        let rows = vec![
-            create_block_transactions_item(10, 20, "seq1", 0),
-            create_block_transactions_item(11, 30, "seq2", 1),
-            create_block_transactions_item(12, 40, "seq3", 2),
-        ];
-        let result = aggregate_block_transactions(rows, 5);
-
-        assert_eq!(result.len(), 1);
-        assert_eq!(result[0].txs, 30); // (20 + 30 + 40) / 3 = 30
-        assert_eq!(result[0].sequencer, "seq3"); // Last value
-    }
-
-    #[test]
-    fn test_aggregate_block_transactions_zero_txs() {
-        let rows = vec![
-            create_block_transactions_item(10, 0, "seq1", 0),
-            create_block_transactions_item(11, 50, "seq2", 1),
-        ];
-        let result = aggregate_block_transactions(rows, 5);
-
-        assert_eq!(result.len(), 1);
-        assert_eq!(result[0].txs, 25); // (0 + 50) / 2 = 25
-    }
-
-    #[test]
-    fn test_aggregate_block_transactions_multiple_buckets() {
-        let rows = vec![
-            create_block_transactions_item(2, 20, "seq1", 0),
-            create_block_transactions_item(7, 30, "seq2", 1),
-        ];
-        let result = aggregate_block_transactions(rows, 5);
-
-        assert_eq!(result.len(), 2);
-        // First bucket: block 2 -> bucket 0
-        assert_eq!(result[0].block, 0);
-        assert_eq!(result[0].txs, 20);
-        assert_eq!(result[0].sequencer, "seq1");
-        // Second bucket: block 7 -> bucket 1
-        assert_eq!(result[1].block, 5);
-        assert_eq!(result[1].txs, 30);
-        assert_eq!(result[1].sequencer, "seq2");
-    }
-
-    #[test]
-    fn test_aggregate_block_transactions_large_values() {
-        let rows = vec![
-            create_block_transactions_item(10, u32::MAX - 1, "seq1", 0),
-            create_block_transactions_item(11, u32::MAX, "seq2", 1),
-        ];
-        let result = aggregate_block_transactions(rows, 5);
-
-        assert_eq!(result.len(), 1);
-        // Should handle large values correctly: ((2^32-2) + (2^32-1)) / 2 = 2^32 - 1.5 = 2^32 - 2
-        // (truncated)
-        assert_eq!(result[0].txs, u32::MAX - 1);
-    }
-
-    // Edge case tests for all functions
-    #[test]
-    fn test_all_aggregations_with_bucket_size_1() {
-        // Test that bucket size 1 doesn't change block numbers
-        let l2_time_rows =
-            vec![create_l2_block_time_row(5, 1000, 0), create_l2_block_time_row(10, 2000, 1)];
-        let l2_time_result = aggregate_l2_block_times(l2_time_rows, 1);
-        assert_eq!(l2_time_result.len(), 2);
-        assert_eq!(l2_time_result[0].l2_block_number, 5);
-        assert_eq!(l2_time_result[1].l2_block_number, 10);
-
-        let gas_rows =
-            vec![create_l2_gas_used_row(5, 1000000, 0), create_l2_gas_used_row(10, 2000000, 1)];
-        let gas_result = aggregate_l2_gas_used(gas_rows, 1);
-        assert_eq!(gas_result.len(), 2);
-        assert_eq!(gas_result[0].l2_block_number, 5);
-        assert_eq!(gas_result[1].l2_block_number, 10);
-    }
-
-    #[test]
-    fn test_bucket_size_larger_than_data_range() {
-        // Test when bucket size is larger than the data range
-        let rows = vec![
-            create_l2_block_time_row(1, 1000, 0),
-            create_l2_block_time_row(2, 2000, 1),
-            create_l2_block_time_row(3, 3000, 2),
-        ];
-        let result = aggregate_l2_block_times(rows, 100);
-
-        assert_eq!(result.len(), 1);
-        assert_eq!(result[0].l2_block_number, 0); // All blocks go to bucket 0
-        assert_eq!(result[0].ms_since_prev_block, 2000); // Average
-    }
-
     // Tests for aggregate_l2_tps
     #[test]
     fn test_aggregate_l2_tps_empty() {
@@ -884,147 +515,6 @@ mod tests {
 
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].tps, 2.5); // (1.25 + 2.75 + 3.5) / 3 = 2.5
-    }
-
-    // Tests for aggregate_prove_times
-    #[test]
-    fn test_aggregate_prove_times_empty() {
-        let rows = vec![];
-        let result = aggregate_prove_times(rows, 5);
-        assert_eq!(result.len(), 0);
-    }
-
-    #[test]
-    fn test_aggregate_prove_times_single_row() {
-        let rows = vec![BatchProveTimeRow { batch_id: 10, seconds_to_prove: 1000 }];
-        let result = aggregate_prove_times(rows, 5);
-
-        assert_eq!(result.len(), 1);
-        assert_eq!(result[0].batch_id, 10);
-        assert_eq!(result[0].seconds_to_prove, 1000);
-    }
-
-    #[test]
-    fn test_aggregate_prove_times_multiple_rows() {
-        let rows = vec![
-            BatchProveTimeRow { batch_id: 10, seconds_to_prove: 1000 },
-            BatchProveTimeRow { batch_id: 11, seconds_to_prove: 2000 },
-            BatchProveTimeRow { batch_id: 12, seconds_to_prove: 3000 },
-        ];
-        let result = aggregate_prove_times(rows, 5);
-
-        assert_eq!(result.len(), 1);
-        assert_eq!(result[0].batch_id, 10);
-        assert_eq!(result[0].seconds_to_prove, 2000); // (1000 + 2000 + 3000) / 3 = 2000
-    }
-
-    #[test]
-    fn test_aggregate_prove_times_multiple_buckets() {
-        let rows = vec![
-            BatchProveTimeRow { batch_id: 2, seconds_to_prove: 1000 },
-            BatchProveTimeRow { batch_id: 7, seconds_to_prove: 2000 },
-        ];
-        let result = aggregate_prove_times(rows, 5);
-
-        assert_eq!(result.len(), 2);
-        // First bucket: batch 2 -> bucket 0
-        assert_eq!(result[0].batch_id, 0);
-        assert_eq!(result[0].seconds_to_prove, 1000);
-        // Second bucket: batch 7 -> bucket 1
-        assert_eq!(result[1].batch_id, 5);
-        assert_eq!(result[1].seconds_to_prove, 2000);
-    }
-
-    #[test]
-    fn test_aggregate_prove_times_zero_seconds() {
-        let rows = vec![BatchProveTimeRow { batch_id: 10, seconds_to_prove: 0 }];
-        let result = aggregate_prove_times(rows, 5);
-
-        assert_eq!(result.len(), 1);
-        assert_eq!(result[0].batch_id, 10);
-        assert_eq!(result[0].seconds_to_prove, 0);
-    }
-
-    #[test]
-    fn test_aggregate_prove_times_zero_bucket() {
-        let rows = vec![
-            BatchProveTimeRow { batch_id: 10, seconds_to_prove: 60 },
-            BatchProveTimeRow { batch_id: 20, seconds_to_prove: 120 },
-        ];
-        let result = aggregate_prove_times(rows, 0);
-        assert_eq!(result.len(), 2);
-        assert_eq!(result[0].batch_id, 10);
-        assert_eq!(result[0].seconds_to_prove, 60);
-    }
-
-    // Tests for aggregate_verify_times
-    #[test]
-    fn test_aggregate_verify_times_empty() {
-        let rows = vec![];
-        let result = aggregate_verify_times(rows, 5);
-        assert_eq!(result.len(), 0);
-    }
-
-    #[test]
-    fn test_aggregate_verify_times_single_row() {
-        let rows = vec![BatchVerifyTimeRow { batch_id: 10, seconds_to_verify: 60 }];
-        let result = aggregate_verify_times(rows, 5);
-        assert_eq!(result.len(), 1);
-        assert_eq!(result[0].batch_id, 10);
-        assert_eq!(result[0].seconds_to_verify, 60);
-    }
-
-    #[test]
-    fn test_aggregate_verify_times_multiple_rows() {
-        let rows = vec![
-            BatchVerifyTimeRow { batch_id: 10, seconds_to_verify: 60 },
-            BatchVerifyTimeRow { batch_id: 12, seconds_to_verify: 120 },
-            BatchVerifyTimeRow { batch_id: 14, seconds_to_verify: 180 },
-        ];
-        let result = aggregate_verify_times(rows, 5);
-        assert_eq!(result.len(), 1);
-        assert_eq!(result[0].batch_id, 10);
-        assert_eq!(result[0].seconds_to_verify, 120); // (60 + 120 + 180) / 3 = 120
-    }
-
-    #[test]
-    fn test_aggregate_verify_times_multiple_buckets() {
-        let rows = vec![
-            BatchVerifyTimeRow { batch_id: 10, seconds_to_verify: 60 },
-            BatchVerifyTimeRow { batch_id: 12, seconds_to_verify: 120 },
-            BatchVerifyTimeRow { batch_id: 20, seconds_to_verify: 180 },
-            BatchVerifyTimeRow { batch_id: 22, seconds_to_verify: 240 },
-        ];
-        let result = aggregate_verify_times(rows, 5);
-        assert_eq!(result.len(), 2);
-        assert_eq!(result[0].batch_id, 10);
-        assert_eq!(result[0].seconds_to_verify, 90); // (60 + 120) / 2 = 90
-        assert_eq!(result[1].batch_id, 20);
-        assert_eq!(result[1].seconds_to_verify, 210); // (180 + 240) / 2 = 210
-    }
-
-    #[test]
-    fn test_aggregate_verify_times_zero_seconds() {
-        let rows = vec![
-            BatchVerifyTimeRow { batch_id: 10, seconds_to_verify: 0 },
-            BatchVerifyTimeRow { batch_id: 12, seconds_to_verify: 60 },
-        ];
-        let result = aggregate_verify_times(rows, 5);
-        assert_eq!(result.len(), 1);
-        assert_eq!(result[0].batch_id, 10);
-        assert_eq!(result[0].seconds_to_verify, 30); // (0 + 60) / 2 = 30
-    }
-
-    #[test]
-    fn test_aggregate_verify_times_zero_bucket() {
-        let rows = vec![
-            BatchVerifyTimeRow { batch_id: 10, seconds_to_verify: 60 },
-            BatchVerifyTimeRow { batch_id: 20, seconds_to_verify: 120 },
-        ];
-        let result = aggregate_verify_times(rows, 0);
-        assert_eq!(result.len(), 2);
-        assert_eq!(result[0].batch_id, 10);
-        assert_eq!(result[0].seconds_to_verify, 60);
     }
 
     // Tests for aggregate_blobs_per_batch
