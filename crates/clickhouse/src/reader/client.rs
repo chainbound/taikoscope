@@ -2195,7 +2195,7 @@ impl ClickhouseReader {
         }
         let query = format!(
             "SELECT l2_bucket AS l2_block_number, \
-                    avg(tps) AS tps \
+                    ifNull(avg(tps), 0.0) AS tps \
              FROM ( \
                 SELECT intDiv(l2_block_number, {bucket}) * {bucket} AS l2_bucket, \
                        toFloat64(sum_tx) * 1000.0 / ms_since_prev_block AS tps \
