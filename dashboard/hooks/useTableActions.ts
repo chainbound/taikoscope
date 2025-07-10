@@ -210,7 +210,6 @@ export const useTableActions = (
                         rows: (refreshTxRes.data || []).map((t) => ({
                           block: blockLink(t.block),
                           txs: t.txs,
-                          sequencer: t.sequencer,
                         })) as unknown as Record<
                           string,
                           React.ReactNode | string | number
@@ -270,7 +269,6 @@ export const useTableActions = (
           rows: (txRes.data || []).map((t) => ({
             block: blockLink(t.block),
             txs: t.txs,
-            sequencer: t.sequencer,
           })) as unknown as Record<string, React.ReactNode | string | number>[],
           pagination: {
             page,
