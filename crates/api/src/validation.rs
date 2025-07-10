@@ -96,6 +96,71 @@ pub struct ProfitQuery {
     pub order: Option<String>,
 }
 
+/// Unified query parameters that support both regular and aggregated modes
+#[derive(Debug, Deserialize, ToSchema, IntoParams)]
+pub struct UnifiedQuery {
+    /// Common query parameters
+    #[serde(flatten)]
+    pub common: CommonQuery,
+    /// Enable aggregated mode (presence of this parameter triggers aggregation)
+    pub aggregated: Option<String>,
+    /// Maximum number of items to return (only for regular mode)
+    pub limit: Option<u64>,
+    /// Return items after this cursor (only for regular mode)
+    pub starting_after: Option<u64>,
+    /// Return items before this cursor (only for regular mode)
+    pub ending_before: Option<u64>,
+}
+
+/// Query mode determined from parameters
+#[derive(Debug, Clone)]
+pub enum QueryMode {
+    /// Regular paginated mode with specified limit
+    Regular {
+        /// Maximum number of items to return
+        limit: u64,
+    },
+    /// Aggregated mode with automatic bucketing
+    Aggregated,
+}
+
+/// Validate unified query parameters and determine query mode
+pub fn validate_unified_query(
+    params: &UnifiedQuery,
+    max_limit: u64,
+) -> Result<QueryMode, ErrorResponse> {
+    // Validate common time range parameters
+    validate_time_range(&params.common.time_range)?;
+
+    // Check if aggregated mode is enabled (parameter present)
+    let is_aggregated = params.aggregated.is_some();
+
+    if is_aggregated {
+        // In aggregated mode, pagination parameters are not allowed
+        if params.limit.is_some() ||
+            params.starting_after.is_some() ||
+            params.ending_before.is_some()
+        {
+            return Err(ErrorResponse::new(
+                "invalid-params",
+                "Bad Request",
+                StatusCode::BAD_REQUEST,
+                "Pagination parameters (limit, starting_after, ending_before) cannot be used with aggregated mode",
+            ));
+        }
+        Ok(QueryMode::Aggregated)
+    } else {
+        // In regular mode, validate pagination parameters
+        let limit = validate_pagination(
+            params.starting_after.as_ref(),
+            params.ending_before.as_ref(),
+            params.limit.as_ref(),
+            max_limit,
+        )?;
+        Ok(QueryMode::Regular { limit })
+    }
+}
+
 /// Validate time range parameters for logical consistency
 pub fn validate_time_range(params: &TimeRangeParams) -> Result<(), ErrorResponse> {
     // Check for mutually exclusive parameters

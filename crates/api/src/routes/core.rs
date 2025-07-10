@@ -1,11 +1,13 @@
 //! Core simple API endpoints
 
 use crate::{
+    helpers::bucket_size_from_range,
     state::{ApiState, MAX_TABLE_LIMIT},
     validation::{
-        CommonQuery, PaginatedQuery, ProfitQuery, has_time_range_params, resolve_time_range_bounds,
-        resolve_time_range_enum, resolve_time_range_since, validate_pagination,
-        validate_range_exclusivity, validate_time_range,
+        CommonQuery, PaginatedQuery, ProfitQuery, QueryMode, UnifiedQuery, has_time_range_params,
+        resolve_time_range_bounds, resolve_time_range_enum, resolve_time_range_since,
+        validate_pagination, validate_range_exclusivity, validate_time_range,
+        validate_unified_query,
     },
 };
 use alloy_primitives::Address;
@@ -163,98 +165,146 @@ pub async fn avg_blobs_per_batch(
     get,
     path = "/prove-times",
     params(
-        RangeQuery
+        UnifiedQuery
     ),
     responses(
-        (status = 200, description = "Prove times", body = ProveTimesResponse),
+        (status = 200, description = "Prove times (regular or aggregated)", body = ProveTimesResponse),
         (status = 500, description = "Database error", body = ErrorResponse)
     ),
     tag = "taikoscope"
 )]
-/// Get batch proving time metrics for the specified time range.
+/// Get batch proving time metrics.
 ///
-/// Results are ordered by batch id in descending order.
+/// Use ?aggregated for aggregated data with automatic bucketing based on time range.
+/// Without ?aggregated, returns paginated results ordered by batch id in descending order.
+#[allow(clippy::cognitive_complexity)]
 pub async fn prove_times(
-    Query(params): Query<PaginatedQuery>,
+    Query(params): Query<UnifiedQuery>,
     State(state): State<ApiState>,
 ) -> Result<Json<ProveTimesResponse>, ErrorResponse> {
-    // Validate time range parameters
-    validate_time_range(&params.common.time_range)?;
+    let query_mode = validate_unified_query(&params, MAX_TABLE_LIMIT)?;
 
-    // Check for range exclusivity
-    let limit = validate_pagination(
-        params.starting_after.as_ref(),
-        params.ending_before.as_ref(),
-        params.limit.as_ref(),
-        MAX_TABLE_LIMIT,
-    )?;
-    let has_time_range = has_time_range_params(&params.common.time_range);
-    let has_slot_range = params.starting_after.is_some() || params.ending_before.is_some();
-    validate_range_exclusivity(has_time_range, has_slot_range)?;
+    match query_mode {
+        QueryMode::Aggregated => {
+            // Aggregated mode - use time range parameters
+            validate_time_range(&params.common.time_range)?;
+            let has_time_range = has_time_range_params(&params.common.time_range);
+            validate_range_exclusivity(has_time_range, false)?;
 
-    let since = resolve_time_range_since(&params.common.range, &params.common.time_range);
-    let batches = match state
-        .client
-        .get_prove_times_paginated(since, limit, params.starting_after, params.ending_before)
-        .await
-    {
-        Ok(rows) => rows,
-        Err(e) => {
-            tracing::error!(error = %e, "Failed to get prove times");
-            return Err(ErrorResponse::database_error());
+            let time_range =
+                resolve_time_range_enum(&params.common.range, &params.common.time_range);
+            let bucket = bucket_size_from_range(&time_range);
+            let batches = match state.client.get_prove_times(time_range, Some(bucket)).await {
+                Ok(rows) => rows,
+                Err(e) => {
+                    tracing::error!(error = %e, "Failed to get prove times");
+                    return Err(ErrorResponse::database_error());
+                }
+            };
+            tracing::info!(count = batches.len(), "Returning aggregated prove times");
+            Ok(Json(ProveTimesResponse { batches }))
         }
-    };
-    tracing::info!(count = batches.len(), "Returning prove times");
-    Ok(Json(ProveTimesResponse { batches }))
+        QueryMode::Regular { limit } => {
+            // Regular paginated mode
+            validate_time_range(&params.common.time_range)?;
+            let has_time_range = has_time_range_params(&params.common.time_range);
+            let has_slot_range = params.starting_after.is_some() || params.ending_before.is_some();
+            validate_range_exclusivity(has_time_range, has_slot_range)?;
+
+            let since = resolve_time_range_since(&params.common.range, &params.common.time_range);
+            let batches = match state
+                .client
+                .get_prove_times_paginated(
+                    since,
+                    limit,
+                    params.starting_after,
+                    params.ending_before,
+                )
+                .await
+            {
+                Ok(rows) => rows,
+                Err(e) => {
+                    tracing::error!(error = %e, "Failed to get prove times");
+                    return Err(ErrorResponse::database_error());
+                }
+            };
+            tracing::info!(count = batches.len(), "Returning paginated prove times");
+            Ok(Json(ProveTimesResponse { batches }))
+        }
+    }
 }
 
 #[utoipa::path(
     get,
     path = "/verify-times",
     params(
-        PaginatedQuery
+        UnifiedQuery
     ),
     responses(
-        (status = 200, description = "Verify times", body = VerifyTimesResponse),
+        (status = 200, description = "Verify times (regular or aggregated)", body = VerifyTimesResponse),
         (status = 500, description = "Database error", body = ErrorResponse)
     ),
     tag = "taikoscope"
 )]
-/// Get batch verification time metrics for the specified time range.
+/// Get batch verification time metrics.
 ///
-/// Results are ordered by batch id in descending order.
+/// Use ?aggregated for aggregated data with automatic bucketing based on time range.
+/// Without ?aggregated, returns paginated results ordered by batch id in descending order.
+#[allow(clippy::cognitive_complexity)]
 pub async fn verify_times(
-    Query(params): Query<PaginatedQuery>,
+    Query(params): Query<UnifiedQuery>,
     State(state): State<ApiState>,
 ) -> Result<Json<VerifyTimesResponse>, ErrorResponse> {
-    // Validate time range parameters
-    validate_time_range(&params.common.time_range)?;
+    let query_mode = validate_unified_query(&params, MAX_TABLE_LIMIT)?;
 
-    // Check for range exclusivity
-    let limit = validate_pagination(
-        params.starting_after.as_ref(),
-        params.ending_before.as_ref(),
-        params.limit.as_ref(),
-        MAX_TABLE_LIMIT,
-    )?;
-    let has_time_range = has_time_range_params(&params.common.time_range);
-    let has_slot_range = params.starting_after.is_some() || params.ending_before.is_some();
-    validate_range_exclusivity(has_time_range, has_slot_range)?;
+    match query_mode {
+        QueryMode::Aggregated => {
+            // Aggregated mode - use time range parameters
+            validate_time_range(&params.common.time_range)?;
+            let has_time_range = has_time_range_params(&params.common.time_range);
+            validate_range_exclusivity(has_time_range, false)?;
 
-    let since = resolve_time_range_since(&params.common.range, &params.common.time_range);
-    let batches = match state
-        .client
-        .get_verify_times_paginated(since, limit, params.starting_after, params.ending_before)
-        .await
-    {
-        Ok(rows) => rows,
-        Err(e) => {
-            tracing::error!(error = %e, "Failed to get verify times");
-            return Err(ErrorResponse::database_error());
+            let time_range =
+                resolve_time_range_enum(&params.common.range, &params.common.time_range);
+            let bucket = bucket_size_from_range(&time_range);
+            let batches = match state.client.get_verify_times(time_range, Some(bucket)).await {
+                Ok(rows) => rows,
+                Err(e) => {
+                    tracing::error!(error = %e, "Failed to get verify times");
+                    return Err(ErrorResponse::database_error());
+                }
+            };
+            tracing::info!(count = batches.len(), "Returning aggregated verify times");
+            Ok(Json(VerifyTimesResponse { batches }))
         }
-    };
-    tracing::info!(count = batches.len(), "Returning verify times");
-    Ok(Json(VerifyTimesResponse { batches }))
+        QueryMode::Regular { limit } => {
+            // Regular paginated mode
+            validate_time_range(&params.common.time_range)?;
+            let has_time_range = has_time_range_params(&params.common.time_range);
+            let has_slot_range = params.starting_after.is_some() || params.ending_before.is_some();
+            validate_range_exclusivity(has_time_range, has_slot_range)?;
+
+            let since = resolve_time_range_since(&params.common.range, &params.common.time_range);
+            let batches = match state
+                .client
+                .get_verify_times_paginated(
+                    since,
+                    limit,
+                    params.starting_after,
+                    params.ending_before,
+                )
+                .await
+            {
+                Ok(rows) => rows,
+                Err(e) => {
+                    tracing::error!(error = %e, "Failed to get verify times");
+                    return Err(ErrorResponse::database_error());
+                }
+            };
+            tracing::info!(count = batches.len(), "Returning paginated verify times");
+            Ok(Json(VerifyTimesResponse { batches }))
+        }
+    }
 }
 
 #[utoipa::path(
@@ -682,26 +732,30 @@ pub async fn l2_fees(
     get,
     path = "/l2-fee-components",
     params(
-        RangeQuery
+        UnifiedQuery
     ),
     responses(
-        (status = 200, description = "Fee components per block", body = FeeComponentsResponse),
+        (status = 200, description = "Fee components per block (regular or aggregated)", body = FeeComponentsResponse),
         (status = 500, description = "Database error", body = ErrorResponse)
     ),
     tag = "taikoscope"
 )]
-/// Get detailed fee components per block showing priority fee, base fee, and L1 data cost
+/// Get detailed fee components per block showing priority fee, base fee, and L1 data cost.
+///
+/// Use ?aggregated for aggregated data with automatic bucketing based on time range.
+/// Without ?aggregated, returns detailed results without aggregation.
 pub async fn l2_fee_components(
-    Query(params): Query<RangeQuery>,
+    Query(params): Query<UnifiedQuery>,
     State(state): State<ApiState>,
 ) -> Result<Json<FeeComponentsResponse>, ErrorResponse> {
-    validate_time_range(&params.time_range)?;
+    let query_mode = validate_unified_query(&params, MAX_TABLE_LIMIT)?;
 
-    let has_time_range = has_time_range_params(&params.time_range);
+    validate_time_range(&params.common.time_range)?;
+    let has_time_range = has_time_range_params(&params.common.time_range);
     validate_range_exclusivity(has_time_range, false)?;
 
-    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
-    let address = if let Some(addr) = params.address.as_ref() {
+    let time_range = resolve_time_range_enum(&params.common.range, &params.common.time_range);
+    let address = if let Some(addr) = params.common.address.as_ref() {
         match addr.parse::<Address>() {
             Ok(a) => Some(AddressBytes::from(a)),
             Err(e) => {
@@ -718,8 +772,13 @@ pub async fn l2_fee_components(
         None
     };
 
+    let bucket = match query_mode {
+        QueryMode::Aggregated => Some(bucket_size_from_range(&time_range)),
+        QueryMode::Regular { .. } => None,
+    };
+
     let blocks =
-        state.client.get_l2_fee_components(address, time_range, None).await.map_err(|e| {
+        state.client.get_l2_fee_components(address, time_range, bucket).await.map_err(|e| {
             tracing::error!(error = %e, "Failed to get fee components");
             ErrorResponse::database_error()
         })?;
@@ -734,6 +793,11 @@ pub async fn l2_fee_components(
         })
         .collect();
 
+    let mode_desc = match query_mode {
+        QueryMode::Aggregated => "aggregated",
+        QueryMode::Regular { .. } => "regular",
+    };
+    tracing::info!(count = blocks.len(), mode = mode_desc, "Returning fee components");
     Ok(Json(FeeComponentsResponse { blocks }))
 }
 
