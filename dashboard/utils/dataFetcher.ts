@@ -118,7 +118,6 @@ export const fetchMainDashboardData = async (
     sequencerDist: sequencerDistRes.data || [],
     txPerBlock: blockTxRes.data || [],
     blobsPerBatch: batchBlobCountsRes.data || [],
-    
     badRequestResults: allResults.slice(1),
   };
 };

@@ -1,4 +1,4 @@
-const metaEnv = import.meta.env as ImportMetaEnv;
+const metaEnv = import.meta.env as any;
 export const API_BASE: string =
   (metaEnv.VITE_API_BASE ?? metaEnv.API_BASE ?? '') + '/v1';
 
@@ -349,7 +349,7 @@ export const fetchProveTimes = async (
 export const fetchProveTimesAggregated = async (
   range: TimeRange,
 ): Promise<RequestResult<TimeSeriesData[]>> => {
-  const url = `${API_BASE}/prove-times/aggregated?${timeRangeToQuery(range)}`;
+  const url = `${API_BASE}/prove-times?${timeRangeToQuery(range)}&aggregated`;
   const res = await fetchJson<{
     batches: { batch_id: number; seconds_to_prove: number }[];
   }>(url);
@@ -402,7 +402,7 @@ export const fetchVerifyTimes = async (
 export const fetchVerifyTimesAggregated = async (
   range: TimeRange,
 ): Promise<RequestResult<TimeSeriesData[]>> => {
-  const url = `${API_BASE}/verify-times/aggregated?${timeRangeToQuery(range)}`;
+  const url = `${API_BASE}/verify-times?${timeRangeToQuery(range)}&aggregated`;
   const res = await fetchJson<{
     batches: { batch_id: number; seconds_to_verify: number }[];
   }>(url);
@@ -504,7 +504,7 @@ export const fetchL2BlockTimesAggregated = async (
   address?: string,
 ): Promise<RequestResult<TimeSeriesData[]>> => {
   const url =
-    `${API_BASE}/l2-block-times/aggregated?${timeRangeToQuery(range)}` +
+    `${API_BASE}/l2-block-times?${timeRangeToQuery(range)}&aggregated` +
     (address ? `&address=${address}` : '');
   const res = await fetchJson<{
     blocks: {
@@ -602,7 +602,7 @@ export const fetchL2GasUsedAggregated = async (
   address?: string,
 ): Promise<RequestResult<TimeSeriesData[]>> => {
   const url =
-    `${API_BASE}/l2-gas-used/aggregated?${timeRangeToQuery(range)}` +
+    `${API_BASE}/l2-gas-used?${timeRangeToQuery(range)}&aggregated` +
     (address ? `&address=${address}` : '');
   const res = await fetchJson<{
     blocks: { l2_block_number: number; block_time: string; gas_used: number }[];
@@ -730,7 +730,7 @@ export const fetchBlockTransactionsAggregated = async (
   address?: string,
 ): Promise<RequestResult<BlockTransaction[]>> => {
   const url =
-    `${API_BASE}/block-transactions/aggregated?${timeRangeToQuery(range)}` +
+    `${API_BASE}/block-transactions?${timeRangeToQuery(range)}&aggregated` +
     (address ? `&address=${address}` : '');
   const res = await fetchJson<{
     blocks: {
@@ -798,7 +798,7 @@ export const fetchBatchBlobCounts = async (
 export const fetchBatchBlobCountsAggregated = async (
   range: TimeRange,
 ): Promise<RequestResult<BatchBlobCount[]>> => {
-  const url = `${API_BASE}/blobs-per-batch/aggregated?${timeRangeToQuery(range)}`;
+  const url = `${API_BASE}/blobs-per-batch?${timeRangeToQuery(range)}&aggregated`;
   const res = await fetchJson<{
     batches: {
       l1_block_number?: number;
@@ -899,7 +899,7 @@ export const fetchFeeComponents = async (
   address?: string,
 ): Promise<RequestResult<FeeComponent[]>> => {
   const url =
-    `${API_BASE}/l2-fee-components/aggregated?${timeRangeToQuery(range)}` +
+    `${API_BASE}/l2-fee-components?${timeRangeToQuery(range)}&aggregated` +
     (address ? `&address=${address}` : '');
   const res = await fetchJson<{
     blocks: {
@@ -1056,7 +1056,7 @@ export const fetchL2TpsAggregated = async (
   address?: string,
 ): Promise<RequestResult<{ block: number; tps: number }[]>> => {
   const url =
-    `${API_BASE}/l2-tps/aggregated?${timeRangeToQuery(range)}` +
+    `${API_BASE}/l2-tps?${timeRangeToQuery(range)}&aggregated` +
     (address ? `&address=${address}` : '');
   const res = await fetchJson<{
     blocks: { l2_block_number: number; tps: number }[];
