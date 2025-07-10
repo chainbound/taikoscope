@@ -251,7 +251,7 @@ export const loadRefreshRate = (): number => {
   try {
     const stored = localStorage.getItem('refreshRate');
     const value = stored ? parseInt(stored, 10) : NaN;
-    if (!Number.isFinite(value) || value < 3_600_000) {
+    if (!Number.isFinite(value) || value < 300_000) {
       localStorage.removeItem('refreshRate');
       return 3_600_000;
     }
@@ -272,4 +272,4 @@ export const saveRefreshRate = (rate: number): void => {
 };
 
 export const isValidRefreshRate = (rate: number): boolean =>
-  Number.isFinite(rate) && rate >= 3_600_000;
+  Number.isFinite(rate) && rate >= 300_000;

@@ -74,7 +74,7 @@ describe('utils additional', () => {
   });
 
   it('validates refresh rate positively', () => {
-    expect(isValidRefreshRate(3_600_000)).toBe(true);
+    expect(isValidRefreshRate(300_000)).toBe(true);
   });
 
   it('loads refresh rate when localStorage is missing', () => {

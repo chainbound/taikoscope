@@ -180,6 +180,7 @@ describe('utils', () => {
   });
 
   it('validates refresh rate', () => {
+    expect(isValidRefreshRate(300_000)).toBe(true);
     expect(isValidRefreshRate(1000)).toBe(false);
     expect(isValidRefreshRate(-1)).toBe(false);
     expect(isValidRefreshRate(NaN)).toBe(false);
