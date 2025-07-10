@@ -21,7 +21,7 @@ describe('DashboardHeader', () => {
             React.createElement(DashboardHeader, {
               timeRange: '1h',
               onTimeRangeChange: () => { },
-              refreshRate: 60000,
+              refreshRate: 3_600_000,
               onRefreshRateChange: () => { },
               lastRefresh: Date.now(),
               onManualRefresh: () => { },
@@ -53,7 +53,7 @@ describe('DashboardHeader', () => {
             React.createElement(DashboardHeader, {
               timeRange: '1h',
               onTimeRangeChange: () => { },
-              refreshRate: 60000,
+              refreshRate: 3_600_000,
               onRefreshRateChange: () => { },
               lastRefresh: Date.now(),
               onManualRefresh: () => { },
