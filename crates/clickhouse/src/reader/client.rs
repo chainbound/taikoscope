@@ -2821,7 +2821,6 @@ impl ClickhouseReader {
         }
         #[derive(Row, Deserialize)]
         struct AggRow {
-            sequencer: AddressBytes,
             l2_block_number: u64,
             block_time: u64,
             sum_tx: u32,
@@ -2831,9 +2830,9 @@ impl ClickhouseReader {
         if bucket <= 1 {
             let mut query = format!(
                 "SELECT sequencer, h.l2_block_number, h.block_ts AS block_time, sum_tx \
-                 FROM {db}.l2_head_events h \
-                 WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
-                   AND {filter}",
+             FROM {db}.l2_head_events h \
+             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
+               AND {filter}",
                 interval = range.interval(),
                 filter = self.reorg_filter("h"),
                 db = self.db_name,
@@ -2857,9 +2856,9 @@ impl ClickhouseReader {
 
         let mut inner = format!(
             "SELECT sequencer, h.l2_block_number, h.block_ts AS block_time, sum_tx \
-             FROM {db}.l2_head_events h \
-             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
-               AND {filter}",
+         FROM {db}.l2_head_events h \
+         WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
+           AND {filter}",
             interval = range.interval(),
             filter = self.reorg_filter("h"),
             db = self.db_name,
@@ -2867,14 +2866,20 @@ impl ClickhouseReader {
         if let Some(addr) = sequencer {
             inner.push_str(&format!(" AND sequencer = unhex('{}')", encode(addr)));
         }
+
+        // FIXED: Use the working SQL pattern with pre-calculated bucket
         let query = format!(
-            "SELECT intDiv(l2_block_number, {bucket}) * {bucket} AS l2_block_number, \
-                    any(sequencer) AS sequencer, \
-                    max(block_time) AS block_time, \
-                    toUInt32(sum(sum_tx)) AS sum_tx \
-             FROM ({inner}) AS sub \
-             GROUP BY intDiv(l2_block_number, {bucket}) \
-             ORDER BY l2_block_number ASC",
+            "SELECT bucket_num AS l2_block_number, \
+                max(block_time) AS block_time, \
+                toUInt32(sum(sum_tx)) AS sum_tx \
+         FROM ( \
+            SELECT intDiv(l2_block_number, {bucket}) * {bucket} AS bucket_num, \
+                   block_time, \
+                   sum_tx \
+            FROM ({inner}) AS base \
+         ) AS sub \
+         GROUP BY bucket_num \
+         ORDER BY bucket_num ASC",
             bucket = bucket,
             inner = inner,
         );
@@ -2883,7 +2888,7 @@ impl ClickhouseReader {
         Ok(rows
             .into_iter()
             .map(|r| BlockTransactionRow {
-                sequencer: r.sequencer,
+                sequencer: AddressBytes::default(), // Use default/empty sequencer for bucketed data
                 l2_block_number: r.l2_block_number,
                 block_time: Utc.timestamp_opt(r.block_time as i64, 0).unwrap(),
                 sum_tx: r.sum_tx,
