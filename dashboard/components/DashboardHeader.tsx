@@ -305,6 +305,7 @@ export const RefreshRateInput: React.FC<RefreshRateInputProps> = ({
   onRefreshRateChange,
 }) => {
   const options = [
+    { label: 'Off', value: 0 },
     { label: '5 min', value: 5 * 60_000 },
     { label: '10 min', value: 10 * 60_000 },
     { label: '1h', value: 60 * 60_000 },
@@ -329,7 +330,7 @@ export const RefreshRateInput: React.FC<RefreshRateInputProps> = ({
         id="refreshRate"
         value={refreshRate}
         onChange={handleChange}
-        className="p-1 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+        className="p-1 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-center"
       >
         {options.map(({ label, value }) => (
           <option key={value} value={value}>

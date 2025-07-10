@@ -156,7 +156,8 @@ export const useDataFetcher = ({
   };
 
   const { data, mutate, isLoading, isValidating } = useSWR(fetchKey, fetcher, {
-    refreshInterval: Math.max(refreshRate, 300_000),
+    refreshInterval:
+      refreshRate === 0 ? 0 : Math.max(refreshRate, 300_000),
     revalidateOnFocus: false,
     refreshWhenHidden: false,
     onError: () => {
