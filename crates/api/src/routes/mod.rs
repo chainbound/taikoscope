@@ -19,6 +19,8 @@ pub fn router(state: ApiState) -> Router {
         .route("/l2-head-block", get(l2_head_block))
         .route("/l1-head-block", get(l1_head_block))
         .route("/reorgs", get(reorgs))
+        .route("/slashings", get(slashings))
+        .route("/forced-inclusions", get(forced_inclusions))
         .route("/batch-posting-times", get(batch_posting_times))
         .route("/avg-blobs-per-batch", get(avg_blobs_per_batch))
         .route("/blobs-per-batch", get(blobs_per_batch))

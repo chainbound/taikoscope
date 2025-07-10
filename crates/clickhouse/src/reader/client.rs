@@ -445,6 +445,38 @@ impl ClickhouseReader {
         Ok(rows)
     }
 
+    /// Get slashing events that occurred within the given time range
+    pub async fn get_slashing_events_range(
+        &self,
+        since: DateTime<Utc>,
+        until: DateTime<Utc>,
+    ) -> Result<Vec<SlashingEventRow>> {
+        let client = self.base.clone();
+        let sql = "SELECT l1_block_number, validator_addr FROM ?.slashing_events \
+             WHERE inserted_at > toDateTime64(?, 3) \
+               AND inserted_at <= toDateTime64(?, 3) \
+             ORDER BY inserted_at ASC";
+
+        let start = Instant::now();
+        let result = client
+            .query(sql)
+            .bind(Identifier(&self.db_name))
+            .bind(since.timestamp_millis() as f64 / 1000.0)
+            .bind(until.timestamp_millis() as f64 / 1000.0)
+            .fetch_all::<SlashingEventRow>()
+            .await;
+
+        let duration_ms = start.elapsed().as_millis();
+        match &result {
+            Ok(rows) => {
+                debug!(query = sql, duration_ms, rows = rows.len(), "ClickHouse query executed")
+            }
+            Err(e) => error!(query = sql, duration_ms, error = %e, "ClickHouse query failed"),
+        }
+        let rows = result.context("fetching slashing events failed")?;
+        Ok(rows)
+    }
+
     /// Get all forced inclusion events that occurred after the given cutoff time
     pub async fn get_forced_inclusions_since(
         &self,
@@ -460,6 +492,38 @@ impl ClickhouseReader {
             .query(sql)
             .bind(Identifier(&self.db_name))
             .bind(since.timestamp_millis() as f64 / 1000.0)
+            .fetch_all::<ForcedInclusionProcessedRow>()
+            .await;
+
+        let duration_ms = start.elapsed().as_millis();
+        match &result {
+            Ok(rows) => {
+                debug!(query = sql, duration_ms, rows = rows.len(), "ClickHouse query executed")
+            }
+            Err(e) => error!(query = sql, duration_ms, error = %e, "ClickHouse query failed"),
+        }
+        let rows = result.context("fetching forced inclusion events failed")?;
+        Ok(rows)
+    }
+
+    /// Get forced inclusion events that occurred within the given time range
+    pub async fn get_forced_inclusions_range(
+        &self,
+        since: DateTime<Utc>,
+        until: DateTime<Utc>,
+    ) -> Result<Vec<ForcedInclusionProcessedRow>> {
+        let client = self.base.clone();
+        let sql = "SELECT blob_hash FROM ?.forced_inclusion_processed \
+             WHERE inserted_at > toDateTime64(?, 3) \
+               AND inserted_at <= toDateTime64(?, 3) \
+             ORDER BY inserted_at ASC";
+
+        let start = Instant::now();
+        let result = client
+            .query(sql)
+            .bind(Identifier(&self.db_name))
+            .bind(since.timestamp_millis() as f64 / 1000.0)
+            .bind(until.timestamp_millis() as f64 / 1000.0)
             .fetch_all::<ForcedInclusionProcessedRow>()
             .await;
 
