@@ -187,14 +187,12 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     columns: [
       { key: 'block', label: 'L2 Block Number' },
       { key: 'txs', label: 'Tx Count' },
-      { key: 'sequencer', label: 'Sequencer' },
     ],
     mapData: (data) =>
-      (data as { block: number; txs: number; sequencer: string }[]).map(
+      (data as { block: number; txs: number }[]).map(
         (d) => ({
           block: blockLink(d.block),
           txs: d.txs.toLocaleString(),
-          sequencer: addressLink(d.sequencer),
         }),
       ),
     chart: (data) => {

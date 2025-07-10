@@ -427,7 +427,6 @@ async fn block_transactions_endpoint_supports_block_range() {
             {
                 "block": 5,
                 "txs": 3,
-                "sequencer": format!("0x{}", hex::encode([1u8; 20])),
                 "block_time": Utc.timestamp_opt(1000, 0).single().unwrap().to_rfc3339()
             }
         ]

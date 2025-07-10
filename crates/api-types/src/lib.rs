@@ -333,15 +333,13 @@ pub struct SequencerBlocksResponse {
     pub sequencers: Vec<SequencerBlocksItem>,
 }
 
-/// Transaction count for a block and its sequencer.
+/// Transaction count for a block.
 #[derive(Debug, Serialize, ToSchema)]
 pub struct BlockTransactionsItem {
     /// Block number.
     pub block: u64,
     /// Number of transactions in the block.
     pub txs: u32,
-    /// Address of the sequencer that proposed the block.
-    pub sequencer: String,
     /// Timestamp of the block.
     pub block_time: DateTime<Utc>,
 }

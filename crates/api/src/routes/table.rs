@@ -344,7 +344,6 @@ pub async fn block_transactions(
         .map(|r| BlockTransactionsItem {
             block: r.l2_block_number,
             txs: r.sum_tx,
-            sequencer: format!("0x{}", encode(r.sequencer)),
             block_time: r.block_time,
         })
         .collect();

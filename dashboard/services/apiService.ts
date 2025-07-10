@@ -658,7 +658,6 @@ export const fetchSequencerBlocks = async (
 export interface BlockTransaction {
   block: number;
   txs: number;
-  sequencer: string;
   blockTime: number;
 }
 
@@ -694,7 +693,6 @@ export const fetchBlockTransactions = async (
     blocks: {
       block: number;
       txs: number;
-      sequencer: string;
       block_time: string;
     }[];
   }>(url);
@@ -703,7 +701,6 @@ export const fetchBlockTransactions = async (
       ? res.data.blocks.map((b) => ({
         block: b.block,
         txs: b.txs,
-        sequencer: getSequencerName(b.sequencer),
         blockTime: new Date(b.block_time).getTime(),
       }))
       : null,
@@ -739,7 +736,6 @@ export const fetchBlockTransactionsAggregated = async (
     blocks: {
       block: number;
       txs: number;
-      sequencer: string;
       block_time: string;
     }[];
   }>(url);
@@ -748,7 +744,6 @@ export const fetchBlockTransactionsAggregated = async (
       ? res.data.blocks.map((b) => ({
         block: b.block,
         txs: b.txs,
-        sequencer: getSequencerName(b.sequencer),
         blockTime: new Date(b.block_time).getTime(),
       }))
       : null,

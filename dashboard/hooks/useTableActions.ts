@@ -199,25 +199,24 @@ export const useTableActions = (
           setTableView((prev) =>
             prev
               ? {
-                  ...prev,
-                  rows: (refreshDistRes.data || []) as unknown as Record<
-                    string,
-                    string | number
-                  >[],
-                  extraTable: prev.extraTable
-                    ? {
-                        ...prev.extraTable,
-                        rows: (refreshTxRes.data || []).map((t) => ({
-                          block: blockLink(t.block),
-                          txs: t.txs,
-                          sequencer: t.sequencer,
-                        })) as unknown as Record<
-                          string,
-                          React.ReactNode | string | number
-                        >[],
-                      }
-                    : undefined,
-                }
+                ...prev,
+                rows: (refreshDistRes.data || []) as unknown as Record<
+                  string,
+                  string | number
+                >[],
+                extraTable: prev.extraTable
+                  ? {
+                    ...prev.extraTable,
+                    rows: (refreshTxRes.data || []).map((t) => ({
+                      block: blockLink(t.block),
+                      txs: t.txs,
+                    })) as unknown as Record<
+                      string,
+                      React.ReactNode | string | number
+                    >[],
+                  }
+                  : undefined,
+              }
               : null,
           );
         } catch (error) {
@@ -229,15 +228,15 @@ export const useTableActions = (
           setTableView((prev) =>
             prev
               ? {
-                  ...prev,
-                  rows: [],
-                  extraTable: prev.extraTable
-                    ? {
-                        ...prev.extraTable,
-                        rows: [],
-                      }
-                    : undefined,
-                }
+                ...prev,
+                rows: [],
+                extraTable: prev.extraTable
+                  ? {
+                    ...prev.extraTable,
+                    rows: [],
+                  }
+                  : undefined,
+              }
               : null,
           );
         }
@@ -250,9 +249,9 @@ export const useTableActions = (
         (TABLE_CONFIGS['sequencer-dist'].mapData
           ? TABLE_CONFIGS['sequencer-dist'].mapData!(distRes.data)
           : (distRes.data || [])) as unknown as Record<
-          string,
-          React.ReactNode | string | number
-        >[],
+            string,
+            React.ReactNode | string | number
+          >[],
         (row) => {
           const cleanParams: Record<string, string | number> = {
             address: String(row.name),
@@ -265,12 +264,10 @@ export const useTableActions = (
           columns: [
             { key: 'block', label: 'L2 Block Number' },
             { key: 'txs', label: 'Tx Count' },
-            { key: 'sequencer', label: 'Sequencer' },
           ],
           rows: (txRes.data || []).map((t) => ({
             block: blockLink(t.block),
             txs: t.txs,
-            sequencer: t.sequencer,
           })) as unknown as Record<string, React.ReactNode | string | number>[],
           pagination: {
             page,
