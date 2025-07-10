@@ -605,7 +605,7 @@ pub async fn block_profits(
     let mut blocks: Vec<BlockProfitItem> = rows
         .into_iter()
         .map(|r| BlockProfitItem {
-            block: r.l2_block_number,
+            block_number: r.l2_block_number,
             profit: r.priority_fee as i128 + (r.base_fee as i128 * 75 / 100) -
                 r.l1_data_cost.unwrap_or(0) as i128,
         })

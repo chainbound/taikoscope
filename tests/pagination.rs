@@ -425,7 +425,7 @@ async fn block_transactions_endpoint_supports_block_range() {
     let expected = serde_json::json!({
         "blocks": [
             {
-                "block": 5,
+                "block_number": 5,
                 "txs": 3,
                 "block_time": Utc.timestamp_opt(1000, 0).single().unwrap().to_rfc3339()
             }
