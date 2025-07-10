@@ -26,6 +26,7 @@ export const ProfitCalculator: React.FC<ProfitCalculatorProps> = ({
             min={0}
             className="p-1 border rounded-md"
             value={cloudCost}
+            onFocus={(e) => e.target.select()}
             onChange={(e) =>
               onCloudCostChange(Math.max(0, Number(e.target.value)))
             }
@@ -38,6 +39,7 @@ export const ProfitCalculator: React.FC<ProfitCalculatorProps> = ({
             min={0}
             className="p-1 border rounded-md"
             value={proverCost}
+            onFocus={(e) => e.target.select()}
             onChange={(e) =>
               onProverCostChange(Math.max(0, Number(e.target.value)))
             }
