@@ -93,23 +93,23 @@ describe('apiService', () => {
 
   it('transforms block transactions', async () => {
     globalThis.fetch = mockFetch({
-      blocks: [{ block: 1, txs: 3, block_time: '1970-01-01T00:00:01Z' }],
+      blocks: [{ block_number: 1, txs: 3, block_time: '1970-01-01T00:00:01Z' }],
     });
     const txs = await fetchBlockTransactions('1h');
     expect(txs.error).toBeNull();
     expect(txs.data).toStrictEqual([
-      { block: 1, txs: 3, blockTime: new Date('1970-01-01T00:00:01Z').getTime() },
+      { block_number: 1, txs: 3, blockTime: new Date('1970-01-01T00:00:01Z').getTime() },
     ]);
   });
 
   it('transforms block transactions for 15m', async () => {
     globalThis.fetch = mockFetch({
-      blocks: [{ block: 1, txs: 3, block_time: '1970-01-01T00:00:01Z' }],
+      blocks: [{ block_number: 1, txs: 3, block_time: '1970-01-01T00:00:01Z' }],
     });
     const txs = await fetchBlockTransactions('15m');
     expect(txs.error).toBeNull();
     expect(txs.data).toStrictEqual([
-      { block: 1, txs: 3, blockTime: new Date('1970-01-01T00:00:01Z').getTime() },
+      { block_number: 1, txs: 3, blockTime: new Date('1970-01-01T00:00:01Z').getTime() },
     ]);
   });
 

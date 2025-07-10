@@ -337,7 +337,7 @@ pub struct SequencerBlocksResponse {
 #[derive(Debug, Serialize, ToSchema)]
 pub struct BlockTransactionsItem {
     /// Block number.
-    pub block: u64,
+    pub block_number: u64,
     /// Number of transactions in the block.
     pub txs: u32,
     /// Timestamp of the block.
@@ -355,7 +355,7 @@ pub struct BlockTransactionsResponse {
 #[derive(Debug, Serialize, ToSchema)]
 pub struct BlockProfitItem {
     /// Block number.
-    pub block: u64,
+    pub block_number: u64,
     /// Profit in gwei (priority + base - L1 cost).
     pub profit: i128,
 }
@@ -429,7 +429,7 @@ pub struct BatchBlockItem {
     /// Batch ID
     pub batch: u64,
     /// L1 block number that included the batch
-    pub block: u64,
+    pub block_number: u64,
 }
 
 /// Mapping of batches to their corresponding L1 block number.

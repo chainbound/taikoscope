@@ -5,7 +5,7 @@ describe('l1-data-cost mapData', () => {
   const mapData = TABLE_CONFIGS['l1-data-cost'].mapData!;
 
   it('formats block number as link and cost as ETH', () => {
-    const rows = mapData([{ block: 100, cost: 42e9 }]);
+    const rows = mapData([{ block_number: 100, cost: 42e9 }]);
 
     // value should be React element from blockLink
     expect(typeof rows[0].block).toBe('object');

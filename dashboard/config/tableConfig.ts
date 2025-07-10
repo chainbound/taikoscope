@@ -153,7 +153,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     ],
     mapData: (data) =>
       (data as Record<string, any>[]).map((d) => ({
-        block: blockLink(d.block as number),
+        block: blockLink(d.block_number as number),
         batch: d.batch.toLocaleString(),
         blobs: d.blobs.toLocaleString(),
       })),
@@ -189,12 +189,10 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
       { key: 'txs', label: 'Tx Count' },
     ],
     mapData: (data) =>
-      (data as { block: number; txs: number }[]).map(
-        (d) => ({
-          block: blockLink(d.block),
-          txs: d.txs.toLocaleString(),
-        }),
-      ),
+      (data as { block_number: number; txs: number }[]).map((d) => ({
+        block: blockLink(d.block_number),
+        txs: d.txs.toLocaleString(),
+      })),
     chart: (data) => {
       const BlockTxChart = React.lazy(() =>
         import('../components/BlockTxChart').then((m) => ({
@@ -250,8 +248,8 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
       { key: 'cost', label: 'Cost' },
     ],
     mapData: (data) =>
-      (data as { block: number; cost: number }[]).map((d) => ({
-        block: blockLink(d.block),
+      (data as { block_number: number; cost: number }[]).map((d) => ({
+        block: blockLink(d.block_number),
         cost: formatEth(d.cost, 4),
       })),
     urlKey: 'l1-data-cost',
@@ -288,8 +286,8 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
       { key: 'tps', label: 'TPS' },
     ],
     mapData: (data) =>
-      (data as { block: number; tps: number }[]).map((d) => ({
-        block: blockLink(d.block),
+      (data as { block_number: number; tps: number }[]).map((d) => ({
+        block: blockLink(d.block_number),
         tps: d.tps.toFixed(2),
       })),
     chart: (data) => {

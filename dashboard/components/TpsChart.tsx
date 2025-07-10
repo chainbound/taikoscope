@@ -11,7 +11,7 @@ import {
 import { useIsMobile } from '../hooks/useIsMobile';
 
 export interface TpsData {
-  block: number;
+  block_number: number;
   tps: number;
 }
 
@@ -37,7 +37,7 @@ const TpsChartComponent: React.FC<TpsChartProps> = ({ data, lineColor }) => {
       >
         <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
         <XAxis
-          dataKey="block"
+          dataKey="block_number"
           tickFormatter={(v: number) => v.toLocaleString()}
           stroke="#666666"
           fontSize={12}
