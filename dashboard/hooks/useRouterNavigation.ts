@@ -29,11 +29,16 @@ export const useRouterNavigation = () => {
         });
       }
 
+      const view = searchParams.get('view');
+      if (view) {
+        queryParams.view = view;
+      }
+
       const queryString = createSearchParams(queryParams).toString();
       const path = `/table/${tableType}${queryString ? `?${queryString}` : ''}`;
       safeNavigate(navigate, path);
     },
-    [navigate],
+    [navigate, searchParams],
   );
 
   const navigateToSequencer = useCallback(
