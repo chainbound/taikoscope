@@ -74,14 +74,14 @@ describe('utils additional', () => {
   });
 
   it('validates refresh rate positively', () => {
-    expect(isValidRefreshRate(60000)).toBe(true);
+    expect(isValidRefreshRate(300_000)).toBe(true);
   });
 
   it('loads refresh rate when localStorage is missing', () => {
     const prev = (globalThis as { localStorage?: Storage }).localStorage;
     // Ensure localStorage is undefined
     delete (globalThis as { localStorage?: Storage }).localStorage;
-    expect(loadRefreshRate()).toBe(600000);
+    expect(loadRefreshRate()).toBe(3_600_000);
     if (prev !== undefined)
       (globalThis as { localStorage?: Storage }).localStorage = prev;
   });

@@ -305,9 +305,9 @@ export const RefreshRateInput: React.FC<RefreshRateInputProps> = ({
   onRefreshRateChange,
 }) => {
   const options = [
-    { label: '60s', value: 60_000 },
     { label: '5 min', value: 5 * 60_000 },
     { label: '10 min', value: 10 * 60_000 },
+    { label: '1h', value: 60 * 60_000 },
   ];
 
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
