@@ -172,11 +172,11 @@ describe('utils', () => {
       length: 0,
     } as Storage;
 
-    expect(loadRefreshRate()).toBe(600000);
-    saveRefreshRate(600000);
-    expect(store.refreshRate).toBe('600000');
+    expect(loadRefreshRate()).toBe(3_600_000);
+    saveRefreshRate(3_600_000);
+    expect(store.refreshRate).toBe('3600000');
     store.refreshRate = '2000';
-    expect(loadRefreshRate()).toBe(600000);
+    expect(loadRefreshRate()).toBe(3_600_000);
   });
 
   it('validates refresh rate', () => {
