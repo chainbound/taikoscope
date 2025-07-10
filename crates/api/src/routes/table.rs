@@ -4,9 +4,10 @@ use crate::{
     helpers::bucket_size_from_range,
     state::{ApiState, MAX_TABLE_LIMIT},
     validation::{
-        PaginatedQuery, QueryMode, UnifiedQuery, has_time_range_params, resolve_time_range_bounds,
-        resolve_time_range_enum, resolve_time_range_since, validate_pagination,
-        validate_range_exclusivity, validate_time_range, validate_unified_query,
+        CommonQuery, PaginatedQuery, QueryMode, UnifiedQuery, has_time_range_params,
+        resolve_time_range_bounds, resolve_time_range_enum, resolve_time_range_since,
+        validate_pagination, validate_range_exclusivity, validate_time_range,
+        validate_unified_query,
     },
 };
 use alloy_primitives::Address;
@@ -22,6 +23,7 @@ use hex::encode;
 
 // Legacy type aliases for backward compatibility
 // type BlockTransactionsQuery = BlockPaginatedQuery; // Removed - not used anymore
+type RangeQuery = CommonQuery;
 
 #[utoipa::path(
     get,
@@ -77,6 +79,72 @@ pub async fn reorgs(
         .collect();
     tracing::info!(count = events.len(), "Returning reorg events");
     Ok(Json(ReorgEventsResponse { events }))
+}
+
+#[utoipa::path(
+    get,
+    path = "/slashings",
+    params(
+        RangeQuery
+    ),
+    responses(
+        (status = 200, description = "Slashing events", body = SlashingEventsResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
+    ),
+    tag = "taikoscope"
+)]
+/// Get validator slashing events within the requested time range.
+pub async fn slashings(
+    Query(params): Query<RangeQuery>,
+    State(state): State<ApiState>,
+) -> Result<Json<SlashingEventsResponse>, ErrorResponse> {
+    validate_time_range(&params.time_range)?;
+    let has_time_range = has_time_range_params(&params.time_range);
+    validate_range_exclusivity(has_time_range, false)?;
+
+    let (since, until) = resolve_time_range_bounds(&params.range, &params.time_range);
+    let events = match state.client.get_slashing_events_range(since, until).await {
+        Ok(rows) => rows,
+        Err(e) => {
+            tracing::error!(error = %e, "Failed to get slashing events");
+            return Err(ErrorResponse::database_error());
+        }
+    };
+    tracing::info!(count = events.len(), "Returning slashing events");
+    Ok(Json(SlashingEventsResponse { events }))
+}
+
+#[utoipa::path(
+    get,
+    path = "/forced-inclusions",
+    params(
+        RangeQuery
+    ),
+    responses(
+        (status = 200, description = "Forced inclusion events", body = ForcedInclusionEventsResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
+    ),
+    tag = "taikoscope"
+)]
+/// Get forced inclusion events within the requested time range.
+pub async fn forced_inclusions(
+    Query(params): Query<RangeQuery>,
+    State(state): State<ApiState>,
+) -> Result<Json<ForcedInclusionEventsResponse>, ErrorResponse> {
+    validate_time_range(&params.time_range)?;
+    let has_time_range = has_time_range_params(&params.time_range);
+    validate_range_exclusivity(has_time_range, false)?;
+
+    let (since, until) = resolve_time_range_bounds(&params.range, &params.time_range);
+    let events = match state.client.get_forced_inclusions_range(since, until).await {
+        Ok(rows) => rows,
+        Err(e) => {
+            tracing::error!(error = %e, "Failed to get forced inclusion events");
+            return Err(ErrorResponse::database_error());
+        }
+    };
+    tracing::info!(count = events.len(), "Returning forced inclusion events");
+    Ok(Json(ForcedInclusionEventsResponse { events }))
 }
 
 #[utoipa::path(
