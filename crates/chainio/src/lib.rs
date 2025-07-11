@@ -44,7 +44,7 @@ impl TaikoInbox {
 sol! {
     #[allow(missing_docs)]
     #[sol(rpc)]
-    #[derive(Debug)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize)]
     interface ITaikoInbox {
         error AnchorBlockIdSmallerThanParent();
         error AnchorBlockIdTooLarge();

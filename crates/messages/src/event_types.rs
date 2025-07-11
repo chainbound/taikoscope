@@ -15,6 +15,28 @@ pub struct ForcedInclusionProcessedWrapper(
     pub chainio::taiko::wrapper::ITaikoWrapper::ForcedInclusionProcessed,
 );
 
+impl From<(chainio::ITaikoInbox::BatchProposed, alloy_primitives::B256)> for BatchProposedWrapper {
+    fn from(data: (chainio::ITaikoInbox::BatchProposed, alloy_primitives::B256)) -> Self {
+        Self(data.0)
+    }
+}
+
+impl From<(chainio::ITaikoInbox::BatchesProved, u64, alloy_primitives::B256)>
+    for BatchesProvedWrapper
+{
+    fn from(data: (chainio::ITaikoInbox::BatchesProved, u64, alloy_primitives::B256)) -> Self {
+        Self(data.0)
+    }
+}
+
+impl From<chainio::taiko::wrapper::ITaikoWrapper::ForcedInclusionProcessed>
+    for ForcedInclusionProcessedWrapper
+{
+    fn from(data: chainio::taiko::wrapper::ITaikoWrapper::ForcedInclusionProcessed) -> Self {
+        Self(data)
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum TaikoEvent {
     L1Header(L1Header),

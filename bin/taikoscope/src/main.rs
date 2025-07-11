@@ -4,12 +4,12 @@
 use clap::Parser;
 use config::Opts;
 use dotenvy::dotenv;
-use nats_utils::subscribe_to_events;
 use runtime::{
     health,
     shutdown::{ShutdownSignal, run_until_shutdown},
 };
 use std::net::SocketAddr;
+use tokio_stream::StreamExt;
 use tracing::info;
 use tracing_subscriber::filter::EnvFilter;
 
@@ -46,14 +46,36 @@ async fn main() -> eyre::Result<()> {
 
     // Connect to NATS and subscribe to events
     let nats_client = async_nats::connect(&opts.nats_url).await?;
-    subscribe_to_events(&nats_client).await?;
 
-    // Placeholder: process events from NATS
-    // while let Some(event) = event_stream.next().await {
-    //     // Process and store event
-    // }
+    let run_driver = async {
+        let js = async_nats::jetstream::new(nats_client);
+        let stream = js
+            .get_or_create_stream(async_nats::jetstream::stream::Config {
+                name: "taiko_events".to_string(),
+                subjects: vec!["taiko.events".to_string()],
+                ..Default::default()
+            })
+            .await?;
+        let consumer = stream
+            .get_or_create_consumer(
+                "processor",
+                async_nats::jetstream::consumer::pull::Config {
+                    durable_name: Some("processor".to_string()),
+                    ..Default::default()
+                },
+            )
+            .await?;
+        let mut messages = consumer.messages().await?;
 
-    let run_driver = async { Ok(()) };
+        while let Some(msg_res) = messages.next().await {
+            if let Ok(msg) = msg_res {
+                let payload = String::from_utf8_lossy(&msg.payload);
+                info!("Received event: {}", payload);
+                let _ = msg.ack().await;
+            }
+        }
+        Ok::<(), eyre::Error>(())
+    };
 
     run_until_shutdown(run_driver, shutdown_signal, on_shutdown).await
 }
