@@ -674,11 +674,7 @@ mod tests {
                 username: "user".into(),
                 password: "pass".into(),
             },
-            nats: NatsOpts {
-                nats_url: Some(nats_url),
-                username: Some("natsuser".into()),
-                password: Some("natspass".into()),
-            },
+            nats: NatsOpts { username: Some("natsuser".into()), password: Some("natspass".into()) },
             rpc: RpcOpts { l1_url, l2_url, public_url: None },
             api: ApiOpts {
                 host: "127.0.0.1".into(),
@@ -687,6 +683,7 @@ mod tests {
                 rate_limit_max_requests: 1000,
                 rate_limit_period_secs: 60,
             },
+            nats_url: nats_url.to_string(),
             taiko_addresses: TaikoAddressOpts {
                 inbox_address: Address::ZERO,
                 preconf_whitelist_address: Address::ZERO,

@@ -27,9 +27,6 @@ pub struct ClickhouseOpts {
 /// Nats client configuration options
 #[derive(Debug, Clone, Parser)]
 pub struct NatsOpts {
-    /// Nats server URL
-    #[clap(long = "nats-url", env = "NATS_URL")]
-    pub nats_url: Option<Url>,
     /// Nats username
     #[clap(id = "nats_username", long = "nats-username", env = "NATS_USERNAME")]
     pub username: Option<String>,
@@ -177,6 +174,10 @@ pub struct Opts {
     /// API server configuration
     #[clap(flatten)]
     pub api: ApiOpts,
+
+    /// NATS server URL
+    #[clap(long, env = "NATS_URL", default_value = "nats://localhost:4222")]
+    pub nats_url: String,
 
     /// If set, drop & re-create all tables (local/dev only)
     #[clap(long)]

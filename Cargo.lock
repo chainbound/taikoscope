@@ -2635,6 +2635,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "ingestor"
+version = "0.1.0"
+dependencies = [
+ "async-nats",
+ "chainio",
+ "clap",
+ "config",
+ "dotenvy",
+ "driver",
+ "eyre",
+ "nats-utils",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "io-uring"
 version = "0.7.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
