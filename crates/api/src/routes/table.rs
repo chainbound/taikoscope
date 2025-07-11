@@ -69,12 +69,16 @@ pub async fn reorgs(
     };
     let events: Vec<L2ReorgEvent> = rows
         .into_iter()
-        .map(|e| L2ReorgEvent {
-            l2_block_number: e.l2_block_number,
-            depth: e.depth,
-            old_sequencer: format!("0x{}", encode(e.old_sequencer)),
-            new_sequencer: format!("0x{}", encode(e.new_sequencer)),
-            inserted_at: e.inserted_at,
+        .map(|e| {
+            let from_block_number = e.l2_block_number + u64::from(e.depth);
+            L2ReorgEvent {
+                from_block_number,
+                to_block_number: e.l2_block_number,
+                depth: e.depth,
+                old_sequencer: format!("0x{}", encode(e.old_sequencer)),
+                new_sequencer: format!("0x{}", encode(e.new_sequencer)),
+                inserted_at: e.inserted_at,
+            }
         })
         .collect();
     tracing::info!(count = events.len(), "Returning reorg events");

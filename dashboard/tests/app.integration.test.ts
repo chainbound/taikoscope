@@ -69,7 +69,7 @@ const responses: Record<string, Record<string, unknown>> = {
   },
   [`/v1/reorgs?${q1h}`]: {
     events: [
-      { l2_block_number: 10, depth: 1, inserted_at: '1970-01-01T00:00:00Z' },
+      { from_block_number: 11, to_block_number: 10, depth: 1, inserted_at: '1970-01-01T00:00:00Z' },
     ],
   },
   [`/v1/slashings?${q1h}`]: {
@@ -78,7 +78,7 @@ const responses: Record<string, Record<string, unknown>> = {
   [`/v1/forced-inclusions?${q1h}`]: { events: [{ blob_hash: [3, 4] }] },
   [`/v1/reorgs?${q15m}`]: {
     events: [
-      { l2_block_number: 10, depth: 1, inserted_at: '1970-01-01T00:00:00Z' },
+      { from_block_number: 11, to_block_number: 10, depth: 1, inserted_at: '1970-01-01T00:00:00Z' },
     ],
   },
   [`/v1/slashings?${q15m}`]: {

@@ -182,7 +182,8 @@ export const fetchL2ReorgEvents = async (
   }
   const res = await fetchJson<{
     events: {
-      l2_block_number: number;
+      from_block_number: number;
+      to_block_number: number;
       depth: number;
       old_sequencer: string;
       new_sequencer: string;
@@ -192,7 +193,8 @@ export const fetchL2ReorgEvents = async (
   return {
     data: res.data?.events
       ? res.data.events.map((e) => ({
-        l2_block_number: e.l2_block_number,
+        from_block_number: e.from_block_number,
+        to_block_number: e.to_block_number,
         depth: e.depth,
         old_sequencer: e.old_sequencer,
         new_sequencer: e.new_sequencer,
