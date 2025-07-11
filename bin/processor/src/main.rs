@@ -67,10 +67,29 @@ async fn main() -> eyre::Result<()> {
             .await?;
         let mut messages = consumer.messages().await?;
 
+        if opts.enable_db_writes {
+            info!(
+                "🗄️  Database writes ENABLED - events will be processed and written to ClickHouse"
+            );
+        } else {
+            info!(
+                "📋 Database writes DISABLED - events will be logged and dropped (safe for testing)"
+            );
+        }
+
         while let Some(msg_res) = messages.next().await {
             if let Ok(msg) = msg_res {
                 let payload = String::from_utf8_lossy(&msg.payload);
-                info!("Received event: {}", payload);
+
+                if opts.enable_db_writes {
+                    // TODO: Add full event processing with database writes
+                    info!("Processing event for DB write: {}", payload);
+                    // For now, just log - we'll implement the actual processing later
+                } else {
+                    // Log and drop mode (current behavior)
+                    info!("Received event (dropped): {}", payload);
+                }
+
                 let _ = msg.ack().await;
             }
         }

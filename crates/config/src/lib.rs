@@ -179,6 +179,10 @@ pub struct Opts {
     #[clap(long, env = "NATS_URL", default_value = "nats://localhost:4222")]
     pub nats_url: String,
 
+    /// Enable database writes in processor (default: false, processor will log and drop events)
+    #[clap(long, default_value = "false")]
+    pub enable_db_writes: bool,
+
     /// If set, drop & re-create all tables (local/dev only)
     #[clap(long)]
     pub reset_db: bool,

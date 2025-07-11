@@ -701,6 +701,7 @@ mod tests {
                 monitor_threshold_secs: 96,
                 batch_proof_timeout_secs: 999,
             },
+            enable_db_writes: false,
             reset_db: false,
         }
     }
