@@ -20,6 +20,34 @@ dev:
 dev-api:
     ENV_FILE=hekla.env cargo run --bin api-server
 
+# start local NATS for development
+dev-nats:
+    docker run -d --name local-nats -p 4222:4222 -p 8222:8222 nats:latest -js -m 8222
+
+# stop local NATS
+stop-dev-nats:
+    docker stop local-nats || true
+    docker rm local-nats || true
+
+# start the ingestor for local development
+dev-ingestor:
+    ENV_FILE=dev.env cargo run --bin ingestor
+
+# start the processor for local development
+dev-processor:
+    ENV_FILE=dev.env cargo run --bin taikoscope
+
+# run complete local NATS pipeline (starts NATS, ingestor, and processor)
+dev-pipeline:
+    @echo "Starting complete local NATS pipeline..."
+    @just dev-nats
+    @echo "Waiting for NATS to be ready..."
+    @sleep 3
+    @echo "NATS ready. Start ingestor and processor in separate terminals:"
+    @echo "  Terminal 1: just dev-ingestor"
+    @echo "  Terminal 2: just dev-processor"
+    @echo "To stop: just stop-dev-nats"
+
 # start the Taikoscope binary with Masaya testnet config
 masaya:
     ENV_FILE=masaya.env cargo run
@@ -256,6 +284,15 @@ build-api tag='latest' platform='linux/amd64,linux/arm64':
         --platform {{platform}} \
         --file Dockerfile.api \
         --tag ghcr.io/chainbound/taikoscope-api:{{tag}} \
+        --push .
+
+# build and push the ingestor docker image with the given tag for the given platforms
+build-ingestor tag='latest' platform='linux/amd64,linux/arm64':
+    docker buildx build \
+        --label "org.opencontainers.image.commit=$(git rev-parse --short HEAD)" \
+        --platform {{platform}} \
+        --file Dockerfile.ingestor \
+        --tag ghcr.io/chainbound/taikoscope-ingestor:{{tag}} \
         --push .
 
 # build and push both taikoscope and taikoscope-api docker images
