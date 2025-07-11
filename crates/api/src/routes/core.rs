@@ -104,7 +104,7 @@ pub async fn batch_posting_times(
     let has_slot_range = params.starting_after.is_some() || params.ending_before.is_some();
     validate_range_exclusivity(has_time_range, has_slot_range)?;
 
-    let since = resolve_time_range_since(&params.common.range, &params.common.time_range);
+    let since = resolve_time_range_since(&params.common.time_range);
     let rows = match state
         .client
         .get_batch_posting_times_paginated(
@@ -149,7 +149,7 @@ pub async fn avg_blobs_per_batch(
     let has_time_range = has_time_range_params(&params.time_range);
     validate_range_exclusivity(has_time_range, false)?;
 
-    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
+    let time_range = resolve_time_range_enum(&params.time_range);
     let avg = match state.client.get_avg_blobs_per_batch(time_range).await {
         Ok(val) => val,
         Err(e) => {
@@ -191,8 +191,7 @@ pub async fn prove_times(
             let has_time_range = has_time_range_params(&params.common.time_range);
             validate_range_exclusivity(has_time_range, false)?;
 
-            let time_range =
-                resolve_time_range_enum(&params.common.range, &params.common.time_range);
+            let time_range = resolve_time_range_enum(&params.common.time_range);
             let bucket = bucket_size_from_range(&time_range);
             let batches = match state.client.get_prove_times(time_range, Some(bucket)).await {
                 Ok(rows) => rows,
@@ -211,7 +210,7 @@ pub async fn prove_times(
             let has_slot_range = params.starting_after.is_some() || params.ending_before.is_some();
             validate_range_exclusivity(has_time_range, has_slot_range)?;
 
-            let since = resolve_time_range_since(&params.common.range, &params.common.time_range);
+            let since = resolve_time_range_since(&params.common.time_range);
             let batches = match state
                 .client
                 .get_prove_times_paginated(
@@ -264,8 +263,7 @@ pub async fn verify_times(
             let has_time_range = has_time_range_params(&params.common.time_range);
             validate_range_exclusivity(has_time_range, false)?;
 
-            let time_range =
-                resolve_time_range_enum(&params.common.range, &params.common.time_range);
+            let time_range = resolve_time_range_enum(&params.common.time_range);
             let bucket = bucket_size_from_range(&time_range);
             let batches = match state.client.get_verify_times(time_range, Some(bucket)).await {
                 Ok(rows) => rows,
@@ -284,7 +282,7 @@ pub async fn verify_times(
             let has_slot_range = params.starting_after.is_some() || params.ending_before.is_some();
             validate_range_exclusivity(has_time_range, has_slot_range)?;
 
-            let since = resolve_time_range_since(&params.common.range, &params.common.time_range);
+            let since = resolve_time_range_since(&params.common.time_range);
             let batches = match state
                 .client
                 .get_verify_times_paginated(
@@ -331,7 +329,7 @@ pub async fn l1_block_times(
     let has_time_range = has_time_range_params(&params.time_range);
     validate_range_exclusivity(has_time_range, false)?;
 
-    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
+    let time_range = resolve_time_range_enum(&params.time_range);
     let blocks = match state.client.get_l1_block_times(time_range).await {
         Ok(rows) => rows,
         Err(e) => {
@@ -368,7 +366,7 @@ pub async fn sequencer_distribution(
     validate_range_exclusivity(has_time_range, false)?;
 
     // Determine the exact start and end timestamps for the range
-    let (since, until) = resolve_time_range_bounds(&params.range, &params.time_range);
+    let (since, until) = resolve_time_range_bounds(&params.time_range);
     // Fetch distribution within the specified window
     let rows = state.client.get_sequencer_distribution_range(since, until).await.map_err(|e| {
         tracing::error!(error = %e, "Failed to get sequencer distribution");
@@ -417,7 +415,7 @@ pub async fn sequencer_blocks(
     let has_time_range = has_time_range_params(&params.time_range);
     validate_range_exclusivity(has_time_range, false)?;
 
-    let since = resolve_time_range_since(&params.range, &params.time_range);
+    let since = resolve_time_range_since(&params.time_range);
     let rows = state.client.get_sequencer_blocks_since(since).await.map_err(|e| {
         tracing::error!(error = %e, "Failed to get sequencer blocks");
         ErrorResponse::database_error()
@@ -480,7 +478,7 @@ pub async fn l1_data_cost(
     let has_slot_range = params.starting_after.is_some() || params.ending_before.is_some();
     validate_range_exclusivity(has_time_range, has_slot_range)?;
 
-    let since = resolve_time_range_since(&params.common.range, &params.common.time_range);
+    let since = resolve_time_range_since(&params.common.time_range);
     let rows = match state
         .client
         .get_l1_data_costs_paginated(since, limit, params.starting_after, params.ending_before)
@@ -530,7 +528,7 @@ pub async fn prove_cost(
     let has_slot_range = params.starting_after.is_some() || params.ending_before.is_some();
     validate_range_exclusivity(has_time_range, has_slot_range)?;
 
-    let since = resolve_time_range_since(&params.common.range, &params.common.time_range);
+    let since = resolve_time_range_since(&params.common.time_range);
     let rows = match state
         .client
         .get_prove_costs_paginated(since, limit, params.starting_after, params.ending_before)
@@ -578,7 +576,7 @@ pub async fn block_profits(
     let has_time_range = has_time_range_params(&params.common.time_range);
     validate_range_exclusivity(has_time_range, false)?;
 
-    let time_range = resolve_time_range_enum(&params.common.range, &params.common.time_range);
+    let time_range = resolve_time_range_enum(&params.common.time_range);
     let address = if let Some(addr) = params.common.address.as_ref() {
         match addr.parse::<Address>() {
             Ok(a) => Some(AddressBytes::from(a)),
@@ -669,7 +667,7 @@ pub async fn l2_fees(
     let has_time_range = has_time_range_params(&params.time_range);
     validate_range_exclusivity(has_time_range, false)?;
 
-    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
+    let time_range = resolve_time_range_enum(&params.time_range);
     let address = if let Some(addr) = params.address.as_ref() {
         match addr.parse::<Address>() {
             Ok(a) => Some(AddressBytes::from(a)),
@@ -754,7 +752,7 @@ pub async fn l2_fee_components(
     let has_time_range = has_time_range_params(&params.common.time_range);
     validate_range_exclusivity(has_time_range, false)?;
 
-    let time_range = resolve_time_range_enum(&params.common.range, &params.common.time_range);
+    let time_range = resolve_time_range_enum(&params.common.time_range);
     let address = if let Some(addr) = params.common.address.as_ref() {
         match addr.parse::<Address>() {
             Ok(a) => Some(AddressBytes::from(a)),
@@ -823,7 +821,7 @@ pub async fn batch_fee_components(
     let has_time_range = has_time_range_params(&params.time_range);
     validate_range_exclusivity(has_time_range, false)?;
 
-    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
+    let time_range = resolve_time_range_enum(&params.time_range);
     let address = if let Some(addr) = params.address.as_ref() {
         match addr.parse::<Address>() {
             Ok(a) => Some(AddressBytes::from(a)),

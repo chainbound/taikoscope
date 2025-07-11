@@ -46,7 +46,7 @@ pub async fn l2_block_times_aggregated(
     let has_time_range = has_time_range_params(&params.time_range);
     validate_range_exclusivity(has_time_range, false)?;
 
-    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
+    let time_range = resolve_time_range_enum(&params.time_range);
     let address = if let Some(addr) = params.address.as_ref() {
         match addr.parse::<Address>() {
             Ok(a) => Some(AddressBytes::from(a)),
@@ -96,7 +96,7 @@ pub async fn l2_gas_used_aggregated(
     let has_time_range = has_time_range_params(&params.time_range);
     validate_range_exclusivity(has_time_range, false)?;
 
-    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
+    let time_range = resolve_time_range_enum(&params.time_range);
     let address = if let Some(addr) = params.address.as_ref() {
         match addr.parse::<Address>() {
             Ok(a) => Some(AddressBytes::from(a)),
@@ -146,7 +146,7 @@ pub async fn l2_tps_aggregated(
     let has_time_range = has_time_range_params(&params.time_range);
     validate_range_exclusivity(has_time_range, false)?;
 
-    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
+    let time_range = resolve_time_range_enum(&params.time_range);
     let address = if let Some(addr) = params.address.as_ref() {
         match addr.parse::<Address>() {
             Ok(a) => Some(AddressBytes::from(a)),
@@ -198,7 +198,7 @@ pub async fn block_transactions_aggregated(
     let has_time_range = has_time_range_params(&params.time_range);
     validate_range_exclusivity(has_time_range, false)?;
 
-    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
+    let time_range = resolve_time_range_enum(&params.time_range);
     let address = if let Some(addr) = params.address.as_ref() {
         match addr.parse::<Address>() {
             Ok(a) => Some(AddressBytes::from(a)),
@@ -258,7 +258,7 @@ pub async fn prove_times_aggregated(
     let has_time_range = has_time_range_params(&params.time_range);
     validate_range_exclusivity(has_time_range, false)?;
 
-    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
+    let time_range = resolve_time_range_enum(&params.time_range);
     let bucket = prove_bucket_size(&time_range);
     let batches = match state.client.get_prove_times(time_range, Some(bucket)).await {
         Ok(rows) => rows,
@@ -292,7 +292,7 @@ pub async fn verify_times_aggregated(
     let has_time_range = has_time_range_params(&params.time_range);
     validate_range_exclusivity(has_time_range, false)?;
 
-    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
+    let time_range = resolve_time_range_enum(&params.time_range);
     let bucket = verify_bucket_size(&time_range);
     let batches = match state.client.get_verify_times(time_range, Some(bucket)).await {
         Ok(rows) => rows,
@@ -327,7 +327,7 @@ pub async fn prove_costs(
     let has_time_range = has_time_range_params(&params.time_range);
     validate_range_exclusivity(has_time_range, false)?;
 
-    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
+    let time_range = resolve_time_range_enum(&params.time_range);
 
     let rows = state.client.get_prove_costs_by_proposer(time_range).await.map_err(|e| {
         tracing::error!(error = %e, "Failed to get prover costs");
@@ -368,7 +368,7 @@ pub async fn l2_fee_components_aggregated(
     let has_time_range = has_time_range_params(&params.time_range);
     validate_range_exclusivity(has_time_range, false)?;
 
-    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
+    let time_range = resolve_time_range_enum(&params.time_range);
     let address = if let Some(addr) = params.address.as_ref() {
         match addr.parse::<Address>() {
             Ok(a) => Some(AddressBytes::from(a)),
@@ -429,8 +429,8 @@ pub async fn dashboard_data(
     let has_time_range = has_time_range_params(&params.time_range);
     validate_range_exclusivity(has_time_range, false)?;
 
-    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
-    let since = resolve_time_range_since(&params.range, &params.time_range);
+    let time_range = resolve_time_range_enum(&params.time_range);
+    let since = resolve_time_range_since(&params.time_range);
     let address = params.address.as_ref().and_then(|addr| match addr.parse::<Address>() {
         Ok(a) => Some(AddressBytes::from(a)),
         Err(e) => {
@@ -520,7 +520,7 @@ pub async fn blobs_per_batch_aggregated(
     let has_time_range = has_time_range_params(&params.time_range);
     validate_range_exclusivity(has_time_range, false)?;
 
-    let time_range = resolve_time_range_enum(&params.range, &params.time_range);
+    let time_range = resolve_time_range_enum(&params.time_range);
     let batches = match state.client.get_blobs_per_batch(time_range).await {
         Ok(rows) => rows,
         Err(e) => {

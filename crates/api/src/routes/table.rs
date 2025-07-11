@@ -55,7 +55,7 @@ pub async fn reorgs(
     let has_slot_range = params.starting_after.is_some() || params.ending_before.is_some();
     validate_range_exclusivity(has_time_range, has_slot_range)?;
 
-    let (since, until) = resolve_time_range_bounds(&params.common.range, &params.common.time_range);
+    let (since, until) = resolve_time_range_bounds(&params.common.time_range);
     let rows = match state
         .client
         .get_l2_reorgs_paginated(since, until, limit, params.starting_after, params.ending_before)
@@ -102,7 +102,7 @@ pub async fn slashings(
     let has_time_range = has_time_range_params(&params.time_range);
     validate_range_exclusivity(has_time_range, false)?;
 
-    let (since, until) = resolve_time_range_bounds(&params.range, &params.time_range);
+    let (since, until) = resolve_time_range_bounds(&params.time_range);
     let events = match state.client.get_slashing_events_range(since, until).await {
         Ok(rows) => rows,
         Err(e) => {
@@ -135,7 +135,7 @@ pub async fn forced_inclusions(
     let has_time_range = has_time_range_params(&params.time_range);
     validate_range_exclusivity(has_time_range, false)?;
 
-    let (since, until) = resolve_time_range_bounds(&params.range, &params.time_range);
+    let (since, until) = resolve_time_range_bounds(&params.time_range);
     let events = match state.client.get_forced_inclusions_range(since, until).await {
         Ok(rows) => rows,
         Err(e) => {
@@ -177,8 +177,7 @@ pub async fn l2_tps(
             let has_time_range = has_time_range_params(&params.common.time_range);
             validate_range_exclusivity(has_time_range, false)?;
 
-            let time_range =
-                resolve_time_range_enum(&params.common.range, &params.common.time_range);
+            let time_range = resolve_time_range_enum(&params.common.time_range);
             let address = if let Some(addr) = params.common.address.as_ref() {
                 match addr.parse::<Address>() {
                     Ok(a) => Some(AddressBytes::from(a)),
@@ -213,7 +212,7 @@ pub async fn l2_tps(
             let has_slot_range = params.starting_after.is_some() || params.ending_before.is_some();
             validate_range_exclusivity(has_time_range, has_slot_range)?;
 
-            let since = resolve_time_range_since(&params.common.range, &params.common.time_range);
+            let since = resolve_time_range_since(&params.common.time_range);
             let address = if let Some(addr) = params.common.address.as_ref() {
                 match addr.parse::<Address>() {
                     Ok(a) => Some(AddressBytes::from(a)),
@@ -285,8 +284,7 @@ pub async fn l2_block_times(
             let has_time_range = has_time_range_params(&params.common.time_range);
             validate_range_exclusivity(has_time_range, false)?;
 
-            let time_range =
-                resolve_time_range_enum(&params.common.range, &params.common.time_range);
+            let time_range = resolve_time_range_enum(&params.common.time_range);
             let address = if let Some(addr) = params.common.address.as_ref() {
                 match addr.parse::<Address>() {
                     Ok(a) => Some(AddressBytes::from(a)),
@@ -324,8 +322,7 @@ pub async fn l2_block_times(
             let has_slot_range = params.starting_after.is_some() || params.ending_before.is_some();
             validate_range_exclusivity(has_time_range, has_slot_range)?;
 
-            let (since, _until) =
-                resolve_time_range_bounds(&params.common.range, &params.common.time_range);
+            let (since, _until) = resolve_time_range_bounds(&params.common.time_range);
             let address = if let Some(addr) = params.common.address.as_ref() {
                 match addr.parse::<Address>() {
                     Ok(a) => Some(AddressBytes::from(a)),
@@ -397,8 +394,7 @@ pub async fn l2_gas_used(
             let has_time_range = has_time_range_params(&params.common.time_range);
             validate_range_exclusivity(has_time_range, false)?;
 
-            let time_range =
-                resolve_time_range_enum(&params.common.range, &params.common.time_range);
+            let time_range = resolve_time_range_enum(&params.common.time_range);
             let address = if let Some(addr) = params.common.address.as_ref() {
                 match addr.parse::<Address>() {
                     Ok(a) => Some(AddressBytes::from(a)),
@@ -434,7 +430,7 @@ pub async fn l2_gas_used(
             let has_slot_range = params.starting_after.is_some() || params.ending_before.is_some();
             validate_range_exclusivity(has_time_range, has_slot_range)?;
 
-            let since = resolve_time_range_since(&params.common.range, &params.common.time_range);
+            let since = resolve_time_range_since(&params.common.time_range);
             let address = if let Some(addr) = params.common.address.as_ref() {
                 match addr.parse::<Address>() {
                     Ok(a) => Some(AddressBytes::from(a)),
@@ -506,8 +502,7 @@ pub async fn block_transactions(
             let has_time_range = has_time_range_params(&params.common.time_range);
             validate_range_exclusivity(has_time_range, false)?;
 
-            let time_range =
-                resolve_time_range_enum(&params.common.range, &params.common.time_range);
+            let time_range = resolve_time_range_enum(&params.common.time_range);
             let address = if let Some(addr) = params.common.address.as_ref() {
                 match addr.parse::<Address>() {
                     Ok(a) => Some(AddressBytes::from(a)),
@@ -556,7 +551,7 @@ pub async fn block_transactions(
             let has_slot_range = params.starting_after.is_some() || params.ending_before.is_some();
             validate_range_exclusivity(has_time_range, has_slot_range)?;
 
-            let since = resolve_time_range_since(&params.common.range, &params.common.time_range);
+            let since = resolve_time_range_since(&params.common.time_range);
             let address = if let Some(addr) = params.common.address.as_ref() {
                 match addr.parse::<Address>() {
                     Ok(a) => Some(AddressBytes::from(a)),
@@ -638,8 +633,7 @@ pub async fn blobs_per_batch(
             let has_time_range = has_time_range_params(&params.common.time_range);
             validate_range_exclusivity(has_time_range, false)?;
 
-            let time_range =
-                resolve_time_range_enum(&params.common.range, &params.common.time_range);
+            let time_range = resolve_time_range_enum(&params.common.time_range);
             let batches = match state.client.get_blobs_per_batch(time_range).await {
                 Ok(rows) => rows,
                 Err(e) => {
@@ -657,7 +651,7 @@ pub async fn blobs_per_batch(
             let has_slot_range = params.starting_after.is_some() || params.ending_before.is_some();
             validate_range_exclusivity(has_time_range, has_slot_range)?;
 
-            let since = resolve_time_range_since(&params.common.range, &params.common.time_range);
+            let since = resolve_time_range_since(&params.common.time_range);
             let batches = match state
                 .client
                 .get_blobs_per_batch_paginated(

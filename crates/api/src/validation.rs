@@ -47,8 +47,6 @@ pub struct BlockRangeParams {
 /// Common query parameters for most endpoints
 #[derive(Debug, Deserialize, ToSchema, IntoParams)]
 pub struct CommonQuery {
-    /// Time range specification (e.g., "15m", "1h", "24h", "7d")
-    pub range: Option<String>,
     /// Filter by specific address
     pub address: Option<String>,
     /// Time range filtering parameters
@@ -321,60 +319,8 @@ pub const fn has_block_range_params(params: &BlockRangeParams) -> bool {
         params.block_lte.is_some()
 }
 
-/// Convert a range string to `ChronoDuration` (e.g., "15m", "1h", "24h", "7d")
-pub fn range_duration(range: &Option<String>) -> ChronoDuration {
-    if let Some(r) = range.as_deref() {
-        let r = r.trim().to_ascii_lowercase();
-
-        if let Some(m) = r.strip_suffix('m') {
-            if let Ok(mins) = m.parse::<i64>() {
-                let mins = mins.max(0); // Only ensure non-negative, no upper limit
-                return ChronoDuration::minutes(mins);
-            }
-        }
-
-        if let Some(h) = r.strip_suffix('h') {
-            if let Ok(hours) = h.parse::<i64>() {
-                let hours = hours.max(0); // Only ensure non-negative, no upper limit
-                return ChronoDuration::hours(hours);
-            }
-        }
-
-        if let Some(d) = r.strip_suffix('d') {
-            if let Ok(days) = d.parse::<i64>() {
-                let hours = (days * 24).max(0); // Only ensure non-negative, no upper limit
-                return ChronoDuration::hours(hours);
-            }
-        }
-    }
-
-    ChronoDuration::hours(1)
-}
-
-/// Attempt to parse an absolute "start–end" range (milliseconds since epoch).
-fn parse_custom_range(
-    range: &Option<String>,
-) -> Option<(chrono::DateTime<chrono::Utc>, chrono::DateTime<chrono::Utc>)> {
-    if let Some(r) = range.as_deref() {
-        let trimmed = r.trim();
-        if let Some((start_str, end_str)) = trimmed.split_once('-') {
-            if let (Ok(start_ms), Ok(end_ms)) = (start_str.parse::<i64>(), end_str.parse::<i64>()) {
-                if end_ms > start_ms {
-                    if let (Some(start_dt), Some(end_dt)) = (
-                        chrono::Utc.timestamp_millis_opt(start_ms).single(),
-                        chrono::Utc.timestamp_millis_opt(end_ms).single(),
-                    ) {
-                        return Some((start_dt, end_dt));
-                    }
-                }
-            }
-        }
-    }
-    None
-}
-
-/// Resolve time range to `TimeRange` enum, prioritizing explicit time range params
-pub fn resolve_time_range_enum(range: &Option<String>, time_params: &TimeRangeParams) -> TimeRange {
+/// Resolve time range to `TimeRange` enum from explicit time range params
+pub fn resolve_time_range_enum(time_params: &TimeRangeParams) -> TimeRange {
     // If explicit time range parameters are provided, derive the duration from them
     if has_time_range_params(time_params) {
         let now = chrono::Utc::now();
@@ -396,21 +342,12 @@ pub fn resolve_time_range_enum(range: &Option<String>, time_params: &TimeRangePa
         return TimeRange::from_duration(duration);
     }
 
-    // If range looks like "start–end", use that exact window
-    if let Some((start, end)) = parse_custom_range(range) {
-        let duration = end.signed_duration_since(start).max(chrono::Duration::zero());
-        return TimeRange::from_duration(duration);
-    }
-
-    // Otherwise use the range parameter or default
-    TimeRange::from_duration(range_duration(range))
+    // Default to 1 hour when no time range parameters are provided
+    TimeRange::from_duration(ChronoDuration::hours(1))
 }
 
 /// Resolve time range to `DateTime` for endpoints that need since timestamps
-pub fn resolve_time_range_since(
-    range: &Option<String>,
-    time_params: &TimeRangeParams,
-) -> chrono::DateTime<chrono::Utc> {
+pub fn resolve_time_range_since(time_params: &TimeRangeParams) -> chrono::DateTime<chrono::Utc> {
     let now = chrono::Utc::now();
 
     // If explicit time range parameters are provided, use them
@@ -418,38 +355,26 @@ pub fn resolve_time_range_since(
 
     if let Some(timestamp_ms) = lower_bound {
         if let Some(dt) = chrono::Utc.timestamp_millis_opt(timestamp_ms as i64).single() {
-            // No time limit enforcement - return the requested time
             return dt;
         }
     }
 
-    // If we have an absolute "start–end" range, use its start
-    if let Some((start, _)) = parse_custom_range(range) {
-        return start;
-    }
-
-    // Fall back to range parameter or default - no time limit enforcement
-    now - range_duration(range)
+    // Default to 1 hour ago when no time range parameters are provided
+    now - ChronoDuration::hours(1)
 }
 
 /// Resolve time range to start and end `DateTime` values
 pub fn resolve_time_range_bounds(
-    range: &Option<String>,
     time_params: &TimeRangeParams,
 ) -> (chrono::DateTime<chrono::Utc>, chrono::DateTime<chrono::Utc>) {
     let now = chrono::Utc::now();
-
-    // If we have an absolute "start–end" range, use it directly
-    if let Some((start, end)) = parse_custom_range(range) {
-        return (start, end);
-    }
 
     let start = time_params
         .created_gt
         .map(|v| v + 1)
         .or(time_params.created_gte)
         .and_then(|ms| chrono::Utc.timestamp_millis_opt(ms as i64).single())
-        .unwrap_or_else(|| now - range_duration(range));
+        .unwrap_or_else(|| now - ChronoDuration::hours(1));
 
     let end = time_params
         .created_lt
