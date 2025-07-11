@@ -3,9 +3,10 @@ use std::pin::Pin;
 
 use alloy_primitives::{Address, BlockHash};
 use futures::stream::Stream;
+use serde::{Deserialize, Serialize};
 
 /// L1 Header
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct L1Header {
     /// Block number
     pub number: u64,
@@ -18,7 +19,7 @@ pub struct L1Header {
 }
 
 /// L2 Header
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct L2Header {
     /// Block number
     pub number: u64,

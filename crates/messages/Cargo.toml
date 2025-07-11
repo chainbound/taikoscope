@@ -7,8 +7,11 @@ exclude.workspace = true
 repository.workspace = true
 
 [dependencies]
-serde.workspace = true
+chainio = { path = "../chainio" }
+primitives = { path = "../primitives" }
+
 chrono = { workspace = true, features = ["serde"] }
+serde.workspace = true
 
 [lints]
 workspace = true

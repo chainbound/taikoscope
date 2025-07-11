@@ -1258,6 +1258,7 @@ dependencies = [
  "alloy-sol-macro",
  "alloy-sol-types",
  "derive_more 1.0.0",
+ "serde",
  "url",
 ]
 
@@ -2733,7 +2734,9 @@ checksum = "32a282da65faaf38286cf3be983213fcf1d2e2a58700e808f83f4ea9a4804bc0"
 name = "messages"
 version = "0.1.0"
 dependencies = [
+ "chainio",
  "chrono",
+ "primitives",
  "serde",
 ]
 
@@ -3168,6 +3171,7 @@ dependencies = [
  "alloy-network-primitives",
  "alloy-primitives",
  "futures",
+ "serde",
 ]
 
 [[package]]

@@ -12,6 +12,7 @@ use alloy::{
     sol,
 };
 use derive_more::derive::Deref;
+use serde::{Deserialize, Serialize};
 
 /// Alias to the default provider with all recommended fillers (read-only).
 pub type DefaultProvider = FillProvider<JoinedRecommendedFillers, RootProvider>;
@@ -340,7 +341,7 @@ impl BatchesProved {
 }
 
 /// Struct for handling `BatchesVerified` events
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone)]
 pub struct BatchesVerified {
     /// Batch ID that was verified
     pub batch_id: u64,
