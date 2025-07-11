@@ -1,11 +1,11 @@
 [package]
-name = "taikoscope"
+name = "processor"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Taikoscope binary"
-default-run = "taikoscope"
+description = "Taikoscope processor binary"
+default-run = "processor"
 
 [dependencies]
 config = { path = "../../crates/config" }
@@ -26,5 +26,5 @@ tracing.workspace = true
 tracing-subscriber.workspace = true
 
 [[bin]]
-name = "taikoscope"
+name = "processor"
 path = "src/main.rs"

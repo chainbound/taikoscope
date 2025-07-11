@@ -41,16 +41,17 @@ ARG TARGETARCH
 
 RUN --mount=type=cache,target=$SCCACHE_DIR,sharing=locked \
     cargo chef cook --release --recipe-path recipe.json
+
 COPY . .
 RUN --mount=type=cache,target=$SCCACHE_DIR,sharing=locked \
     if [ "$TARGETARCH" = "arm64" ]; then \
     echo "Building for arm64 with JEMALLOC_SYS_WITH_LG_PAGE=16"; \
     # Force jemalloc to use 64 KiB pages on ARM
     # https://github.com/paradigmxyz/reth/pull/7123
-    JEMALLOC_SYS_WITH_LG_PAGE=16 cargo build --profile release; \
+    JEMALLOC_SYS_WITH_LG_PAGE=16 cargo build --bin processor --release; \
     else \
     echo "Building for $TARGETARCH"; \
-    cargo build --profile release; \
+    cargo build --bin processor --release; \
     fi
 
 FROM debian:bookworm-slim AS runtime
@@ -64,15 +65,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 # Copy application binary
-COPY --from=builder /app/target/release/taikoscope taikoscope
+COPY --from=builder /app/target/release/processor processor
 
 # Add taikoscope user
-RUN chmod +x taikoscope && \
+RUN chmod +x processor && \
     groupadd -r taikoscope && \
     useradd -r -g taikoscope taikoscope
 
 # Run as taikoscope user
 USER taikoscope
 
-ENTRYPOINT ["/app/taikoscope"]
+ENTRYPOINT ["/app/processor"]
 

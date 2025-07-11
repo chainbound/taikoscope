@@ -14,7 +14,7 @@ default:
 
 # start the Taikoscope binary for local development
 dev:
-    ENV_FILE=dev.env cargo run -- --reset-db
+    ENV_FILE=dev.env cargo run --bin processor
 
 # start the API server for local development
 dev-api:
@@ -35,7 +35,7 @@ dev-ingestor:
 
 # start the processor for local development
 dev-processor:
-    ENV_FILE=dev.env cargo run --bin taikoscope
+    ENV_FILE=dev.env cargo run --bin processor
 
 # run complete local NATS pipeline (starts NATS, ingestor, and processor)
 dev-pipeline:
@@ -43,10 +43,9 @@ dev-pipeline:
     @just dev-nats
     @echo "Waiting for NATS to be ready..."
     @sleep 3
-    @echo "NATS ready. Start ingestor and processor in separate terminals:"
-    @echo "  Terminal 1: just dev-ingestor"
-    @echo "  Terminal 2: just dev-processor"
-    @echo "To stop: just stop-dev-nats"
+    @echo "NATS ready. Start ingestor and processor manually with:"
+    @echo "  just dev-ingestor    # (in terminal 1)"
+    @echo "  just dev-processor   # (in terminal 2)"
 
 # start the Taikoscope binary with Masaya testnet config
 masaya:

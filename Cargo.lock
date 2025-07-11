@@ -3384,6 +3384,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "processor"
+version = "0.1.0"
+dependencies = [
+ "alloy-primitives",
+ "async-nats",
+ "clap",
+ "clickhouse 0.1.0",
+ "config",
+ "dotenvy",
+ "driver",
+ "extractor",
+ "eyre",
+ "nats-utils",
+ "runtime",
+ "tokio",
+ "tokio-stream",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "proptest"
 version = "1.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4432,27 +4453,6 @@ checksum = "8e1d1b10ced5ca923a1fcb8d03e96b8d3268065d724548c0211415ff6ac6bac4"
 dependencies = [
  "core-foundation-sys",
  "libc",
-]
-
-[[package]]
-name = "taikoscope"
-version = "0.1.0"
-dependencies = [
- "alloy-primitives",
- "async-nats",
- "clap",
- "clickhouse 0.1.0",
- "config",
- "dotenvy",
- "driver",
- "extractor",
- "eyre",
- "nats-utils",
- "runtime",
- "tokio",
- "tokio-stream",
- "tracing",
- "tracing-subscriber",
 ]
 
 [[package]]

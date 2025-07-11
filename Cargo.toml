@@ -1,5 +1,11 @@
 [workspace]
-members = ["bin/*", "crates/*", "crates/nats-utils", "bin/ingestor"]
+members = [
+    "bin/api-server",
+    "bin/generate-openapi-spec",
+    "bin/ingestor",
+    "bin/processor",
+    "crates/*",
+]
 resolver = "2"
 
 [workspace.package]
