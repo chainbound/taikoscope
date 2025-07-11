@@ -10,21 +10,21 @@ exclude = [".github/"]
 repository = "https://github.com/chainbound/taikoscope"
 
 [workspace.dependencies]
-alloy = { version = "1.0.16", features = ["provider-ws"] }
-alloy-contract = { version = "1.0.16" }
-alloy-json-rpc = { version = "1.0.16" }
-alloy-rpc-client = "1.0.16"
-alloy-rpc-types-eth = "1.0.16"
+alloy = { version = "1.0.20", features = ["provider-ws"] }
+alloy-contract = { version = "1.0.20" }
+alloy-json-rpc = { version = "1.0.20" }
+alloy-rpc-client = "1.0.20"
+alloy-rpc-types-eth = "1.0.20"
 alloy-primitives = "1.2.1"
-alloy-consensus = "1.0.16"
-alloy-network-primitives = "1.0.16"
+alloy-consensus = "1.0.20"
+alloy-network-primitives = "1.0.20"
 alloy-sol-types = "1.2.1"
 alloy-sol-macro = "1.2.1"
 async-trait = "0.1"
 async-stream = "0.3"
 axum = { version = "0.7.9", features = ["json"] }
 chrono = { version = "0.4.41", features = ["serde"] }
-clap = { version = "4.5.40", features = ["derive", "env"] }
+clap = { version = "4.5.41", features = ["derive", "env"] }
 clickhouse = { version = "0.13.3", features = ["native-tls", "test-util"] }
 derive_more = { version = "1.0.0", features = ["debug", "deref"] }
 dotenvy = "0.15.7"
@@ -36,7 +36,7 @@ mockito = "1.7.0"
 reqwest = { version = "0.12", features = ["json"] }
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.140"
-tokio = { version = "1.45.1", features = ["macros", "rt-multi-thread", "sync"] }
+tokio = { version = "1.46.1", features = ["macros", "rt-multi-thread", "sync"] }
 tokio-retry = "0.3.0"
 tokio-stream = "0.1.17"
 tokio-tungstenite = "0.26"
