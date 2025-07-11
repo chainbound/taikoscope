@@ -1,0 +1,19 @@
+[package]
+name = "nats-utils"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+exclude.workspace = true
+repository.workspace = true
+
+[dependencies]
+messages = { path = "../messages" }
+primitives = { path = "../primitives" }
+
+async-nats.workspace = true
+serde.workspace = true
+bincode.workspace = true
+eyre.workspace = true
+
+[lints]
+workspace = true
