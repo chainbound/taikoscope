@@ -2,19 +2,20 @@
 #![allow(clippy::large_enum_variant)]
 use chainio::BatchesVerified;
 use primitives::headers::{L1Header, L2Header};
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BatchProposedWrapper(pub chainio::ITaikoInbox::BatchProposed);
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BatchesProvedWrapper(pub chainio::ITaikoInbox::BatchesProved);
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ForcedInclusionProcessedWrapper(
     pub chainio::taiko::wrapper::ITaikoWrapper::ForcedInclusionProcessed,
 );
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum TaikoEvent {
     L1Header(L1Header),
     L2Header(L2Header),
