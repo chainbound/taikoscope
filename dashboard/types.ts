@@ -27,7 +27,8 @@ export interface MetricData {
 }
 
 export interface L2ReorgEvent {
-  l2_block_number: number;
+  from_block_number: number;
+  to_block_number: number;
   depth: number;
   old_sequencer: string;
   new_sequencer: string;
