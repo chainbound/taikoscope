@@ -13,6 +13,8 @@ driver = { path = "../../crates/driver" }
 extractor = { path = "../../crates/extractor" }
 clickhouse = { path = "../../crates/clickhouse" }
 runtime = { path = "../../crates/runtime" }
+nats-utils = { path = "../../crates/nats-utils" }
+async-nats = "0.35"
 
 alloy-primitives.workspace = true
 clap.workspace = true

@@ -1,10 +1,10 @@
+#![allow(unused_variables)]
 //! Entrypoint.
-
-use driver::Driver;
 
 use clap::Parser;
 use config::Opts;
 use dotenvy::dotenv;
+use nats_utils::subscribe_to_events;
 use runtime::{
     health,
     shutdown::{ShutdownSignal, run_until_shutdown},
@@ -37,14 +37,23 @@ async fn main() -> eyre::Result<()> {
         }
     });
 
-    info!("🔭 Taikoscope engine starting...");
+    info!("🔭 Taikoscope processor starting...");
 
     let shutdown_signal = ShutdownSignal::new();
     let on_shutdown = || {
-        info!("👋 Taikoscope engine shutting down...");
+        info!("👋 Taikoscope processor shutting down...");
     };
 
-    let run_driver = async { Driver::new(opts).await?.start().await };
+    // Connect to NATS and subscribe to events
+    let nats_client = async_nats::connect(&opts.nats_url).await?;
+    subscribe_to_events(&nats_client).await?;
+
+    // Placeholder: process events from NATS
+    // while let Some(event) = event_stream.next().await {
+    //     // Process and store event
+    // }
+
+    let run_driver = async { Ok(()) };
 
     run_until_shutdown(run_driver, shutdown_signal, on_shutdown).await
 }

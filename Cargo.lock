@@ -4435,6 +4435,7 @@ name = "taikoscope"
 version = "0.1.0"
 dependencies = [
  "alloy-primitives",
+ "async-nats",
  "clap",
  "clickhouse 0.1.0",
  "config",
@@ -4442,6 +4443,7 @@ dependencies = [
  "driver",
  "extractor",
  "eyre",
+ "nats-utils",
  "runtime",
  "tokio",
  "tokio-stream",
