@@ -51,13 +51,11 @@ async fn l2_reorgs_paginated_builds_query() {
     let reader = ClickhouseReader::new(url, "db".to_owned(), "user".into(), "pass".into()).unwrap();
 
     let since = Utc.timestamp_opt(0, 0).single().unwrap();
-    let until = Utc.timestamp_opt(1, 0).single().unwrap();
-    let _ = reader.get_l2_reorgs_paginated(since, until, 5, Some(100), Some(50)).await;
+    let _ = reader.get_l2_reorgs_paginated(since, 5, Some(100), None).await;
     let query = ctl.query().await;
     assert!(query.contains("inserted_at > toDateTime64(0"));
     assert!(query.contains("inserted_at <= toDateTime64(1"));
     assert!(query.contains("l2_block_number < 100"));
-    assert!(query.contains("l2_block_number > 50"));
     assert!(query.contains("LIMIT 5"));
     assert!(query.contains("ORDER BY inserted_at DESC"));
 }
@@ -70,10 +68,9 @@ async fn batch_posting_times_paginated_builds_query() {
     let reader = ClickhouseReader::new(url, "db".to_owned(), "user".into(), "pass".into()).unwrap();
 
     let since = Utc.timestamp_opt(0, 0).single().unwrap();
-    let _ = reader.get_batch_posting_times_paginated(since, 10, Some(5), Some(20)).await;
+    let _ = reader.get_batch_posting_times_paginated(since, 10, Some(5), None).await;
     let query = ctl.query().await;
     assert!(query.contains("batch_id > 5"));
-    assert!(query.contains("batch_id < 20"));
     assert!(query.contains("LIMIT 10"));
     assert!(query.contains("ORDER BY batch_id ASC"));
 }
@@ -168,14 +165,14 @@ async fn reorgs_endpoint_returns_items_with_pagination() {
     let mock = Mock::new();
     mock.add(handlers::provide(vec![
         RawRow {
-            l2_block_number: 9,
+            l2_block_number: 12,
             depth: 1,
             old_sequencer: AddressBytes::from(Address::repeat_byte(1)),
             new_sequencer: AddressBytes::from(Address::repeat_byte(2)),
             ts: 1000,
         },
         RawRow {
-            l2_block_number: 8,
+            l2_block_number: 11,
             depth: 2,
             old_sequencer: AddressBytes::from(Address::repeat_byte(3)),
             new_sequencer: AddressBytes::from(Address::repeat_byte(4)),
@@ -191,7 +188,7 @@ async fn reorgs_endpoint_returns_items_with_pagination() {
     wait_for_server(addr).await;
 
     let resp = reqwest::get(format!(
-        "http://{addr}/{API_VERSION}/reorgs?starting_after=7&ending_before=10&limit=2"
+        "http://{addr}/{API_VERSION}/reorgs?starting_after=10&limit=2"
     ))
     .await
     .unwrap();
@@ -200,14 +197,14 @@ async fn reorgs_endpoint_returns_items_with_pagination() {
     let expected = serde_json::json!({
         "events": [
             {
-                "l2_block_number": 8,
+                "l2_block_number": 11,
                 "depth": 2,
                 "old_sequencer": "0x0303030303030303030303030303030303030303",
                 "new_sequencer": "0x0404040404040404040404040404040404040404",
                 "inserted_at": Utc.timestamp_millis_opt(2000).single().unwrap().to_rfc3339()
             },
             {
-                "l2_block_number": 9,
+                "l2_block_number": 12,
                 "depth": 1,
                 "old_sequencer": "0x0101010101010101010101010101010101010101",
                 "new_sequencer": "0x0202020202020202020202020202020202020202",
@@ -244,7 +241,7 @@ async fn batch_posting_times_endpoint_returns_items_with_pagination() {
     wait_for_server(addr).await;
 
     let resp = reqwest::get(format!(
-        "http://{addr}/{API_VERSION}/batch-posting-times?starting_after=0&ending_before=2&limit=1"
+        "http://{addr}/{API_VERSION}/batch-posting-times?starting_after=0&limit=1"
     ))
     .await
     .unwrap();
@@ -260,6 +257,48 @@ async fn batch_posting_times_endpoint_returns_items_with_pagination() {
         ]
     });
     assert_eq!(body, expected);
+
+    server.abort();
+}
+
+#[tokio::test]
+async fn reorgs_pagination_both_params_returns_400() {
+    let mock = Mock::new();
+
+    let url = Url::parse(mock.url()).unwrap();
+    let client =
+        ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+    let (addr, server) = spawn_server(client).await;
+    wait_for_server(addr).await;
+
+    let resp = reqwest::get(format!(
+        "http://{addr}/{API_VERSION}/reorgs?starting_after=0&ending_before=10&limit=1"
+    ))
+    .await
+    .unwrap();
+    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+
+    server.abort();
+}
+
+#[tokio::test]
+async fn batch_posting_times_pagination_both_params_returns_400() {
+    let mock = Mock::new();
+
+    let url = Url::parse(mock.url()).unwrap();
+    let client =
+        ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
+
+    let (addr, server) = spawn_server(client).await;
+    wait_for_server(addr).await;
+
+    let resp = reqwest::get(format!(
+        "http://{addr}/{API_VERSION}/batch-posting-times?starting_after=0&ending_before=10&limit=1"
+    ))
+    .await
+    .unwrap();
+    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
 
     server.abort();
 }
