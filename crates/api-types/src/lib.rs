@@ -107,8 +107,10 @@ pub struct ForcedInclusionEventsResponse {
 /// Single L2 reorg event with sequencer addresses.
 #[derive(Debug, Serialize, ToSchema)]
 pub struct L2ReorgEvent {
+    /// Block number that was replaced.
+    pub from_block_number: u64,
     /// Block number that became the new head.
-    pub l2_block_number: u64,
+    pub to_block_number: u64,
     /// Number of blocks replaced by the reorg.
     pub depth: u16,
     /// Address of the sequencer that produced the replaced block.

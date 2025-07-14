@@ -200,14 +200,16 @@ async fn reorgs_endpoint_returns_items_with_pagination() {
     let expected = serde_json::json!({
         "events": [
             {
-                "l2_block_number": 8,
+                "from_block_number": 10,
+                "to_block_number": 8,
                 "depth": 2,
                 "old_sequencer": "0x0303030303030303030303030303030303030303",
                 "new_sequencer": "0x0404040404040404040404040404040404040404",
                 "inserted_at": Utc.timestamp_millis_opt(2000).single().unwrap().to_rfc3339()
             },
             {
-                "l2_block_number": 9,
+                "from_block_number": 10,
+                "to_block_number": 9,
                 "depth": 1,
                 "old_sequencer": "0x0101010101010101010101010101010101010101",
                 "new_sequencer": "0x0202020202020202020202020202020202020202",
