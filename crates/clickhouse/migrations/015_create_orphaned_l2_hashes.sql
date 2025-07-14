@@ -6,4 +6,4 @@ CREATE TABLE IF NOT EXISTS ${DB}.orphaned_l2_hashes (
     inserted_at DateTime64(3) DEFAULT now64()
 ) ENGINE = MergeTree()
 PARTITION BY toYYYYMM(inserted_at)
-ORDER BY (block_hash, l2_block_number);
+ORDER BY (l2_block_number, block_hash);
