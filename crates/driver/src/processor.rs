@@ -32,13 +32,10 @@ impl ProcessorDriver {
             )
         });
 
-        // Run database migrations if writes are enabled
-        if opts.enable_db_writes {
-            if let Some(writer) = &clickhouse_writer {
-                info!("🚀 Running database migrations...");
-                writer.init_db(opts.reset_db).await?;
-                info!("✅ Database migrations completed");
-            }
+        if let Some(writer) = &clickhouse_writer {
+            info!("🚀 Running database migrations...");
+            writer.init_db(opts.reset_db).await?;
+            info!("✅ Database migrations completed");
         }
 
         Ok(Self { nats_client, clickhouse_writer, enable_db_writes: opts.enable_db_writes })
