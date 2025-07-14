@@ -378,22 +378,22 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     );
 
     // Define node indices for easier reference
-    const hardwareIndex = 4;
-    const proveIndex = l1ProveCost > 0 ? 5 : -1;
-    const proposeIndex = l1ProveCost > 0 ? 6 : 5;
+    const daoIndex = 4;
+    const hardwareIndex = 5;
+    const proveIndex = l1ProveCost > 0 ? 6 : -1;
+    const proposeIndex = l1ProveCost > 0 ? 7 : 6;
     const profitIndex = proposeIndex + 1;
-    const daoIndex = profitIndex + 1;
 
     nodes = [
       { name: 'Subsidy', value: l1Subsidy, usd: true, depth: 0 },
       { name: 'Priority Fee', value: priorityFeeUsd, wei: priorityFee ?? 0, depth: 0 },
       { name: 'Base Fee', value: baseFeeUsd, wei: baseFee ?? 0, depth: 0 },
       { name: 'Sequencers', value: sequencerRevenue, wei: sequencerRevenueWei, depth: 1 },
+      { name: 'Taiko DAO', value: baseFeeDaoUsd, wei: (baseFee ?? 0) * 0.25, depth: 1 },
       { name: 'Hardware Cost', value: totalHardwareCost, usd: true, depth: 2 },
       { name: 'Proving Cost', value: actualProveCost, usd: true, depth: 2 },
       { name: 'Proposing Cost', value: l1DataCostTotalUsd, usd: true, depth: 2 },
       { name: 'Profit', value: sequencerProfit, wei: sequencerProfitWei, depth: 3 },
-      { name: 'Taiko DAO', value: baseFeeDaoUsd, wei: (baseFee ?? 0) * 0.25, depth: 1 },
     ];
 
     // Build links with updated indices
@@ -446,11 +446,11 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     const priorityIndex = 1;
     const baseFeeIndex = 2;
     const sequencerStartIndex = 3; // first sequencer node index
-    const hardwareIndex = sequencerStartIndex + seqData.length;
+    const daoIndex = sequencerStartIndex + seqData.length;
+    const hardwareIndex = daoIndex + 1;
     const proveIndex = l1ProveCost > 0 ? hardwareIndex + 1 : -1;
     const l1Index = hardwareIndex + 1 + (l1ProveCost > 0 ? 1 : 0);
     const profitIndex = l1ProveCost > 0 ? l1Index + 1 : hardwareIndex + 1;
-    const daoIndex = profitIndex + 1;
 
     nodes = [
       // Subsidy node at index 0
@@ -472,6 +472,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
         wei: s.revenueWei + s.subsidyWei,
         depth: 1,
       })),
+      { name: 'Taiko DAO', value: baseFeeDaoUsd, wei: (baseFee ?? 0) * 0.25, depth: 1 },
       { name: 'Hardware Cost', value: totalActualHardwareCost, usd: true, depth: 2 },
       ...(l1ProveCost > 0 ? [{ name: 'Proving Cost', value: totalActualProveCost, usd: true, depth: 2 }] : []),
       { name: 'Proposing Cost', value: totalL1Cost, usd: true, depth: 2 },
@@ -482,7 +483,6 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
         profitNode: true,
         depth: 3,
       },
-      { name: 'Taiko DAO', value: baseFeeDaoUsd, wei: (baseFee ?? 0) * 0.25, depth: 1 },
     ];
 
     links = [
