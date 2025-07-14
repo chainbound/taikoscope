@@ -37,6 +37,7 @@ describe('dataFetcher', () => {
         l2_reorgs: 6,
         slashings: 7,
         forced_inclusions: 8,
+        failed_proposals: 9,
         l2_head_block: 10,
         l1_head_block: 11,
       }),

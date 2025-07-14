@@ -48,6 +48,14 @@ export interface ForcedInclusionEvent {
   blob_hash: number[];
 }
 
+export interface FailedProposalEvent {
+  l2_block_number: number;
+  original_sequencer: string;
+  proposer: string;
+  l1_block_number: number;
+  timestamp: number;
+}
+
 export interface ErrorResponse {
   type: string;
   title: string;

@@ -11,6 +11,7 @@ import type {
   L2ReorgEvent,
   SlashingEvent,
   ForcedInclusionEvent,
+  FailedProposalEvent,
   ErrorResponse,
   TimeRange,
 } from '../types';
@@ -249,6 +250,59 @@ export const fetchForcedInclusionEvents = async (
   const res = await fetchJson<{ events: ForcedInclusionEvent[] }>(url);
   return {
     data: res.data ? res.data.events : null,
+    badRequest: res.badRequest,
+    error: res.error,
+  };
+};
+
+export const fetchFailedProposalCount = async (
+  range: TimeRange,
+): Promise<RequestResult<number>> => {
+  const url = `${API_BASE}/failed-proposals?${timeRangeToQuery(range)}`;
+  const res = await fetchJson<{ events: unknown[] }>(url);
+  return {
+    data: res.data ? res.data.events.length : null,
+    badRequest: res.badRequest,
+    error: res.error,
+  };
+};
+
+export const fetchFailedProposalEvents = async (
+  range: TimeRange,
+  limit = 50,
+  startingAfter?: number,
+  endingBefore?: number,
+): Promise<RequestResult<FailedProposalEvent[]>> => {
+  let url = `${API_BASE}/failed-proposals?`;
+  if (startingAfter === undefined && endingBefore === undefined) {
+    url += `${timeRangeToQuery(range)}&limit=${limit}`;
+  } else {
+    url += `${rangeToQuery(range)}&limit=${limit}`;
+  }
+  if (startingAfter !== undefined) {
+    url += `&starting_after=${startingAfter}`;
+  } else if (endingBefore !== undefined) {
+    url += `&ending_before=${endingBefore}`;
+  }
+  const res = await fetchJson<{
+    events: {
+      l2_block_number: number;
+      original_sequencer: string;
+      proposer: string;
+      l1_block_number: number;
+      inserted_at: string;
+    }[];
+  }>(url);
+  return {
+    data: res.data?.events
+      ? res.data.events.map((e) => ({
+          l2_block_number: e.l2_block_number,
+          original_sequencer: e.original_sequencer,
+          proposer: e.proposer,
+          l1_block_number: e.l1_block_number,
+          timestamp: Date.parse(e.inserted_at),
+        }))
+      : null,
     badRequest: res.badRequest,
     error: res.error,
   };
@@ -1112,6 +1166,7 @@ export interface DashboardDataResponse {
   l2_reorgs: number;
   slashings: number;
   forced_inclusions: number;
+  failed_proposals: number;
   l2_head_block: number | null;
   l1_head_block: number | null;
 }
