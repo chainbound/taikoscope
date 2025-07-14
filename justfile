@@ -31,11 +31,11 @@ stop-dev-nats:
 
 # start the ingestor for local development
 dev-ingestor:
-    ENV_FILE=dev.env cargo run --bin ingestor
+    ENV_FILE=hekla.env cargo run --bin ingestor
 
 # start the processor for local development
 dev-processor:
-    ENV_FILE=dev.env cargo run --bin processor
+    ENV_FILE=hekla.env cargo run --bin processor
 
 # run complete local NATS pipeline (starts NATS, ingestor, and processor)
 dev-pipeline:
