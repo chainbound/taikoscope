@@ -23,6 +23,19 @@ impl ProcessorDriver {
         let nats_client = async_nats::connect(&opts.nats_url).await?;
         info!("Connected to NATS server at {}", opts.nats_url);
 
+        // Always create a ClickhouseWriter for migrations, regardless of enable_db_writes
+        let migration_writer = ClickhouseWriter::new(
+            opts.clickhouse.url.clone(),
+            opts.clickhouse.db.clone(),
+            opts.clickhouse.username.clone(),
+            opts.clickhouse.password.clone(),
+        );
+
+        info!("🚀 Running database migrations...");
+        migration_writer.init_db(opts.reset_db).await?;
+        info!("✅ Database migrations completed");
+
+        // Only keep the writer for event processing if database writes are enabled
         let clickhouse_writer = opts.enable_db_writes.then(|| {
             ClickhouseWriter::new(
                 opts.clickhouse.url,
@@ -31,12 +44,6 @@ impl ProcessorDriver {
                 opts.clickhouse.password,
             )
         });
-
-        if let Some(writer) = &clickhouse_writer {
-            info!("🚀 Running database migrations...");
-            writer.init_db(opts.reset_db).await?;
-            info!("✅ Database migrations completed");
-        }
 
         Ok(Self { nats_client, clickhouse_writer, enable_db_writes: opts.enable_db_writes })
     }
