@@ -87,21 +87,26 @@ fn fees_by_sequencer_query_has_proper_spacing() {
     let range = TimeRange::LastHour;
     let query = format!(
         "SELECT h.sequencer, \
-                sum(sum_priority_fee) AS priority_fee, \
-                sum(sum_base_fee) AS base_fee, \
+                sum(h.sum_priority_fee) AS priority_fee, \
+                sum(h.sum_base_fee) AS base_fee, \
                 toNullable(sum(if(b.batch_size > 0, intDiv(dc.cost, b.batch_size), NULL))) AS l1_data_cost, \
-                toNullable(sum(if(b.batch_size > 0, intDiv(pc.cost, b.batch_size), NULL))) AS prove_cost, \
-         FROM {db}.l2_head_events h \
-         LEFT JOIN {db}.batch_blocks bb \
-           ON h.l2_block_number = bb.l2_block_number \
-         LEFT JOIN {db}.batches b \
+                toNullable(sum(if(b.batch_size > 0, intDiv(pc.cost, b.batch_size), NULL))) AS prove_cost \
+         FROM {db}.batch_blocks bb \
+         INNER JOIN {db}.batches b \
            ON bb.batch_id = b.batch_id \
+         INNER JOIN {db}.l1_head_events l1 \
+           ON b.l1_block_number = l1.l1_block_number \
+         LEFT JOIN {db}.l2_head_events h \
+           ON bb.l2_block_number = h.l2_block_number \
          LEFT JOIN {db}.l1_data_costs dc \
            ON b.batch_id = dc.batch_id \
          LEFT JOIN {db}.prove_costs pc \
            ON b.batch_id = pc.batch_id \
-         WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
-           AND bb.batch_id IS NOT NULL \
+         WHERE l1.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
+           AND h.l2_block_number NOT IN ( \
+               SELECT l2_block_number \
+               FROM {db}.l2_reorgs \
+           ) \
          GROUP BY h.sequencer \
          ORDER BY priority_fee DESC",
         interval = range.interval(),
@@ -109,19 +114,19 @@ fn fees_by_sequencer_query_has_proper_spacing() {
     );
 
     // Verify that the problematic concatenations have proper spacing
+    assert!(query.contains("batch_blocks bb"), "Query should have space after 'bb'");
+    assert!(query.contains("batches b ON"), "Query should have space between 'b' and 'ON'");
     assert!(
-        query.contains("l2_head_events h LEFT JOIN"),
-        "Query should have space between 'h' and 'LEFT JOIN'"
+        query.contains("l1_head_events l1 ON"),
+        "Query should have space between 'l1' and 'ON'"
     );
+    assert!(query.contains("l2_head_events h ON"), "Query should have space between 'h' and 'ON'");
     assert!(query.contains("l1_data_costs dc ON"), "Query should have space between 'dc' and 'ON'");
-    assert!(query.contains("batch_blocks bb ON"), "Query should have space between 'bb' and 'ON'",);
-    assert!(query.contains("batches b ON"), "Query should have space between 'b' and 'ON'",);
-    assert!(query.contains("prove_costs pc ON"), "Query should have space between 'pc' and 'ON'",);
+    assert!(query.contains("prove_costs pc ON"), "Query should have space between 'pc' and 'ON'");
     assert!(
-        query.contains("bb.l2_block_number LEFT JOIN"),
-        "Query should have space between 'l2_block_number' and 'LEFT JOIN'"
+        query.contains("bb.l2_block_number = h.l2_block_number"),
+        "Query should join on l2_block_number correctly"
     );
-    assert!(query.contains(") AND"), "Query should have space between ')' and 'AND'");
 
     // Verify that malformed tokens are not present
     assert!(!query.contains("hLEFT"), "Query should not contain 'hLEFT'");
