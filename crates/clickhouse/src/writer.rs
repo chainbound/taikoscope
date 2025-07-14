@@ -152,8 +152,8 @@ use crate::{
     L1Header,
     models::{
         BatchBlockRow, BatchRow, ForcedInclusionProcessedRow, L1DataCostInsertRow, L1HeadEvent,
-        L2HeadEvent, L2ReorgInsertRow, PreconfData, ProveCostInsertRow, ProvedBatchRow,
-        VerifiedBatchRow, VerifyCostInsertRow,
+        L2HeadEvent, L2ReorgInsertRow, OrphanedL2HashRow, PreconfData, ProveCostInsertRow,
+        ProvedBatchRow, VerifiedBatchRow, VerifyCostInsertRow,
     },
     schema::{TABLE_SCHEMAS, TABLES, TableSchema, VIEWS},
     types::{AddressBytes, HashBytes},
@@ -489,6 +489,24 @@ impl ClickhouseWriter {
         insert.end().await?;
         Ok(())
     }
+
+    /// Insert orphaned L2 block hashes
+    pub async fn insert_orphaned_hashes(&self, hashes: &[(HashBytes, u64)]) -> Result<()> {
+        if hashes.is_empty() {
+            return Ok(());
+        }
+
+        let client = self.base.clone();
+        let mut insert = client.insert(&format!("{}.orphaned_l2_hashes", self.db_name))?;
+
+        for (hash, block_number) in hashes {
+            let row = OrphanedL2HashRow { block_hash: *hash, l2_block_number: *block_number };
+            insert.write(&row).await?;
+        }
+
+        insert.end().await?;
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -790,6 +808,26 @@ mod tests {
 
         let rows: Vec<VerifyCostInsertRow> = ctl.collect().await;
         assert_eq!(rows, vec![VerifyCostInsertRow { l1_block_number: 8, batch_id: 10, cost: 66 }]);
+    }
+
+    #[tokio::test]
+    async fn insert_orphaned_hashes_writes_expected_rows() {
+        let mock = Mock::new();
+        let ctl = mock.add(handlers::record::<OrphanedL2HashRow>());
+
+        let url = Url::parse(mock.url()).unwrap();
+        let writer = ClickhouseWriter::new(url, "db".to_owned(), "user".into(), "pass".into());
+
+        let hashes =
+            vec![(HashBytes::from([1u8; 32]), 100u64), (HashBytes::from([2u8; 32]), 101u64)];
+        writer.insert_orphaned_hashes(&hashes).await.unwrap();
+
+        let rows: Vec<OrphanedL2HashRow> = ctl.collect().await;
+        assert_eq!(rows.len(), 2);
+        assert_eq!(rows[0].block_hash, HashBytes::from([1u8; 32]));
+        assert_eq!(rows[0].l2_block_number, 100);
+        assert_eq!(rows[1].block_hash, HashBytes::from([2u8; 32]));
+        assert_eq!(rows[1].l2_block_number, 101);
     }
 
     #[test]

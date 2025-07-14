@@ -66,12 +66,12 @@ impl ClickhouseReader {
     }
 
     /// Anti-subquery that hides blocks later rolled back by a reorg.
-    /// Use with `NOT IN (SELECT l2_block_number FROM ...)`
+    /// Use with `NOT IN (SELECT block_hash FROM ...)`
     fn reorg_filter(&self, table_alias: &str) -> String {
         format!(
-            "{table_alias}.l2_block_number NOT IN ( \
-                SELECT l2_block_number \
-                FROM {db}.l2_reorgs\
+            "{table_alias}.block_hash NOT IN ( \
+                SELECT block_hash \
+                FROM {db}.orphaned_l2_hashes\
             )",
             db = self.db_name,
         )
@@ -2959,5 +2959,66 @@ impl ClickhouseReader {
                 sum_tx: r.sum_tx,
             })
             .collect())
+    }
+
+    /// Get block hashes for orphaned blocks in the specified range
+    pub async fn get_hashes_for_range(
+        &self,
+        start: u64,
+        end: u64,
+    ) -> Result<Vec<(HashBytes, u64)>> {
+        if start > end {
+            return Ok(vec![]);
+        }
+
+        #[derive(Row, Deserialize)]
+        struct HashRow {
+            block_hash: HashBytes,
+            l2_block_number: u64,
+        }
+
+        let query = format!(
+            "SELECT DISTINCT block_hash, l2_block_number FROM {db}.l2_head_events \
+             WHERE l2_block_number BETWEEN {start} AND {end} \
+             ORDER BY l2_block_number ASC, inserted_at DESC",
+            db = self.db_name,
+        );
+
+        let rows = self.execute::<HashRow>(&query).await?;
+        Ok(rows.into_iter().map(|r| (r.block_hash, r.l2_block_number)).collect())
+    }
+
+    /// Get the most recent block hashes for the specified block numbers
+    /// This is used to identify orphaned blocks during reorgs
+    pub async fn get_latest_hashes_for_blocks(
+        &self,
+        block_numbers: &[u64],
+    ) -> Result<Vec<(HashBytes, u64)>> {
+        if block_numbers.is_empty() {
+            return Ok(vec![]);
+        }
+
+        #[derive(Row, Deserialize)]
+        struct HashRow {
+            block_hash: HashBytes,
+            l2_block_number: u64,
+        }
+
+        let block_list = block_numbers.iter().map(|n| n.to_string()).collect::<Vec<_>>().join(",");
+        let query = format!(
+            "SELECT block_hash, l2_block_number \
+             FROM (\
+                 SELECT block_hash, l2_block_number, \
+                        ROW_NUMBER() OVER (PARTITION BY l2_block_number ORDER BY inserted_at DESC) as rn \
+                 FROM {db}.l2_head_events \
+                 WHERE l2_block_number IN ({block_list})\
+             ) ranked \
+             WHERE rn = 1 \
+             ORDER BY l2_block_number",
+            db = self.db_name,
+        );
+
+        let rows = self.execute::<HashRow>(&query).await?;
+        Ok(rows.into_iter().map(|r| (r.block_hash, r.l2_block_number)).collect())
     }
 }

@@ -479,6 +479,11 @@ impl ReorgDetector {
         Self { head_number: 0 }
     }
 
+    /// Get the current head number
+    pub const fn head_number(&self) -> BlockNumber {
+        self.head_number
+    }
+
     /// Checks a new block number against the current head number.
     /// Returns the reorg depth if the new block number is less than the current head.
     /// Always updates the internal head number to the new block number.

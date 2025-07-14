@@ -26,6 +26,7 @@ pub const TABLES: &[&str] = &[
     "l1_data_costs",
     "prove_costs",
     "verify_costs",
+    "orphaned_l2_hashes",
 ];
 
 /// Names of all materialized views
@@ -192,5 +193,12 @@ pub const TABLE_SCHEMAS: &[TableSchema] = &[
                  blob_total_bytes UInt32,
                  inserted_at DateTime64(3) DEFAULT now64()",
         order_by: "toStartOfDay(inserted_at), l1_block_number, batch_id",
+    },
+    TableSchema {
+        name: "orphaned_l2_hashes",
+        columns: "block_hash FixedString(32),
+                 l2_block_number UInt64,
+                 inserted_at DateTime64(3) DEFAULT now64()",
+        order_by: "block_hash, l2_block_number",
     },
 ];

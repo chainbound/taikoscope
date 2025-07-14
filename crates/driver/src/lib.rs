@@ -449,6 +449,7 @@ impl Driver {
     /// Process an L2 header event, inserting statistics and detecting reorgs.
     async fn handle_l2_header(&mut self, header: L2Header) {
         let prev_header = self.last_l2_header;
+        let _old_head = self.reorg.head_number(); // Capture old head before detection
         // Detect reorgs
         // It returns Some(depth) if new_block_number < current_head_number.
         let reorg_depth = self.reorg.on_new_block(header.number);
@@ -465,6 +466,48 @@ impl Driver {
                 tracing::error!(block_number = header.number, depth = depth, err = %e, "Failed to insert L2 reorg");
             } else {
                 info!(new_head = header.number, depth, "Inserted L2 reorg");
+            }
+
+            // Identify orphaned blocks: blocks from (header.number - depth + 1) to header.number
+            // that existed before this reorg (excluding the new canonical block at header.number)
+            if depth > 0 {
+                let orphaned_start = header.number.saturating_sub(depth as u64 - 1);
+                let orphaned_end = header.number;
+                let orphaned_block_numbers: Vec<u64> = (orphaned_start..orphaned_end).collect();
+
+                if !orphaned_block_numbers.is_empty() {
+                    match self
+                        .clickhouse_reader
+                        .get_latest_hashes_for_blocks(&orphaned_block_numbers)
+                        .await
+                    {
+                        Ok(orphaned_hashes) => {
+                            if !orphaned_hashes.is_empty() {
+                                if let Err(e) =
+                                    self.clickhouse.insert_orphaned_hashes(&orphaned_hashes).await
+                                {
+                                    tracing::error!(
+                                        orphaned_start,
+                                        orphaned_end,
+                                        count = orphaned_hashes.len(),
+                                        err = %e,
+                                        "Failed to insert orphaned hashes"
+                                    );
+                                } else {
+                                    info!(
+                                        orphaned_start,
+                                        orphaned_end,
+                                        count = orphaned_hashes.len(),
+                                        "Inserted orphaned hashes for reorg"
+                                    );
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            tracing::error!(orphaned_start, orphaned_end, err = %e, "Failed to fetch orphaned hashes");
+                        }
+                    }
+                }
             }
         } else {
             match self.extractor.get_l2_block_stats(header.number, header.base_fee_per_gas).await {
