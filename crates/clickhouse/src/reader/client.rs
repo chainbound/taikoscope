@@ -2726,41 +2726,42 @@ impl ClickhouseReader {
 
     /// Get aggregated L2 fees grouped by sequencer for the given range
     pub async fn get_l2_fees_by_sequencer(&self, range: TimeRange) -> Result<Vec<SequencerFeeRow>> {
-        // Pre-aggregate at batch level to prevent fan-out from block-level joins
+        // Separate revenues (by L2 block sequencer) from costs (by L1 batch proposer)
         let query = format!(
-            "WITH eligible_batches AS ( \
-            SELECT b.batch_id, b.proposer_addr \
-            FROM {db}.batches b \
-            INNER JOIN {db}.l1_head_events l1 ON b.l1_block_number = l1.l1_block_number \
-            WHERE l1.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
-        ), \
-        fees_per_batch AS ( \
+            "WITH revenues AS ( \
+                SELECT \
+                    h.sequencer AS seq_addr, \
+                    sum(h.sum_priority_fee) AS priority_fee, \
+                    sum(h.sum_base_fee) AS base_fee \
+                FROM {db}.l2_head_events h \
+                WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
+                  AND {filter} \
+                GROUP BY h.sequencer \
+            ), \
+            costs AS ( \
+                SELECT \
+                    b.proposer_addr AS seq_addr, \
+                    sum(dc.cost) AS l1_data_cost, \
+                    sum(pc.cost) AS prove_cost \
+                FROM {db}.batches b \
+                INNER JOIN {db}.l1_head_events l1 ON b.l1_block_number = l1.l1_block_number \
+                LEFT JOIN {db}.l1_data_costs dc ON b.batch_id = dc.batch_id AND b.l1_block_number = dc.l1_block_number \
+                LEFT JOIN {db}.prove_costs pc ON b.batch_id = pc.batch_id AND b.l1_block_number = pc.l1_block_number \
+                WHERE l1.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
+                GROUP BY b.proposer_addr \
+            ) \
             SELECT \
-                bb.batch_id, \
-                sum(h.sum_priority_fee) as priority_fee, \
-                sum(h.sum_base_fee) as base_fee \
-            FROM {db}.batch_blocks bb \
-            INNER JOIN {db}.l2_head_events h ON bb.l2_block_number = h.l2_block_number \
-            WHERE bb.batch_id IN (SELECT batch_id FROM eligible_batches) \
-              AND h.l2_block_number NOT IN ( \
-                  SELECT l2_block_number FROM {db}.l2_reorgs \
-              ) \
-            GROUP BY bb.batch_id \
-        ) \
-        SELECT \
-            eb.proposer_addr as sequencer, \
-            coalesce(sum(fpb.priority_fee), toUInt128(0)) as priority_fee, \
-            coalesce(sum(fpb.base_fee), toUInt128(0)) as base_fee, \
-            toNullable(sum(dc.cost)) as l1_data_cost, \
-            toNullable(sum(pc.cost)) as prove_cost \
-        FROM eligible_batches eb \
-        LEFT JOIN fees_per_batch fpb ON eb.batch_id = fpb.batch_id \
-        LEFT JOIN {db}.l1_data_costs dc ON eb.batch_id = dc.batch_id \
-        LEFT JOIN {db}.prove_costs pc ON eb.batch_id = pc.batch_id \
-        GROUP BY eb.proposer_addr \
-        ORDER BY priority_fee DESC",
+                coalesce(r.seq_addr, c.seq_addr) AS sequencer, \
+                coalesce(r.priority_fee, toUInt128(0)) AS priority_fee, \
+                coalesce(r.base_fee, toUInt128(0)) AS base_fee, \
+                toNullable(c.l1_data_cost) AS l1_data_cost, \
+                toNullable(c.prove_cost) AS prove_cost \
+            FROM revenues r \
+            FULL OUTER JOIN costs c ON r.seq_addr = c.seq_addr \
+            ORDER BY priority_fee DESC",
             db = self.db_name,
             interval = range.interval(),
+            filter = self.reorg_filter("h"),
         );
 
         self.execute(&query).await
