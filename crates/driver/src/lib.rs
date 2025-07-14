@@ -449,7 +449,7 @@ impl Driver {
     /// Process an L2 header event, inserting statistics and detecting reorgs.
     async fn handle_l2_header(&mut self, header: L2Header) {
         let prev_header = self.last_l2_header;
-        let _old_head = self.reorg.head_number(); // Capture old head before detection
+        let old_head = self.reorg.head_number(); // Capture old head before detection
         // Detect reorgs
         // It returns Some(depth) if new_block_number < current_head_number.
         let reorg_depth = self.reorg.on_new_block(header.number);
@@ -471,7 +471,7 @@ impl Driver {
             // Identify orphaned blocks that existed before this reorg
             if depth > 0 {
                 let orphaned_block_numbers =
-                    calculate_orphaned_blocks(_old_head, header.number, depth.into());
+                    calculate_orphaned_blocks(old_head, header.number, depth.into());
 
                 if !orphaned_block_numbers.is_empty() {
                     match self
@@ -503,35 +503,36 @@ impl Driver {
                     }
                 }
             }
-        } else {
-            match self.extractor.get_l2_block_stats(header.number, header.base_fee_per_gas).await {
-                Ok((sum_gas_used, sum_tx, sum_priority_fee)) => {
-                    let sum_base_fee =
-                        sum_gas_used.saturating_mul(header.base_fee_per_gas.unwrap_or(0) as u128);
-                    let event = clickhouse::L2HeadEvent {
-                        l2_block_number: header.number,
-                        block_hash: HashBytes(*header.hash),
-                        block_ts: header.timestamp,
-                        sum_gas_used,
-                        sum_tx,
-                        sum_priority_fee,
-                        sum_base_fee,
-                        sequencer: AddressBytes(header.beneficiary.into_array()),
-                    };
+        }
 
-                    if let Err(e) = self.clickhouse.insert_l2_header(&event).await {
-                        tracing::error!(block_number = header.number, err = %e, "Failed to insert L2 header");
-                    } else {
-                        info!(
-                            l2_header = header.number,
-                            block_ts = header.timestamp,
-                            "Inserted L2 header"
-                        );
-                    }
+        // Insert L2HeadEvent for all blocks (including new heads after reorgs)
+        match self.extractor.get_l2_block_stats(header.number, header.base_fee_per_gas).await {
+            Ok((sum_gas_used, sum_tx, sum_priority_fee)) => {
+                let sum_base_fee =
+                    sum_gas_used.saturating_mul(header.base_fee_per_gas.unwrap_or(0) as u128);
+                let event = clickhouse::L2HeadEvent {
+                    l2_block_number: header.number,
+                    block_hash: HashBytes(*header.hash),
+                    block_ts: header.timestamp,
+                    sum_gas_used,
+                    sum_tx,
+                    sum_priority_fee,
+                    sum_base_fee,
+                    sequencer: AddressBytes(header.beneficiary.into_array()),
+                };
+
+                if let Err(e) = self.clickhouse.insert_l2_header(&event).await {
+                    tracing::error!(block_number = header.number, err = %e, "Failed to insert L2 header");
+                } else {
+                    info!(
+                        l2_header = header.number,
+                        block_ts = header.timestamp,
+                        "Inserted L2 header"
+                    );
                 }
-                Err(e) => {
-                    tracing::error!(block_number = header.number, err = %e, "Failed to fetch block stats");
-                }
+            }
+            Err(e) => {
+                tracing::error!(block_number = header.number, err = %e, "Failed to fetch block stats");
             }
         }
     }
