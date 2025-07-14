@@ -15,10 +15,10 @@ use url::Url;
 use crate::{
     models::{
         BatchBlobCountRow, BatchFeeComponentRow, BatchPostingTimeRow, BatchProveTimeRow,
-        BatchVerifyTimeRow, BlockFeeComponentRow, BlockTransactionRow, ForcedInclusionProcessedRow,
-        L1BlockTimeRow, L1DataCostRow, L2BlockTimeRow, L2GasUsedRow, L2ReorgRow, L2TpsRow,
-        PreconfData, ProveCostRow, SequencerBlockRow, SequencerDistributionRow, SequencerFeeRow,
-        SlashingEventRow,
+        BatchVerifyTimeRow, BlockFeeComponentRow, BlockTransactionRow, FailedProposalRow,
+        ForcedInclusionProcessedRow, L1BlockTimeRow, L1DataCostRow, L2BlockTimeRow, L2GasUsedRow,
+        L2ReorgRow, L2TpsRow, PreconfData, ProveCostRow, SequencerBlockRow,
+        SequencerDistributionRow, SequencerFeeRow, SlashingEventRow,
     },
     types::{AddressBytes, HashBytes},
 };
@@ -536,6 +536,103 @@ impl ClickhouseReader {
         }
         let rows = result.context("fetching forced inclusion events failed")?;
         Ok(rows)
+    }
+
+    /// Get failed proposal events that occurred after the given cutoff time
+    pub async fn get_failed_proposals_since(
+        &self,
+        since: DateTime<Utc>,
+    ) -> Result<Vec<FailedProposalRow>> {
+        #[derive(Row, Deserialize)]
+        struct RawRow {
+            l2_block_number: u64,
+            original_sequencer: AddressBytes,
+            proposer: AddressBytes,
+            l1_block_number: u64,
+            ts: u64,
+        }
+
+        let query = format!(
+            "SELECT h.l2_block_number, h.sequencer AS original_sequencer, \
+                    b.proposer_addr AS proposer, b.l1_block_number, \
+                    toUInt64(toUnixTimestamp64Milli(l1.inserted_at)) AS ts \
+             FROM {db}.l2_head_events h \
+             INNER JOIN {db}.batch_blocks bb ON h.l2_block_number = bb.l2_block_number \
+             INNER JOIN {db}.batches b ON bb.batch_id = b.batch_id \
+             INNER JOIN {db}.l1_head_events l1 ON b.l1_block_number = l1.l1_block_number \
+             LEFT JOIN {db}.l2_reorgs r ON h.l2_block_number = r.l2_block_number \
+             WHERE l1.inserted_at > toDateTime64({since}, 3) \
+               AND r.l2_block_number IS NULL \
+               AND h.sequencer != b.proposer_addr \
+             ORDER BY l1.inserted_at ASC",
+            db = self.db_name,
+            since = since.timestamp_millis() as f64 / 1000.0,
+        );
+        let rows =
+            self.execute::<RawRow>(&query).await.context("fetching failed proposals failed")?;
+        Ok(rows
+            .into_iter()
+            .filter_map(|r| {
+                let ts = Utc.timestamp_millis_opt(r.ts as i64).single()?;
+                Some(FailedProposalRow {
+                    l2_block_number: r.l2_block_number,
+                    original_sequencer: r.original_sequencer,
+                    proposer: r.proposer,
+                    l1_block_number: r.l1_block_number,
+                    inserted_at: ts,
+                })
+            })
+            .collect())
+    }
+
+    /// Get failed proposal events within the given time range
+    pub async fn get_failed_proposals_range(
+        &self,
+        since: DateTime<Utc>,
+        until: DateTime<Utc>,
+    ) -> Result<Vec<FailedProposalRow>> {
+        #[derive(Row, Deserialize)]
+        struct RawRow {
+            l2_block_number: u64,
+            original_sequencer: AddressBytes,
+            proposer: AddressBytes,
+            l1_block_number: u64,
+            ts: u64,
+        }
+
+        let query = format!(
+            "SELECT h.l2_block_number, h.sequencer AS original_sequencer, \
+                    b.proposer_addr AS proposer, b.l1_block_number, \
+                    toUInt64(toUnixTimestamp64Milli(l1.inserted_at)) AS ts \
+             FROM {db}.l2_head_events h \
+             INNER JOIN {db}.batch_blocks bb ON h.l2_block_number = bb.l2_block_number \
+             INNER JOIN {db}.batches b ON bb.batch_id = b.batch_id \
+             INNER JOIN {db}.l1_head_events l1 ON b.l1_block_number = l1.l1_block_number \
+             LEFT JOIN {db}.l2_reorgs r ON h.l2_block_number = r.l2_block_number \
+             WHERE l1.inserted_at > toDateTime64({since}, 3) \
+               AND l1.inserted_at <= toDateTime64({until}, 3) \
+               AND r.l2_block_number IS NULL \
+               AND h.sequencer != b.proposer_addr \
+             ORDER BY l1.inserted_at ASC",
+            db = self.db_name,
+            since = since.timestamp_millis() as f64 / 1000.0,
+            until = until.timestamp_millis() as f64 / 1000.0,
+        );
+        let rows =
+            self.execute::<RawRow>(&query).await.context("fetching failed proposals failed")?;
+        Ok(rows
+            .into_iter()
+            .filter_map(|r| {
+                let ts = Utc.timestamp_millis_opt(r.ts as i64).single()?;
+                Some(FailedProposalRow {
+                    l2_block_number: r.l2_block_number,
+                    original_sequencer: r.original_sequencer,
+                    proposer: r.proposer,
+                    l1_block_number: r.l1_block_number,
+                    inserted_at: ts,
+                })
+            })
+            .collect())
     }
 
     /// Get all L2 reorg events that occurred after the given cutoff time

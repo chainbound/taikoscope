@@ -153,6 +153,49 @@ pub async fn forced_inclusions(
 
 #[utoipa::path(
     get,
+    path = "/failed-proposals",
+    params(
+        RangeQuery
+    ),
+    responses(
+        (status = 200, description = "Failed proposal events", body = FailedProposalEventsResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
+    ),
+    tag = "taikoscope"
+)]
+/// Get failed proposal events within the requested time range.
+pub async fn failed_proposals(
+    Query(params): Query<RangeQuery>,
+    State(state): State<ApiState>,
+) -> Result<Json<FailedProposalEventsResponse>, ErrorResponse> {
+    validate_time_range(&params.time_range)?;
+    let has_time_range = has_time_range_params(&params.time_range);
+    validate_range_exclusivity(has_time_range, false)?;
+
+    let (since, until) = resolve_time_range_bounds(&params.time_range);
+    let events = match state.client.get_failed_proposals_range(since, until).await {
+        Ok(rows) => rows,
+        Err(e) => {
+            tracing::error!(error = %e, "Failed to get failed proposal events");
+            return Err(ErrorResponse::database_error());
+        }
+    };
+    let events: Vec<FailedProposalEvent> = events
+        .into_iter()
+        .map(|e| FailedProposalEvent {
+            l2_block_number: e.l2_block_number,
+            original_sequencer: format!("0x{}", encode(e.original_sequencer)),
+            proposer: format!("0x{}", encode(e.proposer)),
+            l1_block_number: e.l1_block_number,
+            inserted_at: e.inserted_at,
+        })
+        .collect();
+    tracing::info!(count = events.len(), "Returning failed proposal events");
+    Ok(Json(FailedProposalEventsResponse { events }))
+}
+
+#[utoipa::path(
+    get,
     path = "/l2-tps",
     params(
         UnifiedQuery

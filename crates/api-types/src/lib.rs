@@ -128,6 +128,28 @@ pub struct ReorgEventsResponse {
     pub events: Vec<L2ReorgEvent>,
 }
 
+/// Event where a sequencer failed to post its block and another proposer posted it
+#[derive(Debug, Serialize, ToSchema)]
+pub struct FailedProposalEvent {
+    /// L2 block number originally produced
+    pub l2_block_number: u64,
+    /// Address of the sequencer that produced the block
+    pub original_sequencer: String,
+    /// Address of the sequencer that posted the batch on L1
+    pub proposer: String,
+    /// L1 block number where the batch was posted
+    pub l1_block_number: u64,
+    /// Time the batch was posted
+    pub inserted_at: DateTime<Utc>,
+}
+
+/// Failed proposal events
+#[derive(Debug, Serialize, ToSchema)]
+pub struct FailedProposalEventsResponse {
+    /// Failed proposal events
+    pub events: Vec<FailedProposalEvent>,
+}
+
 /// Gateways that submitted batches in the requested range.
 #[derive(Debug, Serialize, ToSchema)]
 pub struct ActiveGatewaysResponse {
@@ -490,6 +512,8 @@ pub struct DashboardDataResponse {
     pub slashings: usize,
     /// Number of forced inclusion events in the selected range.
     pub forced_inclusions: usize,
+    /// Number of failed proposal events in the selected range.
+    pub failed_proposals: usize,
     /// Number of the most recent L2 block.
     pub l2_head_block: Option<u64>,
     /// Number of the most recent L1 block.

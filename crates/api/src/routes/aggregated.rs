@@ -449,6 +449,7 @@ pub async fn dashboard_data(
         reorgs,
         slashings,
         forced_inclusions,
+        failed_proposals,
         l2_head_block,
         l1_head_block,
     ) = tokio::try_join!(
@@ -461,6 +462,7 @@ pub async fn dashboard_data(
         state.client.get_l2_reorgs_since(since),
         state.client.get_slashing_events_since(since),
         state.client.get_forced_inclusions_since(since),
+        state.client.get_failed_proposals_since(since),
         state.client.get_last_l2_block_number(),
         state.client.get_last_l1_block_number()
     )
@@ -481,6 +483,7 @@ pub async fn dashboard_data(
         reorgs = reorgs.len(),
         slashings = slashings.len(),
         forced_inclusions = forced_inclusions.len(),
+        failed_proposals = failed_proposals.len(),
         "Returning dashboard data"
     );
 
@@ -494,6 +497,7 @@ pub async fn dashboard_data(
         l2_reorgs: reorgs.len(),
         slashings: slashings.len(),
         forced_inclusions: forced_inclusions.len(),
+        failed_proposals: failed_proposals.len(),
         l2_head_block,
         l1_head_block,
     }))

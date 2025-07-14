@@ -60,6 +60,7 @@ use utoipa::OpenApi;
             ReorgEventsResponse,
             SlashingEventsResponse,
             ForcedInclusionEventsResponse,
+            FailedProposalEventsResponse,
             BatchPostingTimesResponse,
             AvgBlobsPerBatchResponse,
             BatchBlobsResponse,
