@@ -1,31 +1,52 @@
 #![allow(missing_docs)]
 #![allow(clippy::large_enum_variant)]
+use alloy_primitives::B256;
 use chainio::BatchesVerified;
 use primitives::headers::{L1Header, L2Header};
 use serde::{Deserialize, Serialize};
 
+// Updated wrappers to preserve L1 transaction hash and block number metadata
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct BatchProposedWrapper(pub chainio::ITaikoInbox::BatchProposed);
+pub struct BatchProposedWrapper {
+    pub batch: chainio::ITaikoInbox::BatchProposed,
+    pub l1_tx_hash: B256,
+}
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct BatchesProvedWrapper(pub chainio::ITaikoInbox::BatchesProved);
+pub struct BatchesProvedWrapper {
+    pub proved: chainio::ITaikoInbox::BatchesProved,
+    pub l1_block_number: u64,
+    pub l1_tx_hash: B256,
+}
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct ForcedInclusionProcessedWrapper(
-    pub chainio::taiko::wrapper::ITaikoWrapper::ForcedInclusionProcessed,
-);
+pub struct BatchesVerifiedWrapper {
+    pub verified: BatchesVerified,
+    pub l1_block_number: u64,
+    pub l1_tx_hash: B256,
+}
 
-impl From<(chainio::ITaikoInbox::BatchProposed, alloy_primitives::B256)> for BatchProposedWrapper {
-    fn from(data: (chainio::ITaikoInbox::BatchProposed, alloy_primitives::B256)) -> Self {
-        Self(data.0)
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ForcedInclusionProcessedWrapper {
+    pub event: chainio::taiko::wrapper::ITaikoWrapper::ForcedInclusionProcessed,
+}
+
+// Updated From implementations to preserve all metadata
+impl From<(chainio::ITaikoInbox::BatchProposed, B256)> for BatchProposedWrapper {
+    fn from(data: (chainio::ITaikoInbox::BatchProposed, B256)) -> Self {
+        Self { batch: data.0, l1_tx_hash: data.1 }
     }
 }
 
-impl From<(chainio::ITaikoInbox::BatchesProved, u64, alloy_primitives::B256)>
-    for BatchesProvedWrapper
-{
-    fn from(data: (chainio::ITaikoInbox::BatchesProved, u64, alloy_primitives::B256)) -> Self {
-        Self(data.0)
+impl From<(chainio::ITaikoInbox::BatchesProved, u64, B256)> for BatchesProvedWrapper {
+    fn from(data: (chainio::ITaikoInbox::BatchesProved, u64, B256)) -> Self {
+        Self { proved: data.0, l1_block_number: data.1, l1_tx_hash: data.2 }
+    }
+}
+
+impl From<(BatchesVerified, u64, B256)> for BatchesVerifiedWrapper {
+    fn from(data: (BatchesVerified, u64, B256)) -> Self {
+        Self { verified: data.0, l1_block_number: data.1, l1_tx_hash: data.2 }
     }
 }
 
@@ -33,7 +54,7 @@ impl From<chainio::taiko::wrapper::ITaikoWrapper::ForcedInclusionProcessed>
     for ForcedInclusionProcessedWrapper
 {
     fn from(data: chainio::taiko::wrapper::ITaikoWrapper::ForcedInclusionProcessed) -> Self {
-        Self(data)
+        Self { event: data }
     }
 }
 
@@ -43,7 +64,7 @@ pub enum TaikoEvent {
     L2Header(L2Header),
     BatchProposed(BatchProposedWrapper),
     BatchesProved(BatchesProvedWrapper),
-    BatchesVerified(BatchesVerified),
+    BatchesVerified(BatchesVerifiedWrapper),
     ForcedInclusionProcessed(ForcedInclusionProcessedWrapper),
 }
 
@@ -53,11 +74,11 @@ impl TaikoEvent {
             Self::L1Header(h) => format!("{}:{}-l1_header", h.number, h.hash),
             Self::L2Header(h) => format!("{}:{}-l2_header", h.number, h.hash),
             Self::BatchProposed(b) => {
-                let inner = &b.0;
+                let inner = &b.batch;
                 format!("{}:{}-batch_proposed", inner.info.lastBlockId, inner.info.anchorBlockHash)
             }
             Self::BatchesProved(p) => {
-                let inner = &p.0;
+                let inner = &p.proved;
                 let batch_id = inner.batchIds.first().copied().unwrap_or_default();
                 let block_hash = inner
                     .transitions
@@ -67,10 +88,10 @@ impl TaikoEvent {
                 format!("{}:{}-batches_proved", batch_id, block_hash)
             }
             Self::BatchesVerified(v) => {
-                format!("{}:{:?}-batches_verified", v.batch_id, v.block_hash)
+                format!("{}:{:?}-batches_verified", v.verified.batch_id, v.verified.block_hash)
             }
             Self::ForcedInclusionProcessed(f) => {
-                format!("{}-forced_inclusion_processed", f.0.blobHash)
+                format!("{}-forced_inclusion_processed", f.event.blobHash)
             }
         }
     }

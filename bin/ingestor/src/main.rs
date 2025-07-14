@@ -8,6 +8,10 @@ use extractor::{
     BatchProposedStream, BatchesProvedStream, BatchesVerifiedStream, Extractor,
     ForcedInclusionStream,
 };
+use messages::{
+    BatchProposedWrapper, BatchesProvedWrapper, BatchesVerifiedWrapper,
+    ForcedInclusionProcessedWrapper,
+};
 use nats_utils::{TaikoEvent, publish_event};
 use primitives::headers::{L1HeaderStream, L2HeaderStream};
 use tokio_stream::StreamExt;
@@ -72,8 +76,9 @@ async fn main() -> eyre::Result<()> {
                 }
             }
             maybe_batch = batch_stream.next() => {
-                if let Some(batch_data) = maybe_batch {
-                    let event = TaikoEvent::BatchProposed(batch_data.into());
+                if let Some((batch, l1_tx_hash)) = maybe_batch {
+                    let wrapper = BatchProposedWrapper::from((batch, l1_tx_hash));
+                    let event = TaikoEvent::BatchProposed(wrapper);
                     if let Err(e) = publish_event(&nats_client, &event).await {
                         tracing::error!(err = %e, "Failed to publish BatchProposed");
                     }
@@ -81,23 +86,26 @@ async fn main() -> eyre::Result<()> {
             }
             maybe_fi = forced_stream.next() => {
                 if let Some(fi) = maybe_fi {
-                    let event = TaikoEvent::ForcedInclusionProcessed(fi.into());
+                    let wrapper = ForcedInclusionProcessedWrapper::from(fi);
+                    let event = TaikoEvent::ForcedInclusionProcessed(wrapper);
                     if let Err(e) = publish_event(&nats_client, &event).await {
                         tracing::error!(err = %e, "Failed to publish ForcedInclusionProcessed");
                     }
                 }
             }
             maybe_proved = proved_stream.next() => {
-                if let Some(proved) = maybe_proved {
-                    let event = TaikoEvent::BatchesProved(proved.into());
+                if let Some((proved, l1_block_number, l1_tx_hash)) = maybe_proved {
+                    let wrapper = BatchesProvedWrapper::from((proved, l1_block_number, l1_tx_hash));
+                    let event = TaikoEvent::BatchesProved(wrapper);
                     if let Err(e) = publish_event(&nats_client, &event).await {
                         tracing::error!(err = %e, "Failed to publish BatchesProved");
                     }
                 }
             }
             maybe_verified = verified_stream.next() => {
-                if let Some(verified) = maybe_verified {
-                    let event = TaikoEvent::BatchesVerified(verified.0);
+                if let Some((verified, l1_block_number, l1_tx_hash)) = maybe_verified {
+                    let wrapper = BatchesVerifiedWrapper::from((verified, l1_block_number, l1_tx_hash));
+                    let event = TaikoEvent::BatchesVerified(wrapper);
                     if let Err(e) = publish_event(&nats_client, &event).await {
                         tracing::error!(err = %e, "Failed to publish BatchesVerified");
                     }

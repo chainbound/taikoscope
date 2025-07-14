@@ -2644,6 +2644,7 @@ dependencies = [
  "dotenvy",
  "extractor",
  "eyre",
+ "messages",
  "nats-utils",
  "primitives",
  "runtime",

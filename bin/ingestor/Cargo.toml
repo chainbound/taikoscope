@@ -8,6 +8,7 @@ repository.workspace = true
 [dependencies]
 config = { path = "../../crates/config" }
 extractor = { path = "../../crates/extractor" }
+messages = { path = "../../crates/messages" }
 nats-utils = { path = "../../crates/nats-utils" }
 primitives = { path = "../../crates/primitives" }
 runtime = { path = "../../crates/runtime" }

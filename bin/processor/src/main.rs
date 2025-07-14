@@ -146,28 +146,28 @@ async fn process_event_with_db_write(
             }
         }
         TaikoEvent::BatchProposed(wrapper) => {
-            let batch = wrapper.0;
-            let l1_tx_hash = B256::ZERO; // In the ingestor, this was lost - would need to preserve it
+            let batch = &wrapper.batch;
+            let l1_tx_hash = wrapper.l1_tx_hash;
 
-            if let Err(e) = writer.insert_batch(&batch, l1_tx_hash).await {
+            if let Err(e) = writer.insert_batch(batch, l1_tx_hash).await {
                 tracing::error!(batch_last_block = ?batch.last_block_number(), err = %e, "Failed to insert batch");
             } else {
                 info!(last_block_number = ?batch.last_block_number(), "Inserted batch");
             }
         }
         TaikoEvent::ForcedInclusionProcessed(wrapper) => {
-            let event = wrapper.0;
-            if let Err(e) = writer.insert_forced_inclusion(&event).await {
+            let event = &wrapper.event;
+            if let Err(e) = writer.insert_forced_inclusion(event).await {
                 tracing::error!(blob_hash = ?event.blobHash, err = %e, "Failed to insert forced inclusion");
             } else {
                 info!(blob_hash = ?event.blobHash, "Inserted forced inclusion processed");
             }
         }
         TaikoEvent::BatchesProved(wrapper) => {
-            let proved = wrapper.0;
-            let l1_block_number = 0; // This information was lost in the NATS event
+            let proved = &wrapper.proved;
+            let l1_block_number = wrapper.l1_block_number;
 
-            if let Err(e) = writer.insert_proved_batch(&proved, l1_block_number).await {
+            if let Err(e) = writer.insert_proved_batch(proved, l1_block_number).await {
                 tracing::error!(
                     batch_ids = ?proved.batch_ids_proved(),
                     err = %e,
@@ -177,10 +177,11 @@ async fn process_event_with_db_write(
                 info!(batch_ids = ?proved.batch_ids_proved(), "Inserted proved batch");
             }
         }
-        TaikoEvent::BatchesVerified(verified) => {
-            let l1_block_number = 0; // This information was lost in the NATS event
+        TaikoEvent::BatchesVerified(wrapper) => {
+            let verified = &wrapper.verified;
+            let l1_block_number = wrapper.l1_block_number;
 
-            if let Err(e) = writer.insert_verified_batch(&verified, l1_block_number).await {
+            if let Err(e) = writer.insert_verified_batch(verified, l1_block_number).await {
                 tracing::error!(batch_id = ?verified.batch_id, err = %e, "Failed to insert verified batch");
             } else {
                 info!(batch_id = ?verified.batch_id, "Inserted verified batch");
