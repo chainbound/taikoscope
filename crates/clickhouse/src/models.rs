@@ -166,6 +166,15 @@ pub struct ForcedInclusionProcessedRow {
     pub blob_hash: HashBytes,
 }
 
+/// Orphaned L2 block hash row
+#[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq)]
+pub struct OrphanedL2HashRow {
+    /// Block hash of orphaned block
+    pub block_hash: HashBytes,
+    /// L2 block number of orphaned block
+    pub l2_block_number: u64,
+}
+
 /// Verified batch row
 #[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq)]
 pub struct VerifiedBatchRow {

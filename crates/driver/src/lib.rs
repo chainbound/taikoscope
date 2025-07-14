@@ -449,6 +449,7 @@ impl Driver {
     /// Process an L2 header event, inserting statistics and detecting reorgs.
     async fn handle_l2_header(&mut self, header: L2Header) {
         let prev_header = self.last_l2_header;
+        let old_head = self.reorg.head_number(); // Capture old head before detection
         // Detect reorgs
         // It returns Some(depth) if new_block_number < current_head_number.
         let reorg_depth = self.reorg.on_new_block(header.number);
@@ -466,35 +467,72 @@ impl Driver {
             } else {
                 info!(new_head = header.number, depth, "Inserted L2 reorg");
             }
-        } else {
-            match self.extractor.get_l2_block_stats(header.number, header.base_fee_per_gas).await {
-                Ok((sum_gas_used, sum_tx, sum_priority_fee)) => {
-                    let sum_base_fee =
-                        sum_gas_used.saturating_mul(header.base_fee_per_gas.unwrap_or(0) as u128);
-                    let event = clickhouse::L2HeadEvent {
-                        l2_block_number: header.number,
-                        block_hash: HashBytes(*header.hash),
-                        block_ts: header.timestamp,
-                        sum_gas_used,
-                        sum_tx,
-                        sum_priority_fee,
-                        sum_base_fee,
-                        sequencer: AddressBytes(header.beneficiary.into_array()),
-                    };
 
-                    if let Err(e) = self.clickhouse.insert_l2_header(&event).await {
-                        tracing::error!(block_number = header.number, err = %e, "Failed to insert L2 header");
-                    } else {
-                        info!(
-                            l2_header = header.number,
-                            block_ts = header.timestamp,
-                            "Inserted L2 header"
-                        );
+            // Identify orphaned blocks that existed before this reorg
+            if depth > 0 {
+                let orphaned_block_numbers =
+                    calculate_orphaned_blocks(old_head, header.number, depth.into());
+
+                if !orphaned_block_numbers.is_empty() {
+                    match self
+                        .clickhouse_reader
+                        .get_latest_hashes_for_blocks(&orphaned_block_numbers)
+                        .await
+                    {
+                        Ok(orphaned_hashes) => {
+                            if !orphaned_hashes.is_empty() {
+                                if let Err(e) =
+                                    self.clickhouse.insert_orphaned_hashes(&orphaned_hashes).await
+                                {
+                                    tracing::error!(
+                                        count = orphaned_hashes.len(),
+                                        err = %e,
+                                        "Failed to insert orphaned hashes"
+                                    );
+                                } else {
+                                    info!(
+                                        count = orphaned_hashes.len(),
+                                        "Inserted orphaned hashes for reorg"
+                                    );
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            tracing::error!(err = %e, "Failed to fetch orphaned hashes");
+                        }
                     }
                 }
-                Err(e) => {
-                    tracing::error!(block_number = header.number, err = %e, "Failed to fetch block stats");
+            }
+        }
+
+        // Insert L2HeadEvent for all blocks (including new heads after reorgs)
+        match self.extractor.get_l2_block_stats(header.number, header.base_fee_per_gas).await {
+            Ok((sum_gas_used, sum_tx, sum_priority_fee)) => {
+                let sum_base_fee =
+                    sum_gas_used.saturating_mul(header.base_fee_per_gas.unwrap_or(0) as u128);
+                let event = clickhouse::L2HeadEvent {
+                    l2_block_number: header.number,
+                    block_hash: HashBytes(*header.hash),
+                    block_ts: header.timestamp,
+                    sum_gas_used,
+                    sum_tx,
+                    sum_priority_fee,
+                    sum_base_fee,
+                    sequencer: AddressBytes(header.beneficiary.into_array()),
+                };
+
+                if let Err(e) = self.clickhouse.insert_l2_header(&event).await {
+                    tracing::error!(block_number = header.number, err = %e, "Failed to insert L2 header");
+                } else {
+                    info!(
+                        l2_header = header.number,
+                        block_ts = header.timestamp,
+                        "Inserted L2 header"
+                    );
                 }
+            }
+            Err(e) => {
+                tracing::error!(block_number = header.number, err = %e, "Failed to fetch block stats");
             }
         }
     }
@@ -634,6 +672,27 @@ impl Driver {
     const fn average_cost_per_batch(total_cost: u128, num_batches: usize) -> u128 {
         if num_batches == 0 { 0 } else { total_cost / num_batches as u128 }
     }
+}
+
+/// Calculate orphaned block numbers during a reorg
+///
+/// # Arguments
+/// * `old_head` - The head block number before the reorg
+/// * `new_head` - The head block number after the reorg
+/// * `depth` - The depth of the reorg
+///
+/// # Returns
+/// Vector of block numbers that are orphaned (from `new_head+1` to `old_head` inclusive)
+fn calculate_orphaned_blocks(old_head: u64, new_head: u64, _depth: u32) -> Vec<u64> {
+    // Correct implementation: orphaned blocks are from new_head+1 to old_head (inclusive)
+    if new_head >= old_head {
+        // No orphaned blocks if new_head is >= old_head
+        return Vec::new();
+    }
+
+    let orphaned_start = new_head + 1;
+    let orphaned_end = old_head + 1; // +1 because range is exclusive at end
+    (orphaned_start..orphaned_end).collect()
 }
 
 #[cfg(test)]
@@ -905,5 +964,35 @@ mod tests {
     fn average_cost_per_batch_rounds_down() {
         let cost = Driver::average_cost_per_batch(10, 3);
         assert_eq!(cost, 3);
+    }
+
+    #[test]
+    fn calculate_orphaned_blocks_correct_behavior() {
+        // Test case 1: old_head=10, new_head=8, depth=2
+        // Expected: blocks 9,10 are orphaned
+        let result = calculate_orphaned_blocks(10, 8, 2);
+        assert_eq!(result, vec![9, 10], "Should return orphaned blocks [9,10]");
+
+        // Test case 2: old_head=5, new_head=4, depth=1 (depth-1 reorg)
+        // Expected: blocks [5] are orphaned
+        let result2 = calculate_orphaned_blocks(5, 4, 1);
+        assert_eq!(result2, vec![5], "Should return orphaned blocks [5]");
+
+        // Test case 3: old_head=15, new_head=12, depth=3
+        // Expected: blocks 13,14,15 are orphaned
+        let result3 = calculate_orphaned_blocks(15, 12, 3);
+        assert_eq!(result3, vec![13, 14, 15], "Should return orphaned blocks [13,14,15]");
+
+        // Test case 4: No reorg (new_head >= old_head)
+        let result4 = calculate_orphaned_blocks(10, 12, 0);
+        let expected4: Vec<u64> = vec![];
+        assert_eq!(
+            result4, expected4,
+            "Should return no orphaned blocks when new_head >= old_head"
+        );
+
+        // Test case 5: Adjacent blocks (old_head=5, new_head=4)
+        let result5 = calculate_orphaned_blocks(5, 4, 1);
+        assert_eq!(result5, vec![5], "Should return [5] when old_head=5, new_head=4");
     }
 }
