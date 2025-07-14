@@ -47,9 +47,9 @@ describe('dataFetcher', () => {
         { name: 'foo', address: '0xfoo', value: 1 },
       ]),
       fetchBlockTransactionsAggregated: ok([
-        { block: 1, txs: 2, sequencer: 'bar' },
+        { block_number: 1, txs: 2, sequencer: 'bar' },
       ]),
-      fetchBatchBlobCounts: ok([{ block: 10, batch: 1, blobs: 2 }]),
+      fetchBatchBlobCounts: ok([{ block_number: 10, batch: 1, blobs: 2 }]),
     });
 
     const res = await fetchMainDashboardData('1h', null);

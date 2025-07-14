@@ -364,7 +364,7 @@ async fn block_profits_integration() {
     .unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
     let body: serde_json::Value = resp.json().await.unwrap();
-    assert_eq!(body, serde_json::json!({ "blocks": [ { "block": 1, "profit": 12 } ] }));
+    assert_eq!(body, serde_json::json!({ "blocks": [ { "block_number": 1, "profit": 12 } ] }));
 
     let resp = reqwest::get(
         format!("http://{addr}/{API_VERSION}/block-profits?created[gte]=0&created[lte]=3600000&limit=1&order=asc"),
@@ -373,7 +373,7 @@ async fn block_profits_integration() {
     .unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
     let body: serde_json::Value = resp.json().await.unwrap();
-    assert_eq!(body, serde_json::json!({ "blocks": [ { "block": 2, "profit": -6 } ] }));
+    assert_eq!(body, serde_json::json!({ "blocks": [ { "block_number": 2, "profit": -6 } ] }));
 
     server.abort();
 }

@@ -342,7 +342,7 @@ pub async fn block_transactions(
     let blocks: Vec<BlockTransactionsItem> = rows
         .into_iter()
         .map(|r| BlockTransactionsItem {
-            block: r.l2_block_number,
+            block_number: r.l2_block_number,
             txs: r.sum_tx,
             block_time: r.block_time,
         })

@@ -178,8 +178,8 @@ export const useTableActions = (
       const disablePrev = page === 0;
       const disableNext = txData.length < 50;
       const nextCursor =
-        txData.length > 0 ? txData[txData.length - 1].block : undefined;
-      const prevCursor = txData.length > 0 ? txData[0].block : undefined;
+        txData.length > 0 ? txData[txData.length - 1].block_number : undefined;
+      const prevCursor = txData.length > 0 ? txData[0].block_number : undefined;
 
       const refreshSeqDist = async () => {
         try {
@@ -208,7 +208,7 @@ export const useTableActions = (
                   ? {
                     ...prev.extraTable,
                     rows: (refreshTxRes.data || []).map((t) => ({
-                      block: blockLink(t.block),
+                      block_number: blockLink(t.block_number),
                       txs: t.txs,
                     })) as unknown as Record<
                       string,
@@ -262,11 +262,11 @@ export const useTableActions = (
         {
           title: 'Transactions',
           columns: [
-            { key: 'block', label: 'L2 Block Number' },
+            { key: 'block_number', label: 'L2 Block Number' },
             { key: 'txs', label: 'Tx Count' },
           ],
           rows: (txRes.data || []).map((t) => ({
-            block: blockLink(t.block),
+            block_number: blockLink(t.block_number),
             txs: t.txs,
           })) as unknown as Record<string, React.ReactNode | string | number>[],
           pagination: {

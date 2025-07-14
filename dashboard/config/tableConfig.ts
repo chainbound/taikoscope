@@ -63,8 +63,8 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     title: (params) => `Blocks proposed by ${getSequencerName(params.address)}`,
     description: 'Blocks proposed by the given sequencer.',
     fetcher: fetchSequencerBlocks,
-    columns: [{ key: 'block', label: 'L2 Block Number' }],
-    mapData: (data) => data.map((b) => ({ block: blockLink(b) })),
+    columns: [{ key: 'block_number', label: 'L2 Block Number' }],
+    mapData: (data) => data.map((b) => ({ block_number: blockLink(b) })),
     urlKey: 'sequencer-blocks',
   },
 
@@ -147,13 +147,13 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     description: 'Number of blobs posted with each batch.',
     fetcher: fetchBatchBlobCounts,
     columns: [
-      { key: 'block', label: 'L1 Block' },
+      { key: 'block_number', label: 'L1 Block' },
       { key: 'batch', label: 'Batch' },
       { key: 'blobs', label: 'Blobs' },
     ],
     mapData: (data) =>
       (data as Record<string, any>[]).map((d) => ({
-        block: blockLink(d.block as number),
+        block_number: blockLink(d.block_number as number),
         batch: d.batch.toLocaleString(),
         blobs: d.blobs.toLocaleString(),
       })),
@@ -185,13 +185,13 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     fetcher: fetchAllBlockTransactions,
     aggregatedFetcher: fetchBlockTransactionsAggregated,
     columns: [
-      { key: 'block', label: 'L2 Block Number' },
+      { key: 'block_number', label: 'L2 Block Number' },
       { key: 'txs', label: 'Tx Count' },
     ],
     mapData: (data) =>
-      (data as { block: number; txs: number }[]).map(
+      (data as { block_number: number; txs: number }[]).map(
         (d) => ({
-          block: blockLink(d.block),
+          block_number: blockLink(d.block_number),
           txs: d.txs.toLocaleString(),
         }),
       ),
@@ -246,12 +246,12 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     description: 'Data posting cost for each L1 block.',
     fetcher: fetchL1DataCost,
     columns: [
-      { key: 'block', label: 'L1 Block' },
+      { key: 'block_number', label: 'L1 Block' },
       { key: 'cost', label: 'Cost' },
     ],
     mapData: (data) =>
-      (data as { block: number; cost: number }[]).map((d) => ({
-        block: blockLink(d.block),
+      (data as { block_number: number; cost: number }[]).map((d) => ({
+        block_number: blockLink(d.block_number),
         cost: formatEth(d.cost, 4),
       })),
     urlKey: 'l1-data-cost',
@@ -284,12 +284,12 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     fetcher: fetchL2Tps,
     aggregatedFetcher: fetchL2TpsAggregated,
     columns: [
-      { key: 'block', label: 'Block Number' },
+      { key: 'block_number', label: 'Block Number' },
       { key: 'tps', label: 'TPS' },
     ],
     mapData: (data) =>
-      (data as { block: number; tps: number }[]).map((d) => ({
-        block: blockLink(d.block),
+      (data as { block_number: number; tps: number }[]).map((d) => ({
+        block_number: blockLink(d.block_number),
         tps: d.tps.toFixed(2),
       })),
     chart: (data) => {

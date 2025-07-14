@@ -656,7 +656,7 @@ export const fetchSequencerBlocks = async (
 };
 
 export interface BlockTransaction {
-  block: number;
+  block_number: number;
   txs: number;
   blockTime: number;
 }
@@ -691,7 +691,7 @@ export const fetchBlockTransactions = async (
   }
   const res = await fetchJson<{
     blocks: {
-      block: number;
+      block_number: number;
       txs: number;
       block_time: string;
     }[];
@@ -699,7 +699,7 @@ export const fetchBlockTransactions = async (
   return {
     data: res.data?.blocks
       ? res.data.blocks.map((b) => ({
-        block: b.block,
+        block_number: b.block_number,
         txs: b.txs,
         blockTime: new Date(b.block_time).getTime(),
       }))
@@ -734,7 +734,7 @@ export const fetchBlockTransactionsAggregated = async (
     (address ? `&address=${address}` : '');
   const res = await fetchJson<{
     blocks: {
-      block: number;
+      block_number: number;
       txs: number;
       block_time: string;
     }[];
@@ -742,7 +742,7 @@ export const fetchBlockTransactionsAggregated = async (
   return {
     data: res.data?.blocks
       ? res.data.blocks.map((b) => ({
-        block: b.block,
+        block_number: b.block_number,
         txs: b.txs,
         blockTime: new Date(b.block_time).getTime(),
       }))
@@ -753,7 +753,7 @@ export const fetchBlockTransactionsAggregated = async (
 };
 
 export interface BatchBlobCount {
-  block: number;
+  block_number: number;
   batch: number;
   blobs: number;
 }
@@ -785,7 +785,7 @@ export const fetchBatchBlobCounts = async (
   return {
     data: res.data
       ? res.data.batches.map((b) => ({
-        block: b.l1_block_number ?? b.batch_id, // Fallback to batch_id for backward compatibility
+        block_number: b.l1_block_number ?? b.batch_id, // Fallback to batch_id for backward compatibility
         batch: b.batch_id,
         blobs: b.blob_count,
       }))
@@ -809,7 +809,7 @@ export const fetchBatchBlobCountsAggregated = async (
   return {
     data: res.data
       ? res.data.batches.map((b) => ({
-        block: b.l1_block_number ?? b.batch_id, // Fallback to batch_id for backward compatibility
+        block_number: b.l1_block_number ?? b.batch_id, // Fallback to batch_id for backward compatibility
         batch: b.batch_id,
         blobs: b.blob_count,
       }))
@@ -1075,7 +1075,7 @@ export const fetchL2TpsAggregated = async (
 };
 
 export interface BlockProfit {
-  block: number;
+  block_number: number;
   profit: number;
 }
 
@@ -1088,12 +1088,12 @@ export const fetchBlockProfits = async (
   const url =
     `${API_BASE}/block-profits?${timeRangeToQuery(range)}&order=${order}&limit=${limit}` +
     (address ? `&address=${address}` : '');
-  const res = await fetchJson<{ blocks: { block: number; profit: number }[] }>(
+  const res = await fetchJson<{ blocks: { block_number: number; profit: number }[] }>(
     url,
   );
   return {
     data: res.data
-      ? res.data.blocks.map((b) => ({ block: b.block, profit: b.profit }))
+      ? res.data.blocks.map((b) => ({ block_number: b.block_number, profit: b.profit }))
       : null,
     badRequest: res.badRequest,
     error: res.error,

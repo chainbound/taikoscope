@@ -23,7 +23,7 @@ const BlockTxChartComponent: React.FC<BlockTxChartProps> = ({
 }) => {
   const isMobile = useIsMobile();
   const sortedData = useMemo(
-    () => (data ? [...data].sort((a, b) => a.block - b.block) : []),
+    () => (data ? [...data].sort((a, b) => a.block_number - b.block_number) : []),
     [data],
   );
   if (sortedData.length === 0) {
@@ -41,7 +41,7 @@ const BlockTxChartComponent: React.FC<BlockTxChartProps> = ({
       >
         <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
         <XAxis
-          dataKey="block"
+          dataKey="block_number"
           tickFormatter={(v: number) => v.toLocaleString()}
           stroke="#666666"
           fontSize={12}
