@@ -199,6 +199,6 @@ pub const TABLE_SCHEMAS: &[TableSchema] = &[
         columns: "block_hash FixedString(32),
                  l2_block_number UInt64,
                  inserted_at DateTime64(3) DEFAULT now64()",
-        order_by: "block_hash, l2_block_number",
+        order_by: "l2_block_number, block_hash",
     },
 ];
