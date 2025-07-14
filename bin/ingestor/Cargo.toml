@@ -12,6 +12,7 @@ messages = { path = "../../crates/messages" }
 nats-utils = { path = "../../crates/nats-utils" }
 primitives = { path = "../../crates/primitives" }
 runtime = { path = "../../crates/runtime" }
+driver = { path = "../../crates/driver" }
 
 async-nats.workspace = true
 clap.workspace = true

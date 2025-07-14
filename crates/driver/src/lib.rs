@@ -27,6 +27,8 @@ use incident::{
 };
 use primitives::headers::{L1Header, L1HeaderStream, L2Header, L2HeaderStream};
 
+pub mod ingestor;
+pub mod processor;
 mod subscription;
 use crate::subscription::subscribe_with_retry;
 

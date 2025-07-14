@@ -9,12 +9,11 @@ default-run = "processor"
 
 [dependencies]
 config = { path = "../../crates/config" }
-driver = { path = "../../crates/driver" }
-extractor = { path = "../../crates/extractor" }
 clickhouse = { path = "../../crates/clickhouse" }
-runtime = { path = "../../crates/runtime" }
-nats-utils = { path = "../../crates/nats-utils" }
 messages = { path = "../../crates/messages" }
+nats-utils = { path = "../../crates/nats-utils" }
+driver = { path = "../../crates/driver" }
+runtime = { path = "../../crates/runtime" }
 
 async-nats = "0.35"
 alloy-primitives.workspace = true
