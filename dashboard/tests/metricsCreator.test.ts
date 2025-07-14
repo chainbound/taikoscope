@@ -18,6 +18,7 @@ describe('metricsCreator', () => {
       l2Reorgs: 1,
       slashings: 2,
       forcedInclusions: 3,
+      failedProposals: 4,
       priorityFee: 40e9,
       baseFee: 2e9,
       proveCost: 5e9,
@@ -28,7 +29,7 @@ describe('metricsCreator', () => {
       l1Block: 50,
     });
 
-    expect(metrics).toHaveLength(18);
+    expect(metrics).toHaveLength(19);
     expect(metrics[0].value).toBe('1.2');
 
     const proveMetric = metrics.find((m) => m.title === 'Avg. Prove Time');
@@ -69,6 +70,7 @@ describe('metricsCreator', () => {
       l2Reorgs: null,
       slashings: null,
       forcedInclusions: null,
+      failedProposals: null,
       priorityFee: null,
       baseFee: null,
       proveCost: null,

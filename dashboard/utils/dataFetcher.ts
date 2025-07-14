@@ -30,6 +30,7 @@ export interface MainDashboardData {
   l2Reorgs: number | null;
   slashings: number | null;
   forcedInclusions: number | null;
+  failedProposals: number | null;
   l2Block: number | null;
   l1Block: number | null;
   proveTimes: TimeSeriesData[];
@@ -109,6 +110,7 @@ export const fetchMainDashboardData = async (
     l2Reorgs: data?.l2_reorgs ?? null,
     slashings: data?.slashings ?? null,
     forcedInclusions: data?.forced_inclusions ?? null,
+    failedProposals: data?.failed_proposals ?? null,
     l2Block: data?.l2_head_block ?? null,
     l1Block: data?.l1_head_block ?? null,
     proveTimes: proveTimesRes.data || [],

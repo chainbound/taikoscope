@@ -167,10 +167,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const skeletonGroupCounts: Record<string, number> = isEconomicsView
     ? { 'Network Economics': 6 }
     : isHealthView
-      ? { 'Network Health': 5 }
+      ? { 'Network Health': 6 }
       : {
         'Network Performance': 3,
-        'Network Health': 5,
+        'Network Health': 6,
         Sequencers: 3,
       };
 
@@ -202,6 +202,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       const actions: Record<string, () => void> = {
         'Avg. L2 TPS': onOpenTpsTable,
         'L2 Reorgs': () => onOpenTable('reorgs'),
+        'Failed Proposals': () => onOpenTable('failed-proposals'),
         'Slashing Events': () => onOpenTable('slashings'),
         'Forced Inclusions': () => onOpenTable('forced-inclusions'),
         'Active Sequencers': () => onOpenTable('gateways'),
