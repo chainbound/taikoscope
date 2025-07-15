@@ -1016,6 +1016,36 @@ export const fetchBatchFeeComponents = async (
   };
 };
 
+export interface L2FeesComponentsResponse {
+  priority_fee: number | null;
+  base_fee: number | null;
+  l1_data_cost: number;
+  prove_cost: number;
+  sequencers: SequencerFee[];
+  batches: {
+    batch_id: number;
+    l1_block_number: number;
+    l1_tx_hash: string;
+    sequencer: string;
+    priority_fee: number;
+    base_fee: number;
+    l1_data_cost: number | null;
+    amortized_prove_cost: number | null;
+  }[];
+}
+
+export const fetchL2FeesComponents = async (
+  range: TimeRange,
+): Promise<RequestResult<L2FeesComponentsResponse>> => {
+  const url = `${API_BASE}/l2-fees-components?${timeRangeToQuery(range)}`;
+  const res = await fetchJson<L2FeesComponentsResponse>(url);
+  return {
+    data: res.data ?? null,
+    badRequest: res.badRequest,
+    error: res.error,
+  };
+};
+
 export interface L1DataCostItem {
   block_number: number;
   cost: number;

@@ -882,7 +882,7 @@ pub async fn batch_fee_components(
     ),
     tag = "taikoscope"
 )]
-/// Get combined L2 fees summary and detailed batch components
+/// Get combined L2 fees summary and detailed batch components for all sequencers
 pub async fn l2_fees_components(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
@@ -893,25 +893,9 @@ pub async fn l2_fees_components(
     validate_range_exclusivity(has_time_range, false)?;
 
     let time_range = resolve_time_range_enum(&params.time_range);
-    let address = if let Some(addr) = params.address.as_ref() {
-        match addr.parse::<Address>() {
-            Ok(a) => Some(AddressBytes::from(a)),
-            Err(e) => {
-                tracing::warn!(error = %e, "Failed to parse address");
-                return Err(ErrorResponse::new(
-                    "invalid-params",
-                    "Bad Request",
-                    StatusCode::BAD_REQUEST,
-                    e.to_string(),
-                ));
-            }
-        }
-    } else {
-        None
-    };
 
     let (sequencer_fees, batch_components, prove_total) =
-        state.client.get_l2_fees_and_components(address, time_range).await.map_err(|e| {
+        state.client.get_l2_fees_and_components(None, time_range).await.map_err(|e| {
             tracing::error!(error = %e, "Failed to get L2 fees and components");
             ErrorResponse::database_error()
         })?;

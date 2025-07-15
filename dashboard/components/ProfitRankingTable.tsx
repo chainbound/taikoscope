@@ -4,7 +4,7 @@ import { TimeRange } from '../types';
 import {
   fetchSequencerDistribution,
   fetchL2Fees,
-  fetchBatchFeeComponents,
+  fetchL2FeesComponents,
 } from '../services/apiService';
 import * as apiService from '../services/apiService';
 import { getSequencerAddress } from '../sequencerConfig';
@@ -54,26 +54,21 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
     return map;
   }, [feeRes]);
 
-  const addresses = React.useMemo(
-    () =>
-      sequencers.map((s) =>
-        (s.address || getSequencerAddress(s.name) || '').toLowerCase(),
-      ),
-    [sequencers],
-  );
 
   const { data: batchCounts } = useSWR(
     sequencers.length
-      ? ['profitRankingBatches', timeRange, addresses.join(',')]
+      ? ['profitRankingBatches', timeRange]
       : null,
     async () => {
-      const results = await Promise.all(
-        addresses.map((addr) => fetchBatchFeeComponents(timeRange, addr)),
-      );
+      const result = await fetchL2FeesComponents(timeRange);
       const map = new Map<string, number>();
-      results.forEach((res, i) => {
-        map.set(addresses[i], res.data?.length ?? 0);
-      });
+      if (result.data) {
+        // Count batches by sequencer address
+        result.data.batches.forEach((batch) => {
+          const current = map.get(batch.sequencer) || 0;
+          map.set(batch.sequencer, current + 1);
+        });
+      }
       return map;
     },
   );
