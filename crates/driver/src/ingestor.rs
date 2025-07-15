@@ -20,7 +20,7 @@ use primitives::headers::{L1HeaderStream, L2HeaderStream};
 #[derive(Debug)]
 pub struct IngestorDriver {
     extractor: Extractor,
-    nats_client: async_nats::Client,
+    jetstream: async_nats::jetstream::Context,
 }
 
 impl IngestorDriver {
@@ -40,7 +40,16 @@ impl IngestorDriver {
         let nats_client = async_nats::connect(&opts.nats_url).await?;
         info!("Connected to NATS server at {}", opts.nats_url);
 
-        Ok(Self { extractor, nats_client })
+        let jetstream = async_nats::jetstream::new(nats_client);
+        jetstream
+            .get_or_create_stream(async_nats::jetstream::stream::Config {
+                name: "taiko".to_owned(),
+                subjects: vec!["taiko.events".to_owned()],
+                ..Default::default()
+            })
+            .await?;
+
+        Ok(Self { extractor, jetstream })
     }
 
     async fn get_l1_headers(&self) -> Result<L1HeaderStream> {
@@ -103,7 +112,7 @@ impl IngestorDriver {
                 maybe_l1 = l1_stream.next() => {
                     if let Some(header) = maybe_l1 {
                         let event = TaikoEvent::L1Header(header);
-                        if let Err(e) = publish_event(&self.nats_client, &event).await {
+                        if let Err(e) = publish_event(&self.jetstream, &event).await {
                             tracing::error!(err = %e, "Failed to publish L1Header");
                         }
                     }
@@ -111,7 +120,7 @@ impl IngestorDriver {
                 maybe_l2 = l2_stream.next() => {
                     if let Some(header) = maybe_l2 {
                         let event = TaikoEvent::L2Header(header);
-                        if let Err(e) = publish_event(&self.nats_client, &event).await {
+                        if let Err(e) = publish_event(&self.jetstream, &event).await {
                             tracing::error!(err = %e, "Failed to publish L2Header");
                         }
                     }
@@ -120,7 +129,7 @@ impl IngestorDriver {
                     if let Some((batch, l1_tx_hash)) = maybe_batch {
                         let wrapper = BatchProposedWrapper::from((batch, l1_tx_hash));
                         let event = TaikoEvent::BatchProposed(wrapper);
-                        if let Err(e) = publish_event(&self.nats_client, &event).await {
+                        if let Err(e) = publish_event(&self.jetstream, &event).await {
                             tracing::error!(err = %e, "Failed to publish BatchProposed");
                         }
                     }
@@ -129,7 +138,7 @@ impl IngestorDriver {
                     if let Some(fi) = maybe_fi {
                         let wrapper = ForcedInclusionProcessedWrapper::from(fi);
                         let event = TaikoEvent::ForcedInclusionProcessed(wrapper);
-                        if let Err(e) = publish_event(&self.nats_client, &event).await {
+                        if let Err(e) = publish_event(&self.jetstream, &event).await {
                             tracing::error!(err = %e, "Failed to publish ForcedInclusionProcessed");
                         }
                     }
@@ -138,7 +147,7 @@ impl IngestorDriver {
                     if let Some((proved, l1_block_number, l1_tx_hash)) = maybe_proved {
                         let wrapper = BatchesProvedWrapper::from((proved, l1_block_number, l1_tx_hash));
                         let event = TaikoEvent::BatchesProved(wrapper);
-                        if let Err(e) = publish_event(&self.nats_client, &event).await {
+                        if let Err(e) = publish_event(&self.jetstream, &event).await {
                             tracing::error!(err = %e, "Failed to publish BatchesProved");
                         }
                     }
@@ -147,7 +156,7 @@ impl IngestorDriver {
                     if let Some((verified, l1_block_number, l1_tx_hash)) = maybe_verified {
                         let wrapper = BatchesVerifiedWrapper::from((verified, l1_block_number, l1_tx_hash));
                         let event = TaikoEvent::BatchesVerified(wrapper);
-                        if let Err(e) = publish_event(&self.nats_client, &event).await {
+                        if let Err(e) = publish_event(&self.jetstream, &event).await {
                             tracing::error!(err = %e, "Failed to publish BatchesVerified");
                         }
                     }

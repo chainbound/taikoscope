@@ -3,15 +3,10 @@
 pub use messages::TaikoEvent;
 
 // Placeholder for publishing an event to NATS JetStream
-pub async fn publish_event(client: &async_nats::Client, event: &TaikoEvent) -> eyre::Result<()> {
-    let js = async_nats::jetstream::new(client.clone());
-    let _stream = js
-        .get_or_create_stream(async_nats::jetstream::stream::Config {
-            name: "taiko_events".to_owned(),
-            subjects: vec!["taiko.events".to_owned()],
-            ..Default::default()
-        })
-        .await?;
+pub async fn publish_event(
+    js: &async_nats::jetstream::Context,
+    event: &TaikoEvent,
+) -> eyre::Result<()> {
     let payload = serde_json::to_vec(event)?;
     js.publish("taiko.events", payload.into()).await?;
     Ok(())
