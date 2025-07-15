@@ -1664,7 +1664,7 @@ impl ClickhouseReader {
         let mut mv_query = format!(
             "SELECT batch_id, toUInt64(verify_time_ms / 1000) AS seconds_to_verify \
              FROM {db}.batch_verify_times_mv \
-             WHERE verified_at >= {since} \
+             WHERE verified_at >= toDateTime64({since}, 3) \
                AND verify_time_ms > 60000 \
                AND batch_id != 0",
             since = since.timestamp(),
@@ -1728,7 +1728,7 @@ impl ClickhouseReader {
         let mut mv_query = format!(
             "SELECT batch_id, toUInt64(prove_time_ms / 1000) AS seconds_to_prove \
              FROM {db}.batch_prove_times_mv \
-             WHERE proved_at >= {since} \
+             WHERE proved_at >= toDateTime64({since}, 3) \
                AND batch_id != 0",
             since = since.timestamp(),
             db = self.db_name,
