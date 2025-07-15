@@ -284,7 +284,7 @@ async fn l2_fee_components_aggregated_integration() {
     wait_for_server(addr).await;
 
     let resp = reqwest::get(
-        format!("http://{addr}/{API_VERSION}/l2-fee-components/aggregated?created[gte]=0&created[lte]=86400000"),
+        format!("http://{addr}/{API_VERSION}/l2-fee-components?created[gte]=0&created[lte]=86400000&aggregated"),
     )
     .await
     .unwrap();
@@ -300,7 +300,7 @@ async fn l2_fee_components_aggregated_integration() {
     );
 
     let resp = reqwest::get(
-        format!("http://{addr}/{API_VERSION}/l2-fee-components/aggregated?created[gte]=0&created[lte]=3600000&address=zzz"),
+        format!("http://{addr}/{API_VERSION}/l2-fee-components?created[gte]=0&created[lte]=3600000&address=zzz&aggregated"),
     )
     .await
     .unwrap();
