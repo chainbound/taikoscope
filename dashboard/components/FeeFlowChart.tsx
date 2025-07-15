@@ -8,7 +8,7 @@ import { calculateProfit } from '../utils/profit';
 
 const NODE_GREEN = '#22c55e';
 import useSWR from 'swr';
-import { fetchL2Fees } from '../services/apiService';
+import { fetchL2FeesComponents } from '../services/apiService';
 import { getSequencerName } from '../sequencerConfig';
 import { useEthPrice } from '../services/priceService';
 import { TimeRange } from '../types';
@@ -174,13 +174,16 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
   const textColor =
     theme === 'dark' ? darkTheme.foreground : lightTheme.foreground;
   const { data: feeRes } = useSWR(['l2FeesFlow', timeRange, address], () =>
-    fetchL2Fees(timeRange, address),
+    fetchL2FeesComponents(timeRange),
   );
   const { data: ethPrice = 0 } = useEthPrice();
 
   const priorityFee = feeRes?.data?.priority_fee ?? null;
   const baseFee = feeRes?.data?.base_fee ?? null;
-  const sequencerFees = feeRes?.data?.sequencers ?? [];
+  const allSequencerFees = feeRes?.data?.sequencers ?? [];
+  const sequencerFees = address 
+    ? allSequencerFees.filter(s => s.address.toLowerCase() === address.toLowerCase())
+    : allSequencerFees;
 
   // Memoized tooltip value formatter to avoid unnecessary re-renders
   // NOTE: Depends on `ethPrice`, so it is recreated only when the price changes

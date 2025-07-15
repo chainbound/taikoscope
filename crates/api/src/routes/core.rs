@@ -657,7 +657,7 @@ pub async fn eth_price(
     ),
     tag = "taikoscope"
 )]
-/// Get L2 fee breakdown including priority fees, base fees, and L1 data costs by sequencer
+/// Get L2 fee summary including total priority fees, base fees, and L1 data costs
 pub async fn l2_fees(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
@@ -705,25 +705,20 @@ pub async fn l2_fees(
             )
         });
 
-    let sequencers: Vec<SequencerFeeRow> = filtered
-        .into_iter()
-        .map(|r| SequencerFeeRow {
-            address: format!("0x{}", encode(r.sequencer)),
-            priority_fee: r.priority_fee / WEI_PER_GWEI,
-            base_fee: r.base_fee / WEI_PER_GWEI,
-            l1_data_cost: r.l1_data_cost / WEI_PER_GWEI,
-            prove_cost: r.prove_cost / WEI_PER_GWEI,
-        })
-        .collect();
-
-    let has_rows = !sequencers.is_empty();
+    let has_rows = !filtered.is_empty();
     let priority_fee = has_rows.then_some(priority_sum / WEI_PER_GWEI);
     let base_fee = has_rows.then_some(base_sum / WEI_PER_GWEI);
     let l1_data_cost = data_sum / WEI_PER_GWEI;
     let prove_cost = prove_sum / WEI_PER_GWEI;
 
-    tracing::info!(count = sequencers.len(), "Returning L2 fees and breakdown");
-    Ok(Json(L2FeesResponse { priority_fee, base_fee, l1_data_cost, prove_cost, sequencers }))
+    tracing::info!("Returning L2 fees summary only");
+    Ok(Json(L2FeesResponse {
+        priority_fee,
+        base_fee,
+        l1_data_cost,
+        prove_cost,
+        sequencers: vec![],
+    }))
 }
 
 #[utoipa::path(

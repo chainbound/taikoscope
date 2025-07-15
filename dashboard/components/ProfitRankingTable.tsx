@@ -3,7 +3,6 @@ import useSWR from 'swr';
 import { TimeRange } from '../types';
 import {
   fetchSequencerDistribution,
-  fetchL2Fees,
   fetchL2FeesComponents,
 } from '../services/apiService';
 import * as apiService from '../services/apiService';
@@ -43,9 +42,10 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
   const { data: ethPrice = 0 } = useEthPrice();
 
 
-  const { data: feeRes } = useSWR(['profitRankingFees', timeRange], () =>
-    fetchL2Fees(timeRange),
+  const { data: feeRes } = useSWR(['profitRankingData', timeRange], () =>
+    fetchL2FeesComponents(timeRange),
   );
+  
   const feeDataMap = React.useMemo(() => {
     const map = new Map<string, apiService.SequencerFee>();
     feeRes?.data?.sequencers.forEach((f) => {
@@ -54,24 +54,16 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
     return map;
   }, [feeRes]);
 
-
-  const { data: batchCounts } = useSWR(
-    sequencers.length
-      ? ['profitRankingBatches', timeRange]
-      : null,
-    async () => {
-      const result = await fetchL2FeesComponents(timeRange);
-      const map = new Map<string, number>();
-      if (result.data) {
-        // Count batches by sequencer address
-        result.data.batches.forEach((batch) => {
-          const current = map.get(batch.sequencer) || 0;
-          map.set(batch.sequencer, current + 1);
-        });
-      }
-      return map;
-    },
-  );
+  const batchCounts = React.useMemo(() => {
+    const map = new Map<string, number>();
+    if (feeRes?.data?.batches) {
+      feeRes.data.batches.forEach((batch) => {
+        const current = map.get(batch.sequencer) || 0;
+        map.set(batch.sequencer, current + 1);
+      });
+    }
+    return map;
+  }, [feeRes]);
 
   const [sortBy, setSortBy] = React.useState<
     'name' | 'blocks' | 'batches' | 'revenue' | 'cost' | 'profit' | 'ratio'
@@ -87,7 +79,7 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
 
   const rows = sequencers.map((seq) => {
     const addr = seq.address || getSequencerAddress(seq.name) || '';
-    const batchCount = batchCounts?.get(addr.toLowerCase()) ?? null;
+    const batchCount = batchCounts.get(addr.toLowerCase()) ?? null;
     const fees = feeDataMap.get(addr.toLowerCase());
     const proveEth = (fees?.prove_cost ?? 0) / 1e9;
     const verifyEth = 0;
