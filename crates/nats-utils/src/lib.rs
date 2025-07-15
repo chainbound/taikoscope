@@ -7,7 +7,7 @@ pub async fn publish_event(client: &async_nats::Client, event: &TaikoEvent) -> e
     let js = async_nats::jetstream::new(client.clone());
     let _stream = js
         .get_or_create_stream(async_nats::jetstream::stream::Config {
-            name: "taiko_events".to_owned(),
+            name: "taiko".to_owned(),
             subjects: vec!["taiko.events".to_owned()],
             ..Default::default()
         })
