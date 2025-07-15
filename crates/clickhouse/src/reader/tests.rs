@@ -44,8 +44,8 @@ struct SeqFeeRow {
     sequencer: AddressBytes,
     priority_fee: u128,
     base_fee: u128,
-    l1_data_cost: Option<u128>,
-    prove_cost: Option<u128>,
+    l1_data_cost: u128,
+    prove_cost: u128,
 }
 
 #[tokio::test]
@@ -58,8 +58,8 @@ async fn fees_by_sequencer_returns_expected_rows() {
         sequencer: addr,
         priority_fee: 10,
         base_fee: 20,
-        l1_data_cost: Some(5),
-        prove_cost: Some(3),
+        l1_data_cost: 5,
+        prove_cost: 3,
     }]));
 
     let url = url::Url::parse(mock.url()).unwrap();
@@ -73,8 +73,8 @@ async fn fees_by_sequencer_returns_expected_rows() {
             sequencer: addr,
             priority_fee: 10,
             base_fee: 20,
-            l1_data_cost: Some(5),
-            prove_cost: Some(3),
+            l1_data_cost: 5,
+            prove_cost: 3,
         }]
     );
 }
@@ -207,8 +207,8 @@ async fn batch_fees_by_proposer_returns_expected_rows() {
         sequencer: AddressBytes([1u8; 20]),
         priority_fee: 10,
         base_fee: 20,
-        l1_data_cost: Some(5),
-        prove_cost: None,
+        l1_data_cost: 5,
+        prove_cost: 3,
     }]));
 
     let url = url::Url::parse(mock.url()).unwrap();
@@ -222,8 +222,8 @@ async fn batch_fees_by_proposer_returns_expected_rows() {
             sequencer: AddressBytes([1u8; 20]),
             priority_fee: 10,
             base_fee: 20,
-            l1_data_cost: Some(5),
-            prove_cost: None,
+            l1_data_cost: 5,
+            prove_cost: 3,
         }]
     );
 }

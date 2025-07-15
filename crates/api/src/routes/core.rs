@@ -700,8 +700,8 @@ pub async fn l2_fees(
             (
                 p_acc + r.priority_fee,
                 b_acc + r.base_fee,
-                d_acc + r.l1_data_cost.unwrap_or(0),
-                pr_acc + r.prove_cost.unwrap_or(0),
+                d_acc + r.l1_data_cost,
+                pr_acc + r.prove_cost,
             )
         });
 
@@ -711,8 +711,8 @@ pub async fn l2_fees(
             address: format!("0x{}", encode(r.sequencer)),
             priority_fee: r.priority_fee / WEI_PER_GWEI,
             base_fee: r.base_fee / WEI_PER_GWEI,
-            l1_data_cost: r.l1_data_cost.unwrap_or(0) / WEI_PER_GWEI,
-            prove_cost: r.prove_cost.unwrap_or(0) / WEI_PER_GWEI,
+            l1_data_cost: r.l1_data_cost / WEI_PER_GWEI,
+            prove_cost: r.prove_cost / WEI_PER_GWEI,
         })
         .collect();
 

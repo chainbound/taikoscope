@@ -501,8 +501,8 @@ async fn l2_fees_integration() {
             sequencer: AddressBytes([1u8; 20]),
             priority_fee: 600 * WEI_PER_GWEI,
             base_fee: 400 * WEI_PER_GWEI,
-            l1_data_cost: Some(10 * WEI_PER_GWEI),
-            prove_cost: Some(5 * WEI_PER_GWEI),
+            l1_data_cost: 10 * WEI_PER_GWEI,
+            prove_cost: 5 * WEI_PER_GWEI,
         },
     ]));
 

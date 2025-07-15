@@ -2505,8 +2505,8 @@ impl ClickhouseReader {
             "SELECT b.proposer_addr AS proposer, \
                     sum(h.sum_priority_fee) AS priority_fee, \
                     sum(h.sum_base_fee) AS base_fee, \
-                    toNullable(sum(if(b.batch_size > 0, intDiv(dc.cost, b.batch_size), NULL))) AS l1_data_cost, \
-                    toNullable(sum(if(b.batch_size > 0, intDiv(pc.cost, b.batch_size), NULL))) AS prove_cost \
+                    coalesce(sum(if(b.batch_size > 0, intDiv(dc.cost, b.batch_size), NULL)), toUInt128(0)) AS l1_data_cost, \
+                    coalesce(sum(if(b.batch_size > 0, intDiv(pc.cost, b.batch_size), NULL)), toUInt128(0)) AS prove_cost \
              FROM {db}.batch_blocks bb \
              INNER JOIN {db}.batches b \
                ON bb.batch_id = b.batch_id \
@@ -2851,8 +2851,8 @@ impl ClickhouseReader {
                 coalesce(r.seq_addr, c.seq_addr) AS sequencer, \
                 coalesce(r.priority_fee, toUInt128(0)) AS priority_fee, \
                 coalesce(r.base_fee, toUInt128(0)) AS base_fee, \
-                toNullable(c.l1_data_cost) AS l1_data_cost, \
-                toNullable(c.prove_cost) AS prove_cost \
+                coalesce(c.l1_data_cost, toUInt128(0)) AS l1_data_cost, \
+                coalesce(c.prove_cost, toUInt128(0)) AS prove_cost \
             FROM revenues r \
             FULL OUTER JOIN costs c ON r.seq_addr = c.seq_addr \
             ORDER BY priority_fee DESC",
