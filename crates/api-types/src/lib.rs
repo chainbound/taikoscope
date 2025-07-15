@@ -526,3 +526,20 @@ pub struct EthPriceResponse {
     /// Price of ETH in USD.
     pub price: f64,
 }
+
+/// Combined L2 fees and batch components response.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct L2FeesComponentsResponse {
+    /// Sum of priority fees for the range.
+    pub priority_fee: Option<u128>,
+    /// Sum of base fees for the range.
+    pub base_fee: Option<u128>,
+    /// Total L1 data posting cost for the range.
+    pub l1_data_cost: u128,
+    /// Total proving cost for the range.
+    pub prove_cost: u128,
+    /// Fee breakdown for each sequencer.
+    pub sequencers: Vec<SequencerFeeRow>,
+    /// Detailed fee components per batch.
+    pub batches: Vec<BatchFeeComponentRow>,
+}

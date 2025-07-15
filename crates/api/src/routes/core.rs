@@ -15,9 +15,9 @@ use api_types::{
     AvgBlobsPerBatchResponse, BatchFeeComponentRow, BatchFeeComponentsResponse,
     BatchPostingTimesResponse, BlockProfitItem, BlockProfitsResponse, ErrorResponse,
     EthPriceResponse, FeeComponentsResponse, L1BlockTimesResponse, L1DataCostResponse,
-    L1HeadBlockResponse, L2FeesResponse, L2HeadBlockResponse, ProveCostResponse,
-    ProveTimesResponse, SequencerBlocksItem, SequencerBlocksResponse, SequencerDistributionItem,
-    SequencerDistributionResponse, SequencerFeeRow, VerifyTimesResponse,
+    L1HeadBlockResponse, L2FeesComponentsResponse, L2FeesResponse, L2HeadBlockResponse,
+    ProveCostResponse, ProveTimesResponse, SequencerBlocksItem, SequencerBlocksResponse,
+    SequencerDistributionItem, SequencerDistributionResponse, SequencerFeeRow, VerifyTimesResponse,
 };
 use axum::{
     Json,
@@ -868,4 +868,98 @@ pub async fn batch_fee_components(
         .collect();
 
     Ok(Json(BatchFeeComponentsResponse { batches }))
+}
+
+#[utoipa::path(
+    get,
+    path = "/l2-fees-components",
+    params(
+        RangeQuery
+    ),
+    responses(
+        (status = 200, description = "Combined L2 fees and batch components", body = L2FeesComponentsResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
+    ),
+    tag = "taikoscope"
+)]
+/// Get combined L2 fees summary and detailed batch components
+pub async fn l2_fees_components(
+    Query(params): Query<RangeQuery>,
+    State(state): State<ApiState>,
+) -> Result<Json<L2FeesComponentsResponse>, ErrorResponse> {
+    validate_time_range(&params.time_range)?;
+
+    let has_time_range = has_time_range_params(&params.time_range);
+    validate_range_exclusivity(has_time_range, false)?;
+
+    let time_range = resolve_time_range_enum(&params.time_range);
+    let address = if let Some(addr) = params.address.as_ref() {
+        match addr.parse::<Address>() {
+            Ok(a) => Some(AddressBytes::from(a)),
+            Err(e) => {
+                tracing::warn!(error = %e, "Failed to parse address");
+                return Err(ErrorResponse::new(
+                    "invalid-params",
+                    "Bad Request",
+                    StatusCode::BAD_REQUEST,
+                    e.to_string(),
+                ));
+            }
+        }
+    } else {
+        None
+    };
+
+    let (sequencer_fees, batch_components, prove_total) =
+        state.client.get_l2_fees_and_components(address, time_range).await.map_err(|e| {
+            tracing::error!(error = %e, "Failed to get L2 fees and components");
+            ErrorResponse::database_error()
+        })?;
+
+    // Calculate aggregated totals from sequencer fees
+    let priority_fee = sequencer_fees.iter().map(|s| s.priority_fee).sum::<u128>();
+    let base_fee = sequencer_fees.iter().map(|s| s.base_fee).sum::<u128>();
+    let l1_data_cost = sequencer_fees.iter().map(|s| s.l1_data_cost).sum::<u128>();
+    let prove_cost = sequencer_fees.iter().map(|s| s.prove_cost).sum::<u128>();
+
+    // Calculate amortized prove cost
+    let count = batch_components.len() as u128;
+    let amortized_prove =
+        if count > 0 { prove_total.map(|c| (c / count) / WEI_PER_GWEI) } else { None };
+
+    // Convert sequencer fees to gwei
+    let sequencers: Vec<SequencerFeeRow> = sequencer_fees
+        .into_iter()
+        .map(|s| SequencerFeeRow {
+            address: format!("0x{}", encode(s.sequencer)),
+            priority_fee: s.priority_fee / WEI_PER_GWEI,
+            base_fee: s.base_fee / WEI_PER_GWEI,
+            l1_data_cost: s.l1_data_cost / WEI_PER_GWEI,
+            prove_cost: s.prove_cost / WEI_PER_GWEI,
+        })
+        .collect();
+
+    // Convert batch components to gwei
+    let batches: Vec<BatchFeeComponentRow> = batch_components
+        .into_iter()
+        .map(|r| BatchFeeComponentRow {
+            batch_id: r.batch_id,
+            l1_block_number: r.l1_block_number,
+            l1_tx_hash: format!("0x{}", encode(r.l1_tx_hash)),
+            sequencer: format!("0x{}", encode(r.sequencer)),
+            priority_fee: r.priority_fee / WEI_PER_GWEI,
+            base_fee: r.base_fee / WEI_PER_GWEI,
+            l1_data_cost: r.l1_data_cost.map(|v| v / WEI_PER_GWEI),
+            amortized_prove_cost: amortized_prove,
+        })
+        .collect();
+
+    Ok(Json(L2FeesComponentsResponse {
+        priority_fee: (priority_fee > 0).then_some(priority_fee / WEI_PER_GWEI),
+        base_fee: (base_fee > 0).then_some(base_fee / WEI_PER_GWEI),
+        l1_data_cost: l1_data_cost / WEI_PER_GWEI,
+        prove_cost: prove_cost / WEI_PER_GWEI,
+        sequencers,
+        batches,
+    }))
 }

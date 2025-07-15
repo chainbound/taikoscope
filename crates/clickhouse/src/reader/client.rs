@@ -3091,4 +3091,22 @@ impl ClickhouseReader {
         let rows = self.execute::<HashRow>(&query).await?;
         Ok(rows.into_iter().map(|r| (r.block_hash, r.l2_block_number)).collect())
     }
+
+    /// Get combined L2 fees and batch components data for a unified endpoint
+    pub async fn get_l2_fees_and_components(
+        &self,
+        proposer: Option<AddressBytes>,
+        range: TimeRange,
+    ) -> Result<(Vec<SequencerFeeRow>, Vec<BatchFeeComponentRow>, Option<u128>)> {
+        // Get sequencer fee data
+        let sequencer_fees = self.get_l2_fees_by_sequencer(range).await?;
+
+        // Get batch fee components
+        let batch_components = self.get_batch_fee_components(proposer, range).await?;
+
+        // Get total prove cost for amortization
+        let prove_total = self.get_total_prove_cost(proposer, range).await?;
+
+        Ok((sequencer_fees, batch_components, prove_total))
+    }
 }
