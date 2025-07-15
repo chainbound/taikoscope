@@ -5,8 +5,10 @@ use network::http_retry;
 
 use std::{
     sync::{Arc, Mutex},
-    time::{Duration as StdDuration, Instant},
+    time::Duration as StdDuration,
 };
+
+use tokio_util::sync::CancellationToken;
 
 use reqwest::Client;
 use serde_json::Value;
@@ -24,16 +26,15 @@ pub const MAX_TABLE_LIMIT: u64 = 50000;
 #[derive(Clone)]
 pub struct ApiState {
     pub(crate) client: ClickhouseReader,
-    pub(crate) http_client: Client,
     max_requests: u64,
     rate_period: StdDuration,
     price_cache: Arc<Mutex<CachedPrice>>,
+    shutdown: Arc<CancellationToken>,
 }
 
 #[derive(Debug)]
 struct CachedPrice {
-    value: f64,
-    updated_at: Instant,
+    value: Option<f64>,
 }
 
 impl std::fmt::Debug for ApiState {
@@ -45,16 +46,10 @@ impl std::fmt::Debug for ApiState {
 impl ApiState {
     /// Create a new [`ApiState`].
     pub fn new(client: ClickhouseReader, max_requests: u64, rate_period: StdDuration) -> Self {
-        Self {
-            client,
-            http_client: Client::new(),
-            max_requests,
-            rate_period,
-            price_cache: Arc::new(Mutex::new(CachedPrice {
-                value: 0.0,
-                updated_at: Instant::now() - StdDuration::from_secs(61),
-            })),
-        }
+        let cache = Arc::new(Mutex::new(CachedPrice { value: None }));
+        let token = Arc::new(CancellationToken::new());
+        spawn_price_refresh(Client::new(), Arc::clone(&cache), Arc::clone(&token));
+        Self { client, max_requests, rate_period, price_cache: cache, shutdown: token }
     }
 
     /// Maximum number of requests allowed per [`rate_period`].
@@ -67,20 +62,10 @@ impl ApiState {
         self.rate_period
     }
 
-    /// Get the current ETH price in USD, cached for 1 minute.
-    pub async fn eth_price(&self) -> eyre::Result<f64> {
-        let now = Instant::now();
-        {
-            let cache = self.price_cache.lock().expect("lock poisoned");
-            if now.duration_since(cache.updated_at) < StdDuration::from_secs(60) {
-                return Ok(cache.value);
-            }
-        }
-
-        let price = fetch_eth_price(&self.http_client).await?;
-        let mut cache = self.price_cache.lock().expect("lock poisoned");
-        *cache = CachedPrice { value: price, updated_at: now };
-        Ok(price)
+    /// Get the current ETH price in USD from the cache.
+    pub async fn cached_eth_price(&self) -> Option<f64> {
+        let cache = self.price_cache.lock().expect("lock poisoned");
+        cache.value
     }
 }
 
@@ -99,4 +84,35 @@ async fn fetch_eth_price(client: &Client) -> eyre::Result<f64> {
     })
     .await?;
     Ok(price)
+}
+
+fn spawn_price_refresh(
+    client: Client,
+    cache: Arc<Mutex<CachedPrice>>,
+    token: Arc<CancellationToken>,
+) {
+    tokio::spawn(async move {
+        loop {
+            match fetch_eth_price(&client).await {
+                Ok(price) => {
+                    let mut lock = cache.lock().expect("lock poisoned");
+                    *lock = CachedPrice { value: Some(price) };
+                }
+                Err(e) => tracing::warn!(error = %e, "failed to refresh ETH price"),
+            }
+
+            tokio::select! {
+                _ = token.cancelled() => break,
+                _ = tokio::time::sleep(StdDuration::from_secs(60)) => {},
+            }
+        }
+    });
+}
+
+impl Drop for ApiState {
+    fn drop(&mut self) {
+        if Arc::strong_count(&self.shutdown) == 1 {
+            self.shutdown.cancel();
+        }
+    }
 }

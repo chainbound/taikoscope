@@ -631,17 +631,15 @@ pub async fn block_profits(
 pub async fn eth_price(
     State(state): State<ApiState>,
 ) -> Result<Json<EthPriceResponse>, ErrorResponse> {
-    match state.eth_price().await {
-        Ok(price) => Ok(Json(EthPriceResponse { price })),
-        Err(e) => {
-            tracing::error!(error = %e, "Failed to fetch ETH price");
-            Err(ErrorResponse::new(
-                "price-error",
-                "Failed to fetch ETH price",
-                StatusCode::SERVICE_UNAVAILABLE,
-                e.to_string(),
-            ))
-        }
+    if let Some(price) = state.cached_eth_price().await {
+        Ok(Json(EthPriceResponse { price }))
+    } else {
+        Err(ErrorResponse::new(
+            "price-error",
+            "Failed to fetch ETH price",
+            StatusCode::SERVICE_UNAVAILABLE,
+            "price not available".to_owned(),
+        ))
     }
 }
 
