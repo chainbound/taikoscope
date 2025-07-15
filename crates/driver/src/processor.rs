@@ -3,7 +3,9 @@
 use clickhouse::{AddressBytes, ClickhouseWriter, HashBytes, L2HeadEvent};
 use config::Opts;
 use eyre::Result;
+use lru::LruCache;
 use nats_utils::TaikoEvent;
+use std::num::NonZeroUsize;
 use tokio_stream::StreamExt;
 use tracing::info;
 
@@ -85,12 +87,18 @@ impl ProcessorDriver {
             .await?;
 
         let mut messages = consumer.messages().await?;
+        let mut dedup_cache = LruCache::new(NonZeroUsize::new(10_000).unwrap());
 
         while let Some(message) = messages.next().await {
             match message {
                 Ok(msg) => {
-                    if let Err(e) =
-                        Self::process_message(&clickhouse_writer, enable_db_writes, &msg).await
+                    if let Err(e) = Self::process_message(
+                        &clickhouse_writer,
+                        enable_db_writes,
+                        &mut dedup_cache,
+                        &msg,
+                    )
+                    .await
                     {
                         tracing::error!(err = %e, "Failed to process message");
                     }
@@ -110,9 +118,16 @@ impl ProcessorDriver {
     async fn process_message(
         clickhouse_writer: &Option<ClickhouseWriter>,
         enable_db_writes: bool,
+        dedup_cache: &mut LruCache<String, ()>,
         msg: &async_nats::jetstream::Message,
     ) -> Result<()> {
         let event: TaikoEvent = serde_json::from_slice(&msg.payload)?;
+        let dedup_id = event.dedup_id();
+        if dedup_cache.contains(&dedup_id) {
+            tracing::debug!(%dedup_id, "Duplicate message received - skipping");
+            return Ok(());
+        }
+        dedup_cache.put(dedup_id.clone(), ());
 
         if enable_db_writes {
             if let Some(writer) = clickhouse_writer {

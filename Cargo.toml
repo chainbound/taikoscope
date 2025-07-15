@@ -54,6 +54,7 @@ url = { version = "2.5.4", features = ["serde"] }
 tower-http = { version = "0.5.2", features = ["cors", "trace"] }
 tower = { version = "0.5.2", features = ["limit"] }
 dashmap = "6.1"
+lru = "0.13"
 utoipa = { version = "5.4", features = ["axum_extras"] }
 utoipa-swagger-ui = { version = "8.1", features = ["axum", "vendored"] }
 

@@ -1793,6 +1793,7 @@ dependencies = [
  "futures",
  "http",
  "incident",
+ "lru",
  "messages",
  "nats-utils",
  "network",
@@ -2951,6 +2952,7 @@ dependencies = [
  "primitives",
  "serde",
  "serde_json",
+ "tracing",
 ]
 
 [[package]]
