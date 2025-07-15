@@ -16,8 +16,9 @@ use api_types::{
     BatchPostingTimesResponse, BlockProfitItem, BlockProfitsResponse, ErrorResponse,
     EthPriceResponse, FeeComponentsResponse, L1BlockTimesResponse, L1DataCostResponse,
     L1HeadBlockResponse, L2FeesComponentsResponse, L2FeesResponse, L2HeadBlockResponse,
-    ProveCostResponse, ProveTimesResponse, SequencerBlocksItem, SequencerBlocksResponse,
-    SequencerDistributionItem, SequencerDistributionResponse, SequencerFeeRow, VerifyTimesResponse,
+    PreconfDataResponse, ProveCostResponse, ProveTimesResponse, SequencerBlocksItem,
+    SequencerBlocksResponse, SequencerDistributionItem, SequencerDistributionResponse,
+    SequencerFeeRow, VerifyTimesResponse,
 };
 use axum::{
     Json,
@@ -69,6 +70,36 @@ pub async fn l1_head_block(
         ErrorResponse::database_error()
     })?;
     Ok(Json(L1HeadBlockResponse { l1_head_block: num }))
+}
+
+#[utoipa::path(
+    get,
+    path = "/preconf-data",
+    responses(
+        (status = 200, description = "Latest preconfiguration data", body = PreconfDataResponse),
+        (status = 500, description = "Database error", body = ErrorResponse)
+    ),
+    tag = "taikoscope"
+)]
+/// Get the most recent preconfiguration data including candidates and operators
+pub async fn preconf_data(
+    State(state): State<ApiState>,
+) -> Result<Json<PreconfDataResponse>, ErrorResponse> {
+    let data = state.client.get_last_preconf_data().await.map_err(|e| {
+        tracing::error!("Failed to get preconf data: {}", e);
+        ErrorResponse::database_error()
+    })?;
+
+    let empty =
+        PreconfDataResponse { candidates: Vec::new(), current_operator: None, next_operator: None };
+
+    let resp = data.map_or(empty, |d| PreconfDataResponse {
+        candidates: d.candidates.into_iter().map(|a| format!("0x{}", encode(a))).collect(),
+        current_operator: d.current_operator.map(|a| format!("0x{}", encode(a))),
+        next_operator: d.next_operator.map(|a| format!("0x{}", encode(a))),
+    });
+
+    Ok(Json(resp))
 }
 
 #[utoipa::path(

@@ -18,6 +18,7 @@ pub fn router(state: ApiState) -> Router {
     let api_routes = Router::new()
         .route("/l2-head-block", get(l2_head_block))
         .route("/l1-head-block", get(l1_head_block))
+        .route("/preconf-data", get(preconf_data))
         .route("/reorgs", get(reorgs))
         .route("/slashings", get(slashings))
         .route("/forced-inclusions", get(forced_inclusions))

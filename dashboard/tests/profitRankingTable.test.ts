@@ -47,11 +47,11 @@ describe('ProfitRankingTable', () => {
               },
             ],
             batches: [
-              { sequencer: '0xseqA', batch_id: 1, revenue: 1e9, prove_cost: 0 },
-              { sequencer: '0xseqB', batch_id: 2, revenue: 0.5e9, prove_cost: 0 },
+              { sequencer: '0xseqA', batch_id: 1, revenue: 1e9, prove_cost: 0 } as any,
+              { sequencer: '0xseqB', batch_id: 2, revenue: 0.5e9, prove_cost: 0 } as any,
             ],
           },
-        } as RequestResult<L2FeesComponentsResponse>,
+        } as unknown as RequestResult<L2FeesComponentsResponse>,
       } as unknown as ReturnType<typeof swr.default>);
 
     vi.spyOn(api, 'fetchSequencerDistribution').mockResolvedValue({
@@ -85,8 +85,8 @@ describe('ProfitRankingTable', () => {
           },
         ],
         batches: [
-          { sequencer: '0xseqA', batch_id: 1, revenue: 1e9, prove_cost: 0 },
-          { sequencer: '0xseqB', batch_id: 2, revenue: 0.5e9, prove_cost: 0 },
+          { sequencer: '0xseqA', batch_id: 1, revenue: 1e9, prove_cost: 0 } as any,
+          { sequencer: '0xseqB', batch_id: 2, revenue: 0.5e9, prove_cost: 0 } as any,
         ],
       },
       badRequest: false,
@@ -141,10 +141,10 @@ describe('ProfitRankingTable', () => {
               },
             ],
             batches: [
-              { sequencer: '0xseqA', batch_id: 1, revenue: 1e9, prove_cost: 1e7 },
+              { sequencer: '0xseqA', batch_id: 1, revenue: 1e9, prove_cost: 1e7 } as any,
             ],
           },
-        } as RequestResult<L2FeesComponentsResponse>,
+        } as unknown as RequestResult<L2FeesComponentsResponse>,
       } as unknown as ReturnType<typeof swr.default>);
 
     vi.spyOn(api, 'fetchSequencerDistribution').mockResolvedValue({
@@ -168,7 +168,7 @@ describe('ProfitRankingTable', () => {
           },
         ],
         batches: [
-          { sequencer: '0xseqA', batch_id: 1, revenue: 1e9, prove_cost: 1e7 },
+          { sequencer: '0xseqA', batch_id: 1, revenue: 1e9, prove_cost: 1e7 } as any,
         ],
       },
       badRequest: false,

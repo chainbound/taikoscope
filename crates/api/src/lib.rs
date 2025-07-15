@@ -22,6 +22,7 @@ use utoipa::OpenApi;
     paths(
         routes::core::l2_head_block,
         routes::core::l1_head_block,
+        routes::core::preconf_data,
         routes::table::reorgs,
         routes::table::slashings,
         routes::table::forced_inclusions,

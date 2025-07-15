@@ -60,6 +60,11 @@ const responses: Record<string, Record<string, unknown>> = {
   [`/v1/avg-prove-time?${q1h}`]: { avg_prove_time_ms: 1500 },
   [`/v1/l2-block-cadence?${q1h}`]: { l2_block_cadence_ms: 60000 },
   [`/v1/batch-posting-cadence?${q1h}`]: { batch_posting_cadence_ms: 120000 },
+  '/v1/preconf-data': {
+    candidates: ['gw1', 'gw2'],
+    current_operator: '0xaaa',
+    next_operator: '0xbbb',
+  },
   [`/v1/dashboard-data?${q1h}`]: {
     preconf_data: {
       candidates: ['gw1', 'gw2'],
