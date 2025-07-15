@@ -2843,7 +2843,7 @@ impl ClickhouseReader {
                 FROM {db}.batches b \
                 INNER JOIN {db}.l1_head_events l1 ON b.l1_block_number = l1.l1_block_number \
                 LEFT JOIN {db}.l1_data_costs dc ON b.batch_id = dc.batch_id AND b.l1_block_number = dc.l1_block_number \
-                LEFT JOIN {db}.prove_costs pc ON b.batch_id = pc.batch_id AND b.l1_block_number = pc.l1_block_number \
+                LEFT JOIN {db}.prove_costs pc ON b.batch_id = pc.batch_id \
                 WHERE l1.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
                 GROUP BY b.proposer_addr \
             ) \
