@@ -302,6 +302,7 @@ build-all tag='latest' platform='linux/amd64,linux/arm64':
     docker buildx build \
         --label "org.opencontainers.image.commit=$(git rev-parse --short HEAD)" \
         --platform {{platform}} \
+        --file Dockerfile.ingestor \
         --tag ghcr.io/chainbound/taikoscope-ingestor:{{tag}} \
         --push .
     docker buildx build \
