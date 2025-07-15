@@ -7,8 +7,16 @@ use clickhouse::{Client, Row, sql::Identifier};
 use derive_more::Debug;
 use eyre::{Context, Result};
 use hex::encode;
+use hyper_tls::HttpsConnector;
+use hyper_util::{
+    client::legacy::{Client as HyperClient, connect::HttpConnector},
+    rt::TokioExecutor,
+};
 use serde::{Deserialize, Serialize};
-use std::{collections::BTreeSet, time::Instant};
+use std::{
+    collections::BTreeSet,
+    time::{Duration, Instant},
+};
 use tracing::{debug, error};
 use url::Url;
 
@@ -41,7 +49,18 @@ pub struct ClickhouseReader {
 impl ClickhouseReader {
     /// Create a new `ClickHouse` reader client
     pub fn new(url: Url, db_name: String, username: String, password: String) -> Result<Self> {
-        let client = Client::default().with_url(url).with_user(username).with_password(password);
+        let mut connector = HttpConnector::new();
+        connector.set_keepalive(Some(Duration::from_secs(60)));
+        let connector = HttpsConnector::new_with_connector(connector);
+        let hyper_client = HyperClient::builder(TokioExecutor::new())
+            .pool_idle_timeout(Duration::from_secs(2))
+            .pool_max_idle_per_host(8)
+            .build(connector);
+
+        let client = Client::with_http_client(hyper_client)
+            .with_url(url)
+            .with_user(username)
+            .with_password(password);
 
         Ok(Self { base: client, db_name })
     }
@@ -50,10 +69,9 @@ impl ClickhouseReader {
     where
         R: Row + for<'b> Deserialize<'b>,
     {
-        let client = self.base.clone();
         let start = Instant::now();
 
-        let result = client.query(query).fetch_all::<R>().await;
+        let result = self.base.query(query).fetch_all::<R>().await;
 
         let duration_ms = start.elapsed().as_millis();
         match &result {
@@ -79,11 +97,11 @@ impl ClickhouseReader {
 
     /// Get last L2 head time
     pub async fn get_last_l2_head_time(&self) -> Result<Option<DateTime<Utc>>> {
-        let client = self.base.clone();
         let sql = "SELECT max(block_ts) AS block_ts FROM ?.l2_head_events";
 
         let start = Instant::now();
-        let result = client.query(sql).bind(Identifier(&self.db_name)).fetch_all::<MaxTs>().await;
+        let result =
+            self.base.query(sql).bind(Identifier(&self.db_name)).fetch_all::<MaxTs>().await;
 
         let duration_ms = start.elapsed().as_millis();
         match &result {
@@ -110,11 +128,11 @@ impl ClickhouseReader {
 
     /// Get timestamp of the latest L1 head event in UTC
     pub async fn get_last_l1_head_time(&self) -> Result<Option<DateTime<Utc>>> {
-        let client = self.base.clone();
         let sql = "SELECT max(block_ts) AS block_ts FROM ?.l1_head_events";
 
         let start = Instant::now();
-        let result = client.query(sql).bind(Identifier(&self.db_name)).fetch_all::<MaxTs>().await;
+        let result =
+            self.base.query(sql).bind(Identifier(&self.db_name)).fetch_all::<MaxTs>().await;
 
         let duration_ms = start.elapsed().as_millis();
         match &result {
@@ -151,13 +169,12 @@ impl ClickhouseReader {
             l2_block_number: u64,
         }
 
-        let client = self.base.clone();
         let sql =
             "SELECT l2_block_number FROM ?.l2_head_events ORDER BY l2_block_number DESC LIMIT 1";
 
         let start = Instant::now();
         let result =
-            client.query(sql).bind(Identifier(&self.db_name)).fetch_all::<BlockNumber>().await;
+            self.base.query(sql).bind(Identifier(&self.db_name)).fetch_all::<BlockNumber>().await;
 
         let duration_ms = start.elapsed().as_millis();
         match &result {
@@ -186,13 +203,12 @@ impl ClickhouseReader {
             l1_block_number: u64,
         }
 
-        let client = self.base.clone();
         let sql =
             "SELECT l1_block_number FROM ?.l1_head_events ORDER BY l1_block_number DESC LIMIT 1";
 
         let start = Instant::now();
         let result =
-            client.query(sql).bind(Identifier(&self.db_name)).fetch_all::<BlockNumber>().await;
+            self.base.query(sql).bind(Identifier(&self.db_name)).fetch_all::<BlockNumber>().await;
 
         let duration_ms = start.elapsed().as_millis();
         match &result {
@@ -215,14 +231,14 @@ impl ClickhouseReader {
 
     /// Get timestamp of the latest `BatchProposed` event based on L1 block timestamp in UTC
     pub async fn get_last_batch_time(&self) -> Result<Option<DateTime<Utc>>> {
-        let client = self.base.clone();
         let sql = "SELECT max(l1_events.block_ts) AS block_ts \
              FROM ?.batches b \
              INNER JOIN ?.l1_head_events l1_events \
                ON b.l1_block_number = l1_events.l1_block_number";
 
         let start = Instant::now();
-        let result = client
+        let result = self
+            .base
             .query(sql)
             .bind(Identifier(&self.db_name))
             .bind(Identifier(&self.db_name))
@@ -258,12 +274,11 @@ impl ClickhouseReader {
 
     /// Get the most recent preconfiguration data
     pub async fn get_last_preconf_data(&self) -> Result<Option<PreconfData>> {
-        let client = self.base.clone();
         let sql = "SELECT slot, candidates, current_operator, next_operator FROM ?.preconf_data ORDER BY inserted_at DESC LIMIT 1";
 
         let start = Instant::now();
         let result =
-            client.query(sql).bind(Identifier(&self.db_name)).fetch_all::<PreconfData>().await;
+            self.base.query(sql).bind(Identifier(&self.db_name)).fetch_all::<PreconfData>().await;
 
         let duration_ms = start.elapsed().as_millis();
         match &result {
@@ -282,7 +297,6 @@ impl ClickhouseReader {
         &self,
         cutoff: DateTime<Utc>,
     ) -> Result<Vec<(u64, u64, DateTime<Utc>)>> {
-        let client = self.base.clone();
         let sql = "SELECT b.l1_block_number, b.batch_id, toUnixTimestamp64Milli(b.inserted_at) as inserted_at \
              FROM (SELECT l1_block_number, batch_id, inserted_at \
                    FROM ?.batches \
@@ -293,7 +307,8 @@ impl ClickhouseReader {
              ORDER BY b.inserted_at ASC";
 
         let start = Instant::now();
-        let result = client
+        let result = self
+            .base
             .query(sql)
             .bind(Identifier(&self.db_name))
             .bind(cutoff.timestamp_millis() as f64 / 1000.0)
@@ -326,12 +341,15 @@ impl ClickhouseReader {
         struct ProvedBatchIdRow {
             batch_id: u64,
         }
-        let client = self.base.clone();
         let sql = "SELECT batch_id FROM ?.proved_batches";
 
         let start = Instant::now();
-        let result =
-            client.query(sql).bind(Identifier(&self.db_name)).fetch_all::<ProvedBatchIdRow>().await;
+        let result = self
+            .base
+            .query(sql)
+            .bind(Identifier(&self.db_name))
+            .fetch_all::<ProvedBatchIdRow>()
+            .await;
 
         let duration_ms = start.elapsed().as_millis();
         match &result {
@@ -350,7 +368,6 @@ impl ClickhouseReader {
         &self,
         cutoff: DateTime<Utc>,
     ) -> Result<Vec<(u64, u64, DateTime<Utc>)>> {
-        let client = self.base.clone();
         let sql = "SELECT b.l1_block_number, b.batch_id, toUnixTimestamp64Milli(b.inserted_at) as inserted_at \
              FROM (SELECT l1_block_number, batch_id, inserted_at \
                    FROM ?.batches \
@@ -361,7 +378,8 @@ impl ClickhouseReader {
              ORDER BY b.inserted_at ASC";
 
         let start = Instant::now();
-        let result = client
+        let result = self
+            .base
             .query(sql)
             .bind(Identifier(&self.db_name))
             .bind(cutoff.timestamp_millis() as f64 / 1000.0)
@@ -394,11 +412,11 @@ impl ClickhouseReader {
         struct VerifiedBatchIdRow {
             batch_id: u64,
         }
-        let client = self.base.clone();
         let sql = "SELECT batch_id FROM ?.verified_batches";
 
         let start = Instant::now();
-        let result = client
+        let result = self
+            .base
             .query(sql)
             .bind(Identifier(&self.db_name))
             .fetch_all::<VerifiedBatchIdRow>()
@@ -421,13 +439,13 @@ impl ClickhouseReader {
         &self,
         since: DateTime<Utc>,
     ) -> Result<Vec<SlashingEventRow>> {
-        let client = self.base.clone();
         let sql = "SELECT l1_block_number, validator_addr FROM ?.slashing_events \
              WHERE inserted_at > toDateTime64(?, 3) \
              ORDER BY inserted_at ASC";
 
         let start = Instant::now();
-        let result = client
+        let result = self
+            .base
             .query(sql)
             .bind(Identifier(&self.db_name))
             .bind(since.timestamp_millis() as f64 / 1000.0)
@@ -451,14 +469,14 @@ impl ClickhouseReader {
         since: DateTime<Utc>,
         until: DateTime<Utc>,
     ) -> Result<Vec<SlashingEventRow>> {
-        let client = self.base.clone();
         let sql = "SELECT l1_block_number, validator_addr FROM ?.slashing_events \
              WHERE inserted_at > toDateTime64(?, 3) \
                AND inserted_at <= toDateTime64(?, 3) \
              ORDER BY inserted_at ASC";
 
         let start = Instant::now();
-        let result = client
+        let result = self
+            .base
             .query(sql)
             .bind(Identifier(&self.db_name))
             .bind(since.timestamp_millis() as f64 / 1000.0)
@@ -482,13 +500,13 @@ impl ClickhouseReader {
         &self,
         since: DateTime<Utc>,
     ) -> Result<Vec<ForcedInclusionProcessedRow>> {
-        let client = self.base.clone();
         let sql = "SELECT blob_hash FROM ?.forced_inclusion_processed \
              WHERE inserted_at > toDateTime64(?, 3) \
              ORDER BY inserted_at ASC";
 
         let start = Instant::now();
-        let result = client
+        let result = self
+            .base
             .query(sql)
             .bind(Identifier(&self.db_name))
             .bind(since.timestamp_millis() as f64 / 1000.0)
@@ -512,14 +530,14 @@ impl ClickhouseReader {
         since: DateTime<Utc>,
         until: DateTime<Utc>,
     ) -> Result<Vec<ForcedInclusionProcessedRow>> {
-        let client = self.base.clone();
         let sql = "SELECT blob_hash FROM ?.forced_inclusion_processed \
              WHERE inserted_at > toDateTime64(?, 3) \
                AND inserted_at <= toDateTime64(?, 3) \
              ORDER BY inserted_at ASC";
 
         let start = Instant::now();
-        let result = client
+        let result = self
+            .base
             .query(sql)
             .bind(Identifier(&self.db_name))
             .bind(since.timestamp_millis() as f64 / 1000.0)
@@ -739,12 +757,12 @@ impl ClickhouseReader {
             next_operator: Option<AddressBytes>,
         }
 
-        let client = self.base.clone();
         let sql = "SELECT candidates, current_operator, next_operator FROM ?.preconf_data \
              WHERE inserted_at > toDateTime64(?, 3)";
 
         let start = Instant::now();
-        let result = client
+        let result = self
+            .base
             .query(sql)
             .bind(Identifier(&self.db_name))
             .bind(since.timestamp_millis() as f64 / 1000.0)

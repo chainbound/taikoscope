@@ -23,6 +23,8 @@ hex.workspace = true
 include_dir = "0.7"
 regex = "1"
 utoipa = { version = "5.4", features = ["chrono"] }
+hyper-util = { workspace = true, features = ["client-legacy", "http1"] }
+hyper-tls = { workspace = true }
 
 [dev-dependencies]
 clickhouse.workspace = true

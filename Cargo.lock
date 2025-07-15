@@ -1376,6 +1376,8 @@ dependencies = [
  "derive_more 1.0.0",
  "eyre",
  "hex",
+ "hyper-tls",
+ "hyper-util",
  "include_dir",
  "primitives",
  "regex",
