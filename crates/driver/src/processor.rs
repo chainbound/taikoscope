@@ -669,44 +669,6 @@ impl ProcessorDriver {
         }
     }
 
-    /// Retry helper for database operations
-    #[allow(dead_code)]
-    async fn retry_db_operation<F, T>(
-        operation: F,
-        operation_name: &str,
-        max_retries: u32,
-    ) -> Option<T>
-    where
-        F: Fn() -> std::pin::Pin<Box<dyn std::future::Future<Output = eyre::Result<T>> + Send>>,
-    {
-        let mut retries = 0;
-        loop {
-            match operation().await {
-                Ok(result) => return Some(result),
-                Err(e) => {
-                    if retries >= max_retries {
-                        tracing::error!(
-                            operation = operation_name,
-                            retries = retries,
-                            err = %e,
-                            "Database operation failed after all retries"
-                        );
-                        return None;
-                    }
-                    retries += 1;
-                    tracing::warn!(
-                        operation = operation_name,
-                        retry = retries,
-                        max_retries = max_retries,
-                        err = %e,
-                        "Database operation failed, retrying..."
-                    );
-                    tokio::time::sleep(Duration::from_millis(100 * retries as u64)).await;
-                }
-            }
-        }
-    }
-
     /// Process preconfirmation data for L1 headers (ported from original driver)
     async fn process_preconf_data(
         writer: &ClickhouseWriter,
