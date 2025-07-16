@@ -583,9 +583,9 @@ impl ProcessorDriver {
             }
         };
 
-        // Calculate sum_base_fee using the base fee per gas and transaction count
+        // Calculate sum_base_fee using the base fee per gas and gas used
         let sum_base_fee =
-            header.base_fee_per_gas.map(|base_fee| base_fee * sum_tx as u64).unwrap_or(0) as u128;
+            sum_gas_used.saturating_mul(header.base_fee_per_gas.unwrap_or(0) as u128);
 
         // Convert L2Header to L2HeadEvent format expected by ClickHouse
         let event = L2HeadEvent {
