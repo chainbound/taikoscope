@@ -339,11 +339,12 @@ export interface PreconfData {
 }
 
 export const fetchPreconfData = async (
-  range: TimeRange = '1h',
+  _range: TimeRange = '1h',
 ): Promise<RequestResult<PreconfData>> => {
-  const res = await fetchDashboardData(range);
+  const url = `${API_BASE}/preconf-data`;
+  const res = await fetchJson<PreconfData>(url);
   return {
-    data: res.data?.preconf_data ?? null,
+    data: res.data ?? null,
     badRequest: res.badRequest,
     error: res.error,
   };
