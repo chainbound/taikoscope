@@ -664,15 +664,12 @@ pub async fn eth_price(
 ) -> Result<Json<EthPriceResponse>, ErrorResponse> {
     match state.eth_price().await {
         Ok(price) => Ok(Json(EthPriceResponse { price })),
-        Err(e) => {
-            tracing::error!(error = %e, "Failed to fetch ETH price");
-            Err(ErrorResponse::new(
-                "price-error",
-                "Failed to fetch ETH price",
-                StatusCode::SERVICE_UNAVAILABLE,
-                e.to_string(),
-            ))
-        }
+        Err(e) => Err(ErrorResponse::new(
+            "price-error",
+            "Failed to fetch ETH price",
+            StatusCode::SERVICE_UNAVAILABLE,
+            e.to_string(),
+        )),
     }
 }
 
