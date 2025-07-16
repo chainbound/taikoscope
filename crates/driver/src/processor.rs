@@ -1,9 +1,9 @@
 //! Taikoscope Processor Driver
 
-use alloy_primitives::B256;
-use clickhouse::{AddressBytes, ClickhouseWriter, HashBytes, L2HeadEvent};
+use alloy_primitives::{Address, B256};
+use clickhouse::{AddressBytes, ClickhouseReader, ClickhouseWriter, HashBytes, L2HeadEvent};
 use config::Opts;
-use extractor::Extractor;
+use extractor::{Extractor, ReorgDetector};
 use eyre::Result;
 use nats_utils::TaikoEvent;
 use tokio_stream::StreamExt;
@@ -14,7 +14,10 @@ use tracing::info;
 pub struct ProcessorDriver {
     nats_client: async_nats::Client,
     clickhouse_writer: Option<ClickhouseWriter>,
+    clickhouse_reader: Option<ClickhouseReader>,
     extractor: Extractor,
+    reorg_detector: ReorgDetector,
+    last_l2_header: Option<(u64, Address)>,
     enable_db_writes: bool,
 }
 
@@ -51,17 +54,36 @@ impl ProcessorDriver {
         // Only keep the writer for event processing if database writes are enabled
         let clickhouse_writer = opts.enable_db_writes.then(|| {
             ClickhouseWriter::new(
-                opts.clickhouse.url,
-                opts.clickhouse.db,
-                opts.clickhouse.username,
-                opts.clickhouse.password,
+                opts.clickhouse.url.clone(),
+                opts.clickhouse.db.clone(),
+                opts.clickhouse.username.clone(),
+                opts.clickhouse.password.clone(),
             )
         });
+
+        // Create ClickhouseReader for reorg detection (only if database writes are enabled)
+        let clickhouse_reader = opts
+            .enable_db_writes
+            .then(|| {
+                ClickhouseReader::new(
+                    opts.clickhouse.url,
+                    opts.clickhouse.db,
+                    opts.clickhouse.username,
+                    opts.clickhouse.password,
+                )
+            })
+            .transpose()?;
+
+        // Initialize reorg detector
+        let reorg_detector = ReorgDetector::new();
 
         Ok(Self {
             nats_client,
             clickhouse_writer,
+            clickhouse_reader,
             extractor,
+            reorg_detector,
+            last_l2_header: None,
             enable_db_writes: opts.enable_db_writes,
         })
     }
@@ -78,7 +100,10 @@ impl ProcessorDriver {
 
         let nats_client = self.nats_client;
         let clickhouse_writer = self.clickhouse_writer;
+        let clickhouse_reader = self.clickhouse_reader;
         let extractor = self.extractor;
+        let mut reorg_detector = self.reorg_detector;
+        let mut last_l2_header = self.last_l2_header;
         let enable_db_writes = self.enable_db_writes;
 
         let jetstream = async_nats::jetstream::new(nats_client);
@@ -110,7 +135,10 @@ impl ProcessorDriver {
                 Ok(msg) => {
                     if let Err(e) = Self::process_message(
                         &clickhouse_writer,
+                        &clickhouse_reader,
                         &extractor,
+                        &mut reorg_detector,
+                        &mut last_l2_header,
                         enable_db_writes,
                         &msg,
                     )
@@ -133,7 +161,10 @@ impl ProcessorDriver {
 
     async fn process_message(
         clickhouse_writer: &Option<ClickhouseWriter>,
+        clickhouse_reader: &Option<ClickhouseReader>,
         extractor: &Extractor,
+        reorg_detector: &mut ReorgDetector,
+        last_l2_header: &mut Option<(u64, Address)>,
         enable_db_writes: bool,
         msg: &async_nats::jetstream::Message,
     ) -> Result<()> {
@@ -141,7 +172,15 @@ impl ProcessorDriver {
 
         if enable_db_writes {
             if let Some(writer) = clickhouse_writer {
-                Self::process_event_with_db_write(writer, extractor, event).await
+                Self::process_event_with_db_write(
+                    writer,
+                    clickhouse_reader,
+                    extractor,
+                    reorg_detector,
+                    last_l2_header,
+                    event,
+                )
+                .await
             } else {
                 tracing::error!("Database writes enabled but no writer available");
                 Ok(())
@@ -153,7 +192,10 @@ impl ProcessorDriver {
 
     async fn process_event_with_db_write(
         writer: &ClickhouseWriter,
+        clickhouse_reader: &Option<ClickhouseReader>,
         extractor: &Extractor,
+        reorg_detector: &mut ReorgDetector,
+        last_l2_header: &mut Option<(u64, Address)>,
         event: TaikoEvent,
     ) -> Result<()> {
         match event {
@@ -278,43 +320,15 @@ impl ProcessorDriver {
                 }
             }
             TaikoEvent::L2Header(header) => {
-                // Calculate L2 block statistics using the extractor
-                let (sum_gas_used, sum_tx, sum_priority_fee) = match extractor
-                    .get_l2_block_stats(header.number, header.base_fee_per_gas)
-                    .await
-                {
-                    Ok(stats) => stats,
-                    Err(e) => {
-                        tracing::error!(header_number = header.number, err = %e, "Failed to get L2 block stats, using defaults");
-                        (0, 0, 0)
-                    }
-                };
-
-                // Calculate sum_base_fee using the base fee per gas and transaction count
-                let sum_base_fee =
-                    header.base_fee_per_gas.map(|base_fee| base_fee * sum_tx as u64).unwrap_or(0)
-                        as u128;
-
-                // Convert L2Header to L2HeadEvent format expected by ClickHouse
-                let event = L2HeadEvent {
-                    l2_block_number: header.number,
-                    block_hash: HashBytes(*header.hash),
-                    block_ts: header.timestamp,
-                    sum_gas_used,
-                    sum_tx,
-                    sum_priority_fee,
-                    sum_base_fee,
-                    sequencer: AddressBytes(header.beneficiary.into_array()),
-                };
-
-                if let Err(e) = writer.insert_l2_header(&event).await {
-                    tracing::error!(header_number = header.number, err = %e, "Failed to insert L2 header");
-                } else {
-                    info!(
-                        header_number = header.number,
-                        sum_gas_used, sum_tx, "Inserted L2 header with stats"
-                    );
-                }
+                Self::handle_l2_header(
+                    writer,
+                    clickhouse_reader,
+                    extractor,
+                    reorg_detector,
+                    last_l2_header,
+                    header,
+                )
+                .await?;
             }
         }
         Ok(())
@@ -382,4 +396,128 @@ impl ProcessorDriver {
     const fn average_cost_per_batch(total_cost: u128, num_batches: usize) -> u128 {
         if num_batches == 0 { 0 } else { total_cost / num_batches as u128 }
     }
+
+    /// Handle L2 header with reorg detection
+    async fn handle_l2_header(
+        writer: &ClickhouseWriter,
+        clickhouse_reader: &Option<ClickhouseReader>,
+        extractor: &Extractor,
+        reorg_detector: &mut ReorgDetector,
+        last_l2_header: &mut Option<(u64, Address)>,
+        header: primitives::headers::L2Header,
+    ) -> Result<()> {
+        let prev_header = *last_l2_header;
+        let old_head = reorg_detector.head_number(); // Capture old head before detection
+
+        // Detect reorgs
+        let reorg_depth = reorg_detector.on_new_block(header.number);
+        *last_l2_header = Some((header.number, header.beneficiary));
+
+        if let Some(depth) = reorg_depth {
+            let old_seq = prev_header.map(|(_, addr)| addr).unwrap_or(Address::ZERO);
+
+            // Insert reorg event
+            if let Err(e) =
+                writer.insert_l2_reorg(header.number, depth, old_seq, header.beneficiary).await
+            {
+                tracing::error!(block_number = header.number, depth = depth, err = %e, "Failed to insert L2 reorg");
+            } else {
+                info!(new_head = header.number, depth, "Inserted L2 reorg");
+            }
+
+            // Handle orphaned blocks
+            if depth > 0 {
+                let orphaned_block_numbers =
+                    calculate_orphaned_blocks(old_head, header.number, depth.into());
+
+                if !orphaned_block_numbers.is_empty() {
+                    if let Some(reader) = clickhouse_reader {
+                        match reader.get_latest_hashes_for_blocks(&orphaned_block_numbers).await {
+                            Ok(orphaned_hashes) => {
+                                if !orphaned_hashes.is_empty() {
+                                    if let Err(e) =
+                                        writer.insert_orphaned_hashes(&orphaned_hashes).await
+                                    {
+                                        tracing::error!(
+                                            count = orphaned_hashes.len(),
+                                            err = %e,
+                                            "Failed to insert orphaned hashes"
+                                        );
+                                    } else {
+                                        info!(
+                                            count = orphaned_hashes.len(),
+                                            "Inserted orphaned hashes for reorg"
+                                        );
+                                    }
+                                }
+                            }
+                            Err(e) => {
+                                tracing::error!(err = %e, "Failed to fetch orphaned hashes");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Calculate L2 block statistics using the extractor
+        let (sum_gas_used, sum_tx, sum_priority_fee) = match extractor
+            .get_l2_block_stats(header.number, header.base_fee_per_gas)
+            .await
+        {
+            Ok(stats) => stats,
+            Err(e) => {
+                tracing::error!(header_number = header.number, err = %e, "Failed to get L2 block stats, using defaults");
+                (0, 0, 0)
+            }
+        };
+
+        // Calculate sum_base_fee using the base fee per gas and transaction count
+        let sum_base_fee =
+            header.base_fee_per_gas.map(|base_fee| base_fee * sum_tx as u64).unwrap_or(0) as u128;
+
+        // Convert L2Header to L2HeadEvent format expected by ClickHouse
+        let event = L2HeadEvent {
+            l2_block_number: header.number,
+            block_hash: HashBytes(*header.hash),
+            block_ts: header.timestamp,
+            sum_gas_used,
+            sum_tx,
+            sum_priority_fee,
+            sum_base_fee,
+            sequencer: AddressBytes(header.beneficiary.into_array()),
+        };
+
+        if let Err(e) = writer.insert_l2_header(&event).await {
+            tracing::error!(header_number = header.number, err = %e, "Failed to insert L2 header");
+        } else {
+            info!(
+                header_number = header.number,
+                sum_gas_used, sum_tx, "Inserted L2 header with stats"
+            );
+        }
+
+        Ok(())
+    }
+}
+
+/// Calculate orphaned block numbers during a reorg
+///
+/// # Arguments
+/// * `old_head` - The head block number before the reorg
+/// * `new_head` - The head block number after the reorg
+/// * `depth` - The depth of the reorg
+///
+/// # Returns
+/// Vector of block numbers that are orphaned (from `new_head+1` to `old_head` inclusive)
+fn calculate_orphaned_blocks(old_head: u64, new_head: u64, _depth: u32) -> Vec<u64> {
+    // Correct implementation: orphaned blocks are from new_head+1 to old_head (inclusive)
+    if new_head >= old_head {
+        // No orphaned blocks if new_head is >= old_head
+        return Vec::new();
+    }
+
+    let orphaned_start = new_head + 1;
+    let orphaned_end = old_head + 1; // +1 because range is exclusive at end
+    (orphaned_start..orphaned_end).collect()
 }
