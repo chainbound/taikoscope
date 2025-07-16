@@ -1,5 +1,5 @@
 import { TimeRange, type TimeSeriesData } from '../types';
-import { getSequencerAddress } from '../sequencerConfig';
+import { getSequencerAddress, getSequencerName } from '../sequencerConfig';
 import { normalizeTimeRange } from './timeRange';
 import {
   fetchDashboardData,
@@ -129,15 +129,23 @@ export const fetchEconomicsData = async (
   selectedSequencer: string | null,
 ): Promise<EconomicsData> => {
   const normalizedRange = normalizeTimeRange(timeRange);
-  const [l2FeesRes, l2BlockRes, l1BlockRes, sequencerDistRes] = await Promise.all([
+  const [l2FeesRes, l2BlockRes, l1BlockRes] = await Promise.all([
     fetchL2Fees(
       normalizedRange,
       selectedSequencer ? getSequencerAddress(selectedSequencer) : undefined,
     ),
     fetchL2HeadBlock(normalizedRange),
     fetchL1HeadBlock(normalizedRange),
-    fetchSequencerDistribution(normalizedRange),
   ]);
+
+  const sequencerDist = l2FeesRes.data
+    ? l2FeesRes.data.sequencers.map((s) => ({
+        name: getSequencerName(s.address),
+        address: s.address,
+        value: 0,
+        tps: null,
+      }))
+    : [];
 
   return {
     priorityFee: l2FeesRes.data?.priority_fee ?? null,
@@ -147,7 +155,7 @@ export const fetchEconomicsData = async (
 
     l2Block: l2BlockRes.data,
     l1Block: l1BlockRes.data,
-    sequencerDist: sequencerDistRes.data || [],
-    badRequestResults: [l2FeesRes, l2BlockRes, l1BlockRes, sequencerDistRes],
+    sequencerDist,
+    badRequestResults: [l2FeesRes, l2BlockRes, l1BlockRes],
   };
 };
