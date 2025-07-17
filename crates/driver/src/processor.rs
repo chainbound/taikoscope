@@ -79,12 +79,12 @@ impl ProcessorDriver {
             opts.clickhouse.password.clone(),
         );
 
-        if !opts.skip_migrations {
+        if opts.skip_migrations {
+            info!("⚠️  Skipping database migrations");
+        } else {
             info!("🚀 Running database migrations...");
             migration_writer.init_db(opts.reset_db).await?;
             info!("✅ Database migrations completed");
-        } else {
-            info!("⚠️  Skipping database migrations");
         }
 
         // Only keep the writer for event processing if database writes are enabled

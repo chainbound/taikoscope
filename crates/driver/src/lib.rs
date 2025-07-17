@@ -764,6 +764,7 @@ mod tests {
             },
             enable_db_writes: false,
             reset_db: false,
+            skip_migrations: false,
         }
     }
 
