@@ -79,9 +79,13 @@ impl ProcessorDriver {
             opts.clickhouse.password.clone(),
         );
 
-        info!("🚀 Running database migrations...");
-        migration_writer.init_db(opts.reset_db).await?;
-        info!("✅ Database migrations completed");
+        if !opts.skip_migrations {
+            info!("🚀 Running database migrations...");
+            migration_writer.init_db(opts.reset_db).await?;
+            info!("✅ Database migrations completed");
+        } else {
+            info!("⚠️  Skipping database migrations");
+        }
 
         // Only keep the writer for event processing if database writes are enabled
         let clickhouse_writer = opts.enable_db_writes.then(|| {
