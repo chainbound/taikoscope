@@ -186,6 +186,10 @@ pub struct Opts {
     /// If set, drop & re-create all tables (local/dev only)
     #[clap(long)]
     pub reset_db: bool,
+
+    /// Skip database migrations on startup (useful for development)
+    #[clap(long, env = "SKIP_MIGRATIONS", default_value = "false")]
+    pub skip_migrations: bool,
 }
 
 #[cfg(test)]

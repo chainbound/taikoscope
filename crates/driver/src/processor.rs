@@ -1,13 +1,24 @@
 //! Taikoscope Processor Driver
 
+use std::time::Duration;
+
 use alloy_primitives::{Address, B256};
 use clickhouse::{AddressBytes, ClickhouseReader, ClickhouseWriter, HashBytes, L2HeadEvent};
 use config::Opts;
 use extractor::{Extractor, ReorgDetector};
 use eyre::Result;
+use incident::{
+    BatchProofTimeoutMonitor, InstatusL1Monitor, InstatusMonitor, Monitor,
+    client::Client as IncidentClient, monitor::BatchVerifyTimeoutMonitor,
+};
 use nats_utils::TaikoEvent;
+use network::public_rpc_monitor;
 use tokio_stream::StreamExt;
 use tracing::info;
+use url::Url;
+
+/// An EPOCH is a series of 32 slots.
+const EPOCH_SLOTS: u64 = 32;
 
 /// Driver for the processor service that consumes NATS events and writes to `ClickHouse`
 #[derive(Debug)]
@@ -19,12 +30,33 @@ pub struct ProcessorDriver {
     reorg_detector: ReorgDetector,
     last_l2_header: Option<(u64, Address)>,
     enable_db_writes: bool,
+    incident_client: IncidentClient,
+    instatus_batch_submission_component_id: String,
+    instatus_proof_submission_component_id: String,
+    instatus_proof_verification_component_id: String,
+    instatus_transaction_sequencing_component_id: String,
+    instatus_monitors_enabled: bool,
+    instatus_monitor_poll_interval_secs: u64,
+    instatus_monitor_threshold_secs: u64,
+    batch_proof_timeout_secs: u64,
+    public_rpc_url: Option<Url>,
 }
 
 impl ProcessorDriver {
     /// Create a new processor driver with the given configuration
     pub async fn new(opts: Opts) -> Result<Self> {
         info!("Initializing processor driver");
+
+        // verify monitoring configuration before doing any heavy work
+        if opts.instatus.monitors_enabled && !opts.instatus.enabled() {
+            return Err(eyre::eyre!(
+                "Instatus configuration missing; set the INSTATUS_* environment variables"
+            ));
+        }
+
+        if !opts.instatus.monitors_enabled {
+            info!("Instatus monitors disabled; no incidents will be reported");
+        }
 
         let nats_client = async_nats::connect(&opts.nats_url).await?;
         info!("Connected to NATS server at {}", opts.nats_url);
@@ -47,9 +79,13 @@ impl ProcessorDriver {
             opts.clickhouse.password.clone(),
         );
 
-        info!("🚀 Running database migrations...");
-        migration_writer.init_db(opts.reset_db).await?;
-        info!("✅ Database migrations completed");
+        if opts.skip_migrations {
+            info!("⚠️  Skipping database migrations");
+        } else {
+            info!("🚀 Running database migrations...");
+            migration_writer.init_db(opts.reset_db).await?;
+            info!("✅ Database migrations completed");
+        }
 
         // Only keep the writer for event processing if database writes are enabled
         let clickhouse_writer = opts.enable_db_writes.then(|| {
@@ -77,6 +113,31 @@ impl ProcessorDriver {
         // Initialize reorg detector
         let reorg_detector = ReorgDetector::new();
 
+        // init incident client and component IDs if monitors are enabled
+        let (
+            instatus_batch_submission_component_id,
+            instatus_proof_submission_component_id,
+            instatus_proof_verification_component_id,
+            instatus_transaction_sequencing_component_id,
+            incident_client,
+        ) = if opts.instatus.monitors_enabled {
+            (
+                opts.instatus.batch_submission_component_id.clone(),
+                opts.instatus.proof_submission_component_id.clone(),
+                opts.instatus.proof_verification_component_id.clone(),
+                opts.instatus.transaction_sequencing_component_id.clone(),
+                IncidentClient::new(opts.instatus.api_key.clone(), opts.instatus.page_id.clone()),
+            )
+        } else {
+            (
+                String::new(),
+                String::new(),
+                String::new(),
+                String::new(),
+                IncidentClient::new(String::new(), String::new()),
+            )
+        };
+
         Ok(Self {
             nats_client,
             clickhouse_writer,
@@ -85,6 +146,16 @@ impl ProcessorDriver {
             reorg_detector,
             last_l2_header: None,
             enable_db_writes: opts.enable_db_writes,
+            incident_client,
+            instatus_batch_submission_component_id,
+            instatus_proof_submission_component_id,
+            instatus_proof_verification_component_id,
+            instatus_transaction_sequencing_component_id,
+            instatus_monitors_enabled: opts.instatus.monitors_enabled,
+            instatus_monitor_poll_interval_secs: opts.instatus.monitor_poll_interval_secs,
+            instatus_monitor_threshold_secs: opts.instatus.monitor_threshold_secs,
+            batch_proof_timeout_secs: opts.instatus.batch_proof_timeout_secs,
+            public_rpc_url: opts.rpc.public_url,
         })
     }
 
@@ -97,6 +168,9 @@ impl ProcessorDriver {
         } else {
             info!("Database writes DISABLED - events will be logged and dropped");
         }
+
+        // Spawn monitors before starting the event loop
+        self.spawn_monitors();
 
         let nats_client = self.nats_client;
         let clickhouse_writer = self.clickhouse_writer;
@@ -133,25 +207,63 @@ impl ProcessorDriver {
         while let Some(message) = messages.next().await {
             match message {
                 Ok(msg) => {
-                    if let Err(e) = Self::process_message(
-                        &clickhouse_writer,
-                        &clickhouse_reader,
-                        &extractor,
-                        &mut reorg_detector,
-                        &mut last_l2_header,
-                        enable_db_writes,
-                        &msg,
-                    )
-                    .await
-                    {
-                        tracing::error!(err = %e, "Failed to process message");
-                    }
-                    if let Err(e) = msg.ack().await {
-                        tracing::error!(err = %e, "Failed to ack message");
+                    // Try to process the message with retry logic
+                    let mut retries = 0;
+                    const MAX_RETRIES: u32 = 3;
+
+                    loop {
+                        match Self::process_message(
+                            &clickhouse_writer,
+                            &clickhouse_reader,
+                            &extractor,
+                            &mut reorg_detector,
+                            &mut last_l2_header,
+                            enable_db_writes,
+                            &msg,
+                        )
+                        .await
+                        {
+                            Ok(()) => {
+                                // Success - acknowledge the message
+                                if let Err(e) = msg.ack().await {
+                                    tracing::error!(err = %e, "Failed to ack message");
+                                }
+                                break;
+                            }
+                            Err(e) => {
+                                if retries >= MAX_RETRIES {
+                                    tracing::error!(
+                                        err = %e,
+                                        retries = retries,
+                                        "Failed to process message after all retries, nacking message"
+                                    );
+                                    // Nack the message to put it back in the queue
+                                    if let Err(nack_err) = msg
+                                        .ack_with(async_nats::jetstream::AckKind::Nak(None))
+                                        .await
+                                    {
+                                        tracing::error!(err = %nack_err, "Failed to nack message");
+                                    }
+                                    break;
+                                }
+                                retries += 1;
+                                tracing::warn!(
+                                    err = %e,
+                                    retry = retries,
+                                    max_retries = MAX_RETRIES,
+                                    "Failed to process message, retrying..."
+                                );
+                                // Exponential backoff
+                                tokio::time::sleep(Duration::from_millis(100 * (1 << retries)))
+                                    .await;
+                            }
+                        }
                     }
                 }
                 Err(e) => {
-                    tracing::error!(err = %e, "Error receiving message");
+                    tracing::error!(err = %e, "Error receiving message from NATS");
+                    // Wait a bit before continuing to avoid tight loop on persistent errors
+                    tokio::time::sleep(Duration::from_millis(1000)).await;
                 }
             }
         }
@@ -318,6 +430,9 @@ impl ProcessorDriver {
                 } else {
                     info!(header_number = header.number, "Inserted L1 header");
                 }
+
+                // Process preconfirmation data like the original driver
+                Self::process_preconf_data(writer, extractor, &header).await;
             }
             TaikoEvent::L2Header(header) => {
                 Self::handle_l2_header(
@@ -472,9 +587,9 @@ impl ProcessorDriver {
             }
         };
 
-        // Calculate sum_base_fee using the base fee per gas and transaction count
+        // Calculate sum_base_fee using the base fee per gas and gas used
         let sum_base_fee =
-            header.base_fee_per_gas.map(|base_fee| base_fee * sum_tx as u64).unwrap_or(0) as u128;
+            sum_gas_used.saturating_mul(header.base_fee_per_gas.unwrap_or(0) as u128);
 
         // Convert L2Header to L2HeadEvent format expected by ClickHouse
         let event = L2HeadEvent {
@@ -498,6 +613,153 @@ impl ProcessorDriver {
         }
 
         Ok(())
+    }
+
+    /// Spawn all background monitors used by the processor.
+    ///
+    /// Each monitor runs in its own task and reports incidents via the
+    /// [`IncidentClient`].
+    fn spawn_monitors(&self) {
+        if let Some(url) = &self.public_rpc_url {
+            tracing::info!(url = url.as_str(), "public rpc monitor enabled");
+            public_rpc_monitor::spawn_public_rpc_monitor(url.clone());
+        }
+
+        if !self.instatus_monitors_enabled {
+            return;
+        }
+
+        // Only spawn monitors if we have a clickhouse reader (database writes enabled)
+        if let Some(reader) = &self.clickhouse_reader {
+            InstatusL1Monitor::new(
+                reader.clone(),
+                self.incident_client.clone(),
+                self.instatus_batch_submission_component_id.clone(),
+                Duration::from_secs(self.instatus_monitor_threshold_secs),
+                Duration::from_secs(self.instatus_monitor_poll_interval_secs),
+            )
+            .spawn();
+
+            InstatusMonitor::new(
+                reader.clone(),
+                self.incident_client.clone(),
+                self.instatus_transaction_sequencing_component_id.clone(),
+                Duration::from_secs(self.instatus_monitor_threshold_secs),
+                Duration::from_secs(self.instatus_monitor_poll_interval_secs),
+            )
+            .spawn();
+
+            BatchProofTimeoutMonitor::new(
+                reader.clone(),
+                self.incident_client.clone(),
+                self.instatus_proof_submission_component_id.clone(),
+                Duration::from_secs(self.batch_proof_timeout_secs),
+                Duration::from_secs(60),
+            )
+            .spawn();
+
+            BatchVerifyTimeoutMonitor::new(
+                reader.clone(),
+                self.incident_client.clone(),
+                self.instatus_proof_verification_component_id.clone(),
+                Duration::from_secs(self.batch_proof_timeout_secs),
+                Duration::from_secs(60),
+            )
+            .spawn();
+        } else {
+            tracing::warn!(
+                "Instatus monitors enabled but no ClickHouse reader available (database writes disabled)"
+            );
+        }
+    }
+
+    /// Process preconfirmation data for L1 headers (ported from original driver)
+    async fn process_preconf_data(
+        writer: &ClickhouseWriter,
+        extractor: &Extractor,
+        header: &primitives::headers::L1Header,
+    ) {
+        // Get operator candidates for current epoch
+        let opt_candidates = match extractor.get_operator_candidates_for_current_epoch().await {
+            Ok(c) => {
+                tracing::info!(
+                    slot = header.slot,
+                    block = header.number,
+                    candidates = ?c,
+                    candidates_count = c.len(),
+                    "Successfully retrieved operator candidates"
+                );
+                Some(c)
+            }
+            Err(e) => {
+                tracing::error!(
+                    slot = header.slot,
+                    block = header.number,
+                    err = %e,
+                    "Failed picking operator candidates"
+                );
+                None
+            }
+        };
+
+        let candidates = opt_candidates.unwrap_or_else(Vec::new);
+
+        // Get current operator for epoch
+        let opt_current_operator = match extractor.get_operator_for_current_epoch().await {
+            Ok(op) => {
+                info!(
+                    block = header.number,
+                    operator = ?op,
+                    "Current operator for epoch"
+                );
+                Some(op)
+            }
+            Err(e) => {
+                tracing::error!(block = header.number, err = %e, "get_operator_for_current_epoch failed");
+                None
+            }
+        };
+
+        // Get next operator for epoch
+        let opt_next_operator = match extractor.get_operator_for_next_epoch().await {
+            Ok(op) => {
+                info!(
+                    block = header.number,
+                    operator = ?op,
+                    "Next operator for epoch"
+                );
+                Some(op)
+            }
+            Err(e) => {
+                // The first slot in the epoch doesn't have any next operator
+                if header.slot % EPOCH_SLOTS != 0 {
+                    tracing::error!(block = header.number, err = %e, "get_operator_for_next_epoch failed");
+                }
+                None
+            }
+        };
+
+        // Insert preconf data if we have at least one operator
+        if opt_current_operator.is_some() || opt_next_operator.is_some() {
+            if let Err(e) = writer
+                .insert_preconf_data(
+                    header.slot,
+                    candidates,
+                    opt_current_operator,
+                    opt_next_operator,
+                )
+                .await
+            {
+                tracing::error!(slot = header.slot, err = %e, "Failed to insert preconf data");
+            } else {
+                info!(slot = header.slot, "Inserted preconf data for slot");
+            }
+        } else {
+            info!(
+                slot = header.slot,
+                "Skipping preconf data insertion due to errors fetching operator data"
+            );
+        }
     }
 }
 
