@@ -22,7 +22,16 @@ dev-api:
 
 # start local NATS for development
 dev-nats:
-    docker run -d --name local-nats -p 4222:4222 -p 8222:8222 nats:latest -js -m 8222
+    #!/usr/bin/env bash
+    if docker ps -q -f name=local-nats | grep -q .; then
+        echo "NATS container is already running"
+    elif docker ps -a -q -f name=local-nats | grep -q .; then
+        echo "Starting existing NATS container"
+        docker start local-nats
+    else
+        echo "Creating new NATS container"
+        docker run -d --name local-nats -p 4222:4222 -p 8222:8222 nats:latest -js -m 8222
+    fi
 
 # stop local NATS
 stop-dev-nats:
