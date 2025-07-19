@@ -2943,13 +2943,17 @@ dependencies = [
 name = "nats-utils"
 version = "0.1.0"
 dependencies = [
+ "alloy-primitives",
  "async-nats",
  "bincode",
  "eyre",
+ "futures",
  "messages",
  "primitives",
  "serde",
  "serde_json",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]

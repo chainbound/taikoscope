@@ -15,6 +15,10 @@ serde.workspace = true
 serde_json.workspace = true
 bincode.workspace = true
 eyre.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+futures.workspace = true
+alloy-primitives.workspace = true
 
 [lints]
 workspace = true

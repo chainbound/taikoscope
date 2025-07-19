@@ -30,5 +30,11 @@
 - Error handling: Prefer `?` operator with contextual error info
 - Avoid lines with trailing whitespace (spaces or tabs)
 
+## NATS Exactly-Once Configuration
+- Publishing uses `publish_event_with_retry()` with 3 retries and exponential backoff
+- Each event includes a unique `Msg-Id` header based on `TaikoEvent::dedup_id()`
+- For production: configure NATS stream with `duplicate_window: Duration::from_secs(120)` and file storage
+- NATS JetStream provides exactly-once delivery using message ID deduplication
+
 ## Git
 - Use Conventional Commits for commits
