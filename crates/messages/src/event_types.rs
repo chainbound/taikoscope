@@ -75,20 +75,15 @@ impl TaikoEvent {
             Self::L2Header(h) => format!("{}:{}-l2_header", h.number, h.hash),
             Self::BatchProposed(b) => {
                 let inner = &b.batch;
-                format!("{}:{}-batch_proposed", inner.info.lastBlockId, inner.info.anchorBlockHash)
+                format!("{}:{}-batch_proposed", inner.info.lastBlockId, b.l1_tx_hash)
             }
             Self::BatchesProved(p) => {
                 let inner = &p.proved;
                 let batch_id = inner.batchIds.first().copied().unwrap_or_default();
-                let block_hash = inner
-                    .transitions
-                    .first()
-                    .map(|t| format!("{:?}", t.blockHash))
-                    .unwrap_or_default();
-                format!("{}:{}-batches_proved", batch_id, block_hash)
+                format!("{}:{}-batches_proved", batch_id, p.l1_tx_hash)
             }
             Self::BatchesVerified(v) => {
-                format!("{}:{:?}-batches_verified", v.verified.batch_id, v.verified.block_hash)
+                format!("{}:{}-batches_verified", v.verified.batch_id, v.l1_tx_hash)
             }
             Self::ForcedInclusionProcessed(f) => {
                 format!("{}-forced_inclusion_processed", f.event.blobHash)
