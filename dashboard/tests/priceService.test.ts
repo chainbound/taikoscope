@@ -45,24 +45,21 @@ describe('getEthPrice', () => {
   it('handles fetch failure', async () => {
     globalThis.fetch = mockFetch(0, false);
     const spy = vi.spyOn(toast, 'showToast').mockImplementation(() => {});
-    const price = await getEthPrice();
-    expect(price).toBe(0);
+    await expect(getEthPrice()).rejects.toThrow();
     expect(spy).toHaveBeenCalled();
     spy.mockRestore();
   });
 
-  it('returns 0 on network error', async () => {
+  it('throws on network error', async () => {
     globalThis.fetch = mockFetchWithNetworkError();
     const spy = vi.spyOn(toast, 'showToast').mockImplementation(() => {});
-    const price = await getEthPrice();
-    expect(price).toBe(0);
+    await expect(getEthPrice()).rejects.toThrow();
     expect(spy).toHaveBeenCalled();
     spy.mockRestore();
   });
 
   it('handles invalid response format', async () => {
     globalThis.fetch = mockFetchWithInvalidResponse();
-    const price = await getEthPrice();
-    expect(price).toBe(0);
+    await expect(getEthPrice()).rejects.toThrow();
   });
 });

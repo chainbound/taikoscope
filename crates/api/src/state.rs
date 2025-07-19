@@ -32,7 +32,7 @@ pub struct ApiState {
 
 #[derive(Debug)]
 struct CachedPrice {
-    value: f64,
+    value: Option<f64>,
     updated_at: Instant,
 }
 
@@ -51,7 +51,7 @@ impl ApiState {
             max_requests,
             rate_period,
             price_cache: Arc::new(Mutex::new(CachedPrice {
-                value: 0.0,
+                value: None,
                 updated_at: Instant::now() - StdDuration::from_secs(61),
             })),
         }
@@ -72,15 +72,28 @@ impl ApiState {
         let now = Instant::now();
         {
             let cache = self.price_cache.lock().expect("lock poisoned");
-            if now.duration_since(cache.updated_at) < StdDuration::from_secs(60) {
-                return Ok(cache.value);
+            if let Some(value) = cache.value {
+                if now.duration_since(cache.updated_at) < StdDuration::from_secs(60) {
+                    return Ok(value);
+                }
             }
         }
 
-        let price = fetch_eth_price(&self.http_client).await?;
-        let mut cache = self.price_cache.lock().expect("lock poisoned");
-        *cache = CachedPrice { value: price, updated_at: now };
-        Ok(price)
+        match fetch_eth_price(&self.http_client).await {
+            Ok(price) => {
+                let mut cache = self.price_cache.lock().expect("lock poisoned");
+                *cache = CachedPrice { value: Some(price), updated_at: now };
+                Ok(price)
+            }
+            Err(e) => {
+                tracing::error!(error = %e, "Failed to fetch ETH price");
+                let cache = self.price_cache.lock().expect("lock poisoned");
+                match cache.value {
+                    Some(value) => Ok(value),
+                    None => Err(e),
+                }
+            }
+        }
     }
 }
 
