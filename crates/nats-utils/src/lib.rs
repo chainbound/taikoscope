@@ -22,7 +22,7 @@ pub async fn publish_event_with_dedup(
 
     // Create headers with message ID for deduplication
     let mut headers = async_nats::HeaderMap::new();
-    headers.insert("Msg-Id", dedup_id.as_str());
+    headers.insert("Nats-Msg-Id", dedup_id.as_str());
     headers.insert("Content-Type", "application/json");
 
     // Create publish request with message ID header for deduplication
