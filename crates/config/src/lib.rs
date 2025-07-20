@@ -35,6 +35,45 @@ pub struct NatsOpts {
     pub password: Option<String>,
 }
 
+/// NATS `JetStream` stream configuration options
+#[derive(Debug, Clone, Parser)]
+pub struct NatsStreamOpts {
+    /// NATS stream duplicate window in seconds (for exactly-once delivery)
+    #[clap(long, env = "NATS_DUPLICATE_WINDOW_SECS", default_value = "120")]
+    pub duplicate_window_secs: u64,
+    /// NATS stream storage type (memory or file)
+    #[clap(long, env = "NATS_STORAGE_TYPE", default_value = "file")]
+    pub storage_type: String,
+    /// NATS stream retention policy
+    #[clap(long, env = "NATS_RETENTION_POLICY", default_value = "workqueue")]
+    pub retention_policy: String,
+}
+
+impl NatsStreamOpts {
+    /// Get the storage type as an `async_nats` `StorageType` enum
+    pub fn get_storage_type(&self) -> async_nats::jetstream::stream::StorageType {
+        match self.storage_type.to_lowercase().as_str() {
+            "memory" => async_nats::jetstream::stream::StorageType::Memory,
+            _ => async_nats::jetstream::stream::StorageType::File, /* default to file for any
+                                                                    * other value */
+        }
+    }
+
+    /// Get the retention policy as an `async_nats` `RetentionPolicy` enum
+    pub fn get_retention_policy(&self) -> async_nats::jetstream::stream::RetentionPolicy {
+        match self.retention_policy.to_lowercase().as_str() {
+            "limits" => async_nats::jetstream::stream::RetentionPolicy::Limits,
+            "interest" => async_nats::jetstream::stream::RetentionPolicy::Interest,
+            _ => async_nats::jetstream::stream::RetentionPolicy::WorkQueue, // default to workqueue
+        }
+    }
+
+    /// Get the duplicate window as a Duration
+    pub const fn get_duplicate_window(&self) -> std::time::Duration {
+        std::time::Duration::from_secs(self.duplicate_window_secs)
+    }
+}
+
 /// RPC endpoint configuration options
 #[derive(Debug, Clone, Parser)]
 pub struct RpcOpts {
@@ -158,6 +197,10 @@ pub struct Opts {
     /// Nats client configuration
     #[clap(flatten)]
     pub nats: NatsOpts,
+
+    /// NATS `JetStream` stream configuration
+    #[clap(flatten)]
+    pub nats_stream: NatsStreamOpts,
 
     /// RPC endpoint configuration
     #[clap(flatten)]

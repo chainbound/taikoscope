@@ -40,6 +40,7 @@ pub struct ProcessorDriver {
     instatus_monitor_threshold_secs: u64,
     batch_proof_timeout_secs: u64,
     public_rpc_url: Option<Url>,
+    nats_stream_config: config::NatsStreamOpts,
 }
 
 impl ProcessorDriver {
@@ -156,6 +157,7 @@ impl ProcessorDriver {
             instatus_monitor_threshold_secs: opts.instatus.monitor_threshold_secs,
             batch_proof_timeout_secs: opts.instatus.batch_proof_timeout_secs,
             public_rpc_url: opts.rpc.public_url,
+            nats_stream_config: opts.nats_stream,
         })
     }
 
@@ -179,19 +181,42 @@ impl ProcessorDriver {
         let mut reorg_detector = self.reorg_detector;
         let mut last_l2_header = self.last_l2_header;
         let enable_db_writes = self.enable_db_writes;
+        let nats_stream_config = self.nats_stream_config;
 
         let jetstream = async_nats::jetstream::new(nats_client);
 
-        // Get or create the stream first
+        // Health check: Verify NATS connection is alive by attempting to get stream info
+        match jetstream.get_stream("taiko").await {
+            Ok(_) => {
+                info!("NATS connection health check passed - stream accessible");
+            }
+            Err(e) => {
+                info!("NATS stream does not exist yet, will be created: {}", e);
+            }
+        }
+
+        // Get or create the stream first with configurable settings
+        info!(
+            duplicate_window_secs = nats_stream_config.duplicate_window_secs,
+            storage_type = nats_stream_config.storage_type,
+            retention_policy = nats_stream_config.retention_policy,
+            "Creating NATS stream with configuration"
+        );
+
         let _stream = jetstream
             .get_or_create_stream(async_nats::jetstream::stream::Config {
                 name: "taiko".to_owned(),
                 subjects: vec!["taiko.events".to_owned()],
+                duplicate_window: nats_stream_config.get_duplicate_window(),
+                storage: nats_stream_config.get_storage_type(),
+                retention: nats_stream_config.get_retention_policy(),
                 ..Default::default()
             })
-            .await?;
+            .await
+            .map_err(|e| eyre::eyre!("Failed to create NATS stream: {}", e))?;
 
-        // Create the consumer
+        // Create the consumer with enhanced error handling
+        info!("Creating durable consumer 'processor' on stream 'taiko'");
         let consumer = jetstream
             .create_consumer_on_stream(
                 async_nats::jetstream::consumer::pull::Config {
@@ -200,7 +225,10 @@ impl ProcessorDriver {
                 },
                 "taiko",
             )
-            .await?;
+            .await
+            .map_err(|e| eyre::eyre!("Failed to create NATS consumer: {}", e))?;
+
+        info!("Successfully created NATS consumer, starting message processing loop");
 
         let mut messages = consumer.messages().await?;
 

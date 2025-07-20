@@ -736,6 +736,11 @@ mod tests {
                 password: "pass".into(),
             },
             nats: NatsOpts { username: Some("natsuser".into()), password: Some("natspass".into()) },
+            nats_stream: config::NatsStreamOpts {
+                duplicate_window_secs: 120,
+                storage_type: "file".into(),
+                retention_policy: "workqueue".into(),
+            },
             rpc: RpcOpts { l1_url, l2_url, public_url: None },
             api: ApiOpts {
                 host: "127.0.0.1".into(),

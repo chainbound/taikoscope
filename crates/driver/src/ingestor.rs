@@ -45,6 +45,9 @@ impl IngestorDriver {
             .get_or_create_stream(async_nats::jetstream::stream::Config {
                 name: "taiko".to_owned(),
                 subjects: vec!["taiko.events".to_owned()],
+                duplicate_window: opts.nats_stream.get_duplicate_window(),
+                storage: opts.nats_stream.get_storage_type(),
+                retention: opts.nats_stream.get_retention_policy(),
                 ..Default::default()
             })
             .await?;
@@ -107,8 +110,25 @@ impl IngestorDriver {
         mut proved_stream: BatchesProvedStream,
         mut verified_stream: BatchesVerifiedStream,
     ) -> Result<()> {
+        // Set up graceful shutdown signal handling
+        let mut sigterm =
+            tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())?;
+        let mut sigint = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::interrupt())?;
+
+        info!("Starting ingestor event loop with graceful shutdown support");
+
         loop {
             tokio::select! {
+                // Handle shutdown signals
+                _ = sigterm.recv() => {
+                    info!("Received SIGTERM, shutting down gracefully");
+                    break;
+                }
+                _ = sigint.recv() => {
+                    info!("Received SIGINT, shutting down gracefully");
+                    break;
+                }
+                // Handle events
                 maybe_l1 = l1_stream.next() => {
                     if let Some(header) = maybe_l1 {
                         let event = TaikoEvent::L1Header(header);
@@ -163,5 +183,8 @@ impl IngestorDriver {
                 }
             }
         }
+
+        info!("Ingestor event loop stopped gracefully");
+        Ok(())
     }
 }

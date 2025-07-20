@@ -1444,6 +1444,7 @@ name = "config"
 version = "0.1.0"
 dependencies = [
  "alloy-primitives",
+ "async-nats",
  "clap",
  "url",
 ]

@@ -8,6 +8,7 @@ repository.workspace = true
 
 [dependencies]
 alloy-primitives.workspace = true
+async-nats.workspace = true
 clap.workspace = true
 url.workspace = true
 
