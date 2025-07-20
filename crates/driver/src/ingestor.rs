@@ -118,7 +118,7 @@ impl IngestorDriver {
                 maybe_l1 = l1_stream.next() => {
                     if let Some(header) = maybe_l1 {
                         let event = TaikoEvent::L1Header(header);
-                        if let Err(e) = publish_event_with_retry(&self.jetstream, &event, 3).await {
+                        if let Err(e) = publish_event_with_retry(&self.jetstream, &event, 10).await {
                             tracing::error!(err = %e, "Failed to publish L1Header");
                         }
                     }
@@ -126,7 +126,7 @@ impl IngestorDriver {
                 maybe_l2 = l2_stream.next() => {
                     if let Some(header) = maybe_l2 {
                         let event = TaikoEvent::L2Header(header);
-                        if let Err(e) = publish_event_with_retry(&self.jetstream, &event, 3).await {
+                        if let Err(e) = publish_event_with_retry(&self.jetstream, &event, 10).await {
                             tracing::error!(err = %e, "Failed to publish L2Header");
                         }
                     }
@@ -135,7 +135,7 @@ impl IngestorDriver {
                     if let Some((batch, l1_tx_hash)) = maybe_batch {
                         let wrapper = BatchProposedWrapper::from((batch, l1_tx_hash));
                         let event = TaikoEvent::BatchProposed(wrapper);
-                        if let Err(e) = publish_event_with_retry(&self.jetstream, &event, 3).await {
+                        if let Err(e) = publish_event_with_retry(&self.jetstream, &event, 10).await {
                             tracing::error!(err = %e, "Failed to publish BatchProposed");
                         }
                     }
@@ -144,7 +144,7 @@ impl IngestorDriver {
                     if let Some(fi) = maybe_fi {
                         let wrapper = ForcedInclusionProcessedWrapper::from(fi);
                         let event = TaikoEvent::ForcedInclusionProcessed(wrapper);
-                        if let Err(e) = publish_event_with_retry(&self.jetstream, &event, 3).await {
+                        if let Err(e) = publish_event_with_retry(&self.jetstream, &event, 10).await {
                             tracing::error!(err = %e, "Failed to publish ForcedInclusionProcessed");
                         }
                     }
@@ -153,7 +153,7 @@ impl IngestorDriver {
                     if let Some((proved, l1_block_number, l1_tx_hash)) = maybe_proved {
                         let wrapper = BatchesProvedWrapper::from((proved, l1_block_number, l1_tx_hash));
                         let event = TaikoEvent::BatchesProved(wrapper);
-                        if let Err(e) = publish_event_with_retry(&self.jetstream, &event, 3).await {
+                        if let Err(e) = publish_event_with_retry(&self.jetstream, &event, 10).await {
                             tracing::error!(err = %e, "Failed to publish BatchesProved");
                         }
                     }
@@ -162,7 +162,7 @@ impl IngestorDriver {
                     if let Some((verified, l1_block_number, l1_tx_hash)) = maybe_verified {
                         let wrapper = BatchesVerifiedWrapper::from((verified, l1_block_number, l1_tx_hash));
                         let event = TaikoEvent::BatchesVerified(wrapper);
-                        if let Err(e) = publish_event_with_retry(&self.jetstream, &event, 3).await {
+                        if let Err(e) = publish_event_with_retry(&self.jetstream, &event, 10).await {
                             tracing::error!(err = %e, "Failed to publish BatchesVerified");
                         }
                     }

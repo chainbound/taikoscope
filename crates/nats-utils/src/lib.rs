@@ -71,7 +71,7 @@ pub async fn publish_event_with_retry(
                 }
 
                 retries += 1;
-                let delay = std::time::Duration::from_millis(100 * (1 << retries));
+                let delay = std::time::Duration::from_secs(1u64 << (retries - 1));
 
                 tracing::warn!(
                     dedup_id = %dedup_id,
