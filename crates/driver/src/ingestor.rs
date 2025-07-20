@@ -110,24 +110,10 @@ impl IngestorDriver {
         mut proved_stream: BatchesProvedStream,
         mut verified_stream: BatchesVerifiedStream,
     ) -> Result<()> {
-        // Set up graceful shutdown signal handling
-        let mut sigterm =
-            tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())?;
-        let mut sigint = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::interrupt())?;
-
-        info!("Starting ingestor event loop with graceful shutdown support");
+        info!("Starting ingestor event loop");
 
         loop {
             tokio::select! {
-                // Handle shutdown signals
-                _ = sigterm.recv() => {
-                    info!("Received SIGTERM, shutting down gracefully");
-                    break;
-                }
-                _ = sigint.recv() => {
-                    info!("Received SIGINT, shutting down gracefully");
-                    break;
-                }
                 // Handle events
                 maybe_l1 = l1_stream.next() => {
                     if let Some(header) = maybe_l1 {
@@ -183,8 +169,5 @@ impl IngestorDriver {
                 }
             }
         }
-
-        info!("Ingestor event loop stopped gracefully");
-        Ok(())
     }
 }
