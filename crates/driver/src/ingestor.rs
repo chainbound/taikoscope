@@ -117,6 +117,7 @@ impl IngestorDriver {
                 // Handle events
                 maybe_l1 = l1_stream.next() => {
                     if let Some(header) = maybe_l1 {
+                        info!(block_number = header.number, "Publishing L1 header");
                         let event = TaikoEvent::L1Header(header);
                         if let Err(e) = publish_event_with_retry(&self.jetstream, &event, 10).await {
                             tracing::error!(err = %e, "Failed to publish L1Header");
@@ -125,6 +126,7 @@ impl IngestorDriver {
                 }
                 maybe_l2 = l2_stream.next() => {
                     if let Some(header) = maybe_l2 {
+                        info!(block_number = header.number, "Publishing L2 header");
                         let event = TaikoEvent::L2Header(header);
                         if let Err(e) = publish_event_with_retry(&self.jetstream, &event, 10).await {
                             tracing::error!(err = %e, "Failed to publish L2Header");
@@ -133,6 +135,7 @@ impl IngestorDriver {
                 }
                 maybe_batch = batch_stream.next() => {
                     if let Some((batch, l1_tx_hash)) = maybe_batch {
+                        info!(block_number = batch.last_block_number(), "Publishing BatchProposed");
                         let wrapper = BatchProposedWrapper::from((batch, l1_tx_hash));
                         let event = TaikoEvent::BatchProposed(wrapper);
                         if let Err(e) = publish_event_with_retry(&self.jetstream, &event, 10).await {
@@ -142,6 +145,7 @@ impl IngestorDriver {
                 }
                 maybe_fi = forced_stream.next() => {
                     if let Some(fi) = maybe_fi {
+                        info!(blob_hash = ?fi.blobHash, "Publishing forced inclusion processed");
                         let wrapper = ForcedInclusionProcessedWrapper::from(fi);
                         let event = TaikoEvent::ForcedInclusionProcessed(wrapper);
                         if let Err(e) = publish_event_with_retry(&self.jetstream, &event, 10).await {
@@ -151,6 +155,7 @@ impl IngestorDriver {
                 }
                 maybe_proved = proved_stream.next() => {
                     if let Some((proved, l1_block_number, l1_tx_hash)) = maybe_proved {
+                        info!(batch_ids = ?proved.batch_ids_proved(), "Publishing batches proved");
                         let wrapper = BatchesProvedWrapper::from((proved, l1_block_number, l1_tx_hash));
                         let event = TaikoEvent::BatchesProved(wrapper);
                         if let Err(e) = publish_event_with_retry(&self.jetstream, &event, 10).await {
@@ -160,6 +165,7 @@ impl IngestorDriver {
                 }
                 maybe_verified = verified_stream.next() => {
                     if let Some((verified, l1_block_number, l1_tx_hash)) = maybe_verified {
+                        info!(batch_ids = ?verified.batch_id(), "Publishing batches verified");
                         let wrapper = BatchesVerifiedWrapper::from((verified, l1_block_number, l1_tx_hash));
                         let event = TaikoEvent::BatchesVerified(wrapper);
                         if let Err(e) = publish_event_with_retry(&self.jetstream, &event, 10).await {
