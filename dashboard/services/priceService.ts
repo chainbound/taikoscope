@@ -7,29 +7,21 @@ const CACHE_KEY = 'ethPrice';
 const API_URL = `${API_BASE}/eth-price`;
 
 export const getEthPrice = async (): Promise<number> => {
-  let res: Response;
   try {
-    res = await fetch(API_URL);
-  } catch {
-    showToast('Failed to fetch ETH price');
-    return 0;
-  }
-  if (!res.ok) {
-    showToast('Failed to fetch ETH price');
-    return 0;
-  }
+    const res = await fetch(API_URL);
+    if (!res.ok) {
+      throw new Error(res.statusText);
+    }
 
-  try {
     const data = await res.json();
     const price = data?.price;
     if (typeof price !== 'number') {
-      showToast('Failed to fetch ETH price');
-      return 0;
+      throw new Error('invalid response');
     }
     return price;
-  } catch {
+  } catch (e) {
     showToast('Failed to fetch ETH price');
-    return 0;
+    throw e instanceof Error ? e : new Error('Failed to fetch ETH price');
   }
 };
 
@@ -80,9 +72,7 @@ export const useEthPrice = () => {
     }
   }, [swr.data]);
 
-  const error =
-    swr.error ??
-    (swr.data === 0 ? new Error('ETH price unavailable') : undefined);
+  const error = swr.data === undefined ? swr.error : undefined;
 
   return { ...swr, error };
 };
