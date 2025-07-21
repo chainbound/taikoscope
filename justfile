@@ -44,7 +44,7 @@ dev-ingestor:
 
 # start the processor for local development
 dev-processor:
-    ENV_FILE=hekla.env SKIP_MIGRATIONS=true cargo run --bin processor
+    ENV_FILE=hekla.env SKIP_MIGRATIONS=true ENABLE_DB_WRITES=false cargo run --bin processor
 
 # run complete local NATS pipeline (starts NATS, ingestor, and processor)
 dev-pipeline:
