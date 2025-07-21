@@ -107,15 +107,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       hours,
     );
     const costWei = ethPrice > 0 ? (costUsd / ethPrice) * 1e9 : null;
-    const hardwareMetric: MetricData = {
-      title: 'Hardware Costs',
-      value: costWei != null ? formatEth(costWei, 4) : 'N/A',
-      group: 'Network Economics',
-    };
-    const idx = metricsData.metrics.findIndex((m) => m.title === 'Prove Cost');
     const list = [...metricsData.metrics];
-    if (idx >= 0) list.splice(idx + 1, 0, hardwareMetric);
-    else list.push(hardwareMetric);
 
     if (costWei != null) {
       const profitIdx = list.findIndex(
