@@ -223,7 +223,7 @@ pub struct Opts {
     pub nats_url: String,
 
     /// Enable database writes in processor (default: false, processor will log and drop events)
-    #[clap(long, default_value = "false")]
+    #[clap(long, env = "ENABLE_DB_WRITES", default_value = "false")]
     pub enable_db_writes: bool,
 
     /// If set, drop & re-create all tables (local/dev only)
