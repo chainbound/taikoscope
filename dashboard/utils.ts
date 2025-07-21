@@ -7,9 +7,11 @@ const rawNetworkName =
 export const TAIKOSCAN_BASE =
   import.meta.env.VITE_TAIKOSCAN_BASE ??
   import.meta.env.TAIKOSCAN_BASE ??
-  (rawNetworkName?.toLowerCase() === 'hekla'
-    ? 'https://hekla.taikoscan.io'
-    : 'https://cb-blockscout-masaya.vercel.app/blocks');
+  (rawNetworkName?.toLowerCase() === 'mainnet'
+    ? 'https://taikoscan.io'
+    : rawNetworkName?.toLowerCase() === 'hekla'
+      ? 'https://hekla.taikoscan.io'
+      : 'https://cb-blockscout-masaya.vercel.app/blocks');
 
 export const ETHERSCAN_BASE =
   import.meta.env.VITE_ETHERSCAN_BASE ??
