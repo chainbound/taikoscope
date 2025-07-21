@@ -40,6 +40,3 @@ pub use types::{AddressBytes, HashBytes};
 // Re-export test utilities for testing across the workspace
 #[cfg(feature = "test-util")]
 pub use clickhouse::test;
-
-/// Legacy alias for backward compatibility - will be deprecated
-pub type ClickhouseClient = ClickhouseWriter;
