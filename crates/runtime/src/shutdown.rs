@@ -76,3 +76,37 @@ where
         }
     }
 }
+
+/// Run a future until shutdown signal is received with graceful shutdown
+pub async fn run_until_shutdown_graceful<F, O, C>(
+    fut: F,
+    shutdown: ShutdownSignal,
+    shutdown_timeout: std::time::Duration,
+    on_shutdown: C,
+) -> O
+where
+    F: Future<Output = O>,
+    C: FnOnce(),
+{
+    let mut fut = Box::pin(fut);
+
+    tokio::select! {
+        result = &mut fut => result,
+        _ = shutdown => {
+            on_shutdown();
+            debug!("Shutdown signal received, waiting for graceful completion");
+
+            // Give the future a chance to complete gracefully
+            tokio::select! {
+                result = &mut fut => {
+                    debug!("Graceful shutdown completed successfully");
+                    result
+                },
+                _ = tokio::time::sleep(shutdown_timeout) => {
+                    tracing::warn!("Graceful shutdown timeout exceeded, forcing exit");
+                    std::process::exit(1);
+                }
+            }
+        }
+    }
+}
