@@ -187,13 +187,55 @@ impl<K: Clone + Debug + Eq + std::hash::Hash> BaseMonitor<K> {
 impl<K: Clone + Debug + Eq + std::hash::Hash> BaseMonitor<K> {
     /// Helper method to mark an incident as healthy and potentially resolve it
     pub async fn mark_healthy(&mut self, key: &K) -> Result<bool> {
-        if let Some(incident_id) = self.active_incidents.get(key) {
-            let payload = self.create_resolve_payload();
-            self.resolve_incident_with_payload(incident_id, &payload).await?;
-            self.active_incidents.remove(key);
-            return Ok(true);
+        if let Some(incident_id) = self.active_incidents.get(key).cloned() {
+            tracing::info!(
+                incident_id = %incident_id,
+                key = ?key,
+                "Attempting to resolve incident"
+            );
+
+            // Validate that the incident exists on the current page before attempting resolution
+            match self.client.incident_exists(&incident_id).await {
+                Ok(true) => {
+                    // Incident exists, proceed with resolution
+                    let payload = self.create_resolve_payload();
+                    self.resolve_incident_with_payload(&incident_id, &payload).await?;
+                    self.active_incidents.remove(key);
+                    tracing::info!(
+                        incident_id = %incident_id,
+                        key = ?key,
+                        "Successfully resolved incident"
+                    );
+                    return Ok(true);
+                }
+                Ok(false) => {
+                    // Incident doesn't exist on current page, remove from tracking
+                    tracing::warn!(
+                        incident_id = %incident_id,
+                        key = ?key,
+                        "Incident not found on current page, removing from tracking"
+                    );
+                    self.active_incidents.remove(key);
+                    return Ok(false);
+                }
+                Err(e) => {
+                    // Error checking incident existence, log but don't retry resolution
+                    tracing::error!(
+                        incident_id = %incident_id,
+                        key = ?key,
+                        error = %e,
+                        "Failed to validate incident existence, skipping resolution"
+                    );
+                    return Err(e);
+                }
+            }
         }
 
+        tracing::debug!(
+            key = ?key,
+            active_incidents_count = %self.active_incidents.len(),
+            "No active incident found for key"
+        );
         Ok(false)
     }
 
@@ -445,7 +487,18 @@ mod tests {
     async fn mark_healthy_resolves_and_removes() {
         let (ch_client, _ch_server) = mock_clickhouse_client_async().await;
         let mut server = Server::new_async().await;
-        let mock = server
+
+        // Mock for incident_exists check
+        let exists_mock = server
+            .mock("GET", "/v1/page1/incidents/inc123")
+            .match_header("authorization", "Bearer testkey")
+            .with_status(200)
+            .with_body("{\"id\":\"inc123\"}")
+            .create_async()
+            .await;
+
+        // Mock for resolve_incident
+        let resolve_mock = server
             .mock("PUT", "/v1/page1/incidents/inc123")
             .match_header("authorization", "Bearer testkey")
             .match_header("content-type", "application/json")
@@ -468,7 +521,8 @@ mod tests {
         monitor.active_incidents.insert(1u64, "inc123".to_owned());
         assert!(monitor.mark_healthy(&1u64).await.unwrap());
         assert!(monitor.active_incidents.is_empty());
-        mock.assert_async().await;
+        exists_mock.assert_async().await;
+        resolve_mock.assert_async().await;
     }
 
     #[tokio::test]

@@ -65,6 +65,12 @@ impl Client {
             id: String,
         }
         let url = self.base_url.join(&format!("v1/{}/incidents", self.page_id)).unwrap();
+        tracing::info!(
+            page_id = %self.page_id,
+            url = %url,
+            incident_name = %body.name,
+            "Creating incident"
+        );
         let response = self.auth(self.http.post(url.clone())).json(body).send().await?;
 
         let status = response.status();
@@ -81,6 +87,12 @@ impl Client {
     /// Resolve an existing incident on Instatus.
     pub async fn resolve_incident(&self, id: &str, body: &ResolveIncident) -> Result<()> {
         let url = self.base_url.join(&format!("v1/{}/incidents/{}", self.page_id, id)).unwrap();
+        tracing::info!(
+            page_id = %self.page_id,
+            incident_id = %id,
+            url = %url,
+            "Resolving incident"
+        );
         let response = self.auth(self.http.put(url.clone())).json(body).send().await?;
 
         let status = response.status();
@@ -95,6 +107,20 @@ impl Client {
                 Ok(text) => text,
                 Err(_) => "Could not read response body".into(),
             };
+
+            // Check if this is a "no status page" error which is non-retryable
+            if response_text.contains("No status page for that incident") {
+                error!(
+                    incident_id = %id,
+                    page_id = %self.page_id,
+                    status = %status,
+                    url = %url,
+                    body = %response_text,
+                    "Incident belongs to different page - this is a configuration error"
+                );
+                return Err(eyre::eyre!("PAGE_MISMATCH: {}", response_text));
+            }
+
             error!(status = %status, url = %url, body = %response_text, "Failed to resolve incident");
             return Err(eyre::eyre!("HTTP error {}: {}", status, response_text));
         }
@@ -142,6 +168,37 @@ impl Client {
         } else {
             tracing::debug!(component_id = %component_id, "No open incidents found for component");
             Ok(None)
+        }
+    }
+
+    /// Check if an incident exists on the current page
+    pub async fn incident_exists(&self, incident_id: &str) -> Result<bool> {
+        let url =
+            self.base_url.join(&format!("v1/{}/incidents/{}", self.page_id, incident_id)).unwrap();
+        let response = self.auth(self.http.get(url.clone())).send().await?;
+
+        let status = response.status();
+        if status == StatusCode::TOO_MANY_REQUESTS {
+            let body = response.text().await.unwrap_or_default();
+            tracing::warn!(status = %status, url = %url, body = %body, "Received 429 from Instatus");
+            return Err(eyre::eyre!("HTTP 429: {}", body));
+        }
+
+        match status {
+            StatusCode::OK => Ok(true),
+            StatusCode::NOT_FOUND => Ok(false),
+            _ => {
+                let body = response.text().await.unwrap_or_default();
+                tracing::warn!(
+                    incident_id = %incident_id,
+                    page_id = %self.page_id,
+                    status = %status,
+                    body = %body,
+                    "Unexpected response when checking incident existence"
+                );
+                // For any other status, assume the incident doesn't exist on this page
+                Ok(false)
+            }
         }
     }
 }

@@ -7,7 +7,16 @@ use reqwest::{Error as ReqwestError, StatusCode};
 /// `429 Too Many Requests` responses are treated as non-retryable since we send
 /// very few requests and hitting this limit likely indicates a bug causing an
 /// endless loop.
+///
+/// `PAGE_MISMATCH` errors are also non-retryable as they indicate a configuration
+/// issue where the incident belongs to a different page.
 pub fn is_retryable(err: &Report) -> bool {
+    // Check if this is a PAGE_MISMATCH error (configuration issue)
+    let err_msg = format!("{}", err);
+    if err_msg.contains("PAGE_MISMATCH") {
+        return false;
+    }
+
     if let Some(req_err) = err.downcast_ref::<ReqwestError>() {
         if req_err.is_timeout() || req_err.is_connect() {
             return true;

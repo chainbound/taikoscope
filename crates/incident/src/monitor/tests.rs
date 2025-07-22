@@ -165,6 +165,16 @@ async fn instatus_monitor_handle_opens_and_resolves_incident() {
         .with_body("{}")
         .create_async()
         .await;
+
+    // Mock for incident_exists check
+    let incident_exists_mock = server
+        .mock("GET", "/v1/test_page_id/incidents/inc1")
+        .match_header("authorization", "Bearer test_api_key")
+        .with_status(200)
+        .with_body(r#"{"id":"inc1"}"#)
+        .create_async()
+        .await;
+
     let get_mock = server
         .mock("GET", "/v1/test_page_id/incidents")
         .match_query(Matcher::Any)
@@ -196,6 +206,7 @@ async fn instatus_monitor_handle_opens_and_resolves_incident() {
 
     put_mock.assert_async().await;
     post_mock.assert_async().await;
+    incident_exists_mock.assert_async().await;
     get_mock.assert_async().await;
 }
 
