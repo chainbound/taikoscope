@@ -132,9 +132,13 @@ pub struct InstatusOpts {
     /// Instatus monitor poll interval in seconds
     #[clap(long, env = "INSTATUS_MONITOR_POLL_INTERVAL_SECS", default_value = "30")]
     pub monitor_poll_interval_secs: u64,
-    /// Instatus monitor threshold in seconds for detecting an outage
-    #[clap(long, env = "INSTATUS_MONITOR_THRESHOLD_SECS", default_value = "600")]
-    pub monitor_threshold_secs: u64,
+    /// Threshold in seconds for detecting missing `BatchProposed` events
+    #[clap(long, env = "INSTATUS_L1_MONITOR_THRESHOLD_SECS", default_value = "600")]
+    pub l1_monitor_threshold_secs: u64,
+
+    /// Threshold in seconds for detecting missing L2 head events
+    #[clap(long, env = "INSTATUS_L2_MONITOR_THRESHOLD_SECS", default_value = "600")]
+    pub l2_monitor_threshold_secs: u64,
 
     /// Batch proof timeout threshold in seconds (default 3 hours)
     #[clap(long, env = "BATCH_PROOF_TIMEOUT_SECS", default_value = "10800")]
@@ -304,7 +308,8 @@ mod tests {
         use std::env;
         unsafe {
             env::remove_var("INSTATUS_MONITOR_POLL_INTERVAL_SECS");
-            env::remove_var("INSTATUS_MONITOR_THRESHOLD_SECS");
+            env::remove_var("INSTATUS_L1_MONITOR_THRESHOLD_SECS");
+            env::remove_var("INSTATUS_L2_MONITOR_THRESHOLD_SECS");
             env::remove_var("BATCH_PROOF_TIMEOUT_SECS");
             env::remove_var("INSTATUS_MONITORS_ENABLED");
             env::remove_var("ALLOWED_ORIGINS");
@@ -316,7 +321,8 @@ mod tests {
         let opts = Opts::try_parse_from(args).expect("failed to parse opts");
 
         assert_eq!(opts.instatus.monitor_poll_interval_secs, 30);
-        assert_eq!(opts.instatus.monitor_threshold_secs, 600);
+        assert_eq!(opts.instatus.l1_monitor_threshold_secs, 600);
+        assert_eq!(opts.instatus.l2_monitor_threshold_secs, 600);
         assert_eq!(opts.instatus.batch_proof_timeout_secs, 10800);
         assert_eq!(opts.api.host, "127.0.0.1");
         assert_eq!(opts.api.port, 3000);
@@ -343,7 +349,8 @@ mod tests {
         // Clean up first to ensure clean state
         unsafe {
             env::remove_var("INSTATUS_MONITOR_POLL_INTERVAL_SECS");
-            env::remove_var("INSTATUS_MONITOR_THRESHOLD_SECS");
+            env::remove_var("INSTATUS_L1_MONITOR_THRESHOLD_SECS");
+            env::remove_var("INSTATUS_L2_MONITOR_THRESHOLD_SECS");
             env::remove_var("BATCH_PROOF_TIMEOUT_SECS");
             env::remove_var("INSTATUS_MONITORS_ENABLED");
             env::remove_var("ALLOWED_ORIGINS");
@@ -353,7 +360,8 @@ mod tests {
 
         unsafe {
             env::set_var("INSTATUS_MONITOR_POLL_INTERVAL_SECS", "42");
-            env::set_var("INSTATUS_MONITOR_THRESHOLD_SECS", "33");
+            env::set_var("INSTATUS_L1_MONITOR_THRESHOLD_SECS", "33");
+            env::set_var("INSTATUS_L2_MONITOR_THRESHOLD_SECS", "44");
             env::set_var("BATCH_PROOF_TIMEOUT_SECS", "99");
             env::set_var("INSTATUS_MONITORS_ENABLED", "false");
             env::set_var("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:5173");
@@ -367,7 +375,8 @@ mod tests {
         let opts = Opts::try_parse_from(&args).expect("failed to parse opts");
 
         assert_eq!(opts.instatus.monitor_poll_interval_secs, 42);
-        assert_eq!(opts.instatus.monitor_threshold_secs, 33);
+        assert_eq!(opts.instatus.l1_monitor_threshold_secs, 33);
+        assert_eq!(opts.instatus.l2_monitor_threshold_secs, 44);
         assert_eq!(opts.instatus.batch_proof_timeout_secs, 99);
         assert_eq!(opts.api.host, "127.0.0.1");
         assert_eq!(opts.api.port, 3000);
@@ -382,7 +391,8 @@ mod tests {
         // Clean up after test
         unsafe {
             env::remove_var("INSTATUS_MONITOR_POLL_INTERVAL_SECS");
-            env::remove_var("INSTATUS_MONITOR_THRESHOLD_SECS");
+            env::remove_var("INSTATUS_L1_MONITOR_THRESHOLD_SECS");
+            env::remove_var("INSTATUS_L2_MONITOR_THRESHOLD_SECS");
             env::remove_var("BATCH_PROOF_TIMEOUT_SECS");
             env::remove_var("INSTATUS_MONITORS_ENABLED");
             env::remove_var("ALLOWED_ORIGINS");
