@@ -36,11 +36,12 @@ React dashboard.
    docker compose up
    ```
 
-5. Start the extractor and API server:
+5. Start the ingestor, processor and API server:
 
    ```bash
-   just dev         # runs the extractor/driver
-   just dev-api     # runs the HTTP API
+   just dev-ingestor    # runs the ingestor
+   just dev-processor   # runs the processor
+   just dev-api         # runs the HTTP API
    ```
 
 6. Start the dashboard (optional if not using Docker Compose):
@@ -81,9 +82,9 @@ These variables map to the configuration structs defined in
 Taikoscope follows a layered architecture that keeps data ingestion and
 presentation concerns separate:
 
-1. **Driver and Extractor** – subscribe to L1 and L2 chains, process events
-   such as block headers and batch submissions, and write them to ClickHouse
-   via the `ClickhouseWriter`.
+1. **Ingestor and Processor** – the ingestor subscribes to L1 and L2 chains and
+   publishes events to NATS. The processor consumes these events and writes them
+   to ClickHouse via the `ClickhouseWriter`.
 2. **Storage** – a ClickHouse database holds tables like
    `l1_head_events`, `l2_head_events`, `batches` and `proved_batches`. Reads and
    writes use dedicated reader and writer clients.
@@ -95,9 +96,10 @@ presentation concerns separate:
 5. **Monitoring** – background monitors trigger incidents via Instatus when
    thresholds are exceeded.
 
-Events flow through the system continuously. The driver handles header and
-batch streams, inserts rows into ClickHouse and the API aggregates this data for
-the dashboard. The UI now polls the API periodically to update metrics.
+Events flow through the system continuously. The ingestor publishes header and
+batch streams to NATS, the processor inserts rows into ClickHouse and the API
+aggregates this data for the dashboard. The UI now polls the API periodically to
+update metrics.
 
 ## Development
 
@@ -117,7 +119,7 @@ Deployment scripts use `ssh` and `docker` to build the images remotely.
 Create an entry in your `~/.ssh/config` (for example named `taiko`) and then run:
 
 ```bash
-just deploy-remote-hekla        # deploy the extractor/driver
+just deploy-remote-hekla        # deploy the ingestor and processor
 just deploy-api-remote-hekla    # deploy the API server
 ```
 
