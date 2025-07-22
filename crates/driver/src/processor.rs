@@ -811,3 +811,38 @@ fn calculate_orphaned_blocks(old_head: u64, new_head: u64, _depth: u32) -> Vec<u
     let orphaned_end = old_head + 1; // +1 because range is exclusive at end
     (orphaned_start..orphaned_end).collect()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::calculate_orphaned_blocks;
+
+    #[test]
+    fn calculate_orphaned_blocks_correct_behavior() {
+        // Test case 1: old_head=10, new_head=8, depth=2
+        // Expected: blocks 9,10 are orphaned
+        let result = calculate_orphaned_blocks(10, 8, 2);
+        assert_eq!(result, vec![9, 10], "Should return orphaned blocks [9,10]");
+
+        // Test case 2: old_head=5, new_head=4, depth=1 (depth-1 reorg)
+        // Expected: blocks [5] are orphaned
+        let result2 = calculate_orphaned_blocks(5, 4, 1);
+        assert_eq!(result2, vec![5], "Should return orphaned blocks [5]");
+
+        // Test case 3: old_head=15, new_head=12, depth=3
+        // Expected: blocks 13,14,15 are orphaned
+        let result3 = calculate_orphaned_blocks(15, 12, 3);
+        assert_eq!(result3, vec![13, 14, 15], "Should return orphaned blocks [13,14,15]");
+
+        // Test case 4: No reorg (new_head >= old_head)
+        let result4 = calculate_orphaned_blocks(10, 12, 0);
+        let expected4: Vec<u64> = vec![];
+        assert_eq!(
+            result4, expected4,
+            "Should return no orphaned blocks when new_head >= old_head"
+        );
+
+        // Test case 5: Adjacent blocks (old_head=5, new_head=4)
+        let result5 = calculate_orphaned_blocks(5, 4, 1);
+        assert_eq!(result5, vec![5], "Should return [5] when old_head=5, new_head=4");
+    }
+}
