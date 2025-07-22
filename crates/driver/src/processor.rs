@@ -38,7 +38,8 @@ pub struct ProcessorDriver {
     instatus_public_api_component_id: String,
     instatus_monitors_enabled: bool,
     instatus_monitor_poll_interval_secs: u64,
-    instatus_monitor_threshold_secs: u64,
+    instatus_l1_monitor_threshold_secs: u64,
+    instatus_l2_monitor_threshold_secs: u64,
     batch_proof_timeout_secs: u64,
     public_rpc_url: Option<Url>,
     nats_stream_config: config::NatsStreamOpts,
@@ -159,7 +160,8 @@ impl ProcessorDriver {
             instatus_public_api_component_id,
             instatus_monitors_enabled: opts.instatus.monitors_enabled,
             instatus_monitor_poll_interval_secs: opts.instatus.monitor_poll_interval_secs,
-            instatus_monitor_threshold_secs: opts.instatus.monitor_threshold_secs,
+            instatus_l1_monitor_threshold_secs: opts.instatus.l1_monitor_threshold_secs,
+            instatus_l2_monitor_threshold_secs: opts.instatus.l2_monitor_threshold_secs,
             batch_proof_timeout_secs: opts.instatus.batch_proof_timeout_secs,
             public_rpc_url: opts.rpc.public_url,
             nats_stream_config: opts.nats_stream,
@@ -666,7 +668,7 @@ impl ProcessorDriver {
                 reader.clone(),
                 self.incident_client.clone(),
                 self.instatus_batch_submission_component_id.clone(),
-                Duration::from_secs(self.instatus_monitor_threshold_secs),
+                Duration::from_secs(self.instatus_l1_monitor_threshold_secs),
                 Duration::from_secs(self.instatus_monitor_poll_interval_secs),
             )
             .spawn();
@@ -675,7 +677,7 @@ impl ProcessorDriver {
                 reader.clone(),
                 self.incident_client.clone(),
                 self.instatus_transaction_sequencing_component_id.clone(),
-                Duration::from_secs(self.instatus_monitor_threshold_secs),
+                Duration::from_secs(self.instatus_l2_monitor_threshold_secs),
                 Duration::from_secs(self.instatus_monitor_poll_interval_secs),
             )
             .spawn();

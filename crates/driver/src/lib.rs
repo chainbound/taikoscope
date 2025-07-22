@@ -50,7 +50,8 @@ pub struct Driver {
     instatus_public_api_component_id: String,
     instatus_monitors_enabled: bool,
     instatus_monitor_poll_interval_secs: u64,
-    instatus_monitor_threshold_secs: u64,
+    instatus_l1_monitor_threshold_secs: u64,
+    instatus_l2_monitor_threshold_secs: u64,
     batch_proof_timeout_secs: u64,
     last_proposed_l2_block: u64,
     last_l2_header: Option<(u64, Address)>,
@@ -150,7 +151,8 @@ impl Driver {
             instatus_public_api_component_id,
             instatus_monitors_enabled: opts.instatus.monitors_enabled,
             instatus_monitor_poll_interval_secs: opts.instatus.monitor_poll_interval_secs,
-            instatus_monitor_threshold_secs: opts.instatus.monitor_threshold_secs,
+            instatus_l1_monitor_threshold_secs: opts.instatus.l1_monitor_threshold_secs,
+            instatus_l2_monitor_threshold_secs: opts.instatus.l2_monitor_threshold_secs,
             batch_proof_timeout_secs: opts.instatus.batch_proof_timeout_secs,
             last_proposed_l2_block: 0,
             last_l2_header: None,
@@ -241,7 +243,7 @@ impl Driver {
             self.clickhouse_reader.clone(),
             self.incident_client.clone(),
             self.instatus_batch_submission_component_id.clone(),
-            Duration::from_secs(self.instatus_monitor_threshold_secs),
+            Duration::from_secs(self.instatus_l1_monitor_threshold_secs),
             Duration::from_secs(self.instatus_monitor_poll_interval_secs),
         )
         .spawn();
@@ -250,7 +252,7 @@ impl Driver {
             self.clickhouse_reader.clone(),
             self.incident_client.clone(),
             self.instatus_transaction_sequencing_component_id.clone(),
-            Duration::from_secs(self.instatus_monitor_threshold_secs),
+            Duration::from_secs(self.instatus_l2_monitor_threshold_secs),
             Duration::from_secs(self.instatus_monitor_poll_interval_secs),
         )
         .spawn();
@@ -684,7 +686,8 @@ mod tests {
                 public_api_component_id: "public".into(),
                 monitors_enabled: true,
                 monitor_poll_interval_secs: 30,
-                monitor_threshold_secs: 96,
+                l1_monitor_threshold_secs: 96,
+                l2_monitor_threshold_secs: 96,
                 batch_proof_timeout_secs: 999,
             },
             enable_db_writes: false,
