@@ -6,7 +6,7 @@ use alloy_primitives::{Address, B256};
 use clickhouse::{AddressBytes, ClickhouseReader, ClickhouseWriter, HashBytes, L2HeadEvent};
 use config::Opts;
 use extractor::{Extractor, ReorgDetector};
-use eyre::Result;
+use eyre::{Context, Result};
 use incident::{
     BatchProofTimeoutMonitor, InstatusL1Monitor, InstatusMonitor, Monitor,
     client::Client as IncidentClient,
@@ -61,7 +61,9 @@ impl ProcessorDriver {
             info!("Instatus monitors disabled; no incidents will be reported");
         }
 
-        let nats_client = async_nats::connect(&opts.nats_url).await?;
+        let nats_client = async_nats::connect(&opts.nats_url)
+            .await
+            .wrap_err_with(|| format!("failed to connect to NATS at {}", opts.nats_url))?;
         info!("Connected to NATS server at {}", opts.nats_url);
 
         // Initialize extractor for L2 block statistics and transaction cost analysis

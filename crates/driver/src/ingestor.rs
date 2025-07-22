@@ -1,6 +1,6 @@
 //! Taikoscope Ingestor Driver
 
-use eyre::Result;
+use eyre::{Context, Result};
 use tokio_stream::StreamExt;
 use tracing::info;
 
@@ -37,7 +37,9 @@ impl IngestorDriver {
         )
         .await?;
 
-        let nats_client = async_nats::connect(&opts.nats_url).await?;
+        let nats_client = async_nats::connect(&opts.nats_url)
+            .await
+            .wrap_err_with(|| format!("failed to connect to NATS at {}", opts.nats_url))?;
         info!("Connected to NATS server at {}", opts.nats_url);
 
         let jetstream = async_nats::jetstream::new(nats_client);

@@ -225,7 +225,8 @@ impl ClickhouseWriter {
         self.base
             .query(&format!("CREATE DATABASE IF NOT EXISTS {}", self.db_name))
             .execute()
-            .await?;
+            .await
+            .wrap_err_with(|| format!("Failed to init database {}", self.db_name))?;
 
         if reset {
             for view in VIEWS {
