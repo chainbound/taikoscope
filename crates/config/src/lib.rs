@@ -123,6 +123,9 @@ pub struct InstatusOpts {
     /// Instatus component ID for transaction sequencing monitor
     #[clap(long, env = "INSTATUS_TRANSACTION_SEQUENCING_COMPONENT_ID", default_value = "")]
     pub transaction_sequencing_component_id: String,
+    /// Instatus component ID for the public API monitor
+    #[clap(long, env = "INSTATUS_PUBLIC_API_COMPONENT_ID", default_value = "")]
+    pub public_api_component_id: String,
     /// Enable all Instatus monitors
     #[clap(long = "enable-monitors", env = "INSTATUS_MONITORS_ENABLED", default_value_t = true)]
     pub monitors_enabled: bool,
@@ -147,7 +150,8 @@ impl InstatusOpts {
             self.batch_submission_component_id.is_empty() ||
             self.proof_submission_component_id.is_empty() ||
             self.proof_verification_component_id.is_empty() ||
-            self.transaction_sequencing_component_id.is_empty()
+            self.transaction_sequencing_component_id.is_empty() ||
+            self.public_api_component_id.is_empty()
         {
             return false;
         }

@@ -9,10 +9,10 @@ use extractor::{Extractor, ReorgDetector};
 use eyre::Result;
 use incident::{
     BatchProofTimeoutMonitor, InstatusL1Monitor, InstatusMonitor, Monitor,
-    client::Client as IncidentClient, monitor::BatchVerifyTimeoutMonitor,
+    client::Client as IncidentClient,
+    monitor::{BatchVerifyTimeoutMonitor, spawn_public_rpc_monitor},
 };
 use nats_utils::TaikoEvent;
-use network::public_rpc_monitor;
 use tokio_stream::StreamExt;
 use tracing::info;
 use url::Url;
@@ -35,6 +35,7 @@ pub struct ProcessorDriver {
     instatus_proof_submission_component_id: String,
     instatus_proof_verification_component_id: String,
     instatus_transaction_sequencing_component_id: String,
+    instatus_public_api_component_id: String,
     instatus_monitors_enabled: bool,
     instatus_monitor_poll_interval_secs: u64,
     instatus_monitor_threshold_secs: u64,
@@ -120,6 +121,7 @@ impl ProcessorDriver {
             instatus_proof_submission_component_id,
             instatus_proof_verification_component_id,
             instatus_transaction_sequencing_component_id,
+            instatus_public_api_component_id,
             incident_client,
         ) = if opts.instatus.monitors_enabled {
             (
@@ -127,10 +129,12 @@ impl ProcessorDriver {
                 opts.instatus.proof_submission_component_id.clone(),
                 opts.instatus.proof_verification_component_id.clone(),
                 opts.instatus.transaction_sequencing_component_id.clone(),
+                opts.instatus.public_api_component_id.clone(),
                 IncidentClient::new(opts.instatus.api_key.clone(), opts.instatus.page_id.clone()),
             )
         } else {
             (
+                String::new(),
                 String::new(),
                 String::new(),
                 String::new(),
@@ -152,6 +156,7 @@ impl ProcessorDriver {
             instatus_proof_submission_component_id,
             instatus_proof_verification_component_id,
             instatus_transaction_sequencing_component_id,
+            instatus_public_api_component_id,
             instatus_monitors_enabled: opts.instatus.monitors_enabled,
             instatus_monitor_poll_interval_secs: opts.instatus.monitor_poll_interval_secs,
             instatus_monitor_threshold_secs: opts.instatus.monitor_threshold_secs,
@@ -645,7 +650,10 @@ impl ProcessorDriver {
     fn spawn_monitors(&self) {
         if let Some(url) = &self.public_rpc_url {
             tracing::info!(url = url.as_str(), "public rpc monitor enabled");
-            public_rpc_monitor::spawn_public_rpc_monitor(url.clone());
+            let incident = self.instatus_monitors_enabled.then(|| {
+                (self.incident_client.clone(), self.instatus_public_api_component_id.clone())
+            });
+            spawn_public_rpc_monitor(url.clone(), incident);
         }
 
         if !self.instatus_monitors_enabled {
