@@ -13,8 +13,9 @@ use incident::{
     monitor::{BatchVerifyTimeoutMonitor, spawn_public_rpc_monitor},
 };
 use nats_utils::TaikoEvent;
+use tokio::sync::broadcast;
 use tokio_stream::StreamExt;
-use tracing::info;
+use tracing::{debug, info};
 use url::Url;
 
 /// An EPOCH is a series of 32 slots.
@@ -172,6 +173,14 @@ impl ProcessorDriver {
 
     /// Start the processor event loop, consuming NATS events and processing them
     pub async fn start(self) -> Result<()> {
+        self.start_with_shutdown(None).await
+    }
+
+    /// Start the processor event loop with graceful shutdown support
+    pub async fn start_with_shutdown(
+        self,
+        shutdown_rx: Option<broadcast::Receiver<()>>,
+    ) -> Result<()> {
         info!("Starting processor event loop");
 
         if self.enable_db_writes {
@@ -240,70 +249,94 @@ impl ProcessorDriver {
         info!("Successfully created NATS consumer, starting message processing loop");
 
         let mut messages = consumer.messages().await?;
+        let mut shutdown_rx = shutdown_rx;
 
-        while let Some(message) = messages.next().await {
-            match message {
-                Ok(msg) => {
-                    // Try to process the message with retry logic
-                    let mut retries = 0;
-                    const MAX_RETRIES: u32 = 3;
+        loop {
+            let message_future = messages.next();
+            let shutdown_future = async {
+                if let Some(ref mut rx) = shutdown_rx {
+                    rx.recv().await.ok();
+                } else {
+                    std::future::pending().await
+                }
+            };
 
-                    loop {
-                        match Self::process_message(
-                            &clickhouse_writer,
-                            &clickhouse_reader,
-                            &extractor,
-                            &mut reorg_detector,
-                            &mut last_l2_header,
-                            enable_db_writes,
-                            &msg,
-                        )
-                        .await
-                        {
-                            Ok(()) => {
-                                // Success - acknowledge the message
-                                if let Err(e) = msg.ack().await {
-                                    tracing::error!(err = %e, "Failed to ack message");
-                                }
-                                break;
-                            }
-                            Err(e) => {
-                                if retries >= MAX_RETRIES {
-                                    tracing::error!(
-                                        err = %e,
-                                        retries = retries,
-                                        "Failed to process message after all retries, nacking message"
-                                    );
-                                    // Nack the message to put it back in the queue
-                                    if let Err(nack_err) = msg
-                                        .ack_with(async_nats::jetstream::AckKind::Nak(None))
-                                        .await
-                                    {
-                                        tracing::error!(err = %nack_err, "Failed to nack message");
+            tokio::select! {
+                message = message_future => {
+                    match message {
+                        Some(Ok(msg)) => {
+                            // Try to process the message with retry logic
+                            let mut retries = 0;
+                            const MAX_RETRIES: u32 = 3;
+
+                            loop {
+                                match Self::process_message(
+                                    &clickhouse_writer,
+                                    &clickhouse_reader,
+                                    &extractor,
+                                    &mut reorg_detector,
+                                    &mut last_l2_header,
+                                    enable_db_writes,
+                                    &msg,
+                                )
+                                .await
+                                {
+                                    Ok(()) => {
+                                        // Success - acknowledge the message
+                                        if let Err(e) = msg.ack().await {
+                                            tracing::error!(err = %e, "Failed to ack message");
+                                        }
+                                        break;
                                     }
-                                    break;
+                                    Err(e) => {
+                                        if retries >= MAX_RETRIES {
+                                            tracing::error!(
+                                                err = %e,
+                                                retries = retries,
+                                                "Failed to process message after all retries, nacking message"
+                                            );
+                                            // Nack the message to put it back in the queue
+                                            if let Err(nack_err) = msg
+                                                .ack_with(async_nats::jetstream::AckKind::Nak(None))
+                                                .await
+                                            {
+                                                tracing::error!(err = %nack_err, "Failed to nack message");
+                                            }
+                                            break;
+                                        }
+                                        retries += 1;
+                                        tracing::warn!(
+                                            err = %e,
+                                            retry = retries,
+                                            max_retries = MAX_RETRIES,
+                                            "Failed to process message, retrying..."
+                                        );
+                                        // Exponential backoff
+                                        tokio::time::sleep(Duration::from_millis(100 * (1 << retries)))
+                                            .await;
+                                    }
                                 }
-                                retries += 1;
-                                tracing::warn!(
-                                    err = %e,
-                                    retry = retries,
-                                    max_retries = MAX_RETRIES,
-                                    "Failed to process message, retrying..."
-                                );
-                                // Exponential backoff
-                                tokio::time::sleep(Duration::from_millis(100 * (1 << retries)))
-                                    .await;
                             }
+                        }
+                        Some(Err(e)) => {
+                            tracing::error!(err = %e, "Error receiving message from NATS");
+                            // Wait a bit before continuing to avoid tight loop on persistent errors
+                            tokio::time::sleep(Duration::from_millis(1000)).await;
+                        }
+                        None => {
+                            debug!("NATS message stream ended");
+                            break;
                         }
                     }
                 }
-                Err(e) => {
-                    tracing::error!(err = %e, "Error receiving message from NATS");
-                    // Wait a bit before continuing to avoid tight loop on persistent errors
-                    tokio::time::sleep(Duration::from_millis(1000)).await;
+                _ = shutdown_future => {
+                    info!("Shutdown signal received, stopping message processing");
+                    break;
                 }
             }
         }
+
+        info!("Message processing loop completed");
 
         Ok(())
     }
