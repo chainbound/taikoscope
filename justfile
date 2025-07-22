@@ -148,65 +148,6 @@ info-log-masaya:
 search-logs-masaya term:
     ssh {{ssh_alias}} "docker logs {{container}} | grep -i \"{{term}}\""
 
-# --- Hekla Deployment (Fly.io) ---
-
-# Deploy Taikoscope to Hekla using Fly.io
-deploy-hekla:
-    @echo "Deploying Taikoscope to Hekla via Fly.io"
-    @just test || (echo "Tests failed, aborting deployment" && exit 1)
-    fly deploy
-
-# Deploy and tail logs for Hekla
-deploy-logs-hekla:
-    @just deploy-hekla
-    @just logs-hekla
-
-# Deploy API server to Hekla using Fly.io
-deploy-api-hekla:
-    @echo "Deploying API server to Hekla via Fly.io"
-    @just test || (echo "Tests failed, aborting deployment" && exit 1)
-    fly deploy --config fly-api.toml
-
-# Deploy and tail logs for API server on Hekla
-deploy-logs-api-hekla:
-    @just deploy-api-hekla
-    @just logs-api-hekla
-
-# View logs for Hekla deployment
-logs-hekla:
-    fly logs
-
-# View logs for API server on Hekla
-logs-api-hekla:
-    fly logs --config fly-api.toml
-
-# Check status of Hekla deployment
-status-hekla:
-    fly status
-
-# Check status of API server on Hekla
-status-api-hekla:
-    fly status --config fly-api.toml
-
-# Set log level for Hekla deployment
-set-log-level-hekla level:
-    @echo "Setting log level to {{level}} on Hekla..."
-    fly secrets set RUST_LOG={{level}}
-    @echo "Log level set to {{level}}. Deploying to apply changes..."
-    @just deploy-hekla
-
-# Set log level to debug on Hekla
-debug-log-hekla:
-    @just set-log-level-hekla debug
-
-# Set log level to info on Hekla
-info-log-hekla:
-    @just set-log-level-hekla info
-
-# Search in logs for a specific term on Hekla
-search-logs-hekla term:
-    fly logs | grep -i "{{term}}"
-
 # --- API Server Deployment (Masaya) ---
 api_container := "taikoscope-api-masaya"
 api_port := "48101:3000"
