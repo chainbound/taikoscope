@@ -51,7 +51,7 @@ async fn check_once(client: &Client, url: &Url) {
     }
 }
 
-async fn check_syncing(client: &Client, url: &Url) -> Result<bool> {
+pub async fn check_syncing(client: &Client, url: &Url) -> Result<bool> {
     let body = json!({
         "jsonrpc": "2.0",
         "id": 1,

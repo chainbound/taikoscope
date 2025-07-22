@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use alloy_primitives::{Address, B256};
 use eyre::Result;
-use network::public_rpc_monitor;
+use incident::monitor::spawn_public_rpc_monitor;
 use tokio_stream::StreamExt;
 use tracing::info;
 use url::Url;
@@ -47,6 +47,7 @@ pub struct Driver {
     instatus_proof_submission_component_id: String,
     instatus_proof_verification_component_id: String,
     instatus_transaction_sequencing_component_id: String,
+    instatus_public_api_component_id: String,
     instatus_monitors_enabled: bool,
     instatus_monitor_poll_interval_secs: u64,
     instatus_monitor_threshold_secs: u64,
@@ -114,6 +115,7 @@ impl Driver {
             instatus_proof_submission_component_id,
             instatus_proof_verification_component_id,
             instatus_transaction_sequencing_component_id,
+            instatus_public_api_component_id,
             incident_client,
         ) = if opts.instatus.monitors_enabled {
             (
@@ -121,10 +123,12 @@ impl Driver {
                 opts.instatus.proof_submission_component_id.clone(),
                 opts.instatus.proof_verification_component_id.clone(),
                 opts.instatus.transaction_sequencing_component_id.clone(),
+                opts.instatus.public_api_component_id.clone(),
                 IncidentClient::new(opts.instatus.api_key.clone(), opts.instatus.page_id.clone()),
             )
         } else {
             (
+                String::new(),
                 String::new(),
                 String::new(),
                 String::new(),
@@ -143,6 +147,7 @@ impl Driver {
             instatus_proof_submission_component_id,
             instatus_proof_verification_component_id,
             instatus_transaction_sequencing_component_id,
+            instatus_public_api_component_id,
             instatus_monitors_enabled: opts.instatus.monitors_enabled,
             instatus_monitor_poll_interval_secs: opts.instatus.monitor_poll_interval_secs,
             instatus_monitor_threshold_secs: opts.instatus.monitor_threshold_secs,
@@ -222,7 +227,10 @@ impl Driver {
     fn spawn_monitors(&self) {
         if let Some(url) = &self.public_rpc_url {
             tracing::info!(url = url.as_str(), "public rpc monitor enabled");
-            public_rpc_monitor::spawn_public_rpc_monitor(url.clone());
+            let incident = self.instatus_monitors_enabled.then(|| {
+                (self.incident_client.clone(), self.instatus_public_api_component_id.clone())
+            });
+            spawn_public_rpc_monitor(url.clone(), incident);
         }
 
         if !self.instatus_monitors_enabled {
@@ -762,6 +770,7 @@ mod tests {
                 proof_submission_component_id: "proof".into(),
                 proof_verification_component_id: "verify".into(),
                 transaction_sequencing_component_id: "l2".into(),
+                public_api_component_id: "public".into(),
                 monitors_enabled: true,
                 monitor_poll_interval_secs: 30,
                 monitor_threshold_secs: 96,
