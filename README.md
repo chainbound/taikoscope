@@ -5,6 +5,7 @@ blockchain. It continuously ingests events from Ethereum (L1) and Taiko (L2),
 persists time‑series metrics in ClickHouse and exposes them via a REST API and a
 React dashboard.
 
+
 ## Table of Contents
 
 1. [Requirements](#requirements)
@@ -129,6 +130,26 @@ git push origin hekla
 ```
 
 Vercel automatically builds and deploys the dashboard after the push.
+
+## Architecture
+
+```mermaid
+flowchart TD
+  L1[L1 RPC] --> Ingestor
+  L2[L2 RPC] --> Ingestor
+
+  subgraph NATS
+    Event1@{ shape: rounded, label: "L1 Head Event" }
+    Event2@{ shape: rounded, label: "L2 Head Event" }
+  end
+
+  Ingestor --> NATS
+  NATS --> Processor
+  Processor --> Instatus["Status Page"]
+  Processor --> CH[(ClickHouse DB)]
+  CH --> API
+  API --> Dashboard
+```
 
 ## License
 
