@@ -27,8 +27,8 @@ impl TaikoWrapper {
 sol! {
     #[allow(missing_docs)]
     #[sol(rpc)]
-    #[derive(Debug)]
-    interface IForcedInclusionStore {
+    #[derive(Debug, serde::Serialize, serde::Deserialize)]
+    interface ITaikoWrapper {
         struct ForcedInclusion {
             bytes32 blobHash;
             uint64 feeInGwei;
@@ -37,19 +37,9 @@ sol! {
             uint32 blobByteSize;
             uint64 blobCreatedIn;
         }
-    }
 
-    #[allow(missing_docs)]
-    #[sol(rpc)]
-    #[derive(Debug, serde::Serialize, serde::Deserialize)]
-    interface ITaikoWrapper {
         event ForcedInclusionProcessed(
-            bytes32 blobHash,
-            uint64 feeInGwei,
-            uint64 createdAtBatchId,
-            uint32 blobByteOffset,
-            uint32 blobByteSize,
-            uint64 blobCreatedIn
+            ForcedInclusion forcedInclusion
         );
     }
 }

@@ -77,7 +77,7 @@ impl TryFrom<&ITaikoWrapper::ForcedInclusionProcessed> for ForcedInclusionProces
 
     fn try_from(event: &ITaikoWrapper::ForcedInclusionProcessed) -> Result<Self, Self::Error> {
         let mut hash_bytes = [0u8; 32];
-        hash_bytes.copy_from_slice(event.blobHash.as_slice());
+        hash_bytes.copy_from_slice(event.forcedInclusion.blobHash.as_slice());
 
         Ok(Self { blob_hash: HashBytes::from(hash_bytes) })
     }
@@ -170,12 +170,14 @@ mod tests {
     #[test]
     fn forced_inclusion_into_row() {
         let event = ITaikoWrapper::ForcedInclusionProcessed {
-            blobHash: B256::repeat_byte(7),
-            feeInGwei: 1,
-            createdAtBatchId: 0,
-            blobByteOffset: 0,
-            blobByteSize: 0,
-            blobCreatedIn: 0,
+            forcedInclusion: ITaikoWrapper::ForcedInclusion {
+                blobHash: B256::repeat_byte(7),
+                feeInGwei: 1,
+                createdAtBatchId: 0,
+                blobByteOffset: 0,
+                blobByteSize: 0,
+                blobCreatedIn: 0,
+            },
         };
 
         let row = ForcedInclusionProcessedRow::try_from(&event).unwrap();

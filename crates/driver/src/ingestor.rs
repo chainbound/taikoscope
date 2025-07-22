@@ -145,7 +145,7 @@ impl IngestorDriver {
                 }
                 maybe_fi = forced_stream.next() => {
                     if let Some(fi) = maybe_fi {
-                        info!(blob_hash = ?fi.blobHash, "Publishing forced inclusion processed");
+                        info!(blob_hash = ?fi.forcedInclusion.blobHash, "Publishing forced inclusion processed");
                         let wrapper = ForcedInclusionProcessedWrapper::from(fi);
                         let event = TaikoEvent::ForcedInclusionProcessed(wrapper);
                         if let Err(e) = publish_event_with_retry(&self.jetstream, &event, 10).await {

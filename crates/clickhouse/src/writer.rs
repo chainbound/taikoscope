@@ -751,12 +751,14 @@ mod tests {
         let writer = ClickhouseWriter::new(url, "db".to_owned(), "user".into(), "pass".into());
 
         let event = ITaikoWrapper::ForcedInclusionProcessed {
-            blobHash: B256::repeat_byte(5),
-            feeInGwei: 1,
-            createdAtBatchId: 0,
-            blobByteOffset: 0,
-            blobByteSize: 0,
-            blobCreatedIn: 0,
+            forcedInclusion: ITaikoWrapper::ForcedInclusion {
+                blobHash: B256::repeat_byte(5),
+                feeInGwei: 1,
+                createdAtBatchId: 0,
+                blobByteOffset: 0,
+                blobByteSize: 0,
+                blobCreatedIn: 0,
+            },
         };
 
         writer.insert_forced_inclusion(&event).await.unwrap();

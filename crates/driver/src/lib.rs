@@ -548,9 +548,9 @@ impl Driver {
     /// Record a forced inclusion event.
     async fn handle_forced_inclusion(&self, event: ForcedInclusionProcessed) {
         if let Err(e) = self.clickhouse.insert_forced_inclusion(&event).await {
-            tracing::error!(blob_hash = ?event.blobHash, err = %e, "Failed to insert forced inclusion");
+            tracing::error!(blob_hash = ?event.forcedInclusion.blobHash, err = %e, "Failed to insert forced inclusion");
         } else {
-            info!(blob_hash = ?event.blobHash, "Inserted forced inclusion processed");
+            info!(blob_hash = ?event.forcedInclusion.blobHash, "Inserted forced inclusion processed");
         }
     }
 
@@ -788,12 +788,14 @@ mod tests {
         l2_handle.abort();
 
         let event = ITaikoWrapper::ForcedInclusionProcessed {
-            blobHash: B256::repeat_byte(5),
-            feeInGwei: 1,
-            createdAtBatchId: 0,
-            blobByteOffset: 0,
-            blobByteSize: 0,
-            blobCreatedIn: 0,
+            forcedInclusion: ITaikoWrapper::ForcedInclusion {
+                blobHash: B256::repeat_byte(5),
+                feeInGwei: 1,
+                createdAtBatchId: 0,
+                blobByteOffset: 0,
+                blobByteSize: 0,
+                blobCreatedIn: 0,
+            },
         };
 
         driver.handle_forced_inclusion(event).await;

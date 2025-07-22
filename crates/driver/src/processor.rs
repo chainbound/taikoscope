@@ -381,9 +381,9 @@ impl ProcessorDriver {
             TaikoEvent::ForcedInclusionProcessed(wrapper) => {
                 let event = &wrapper.event;
                 if let Err(e) = writer.insert_forced_inclusion(event).await {
-                    tracing::error!(blob_hash = ?event.blobHash, err = %e, "Failed to insert forced inclusion");
+                    tracing::error!(blob_hash = ?event.forcedInclusion.blobHash, err = %e, "Failed to insert forced inclusion");
                 } else {
-                    info!(blob_hash = ?event.blobHash, "Inserted forced inclusion");
+                    info!(blob_hash = ?event.forcedInclusion.blobHash, "Inserted forced inclusion");
                 }
             }
             TaikoEvent::BatchesProved(wrapper) => {
@@ -495,7 +495,7 @@ impl ProcessorDriver {
             }
             TaikoEvent::ForcedInclusionProcessed(wrapper) => {
                 info!(
-                    blob_hash = ?wrapper.event.blobHash,
+                    blob_hash = ?wrapper.event.forcedInclusion.blobHash,
                     "Received ForcedInclusionProcessed event (dropped - DB writes disabled)"
                 );
             }

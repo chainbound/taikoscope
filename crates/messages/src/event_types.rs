@@ -86,7 +86,7 @@ impl TaikoEvent {
                 format!("{}:{}-batches_verified", v.verified.batch_id, v.l1_tx_hash)
             }
             Self::ForcedInclusionProcessed(f) => {
-                format!("{}-forced_inclusion_processed", f.event.blobHash)
+                format!("{}-forced_inclusion_processed", f.event.forcedInclusion.blobHash)
             }
         }
     }
