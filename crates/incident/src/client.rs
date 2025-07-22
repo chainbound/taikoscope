@@ -187,14 +187,14 @@ mod tests {
             components: vec!["comp1".to_owned()],
             statuses: vec![ComponentStatus::operational("comp1")],
             notify: true,
-            started: Some("2025-05-12T07:48:00Z".to_owned()),
+            resolved: Some("2025-05-12T07:48:00Z".to_owned()),
         };
         let expected = json!({
             "status": "RESOLVED",
             "components": ["comp1"],
             "statuses": [{"id": "comp1", "status": "OPERATIONAL"}],
             "notify": true,
-            "started": "2025-05-12T07:48:00Z"
+            "resolved": "2025-05-12T07:48:00Z"
         });
         let actual = serde_json::to_value(&payload).unwrap();
         assert_eq!(actual, expected);
@@ -249,7 +249,7 @@ mod tests {
             components: vec!["comp1".into()],
             statuses: vec![ComponentStatus::operational("comp1")],
             notify: true,
-            started: Some("2025-05-12T07:48:00Z".to_owned()),
+            resolved: Some("2025-05-12T07:48:00Z".to_owned()),
         };
         client.resolve_incident("incident123", &payload).await.unwrap();
         mock.assert_async().await;
@@ -358,7 +358,7 @@ mod tests {
             components: vec!["comp1".into()],
             statuses: vec![ComponentStatus::operational("comp1")],
             notify: true,
-            started: None,
+            resolved: None,
         };
         let err = client.resolve_incident("incident123", &payload).await.unwrap_err();
         assert!(err.to_string().contains("500"));
