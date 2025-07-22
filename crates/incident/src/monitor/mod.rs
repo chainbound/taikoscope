@@ -80,9 +80,9 @@ pub struct ResolveIncident {
     pub statuses: Vec<ComponentStatus>,
     /// Whether to notify subscribers
     pub notify: bool,
-    /// Time the incident was resolved in RFC3339 format
+    /// Time the incident started in RFC3339 format
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub resolved: Option<String>,
+    pub started: Option<String>,
 }
 
 mod batch_proof_timeout;

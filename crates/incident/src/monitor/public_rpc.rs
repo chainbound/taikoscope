@@ -126,7 +126,7 @@ async fn resolve(client: &IncidentClient, component_id: &str, id: &str) {
         components: vec![component_id.to_owned()],
         statuses: vec![ComponentStatus::operational(component_id)],
         notify: true,
-        resolved: Some(Utc::now().to_rfc3339()),
+        started: Some(Utc::now().to_rfc3339()),
     };
     if let Err(e) = client.resolve_incident(id, &body).await {
         error!(error = %e, incident_id = %id, "failed to resolve incident");

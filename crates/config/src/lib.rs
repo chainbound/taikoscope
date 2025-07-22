@@ -249,8 +249,10 @@ mod tests {
     //! to avoid interference between parallel test execution.
     use super::Opts;
     use clap::Parser;
+    use serial_test::serial;
 
     #[test]
+    #[serial]
     fn test_verify_cli() {
         use clap::CommandFactory;
         Opts::command().debug_assert()
@@ -303,6 +305,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_default_values() {
         // Clean up any environment variables that might affect this test
         use std::env;
@@ -343,6 +346,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_env_overrides() {
         use std::env;
 
@@ -402,6 +406,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_all_origins_included() {
         use super::DEFAULT_ALLOWED_ORIGINS;
 

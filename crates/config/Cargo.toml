@@ -12,5 +12,8 @@ async-nats.workspace = true
 clap.workspace = true
 url.workspace = true
 
+[dev-dependencies]
+serial_test = "3.0.0"
+
 [lints]
 workspace = true
