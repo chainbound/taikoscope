@@ -114,7 +114,7 @@ impl<K: Clone + Debug + Eq + std::hash::Hash> BaseMonitor<K> {
             components: vec![self.component_id.clone()],
             statuses: vec![ComponentStatus::operational(&self.component_id)],
             notify: true,
-            started: Some(Utc::now().to_rfc3339()),
+            resolved: Some(Utc::now().to_rfc3339()),
         }
     }
 
@@ -288,7 +288,7 @@ mod tests {
         assert_eq!(payload.components, vec!["comp1".to_owned()]);
         assert_eq!(payload.statuses, vec![ComponentStatus::operational("comp1")]);
         assert!(payload.notify);
-        assert!(payload.started.is_some());
+        assert!(payload.resolved.is_some());
     }
 
     #[tokio::test]
