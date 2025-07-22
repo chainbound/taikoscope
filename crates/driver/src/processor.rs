@@ -393,7 +393,7 @@ impl ProcessorDriver {
                 // Calculate and insert prove costs
                 if let Some(cost) = Self::fetch_transaction_cost(extractor, l1_tx_hash).await {
                     let cost_per_batch =
-                        Self::average_cost_per_batch(cost, proved.batch_ids_proved().len());
+                        average_cost_per_batch(cost, proved.batch_ids_proved().len());
                     for batch_id in proved.batch_ids_proved() {
                         if let Err(e) = writer
                             .insert_prove_cost(l1_block_number, *batch_id, cost_per_batch)
@@ -533,11 +533,6 @@ impl ProcessorDriver {
                 None
             }
         }
-    }
-
-    /// Calculate average cost per batch for batch operations
-    const fn average_cost_per_batch(total_cost: u128, num_batches: usize) -> u128 {
-        if num_batches == 0 { 0 } else { total_cost / num_batches as u128 }
     }
 
     /// Handle L2 header with reorg detection
@@ -791,6 +786,11 @@ impl ProcessorDriver {
     }
 }
 
+/// Calculate average cost per batch for batch operations
+const fn average_cost_per_batch(total_cost: u128, num_batches: usize) -> u128 {
+    if num_batches == 0 { 0 } else { total_cost / num_batches as u128 }
+}
+
 /// Calculate orphaned block numbers during a reorg
 ///
 /// # Arguments
@@ -814,7 +814,19 @@ fn calculate_orphaned_blocks(old_head: u64, new_head: u64, _depth: u32) -> Vec<u
 
 #[cfg(test)]
 mod tests {
-    use super::calculate_orphaned_blocks;
+    use super::*;
+
+    #[test]
+    fn average_cost_per_batch_even_split() {
+        let cost = average_cost_per_batch(100, 4);
+        assert_eq!(cost, 25);
+    }
+
+    #[test]
+    fn average_cost_per_batch_rounds_down() {
+        let cost = average_cost_per_batch(10, 3);
+        assert_eq!(cost, 3);
+    }
 
     #[test]
     fn calculate_orphaned_blocks_correct_behavior() {

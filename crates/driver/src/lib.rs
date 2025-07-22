@@ -546,7 +546,7 @@ impl Driver {
 
     /// Store batches that have been proved on L1.
     async fn handle_batches_proved(&self, proved_data: (BatchesProved, u64, B256)) {
-        let (proved, l1_block_number, tx_hash) = proved_data;
+        let (proved, l1_block_number, _tx_hash) = proved_data;
         if let Err(e) = self.clickhouse.insert_proved_batch(&proved, l1_block_number).await {
             tracing::error!(
                 batch_ids = ?proved.batch_ids_proved(),
@@ -555,34 +555,6 @@ impl Driver {
             );
         } else {
             info!(batch_ids = ?proved.batch_ids_proved(), "Inserted proved batch");
-        }
-
-        if let Some(cost) = self.fetch_transaction_cost(tx_hash).await {
-            let cost_per_batch =
-                Self::average_cost_per_batch(cost, proved.batch_ids_proved().len());
-            for batch_id in proved.batch_ids_proved() {
-                if let Err(e) = self
-                    .clickhouse
-                    .insert_prove_cost(l1_block_number, *batch_id, cost_per_batch)
-                    .await
-                {
-                    tracing::error!(
-                        l1_block_number,
-                        batch_id,
-                        tx_hash = ?tx_hash,
-                        err = %e,
-                        "Failed to insert prove cost"
-                    );
-                } else {
-                    info!(
-                        l1_block_number,
-                        batch_id,
-                        tx_hash = ?tx_hash,
-                        cost = cost_per_batch,
-                        "Inserted prove cost"
-                    );
-                }
-            }
         }
     }
 
@@ -631,10 +603,6 @@ impl Driver {
                 None
             }
         }
-    }
-
-    const fn average_cost_per_batch(total_cost: u128, num_batches: usize) -> u128 {
-        if num_batches == 0 { 0 } else { total_cost / num_batches as u128 }
     }
 }
 
@@ -901,17 +869,5 @@ mod tests {
                 block_hash: HashBytes::from([9u8; 32]),
             }]
         );
-    }
-
-    #[test]
-    fn average_cost_per_batch_even_split() {
-        let cost = Driver::average_cost_per_batch(100, 4);
-        assert_eq!(cost, 25);
-    }
-
-    #[test]
-    fn average_cost_per_batch_rounds_down() {
-        let cost = Driver::average_cost_per_batch(10, 3);
-        assert_eq!(cost, 3);
     }
 }
