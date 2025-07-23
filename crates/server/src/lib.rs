@@ -138,13 +138,13 @@ mod tests {
             mock.url(),
             config::DEFAULT_ALLOWED_ORIGINS.split(',').map(|s| s.to_owned()).collect(),
         );
-        let (status, body, cors) = send_request(app, "https://masaya.taikoscope.xyz").await;
+        let (status, body, cors) = send_request(app, "https://taikoscope.xyz").await;
         let expected = json!({
             "l2_head_block": 1
         });
         assert_eq!(status, StatusCode::OK);
         assert_eq!(body, expected);
-        assert_eq!(cors.as_deref(), Some("https://masaya.taikoscope.xyz"));
+        assert_eq!(cors.as_deref(), Some("https://taikoscope.xyz"));
     }
 
     #[tokio::test]

@@ -11,7 +11,7 @@ export const TAIKOSCAN_BASE =
     ? 'https://taikoscan.io'
     : rawNetworkName?.toLowerCase() === 'hekla'
       ? 'https://hekla.taikoscan.io'
-      : 'https://cb-blockscout-masaya.vercel.app/blocks');
+      : 'https://hekla.taikoscan.io');
 
 export const ETHERSCAN_BASE =
   import.meta.env.VITE_ETHERSCAN_BASE ??

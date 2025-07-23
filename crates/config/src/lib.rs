@@ -6,7 +6,7 @@ use clap::Parser;
 use url::Url;
 
 /// Default origins allowed to access the API.
-pub const DEFAULT_ALLOWED_ORIGINS: &str = "https://taikoscope.xyz,https://www.taikoscope.xyz,https://masaya.taikoscope.xyz,https://www.masaya.taikoscope.xyz,https://hekla.taikoscope.xyz,https://www.hekla.taikoscope.xyz";
+pub const DEFAULT_ALLOWED_ORIGINS: &str = "https://taikoscope.xyz,https://www.taikoscope.xyz,https://hekla.taikoscope.xyz,https://www.hekla.taikoscope.xyz";
 /// Clickhouse database configuration options
 #[derive(Debug, Clone, Parser)]
 pub struct ClickhouseOpts {
@@ -91,13 +91,13 @@ pub struct RpcOpts {
 /// Taiko contract address configuration options
 #[derive(Debug, Clone, Parser)]
 pub struct TaikoAddressOpts {
-    /// Taiko inbox address on Masaya
+    /// Taiko inbox contract address
     #[clap(long, env = "TAIKO_INBOX_ADDRESS")]
     pub inbox_address: Address,
-    /// Taiko preconf whitelist address on Masaya
+    /// Taiko preconf whitelist contract address
     #[clap(long, env = "TAIKO_PRECONF_WHITELIST_ADDRESS")]
     pub preconf_whitelist_address: Address,
-    /// Taiko wrapper address on Masaya
+    /// Taiko wrapper contract address
     #[clap(long, env = "TAIKO_WRAPPER_ADDRESS")]
     pub taiko_wrapper_address: Address,
 }
@@ -333,8 +333,6 @@ mod tests {
         let expected_origins = vec![
             "https://taikoscope.xyz",
             "https://www.taikoscope.xyz",
-            "https://masaya.taikoscope.xyz",
-            "https://www.masaya.taikoscope.xyz",
             "https://hekla.taikoscope.xyz",
             "https://www.hekla.taikoscope.xyz",
         ];
@@ -417,11 +415,9 @@ mod tests {
 
         // Verify all origins are present
         let origins: Vec<&str> = DEFAULT_ALLOWED_ORIGINS.split(',').collect();
-        assert_eq!(origins.len(), 6);
+        assert_eq!(origins.len(), 4);
         assert!(origins.contains(&"https://taikoscope.xyz"));
         assert!(origins.contains(&"https://www.taikoscope.xyz"));
-        assert!(origins.contains(&"https://masaya.taikoscope.xyz"));
-        assert!(origins.contains(&"https://www.masaya.taikoscope.xyz"));
         assert!(origins.contains(&"https://hekla.taikoscope.xyz"));
         assert!(origins.contains(&"https://www.hekla.taikoscope.xyz"));
     }
