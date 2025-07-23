@@ -4,16 +4,23 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import * as swr from 'swr';
 vi.mock('swr', () => ({ default: vi.fn() }));
 import type { RequestResult } from '../services/apiService';
-import type { BatchFeeComponent } from '../types';
 import * as priceService from '../services/priceService';
 import { EconomicsChart } from '../components/EconomicsChart';
 
-const data = [{ value: 100, timestamp: 1 }];
+const batchData = [{
+  batch_id: 1,
+  l1_tx_hash: '0x123',
+  sequencer: '0xseq1',
+  priority_fee: 100000000,
+  base_fee: 200000000,
+  l1_data_cost: 50000000,
+  amortized_prove_cost: 25000000,
+}];
 
 describe('EconomicsChart', () => {
   it('renders with economics data', () => {
     vi.mocked(swr.default).mockReturnValue({
-      data: { data: data } as unknown as RequestResult<BatchFeeComponent[]>,
+      data: { data: { batches: batchData } } as unknown as RequestResult<any>,
     } as unknown as ReturnType<typeof swr.default>);
     vi.spyOn(priceService, 'useEthPrice').mockReturnValue({
       data: 1,

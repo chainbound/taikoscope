@@ -4,18 +4,19 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import * as swr from 'swr';
 vi.mock('swr', () => ({ default: vi.fn() }));
 import type { RequestResult } from '../services/apiService';
-import type { BatchFeeComponent } from '../types';
 import * as priceService from '../services/priceService';
 import { ProfitabilityChart } from '../components/ProfitabilityChart';
 
 // Helper data with negative profit
-const feeData = [
+const batchData = [
   {
-    batch: 1,
-    priority: 0,
-    base: 0,
-    l1Cost: 0,
-    amortizedProveCost: 0,
+    batch_id: 1,
+    l1_tx_hash: '0x123',
+    sequencer: '0xseq1',
+    priority_fee: 100000000,
+    base_fee: 200000000,
+    l1_data_cost: 50000000,
+    amortized_prove_cost: 25000000,
   },
 ];
 
@@ -23,7 +24,7 @@ const feeData = [
 describe('ProfitabilityChart', () => {
   it('renders when profit is negative', () => {
     vi.mocked(swr.default).mockReturnValue({
-      data: { data: feeData } as RequestResult<BatchFeeComponent[]>,
+      data: { data: { batches: batchData } } as unknown as RequestResult<any>,
     } as unknown as ReturnType<typeof swr.default>);
     vi.spyOn(priceService, 'useEthPrice').mockReturnValue({
       data: 1,
@@ -42,7 +43,7 @@ describe('ProfitabilityChart', () => {
 
   it('renders with non-zero prove cost', () => {
     vi.mocked(swr.default).mockReturnValue({
-      data: { data: feeData } as RequestResult<BatchFeeComponent[]>,
+      data: { data: { batches: batchData } } as unknown as RequestResult<any>,
     } as unknown as ReturnType<typeof swr.default>);
     vi.spyOn(priceService, 'useEthPrice').mockReturnValue({
       data: 1,
