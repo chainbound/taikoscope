@@ -296,12 +296,12 @@ export const fetchFailedProposalEvents = async (
   return {
     data: res.data?.events
       ? res.data.events.map((e) => ({
-          l2_block_number: e.l2_block_number,
-          original_sequencer: e.original_sequencer,
-          proposer: e.proposer,
-          l1_block_number: e.l1_block_number,
-          timestamp: Date.parse(e.inserted_at),
-        }))
+        l2_block_number: e.l2_block_number,
+        original_sequencer: e.original_sequencer,
+        proposer: e.proposer,
+        l1_block_number: e.l1_block_number,
+        timestamp: Date.parse(e.inserted_at),
+      }))
       : null,
     badRequest: res.badRequest,
     error: res.error,
@@ -940,82 +940,6 @@ export interface FeeComponent {
   base: number;
   l1Cost: number | null;
 }
-
-export interface BatchFeeComponent {
-  batch: number;
-  txHash: string;
-  sequencer: string;
-  priority: number;
-  base: number;
-  l1Cost: number | null;
-  amortizedProveCost: number | null;
-}
-
-export const fetchFeeComponents = async (
-  range: TimeRange,
-  address?: string,
-): Promise<RequestResult<FeeComponent[]>> => {
-  const url =
-    `${API_BASE}/l2-fee-components?${timeRangeToQuery(range)}&aggregated` +
-    (address ? `&address=${address}` : '');
-  const res = await fetchJson<{
-    blocks: {
-      l2_block_number: number;
-      priority_fee: number;
-      base_fee: number;
-      l1_data_cost: number | null;
-    }[];
-  }>(url);
-  return {
-    data: res.data
-      ? res.data.blocks.map((b) => ({
-        block_number: b.l2_block_number,
-        priority: b.priority_fee,
-        base: b.base_fee,
-        l1Cost: b.l1_data_cost ?? null,
-      }))
-      : null,
-    badRequest: res.badRequest,
-    error: res.error,
-  };
-};
-
-export const fetchBatchFeeComponents = async (
-  range: TimeRange,
-  address?: string,
-): Promise<RequestResult<BatchFeeComponent[]>> => {
-  const url =
-    `${API_BASE}/batch-fee-components?${timeRangeToQuery(range)}` +
-    (address ? `&address=${address}` : '');
-  const res = await fetchJson<{
-    batches: {
-      batch_id: number;
-      l1_block_number: number;
-      l1_tx_hash: string;
-      sequencer: string;
-      priority_fee: number;
-      base_fee: number;
-      l1_data_cost: number | null;
-      amortized_prove_cost: number | null;
-
-    }[];
-  }>(url);
-  return {
-    data: res.data
-      ? res.data.batches.map((b) => ({
-        batch: b.batch_id,
-        txHash: b.l1_tx_hash,
-        sequencer: getSequencerName(b.sequencer),
-        priority: b.priority_fee,
-        base: b.base_fee,
-        l1Cost: b.l1_data_cost ?? null,
-        amortizedProveCost: b.amortized_prove_cost ?? null,
-      }))
-      : null,
-    badRequest: res.badRequest,
-    error: res.error,
-  };
-};
 
 export interface L2FeesComponentsResponse {
   priority_fee: number | null;

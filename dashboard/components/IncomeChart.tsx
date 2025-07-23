@@ -12,7 +12,7 @@ import type { Payload } from 'recharts/types/component/DefaultTooltipContent';
 import useSWR from 'swr';
 import { useEthPrice } from '../services/priceService';
 import { formatEth } from '../utils';
-import { fetchBatchFeeComponents } from '../services/apiService';
+import { fetchL2FeesComponents } from '../services/apiService';
 import { TimeRange, BatchFeeComponent } from '../types';
 
 interface RevenueChartProps {
@@ -25,10 +25,21 @@ export const RevenueChart: React.FC<RevenueChartProps> = ({
   address,
 }) => {
   const { data: feeRes } = useSWR(
-    ['batchFeeComponents', timeRange, address],
-    () => fetchBatchFeeComponents(timeRange, address),
+    ['l2FeesComponents', timeRange, address],
+    () => fetchL2FeesComponents(timeRange),
   );
-  const feeData: BatchFeeComponent[] | null = feeRes?.data ?? null;
+  const feeData: BatchFeeComponent[] | null =
+    feeRes?.data?.batches
+      ?.filter((b) => !address || b.sequencer === address)
+      .map((b) => ({
+        batch: b.batch_id,
+        txHash: b.l1_tx_hash,
+        sequencer: b.sequencer,
+        priority: b.priority_fee,
+        base: b.base_fee,
+        l1Cost: b.l1_data_cost,
+        amortizedProveCost: b.amortized_prove_cost,
+      })) ?? null;
   const { data: ethPrice = 0, error: ethPriceError } = useEthPrice();
 
   if (!feeData || feeData.length === 0) {

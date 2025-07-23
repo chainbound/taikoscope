@@ -1,6 +1,6 @@
 import React from 'react';
 import useSWR from 'swr';
-import { fetchBatchFeeComponents } from '../services/apiService';
+import { fetchL2FeesComponents } from '../services/apiService';
 import { useEthPrice } from '../services/priceService';
 import { TimeRange } from '../types';
 import { rangeToHours } from '../utils/timeRange';
@@ -34,10 +34,21 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
 }) => {
   const { data: ethPrice = 0 } = useEthPrice();
   const { data: feeRes } = useSWR(
-    ['batchFeeComponents', timeRange, address],
-    () => fetchBatchFeeComponents(timeRange, address),
+    ['l2FeesComponents', timeRange, address],
+    () => fetchL2FeesComponents(timeRange),
   );
-  const batchData = feeRes?.data ?? [];
+  const batchData =
+    feeRes?.data?.batches
+      ?.filter((b) => !address || b.sequencer === address)
+      .map((b) => ({
+        batch: b.batch_id,
+        txHash: b.l1_tx_hash,
+        sequencer: b.sequencer,
+        priority: b.priority_fee,
+        base: b.base_fee,
+        l1Cost: b.l1_data_cost,
+        amortizedProveCost: b.amortized_prove_cost,
+      })) ?? [];
   const batchCount = batchData.length;
   const HOURS_IN_MONTH = 30 * 24;
   const hours = rangeToHours(timeRange);
