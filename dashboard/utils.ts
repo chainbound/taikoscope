@@ -117,7 +117,7 @@ export const formatSeconds = (seconds: number): string => {
   if (seconds >= 120) {
     return formatMinutesSeconds(seconds);
   }
-  return `${formatDecimal(seconds)}s`;
+  return `${Math.round(seconds)}s`;
 };
 
 export const formatHoursMinutes = (seconds: number): string => {
@@ -188,7 +188,7 @@ export const formatInterval = (
     ? `${formatDecimal(seconds / 3600)} hours`
     : showMinutes
       ? `${formatDecimal(seconds / 60)} minutes`
-      : `${Number(formatDecimal(seconds))} seconds`;
+      : `${Math.round(seconds)} seconds`;
 };
 
 export const formatBatchDuration = (
