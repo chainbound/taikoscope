@@ -8,21 +8,12 @@ import type { BatchFeeComponent } from '../types';
 import * as priceService from '../services/priceService';
 import { EconomicsChart } from '../components/EconomicsChart';
 
-const feeData = [
-  {
-    batch: 1,
-    priority: 1,
-    base: 1,
-    l1Cost: 0,
-    amortizedProveCost: 0,
-
-  },
-];
+const data = [{ value: 100, timestamp: 1 }];
 
 describe('EconomicsChart', () => {
   it('renders with economics data', () => {
     vi.mocked(swr.default).mockReturnValue({
-      data: { data: feeData } as RequestResult<BatchFeeComponent[]>,
+      data: { data: data } as unknown as RequestResult<BatchFeeComponent[]>,
     } as unknown as ReturnType<typeof swr.default>);
     vi.spyOn(priceService, 'useEthPrice').mockReturnValue({
       data: 1,

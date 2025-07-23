@@ -19,6 +19,7 @@ const feeData = [
   },
 ];
 
+
 describe('ProfitabilityChart', () => {
   it('renders when profit is negative', () => {
     vi.mocked(swr.default).mockReturnValue({

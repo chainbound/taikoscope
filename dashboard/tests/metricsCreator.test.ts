@@ -34,8 +34,8 @@ describe('metricsCreator', () => {
 
     const proveMetric = metrics.find((m) => m.title === 'Avg. Prove Time');
     const verifyMetric = metrics.find((m) => m.title === 'Avg. Verify Time');
-    expect(proveMetric?.value).toBe('2.0s');
-    expect(verifyMetric?.value).toBe('3.0s');
+    expect(proveMetric?.value).toBe('2s');
+    expect(verifyMetric?.value).toBe('3s');
 
     const proveCostMetric = metrics.find((m) => m.title === 'Prove Cost');
     expect(proveCostMetric?.value).toBe('5 ETH');

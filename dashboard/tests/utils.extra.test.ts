@@ -16,8 +16,8 @@ describe('extra utils', () => {
 
   describe('formatSeconds', () => {
     it.each([
-      [0, '0.00s'],
-      [119, '119.0s'],
+      [0, '0s'],
+      [119, '119s'],
       [120, '2:00min'],
       [7200, '2:00h'],
     ])('formats %p seconds to %p', (input, expected) => {
