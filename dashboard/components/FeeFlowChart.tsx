@@ -197,12 +197,12 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
       }
 
       // Otherwise, attempt to derive `wei` from USD using the current ETH price
-      if (ethPrice) {
+      if (ethPrice && ethPrice > 0) {
         const wei = (value / ethPrice) * WEI_TO_ETH;
         return `${formatEth(wei, 4)} (${usd})`;
       }
 
-      // Fallback (should rarely happen): return USD only
+      // Fallback when ETH price is unavailable: return USD only
       return usd;
     },
     [ethPrice],
@@ -217,13 +217,13 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
       }
 
       // Otherwise, attempt to derive `wei` from USD using the current ETH price
-      if (ethPrice) {
+      if (ethPrice && ethPrice > 0) {
         const wei = (value / ethPrice) * WEI_TO_ETH;
         return formatEth(wei, 4);
       }
 
-      // Fallback (should rarely happen): return USD only
-      return formatUsd(value);
+      // Fallback when ETH price is unavailable: return 0 ETH
+      return '0 ETH';
     },
     [ethPrice],
   );

@@ -47,4 +47,23 @@ describe('calculateProfit', () => {
     });
     expect(profit).toBeCloseTo(10 + 20 * 0.75 - 5 - 5);
   });
+
+  it('handles zero ETH price without NaN', () => {
+    const res = calculateProfit({
+      priorityFee: 2e9,
+      baseFee: 1e9,
+      l1DataCost: 5e8,
+      proveCost: 1e8,
+      hardwareCostUsd: 100,
+      ethPrice: 0,
+    });
+    expect(res.revenueEth).toBeCloseTo(2.75);
+    expect(res.costEth).toBeCloseTo(0.6); // Only l1DataCost + proveCost, no hardware cost
+    expect(res.profitEth).toBeCloseTo(2.15);
+    expect(res.revenueUsd).toBe(0);
+    expect(res.costUsd).toBe(0);
+    expect(res.profitUsd).toBe(0);
+    expect(Number.isFinite(res.costEth)).toBe(true);
+    expect(Number.isFinite(res.profitEth)).toBe(true);
+  });
 });

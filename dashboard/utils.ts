@@ -141,6 +141,9 @@ export const formatWithCommas = (value: number): string =>
   value.toLocaleString();
 
 export const formatEth = (wei: number, decimals?: number): string => {
+  if (!Number.isFinite(wei) || Number.isNaN(wei)) {
+    return '0 ETH';
+  }
   const eth = wei / 1e9;
   if (Math.abs(eth) >= 1000) {
     return `${Math.trunc(eth).toLocaleString()} ETH`;

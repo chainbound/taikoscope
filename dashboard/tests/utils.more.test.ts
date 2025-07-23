@@ -8,6 +8,7 @@ import {
   shouldShowMinutes,
   isValidRefreshRate,
   loadRefreshRate,
+  formatEth,
 } from '../utils';
 
 // Test additional utility functions
@@ -84,5 +85,19 @@ describe('utils additional', () => {
     expect(loadRefreshRate()).toBe(0);
     if (prev !== undefined)
       (globalThis as { localStorage?: Storage }).localStorage = prev;
+  });
+});
+
+describe('formatEth NaN handling', () => {
+  it('handles NaN input', () => {
+    expect(formatEth(NaN)).toBe('0 ETH');
+  });
+
+  it('handles Infinity input', () => {
+    expect(formatEth(Infinity)).toBe('0 ETH');
+  });
+
+  it('handles negative Infinity input', () => {
+    expect(formatEth(-Infinity)).toBe('0 ETH');
   });
 });

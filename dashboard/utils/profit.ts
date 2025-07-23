@@ -29,8 +29,9 @@ export const calculateProfit = ({
 }: ProfitParams): ProfitResult => {
   const revenueEth = ((priorityFee ?? 0) + (baseFee ?? 0) * 0.75) / WEI_TO_ETH;
   const revenueUsd = revenueEth * ethPrice;
+  const hardwareCostEth = ethPrice && ethPrice > 0 ? hardwareCostUsd / ethPrice : 0;
   const costEth =
-    hardwareCostUsd / ethPrice +
+    hardwareCostEth +
     ((l1DataCost ?? 0) + (proveCost ?? 0)) / WEI_TO_ETH;
   const costUsd = costEth * ethPrice;
   const profitUsd = revenueUsd - costUsd;

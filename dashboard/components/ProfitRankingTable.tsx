@@ -75,7 +75,7 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
   const hours = rangeToHours(timeRange);
   const MONTH_HOURS = 30 * 24;
   const costPerSeqUsd = ((cloudCost + proverCost) / MONTH_HOURS) * hours;
-  const costPerSeqEth = ethPrice ? costPerSeqUsd / ethPrice : 0;
+  const costPerSeqEth = ethPrice && ethPrice > 0 ? costPerSeqUsd / ethPrice : 0;
 
   const rows = sequencers.map((seq) => {
     const addr = seq.address || getSequencerAddress(seq.name) || '';

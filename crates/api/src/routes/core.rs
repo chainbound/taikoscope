@@ -12,13 +12,12 @@ use crate::{
 };
 use alloy_primitives::Address;
 use api_types::{
-    AvgBlobsPerBatchResponse, BatchFeeComponentRow, BatchFeeComponentsResponse,
-    BatchPostingTimesResponse, BlockProfitItem, BlockProfitsResponse, ErrorResponse,
-    EthPriceResponse, FeeComponentsResponse, L1BlockTimesResponse, L1DataCostResponse,
-    L1HeadBlockResponse, L2FeesComponentsResponse, L2FeesResponse, L2HeadBlockResponse,
-    PreconfDataResponse, ProveCostResponse, ProveTimesResponse, SequencerBlocksItem,
-    SequencerBlocksResponse, SequencerDistributionItem, SequencerDistributionResponse,
-    SequencerFeeRow, VerifyTimesResponse,
+    AvgBlobsPerBatchResponse, BatchFeeComponentRow, BatchPostingTimesResponse, BlockProfitItem,
+    BlockProfitsResponse, ErrorResponse, EthPriceResponse, FeeComponentsResponse,
+    L1BlockTimesResponse, L1DataCostResponse, L1HeadBlockResponse, L2FeesComponentsResponse,
+    L2FeesResponse, L2HeadBlockResponse, PreconfDataResponse, ProveCostResponse,
+    ProveTimesResponse, SequencerBlocksItem, SequencerBlocksResponse, SequencerDistributionItem,
+    SequencerDistributionResponse, SequencerFeeRow, VerifyTimesResponse,
 };
 use axum::{
     Json,
