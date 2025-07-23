@@ -4,7 +4,8 @@ import { fetchL2FeesComponents } from '../services/apiService';
 import { useEthPrice } from '../services/priceService';
 import { TimeRange } from '../types';
 import { rangeToHours } from '../utils/timeRange';
-import { formatEth, l1TxLink } from '../utils';
+import { formatEth, l1TxLink, addressLink } from '../utils';
+import { getSequencerName } from '../sequencerConfig';
 import { calculateProfit } from '../utils/profit';
 
 interface BlockProfitTablesProps {
@@ -130,7 +131,7 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
                 <td className="px-2 py-1">
                   {l1TxLink(b.txHash, b.batch.toLocaleString())}
                 </td>
-                <td className="px-2 py-1">{b.sequencer}</td>
+                <td className="px-2 py-1">{addressLink(b.sequencer, getSequencerName(b.sequencer))}</td>
                 <td
                   className="px-2 py-1"
                   title={`$${formatUsd(b.revenueEth * ethPrice)}`}
