@@ -9,6 +9,7 @@ use eyre::{Context, Result};
 use hex::encode;
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeSet, time::Instant};
+use tokio::try_join;
 use tracing::{debug, error};
 use url::Url;
 
@@ -3118,15 +3119,12 @@ impl ClickhouseReader {
         proposer: Option<AddressBytes>,
         range: TimeRange,
     ) -> Result<(Vec<SequencerFeeRow>, Vec<BatchFeeComponentRow>, Option<u128>)> {
-        // Get sequencer fee data
-        let sequencer_fees = self.get_l2_fees_by_sequencer(range).await?;
-
-        // Get batch fee components
-        let batch_components = self.get_batch_fee_components(proposer, range).await?;
-
-        // Get total prove cost for amortization
-        let prove_total = self.get_total_prove_cost(proposer, range).await?;
-
+        // Fetch all three concurrently
+        let (sequencer_fees, batch_components, prove_total) = try_join!(
+            self.get_l2_fees_by_sequencer(range),
+            self.get_batch_fee_components(proposer, range),
+            self.get_total_prove_cost(proposer, range)
+        )?;
         Ok((sequencer_fees, batch_components, prove_total))
     }
 }

@@ -22,11 +22,11 @@ url.workspace = true
 hex.workspace = true
 include_dir = "0.7"
 regex = "1"
+tokio.workspace = true
 utoipa = { version = "5.4", features = ["chrono"] }
 
 [dev-dependencies]
 clickhouse.workspace = true
-tokio.workspace = true
 
 [features]
 test-util = ["clickhouse/test-util"]
