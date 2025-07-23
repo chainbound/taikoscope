@@ -1017,14 +1017,14 @@ impl ClickhouseReader {
         struct RawRow {
             l2_block_number: u64,
             block_time: u64,
-            ms_since_prev_block: Option<u64>,
+            s_since_prev_block: Option<u64>,
         }
 
         let mut query = format!(
             "SELECT h.l2_block_number, h.block_ts AS block_time, \
-                    toUInt64OrNull(toString(((h.block_ts * 1000) - \
-                        lagInFrame(h.block_ts * 1000) OVER (ORDER BY h.l2_block_number)))) \
-                        AS ms_since_prev_block \
+                    toUInt64OrNull(toString((h.block_ts - \
+                        lagInFrame(h.block_ts) OVER (ORDER BY h.l2_block_number)))) \
+                        AS s_since_prev_block \
              FROM {db}.l2_head_events h \
              WHERE h.block_ts >= {since} \
                AND {filter}",
@@ -1049,10 +1049,10 @@ impl ClickhouseReader {
             .into_iter()
             .filter_map(|r| {
                 let dt = Utc.timestamp_opt(r.block_time as i64, 0).single()?;
-                r.ms_since_prev_block.map(|ms| L2BlockTimeRow {
+                r.s_since_prev_block.map(|s| L2BlockTimeRow {
                     l2_block_number: r.l2_block_number,
                     block_time: dt,
-                    ms_since_prev_block: ms,
+                    s_since_prev_block: s,
                 })
             })
             .collect())
@@ -1124,13 +1124,13 @@ impl ClickhouseReader {
         struct RawRow {
             l2_block_number: u64,
             sum_tx: u32,
-            ms_since_prev_block: Option<u64>,
+            s_since_prev_block: Option<u64>,
         }
 
         let mut query = format!(
             "SELECT h.l2_block_number, sum_tx, \
-                    toUInt64OrNull(toString(((h.block_ts * 1000) - \
-                        lagInFrame(h.block_ts * 1000) OVER (ORDER BY h.l2_block_number)))) AS ms_since_prev_block \
+                    toUInt64OrNull(toString((h.block_ts - \
+                        lagInFrame(h.block_ts) OVER (ORDER BY h.l2_block_number)))) AS s_since_prev_block \
              FROM {db}.l2_head_events h \
              WHERE h.block_ts >= {since} \
                AND {filter}",
@@ -1154,13 +1154,13 @@ impl ClickhouseReader {
         Ok(rows
             .into_iter()
             .filter_map(|r| {
-                let ms = r.ms_since_prev_block?;
-                if ms == 0 {
+                let s = r.s_since_prev_block?;
+                if s == 0 {
                     None
                 } else {
                     Some(L2TpsRow {
                         l2_block_number: r.l2_block_number,
-                        tps: r.sum_tx as f64 / (ms as f64 / 1000.0),
+                        tps: r.sum_tx as f64 / s as f64,
                     })
                 }
             })
@@ -1803,13 +1803,13 @@ impl ClickhouseReader {
         struct RawRow {
             l2_block_number: u64,
             block_time: u64,
-            ms_since_prev_block: Option<u64>,
+            s_since_prev_block: Option<u64>,
         }
         #[derive(Row, Deserialize)]
         struct AggRow {
             l2_block_number: u64,
             block_time: u64,
-            ms_since_prev_block: u64,
+            s_since_prev_block: u64,
         }
 
         let bucket = bucket.unwrap_or(1);
@@ -1818,10 +1818,10 @@ impl ClickhouseReader {
                 "SELECT h.l2_block_number, \
                         h.block_ts AS block_time, \
                         toUInt64OrNull(toString( \
-                            ((h.block_ts * 1000) - \
-                             lagInFrame(h.block_ts * 1000) OVER (ORDER BY \
+                            (h.block_ts - \
+                             lagInFrame(h.block_ts) OVER (ORDER BY \
                              h.l2_block_number)) \
-                        )) AS ms_since_prev_block \
+                        )) AS s_since_prev_block \
                  FROM {db}.l2_head_events h \
                  WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
                    AND {filter}",
@@ -1839,10 +1839,10 @@ impl ClickhouseReader {
                 .into_iter()
                 .filter_map(|r| {
                     let dt = Utc.timestamp_opt(r.block_time as i64, 0).single()?;
-                    r.ms_since_prev_block.map(|ms| L2BlockTimeRow {
+                    r.s_since_prev_block.map(|s| L2BlockTimeRow {
                         l2_block_number: r.l2_block_number,
                         block_time: dt,
-                        ms_since_prev_block: ms,
+                        s_since_prev_block: s,
                     })
                 })
                 .collect());
@@ -1852,10 +1852,10 @@ impl ClickhouseReader {
             "SELECT h.l2_block_number, \
                     h.block_ts AS block_time, \
                     toUInt64OrNull(toString( \
-                        ((h.block_ts * 1000) - \
-                         lagInFrame(h.block_ts * 1000) OVER (ORDER BY \
+                        (h.block_ts - \
+                         lagInFrame(h.block_ts) OVER (ORDER BY \
                          h.l2_block_number)) \
-                    )) AS ms_since_prev_block \
+                    )) AS s_since_prev_block \
              FROM {db}.l2_head_events h \
              WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
                AND {filter}",
@@ -1869,7 +1869,7 @@ impl ClickhouseReader {
         let query = format!(
             "SELECT intDiv(l2_block_number, {bucket}) * {bucket} AS l2_block_number, \
                     max(block_time) AS block_time, \
-                    toUInt64(ifNull(avg(ms_since_prev_block), 0)) AS ms_since_prev_block \
+                    toUInt64(ifNull(avg(s_since_prev_block), 0)) AS s_since_prev_block \
              FROM ({inner}) as sub \
              GROUP BY l2_block_number \
              ORDER BY l2_block_number ASC",
@@ -1883,7 +1883,7 @@ impl ClickhouseReader {
             .map(|r| L2BlockTimeRow {
                 l2_block_number: r.l2_block_number,
                 block_time: Utc.timestamp_opt(r.block_time as i64, 0).unwrap(),
-                ms_since_prev_block: r.ms_since_prev_block,
+                s_since_prev_block: r.s_since_prev_block,
             })
             .collect())
     }
@@ -1902,17 +1902,17 @@ impl ClickhouseReader {
         struct RawRow {
             l2_block_number: u64,
             block_time: u64,
-            ms_since_prev_block: Option<u64>,
+            s_since_prev_block: Option<u64>,
         }
 
         let mut query = format!(
             "SELECT h.l2_block_number, \
                     h.block_ts AS block_time, \
                     toUInt64OrNull(toString(\
-                        ((h.block_ts * 1000) - \
-                         lagInFrame(h.block_ts * 1000) OVER (ORDER BY \
+                        (h.block_ts - \
+                         lagInFrame(h.block_ts) OVER (ORDER BY \
                          h.l2_block_number))\
-                    )) AS ms_since_prev_block \
+                    )) AS s_since_prev_block \
              FROM {db}.l2_head_events h \
              WHERE {filter}",
             filter = self.reorg_filter("h"),
@@ -1947,10 +1947,10 @@ impl ClickhouseReader {
             .into_iter()
             .filter_map(|r| {
                 let dt = Utc.timestamp_opt(r.block_time as i64, 0).single()?;
-                r.ms_since_prev_block.map(|ms| L2BlockTimeRow {
+                r.s_since_prev_block.map(|s| L2BlockTimeRow {
                     l2_block_number: r.l2_block_number,
                     block_time: dt,
-                    ms_since_prev_block: ms,
+                    s_since_prev_block: s,
                 })
             })
             .collect())
@@ -2608,7 +2608,7 @@ impl ClickhouseReader {
         struct RawRow {
             l2_block_number: u64,
             sum_tx: u32,
-            ms_since_prev_block: Option<u64>,
+            s_since_prev_block: Option<u64>,
         }
         #[derive(Row, Deserialize)]
         struct AggRow {
@@ -2620,9 +2620,9 @@ impl ClickhouseReader {
         if bucket <= 1 {
             let mut query = format!(
                 "SELECT h.l2_block_number, sum_tx, \
-                        toUInt64OrNull(toString(((h.block_ts * 1000) - \
-                            lagInFrame(h.block_ts * 1000) OVER (ORDER BY h.l2_block_number)))) \
-                            AS ms_since_prev_block \
+                        toUInt64OrNull(toString((h.block_ts - \
+                            lagInFrame(h.block_ts) OVER (ORDER BY h.l2_block_number)))) \
+                            AS s_since_prev_block \
                  FROM {db}.l2_head_events h \
                  WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
                    AND {filter}",
@@ -2639,13 +2639,13 @@ impl ClickhouseReader {
             return Ok(rows
                 .into_iter()
                 .filter_map(|r| {
-                    let ms = r.ms_since_prev_block?;
-                    if ms == 0 {
+                    let s = r.s_since_prev_block?;
+                    if s == 0 {
                         return None;
                     }
                     Some(L2TpsRow {
                         l2_block_number: r.l2_block_number,
-                        tps: r.sum_tx as f64 / (ms as f64 / 1000.0),
+                        tps: r.sum_tx as f64 / s as f64,
                     })
                 })
                 .collect());
@@ -2654,8 +2654,8 @@ impl ClickhouseReader {
         let mut inner = format!(
             "SELECT h.l2_block_number, \
                     sum_tx, \
-                    toUInt64OrNull(toString(((h.block_ts * 1000) - \
-                        lagInFrame(h.block_ts * 1000) OVER (ORDER BY h.l2_block_number)))) AS ms_since_prev_block \
+                    toUInt64OrNull(toString((h.block_ts - \
+                        lagInFrame(h.block_ts) OVER (ORDER BY h.l2_block_number)))) AS s_since_prev_block \
              FROM {db}.l2_head_events h \
              WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
                AND {filter}",
@@ -2671,9 +2671,9 @@ impl ClickhouseReader {
                     ifNull(avg(tps), 0.0) AS tps \
              FROM ( \
                 SELECT intDiv(l2_block_number, {bucket}) * {bucket} AS l2_bucket, \
-                       toFloat64(sum_tx) * 1000.0 / ms_since_prev_block AS tps \
+                       toFloat64(sum_tx) / s_since_prev_block AS tps \
                   FROM ({inner}) AS base \
-                 WHERE ms_since_prev_block > 0 \
+                 WHERE s_since_prev_block > 0 \
              ) AS sub \
              GROUP BY l2_bucket \
              ORDER BY l2_bucket ASC",
@@ -2702,14 +2702,14 @@ impl ClickhouseReader {
         struct RawRow {
             l2_block_number: u64,
             sum_tx: u32,
-            ms_since_prev_block: Option<u64>,
+            s_since_prev_block: Option<u64>,
         }
 
         let mut query = format!(
             "SELECT h.l2_block_number, sum_tx, \
                     toUInt64OrNull(toString(((h.block_ts * 1000) - \
                         lagInFrame(h.block_ts * 1000) OVER (ORDER BY h.l2_block_number)))) \
-                        AS ms_since_prev_block \
+                        AS s_since_prev_block \
              FROM {db}.l2_head_events h \
              WHERE {filter}",
             filter = self.reorg_filter("h"),
@@ -2743,13 +2743,13 @@ impl ClickhouseReader {
         Ok(rows
             .into_iter()
             .filter_map(|r| {
-                let ms = r.ms_since_prev_block?;
-                if ms == 0 {
+                let s = r.s_since_prev_block?;
+                if s == 0 {
                     None
                 } else {
                     Some(L2TpsRow {
                         l2_block_number: r.l2_block_number,
-                        tps: r.sum_tx as f64 / (ms as f64 / 1000.0),
+                        tps: r.sum_tx as f64 / s as f64,
                     })
                 }
             })

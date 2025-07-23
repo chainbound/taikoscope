@@ -66,28 +66,28 @@ describe('apiService', () => {
   it('transforms block times', async () => {
     globalThis.fetch = mockFetch({
       blocks: [
-        { l2_block_number: 1, block_time: '1970-01-01T00:00:01Z', ms_since_prev_block: 10 },
-        { l2_block_number: 2, block_time: '1970-01-01T00:00:02Z', ms_since_prev_block: 20 },
+        { l2_block_number: 1, block_time: '1970-01-01T00:00:01Z', s_since_prev_block: 10 },
+        { l2_block_number: 2, block_time: '1970-01-01T00:00:02Z', s_since_prev_block: 20 },
       ],
     });
     const blockTimes = await fetchL2BlockTimes('1h');
     expect(blockTimes.error).toBeNull();
     expect(blockTimes.data).toStrictEqual([
-      { value: 2, timestamp: 0.02, blockTime: new Date('1970-01-01T00:00:02Z').getTime() },
+      { value: 2, timestamp: 20, blockTime: new Date('1970-01-01T00:00:02Z').getTime() },
     ]);
   });
 
   it('transforms block times for 15m', async () => {
     globalThis.fetch = mockFetch({
       blocks: [
-        { l2_block_number: 1, block_time: '1970-01-01T00:00:01Z', ms_since_prev_block: 10 },
-        { l2_block_number: 2, block_time: '1970-01-01T00:00:02Z', ms_since_prev_block: 20 },
+        { l2_block_number: 1, block_time: '1970-01-01T00:00:01Z', s_since_prev_block: 10 },
+        { l2_block_number: 2, block_time: '1970-01-01T00:00:02Z', s_since_prev_block: 20 },
       ],
     });
     const blockTimes = await fetchL2BlockTimes('15m');
     expect(blockTimes.error).toBeNull();
     expect(blockTimes.data).toStrictEqual([
-      { value: 2, timestamp: 0.02, blockTime: new Date('1970-01-01T00:00:02Z').getTime() },
+      { value: 2, timestamp: 20, blockTime: new Date('1970-01-01T00:00:02Z').getTime() },
     ]);
   });
 

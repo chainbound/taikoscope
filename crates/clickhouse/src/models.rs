@@ -281,8 +281,8 @@ pub struct L2BlockTimeRow {
     pub l2_block_number: u64,
     /// Timestamp of the L2 block
     pub block_time: DateTime<Utc>,
-    /// Milliseconds since the previous block
-    pub ms_since_prev_block: u64,
+    /// Seconds since the previous block
+    pub s_since_prev_block: u64,
 }
 
 /// Row representing the gas used in each L2 block

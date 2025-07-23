@@ -272,14 +272,14 @@ async fn l2_block_times_endpoint_supports_block_range() {
     struct RawRow {
         l2_block_number: u64,
         block_time: u64,
-        ms_since_prev_block: Option<u64>,
+        s_since_prev_block: Option<u64>,
     }
 
     let mock = Mock::new();
     mock.add(handlers::provide(vec![RawRow {
         l2_block_number: 5,
         block_time: 1000,
-        ms_since_prev_block: Some(500),
+        s_since_prev_block: Some(5),
     }]));
 
     let url = Url::parse(mock.url()).unwrap();
@@ -301,7 +301,7 @@ async fn l2_block_times_endpoint_supports_block_range() {
             {
                 "l2_block_number": 5,
                 "block_time": Utc.timestamp_opt(1000, 0).single().unwrap().to_rfc3339(),
-                "ms_since_prev_block": 500
+                "s_since_prev_block": 5
             }
         ]
     });
@@ -360,14 +360,14 @@ async fn l2_tps_endpoint_supports_block_range() {
     struct RawRow {
         l2_block_number: u64,
         sum_tx: u32,
-        ms_since_prev_block: Option<u64>,
+        s_since_prev_block: Option<u64>,
     }
 
     let mock = Mock::new();
     mock.add(handlers::provide(vec![RawRow {
         l2_block_number: 5,
         sum_tx: 20,
-        ms_since_prev_block: Some(1000),
+        s_since_prev_block: Some(1),
     }]));
 
     let url = Url::parse(mock.url()).unwrap();

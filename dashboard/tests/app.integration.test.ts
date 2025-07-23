@@ -92,14 +92,14 @@ const responses: Record<string, Record<string, unknown>> = {
   [`/v1/forced-inclusions?${q15m}`]: { events: [{ blob_hash: [3, 4] }] },
   [`/v1/l2-block-times?${q1h}&limit=50`]: {
     blocks: [
-      { l2_block_number: 1, block_time: '1970-01-01T00:00:01Z', ms_since_prev_block: 1000 },
-      { l2_block_number: 2, block_time: '1970-01-01T00:00:02Z', ms_since_prev_block: 2000 },
+      { l2_block_number: 1, block_time: '1970-01-01T00:00:01Z', s_since_prev_block: 1 },
+      { l2_block_number: 2, block_time: '1970-01-01T00:00:02Z', s_since_prev_block: 2 },
     ],
   },
   [`/v1/l2-block-times?${q15m}&limit=50`]: {
     blocks: [
-      { l2_block_number: 1, block_time: '1970-01-01T00:00:01Z', ms_since_prev_block: 1000 },
-      { l2_block_number: 2, block_time: '1970-01-01T00:00:02Z', ms_since_prev_block: 2000 },
+      { l2_block_number: 1, block_time: '1970-01-01T00:00:01Z', s_since_prev_block: 1 },
+      { l2_block_number: 2, block_time: '1970-01-01T00:00:02Z', s_since_prev_block: 2 },
     ],
   },
   [`/v1/l1-block-times?${q1h}`]: {

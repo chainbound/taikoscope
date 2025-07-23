@@ -534,7 +534,7 @@ export const fetchL2BlockTimes = async (
     blocks: {
       l2_block_number: number;
       block_time: string;
-      ms_since_prev_block: number;
+      s_since_prev_block: number;
     }[];
   }>(url);
   if (!res.data) {
@@ -549,7 +549,7 @@ export const fetchL2BlockTimes = async (
 
   const data = blocksToProcess.map((b) => ({
     value: b.l2_block_number,
-    timestamp: b.ms_since_prev_block / 1000,
+    timestamp: b.s_since_prev_block,
     blockTime: new Date(b.block_time).getTime(),
   }));
 
@@ -567,7 +567,7 @@ export const fetchL2BlockTimesAggregated = async (
     blocks: {
       l2_block_number: number;
       block_time: string;
-      ms_since_prev_block: number;
+      s_since_prev_block: number;
     }[];
   }>(url);
   if (!res.data) {
@@ -577,7 +577,7 @@ export const fetchL2BlockTimesAggregated = async (
   const data = res.data.blocks.slice(1).map(
     (b): TimeSeriesData => ({
       value: b.l2_block_number,
-      timestamp: b.ms_since_prev_block / 1000,
+      timestamp: b.s_since_prev_block,
       blockTime: new Date(b.block_time).getTime(),
     }),
   );

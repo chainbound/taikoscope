@@ -65,13 +65,13 @@ pub fn aggregate_l2_block_times(rows: Vec<L2BlockTimeRow>, bucket: u64) -> Vec<L
             let last_time = rs.last().map(|r| r.block_time).unwrap_or_default();
             let (sum, count) = rs
                 .iter()
-                .map(|r| r.ms_since_prev_block)
-                .fold((0u64, 0u64), |(s, c), ms| (s + ms, c + 1));
+                .map(|r| r.s_since_prev_block)
+                .fold((0u64, 0u64), |(s, c), s_val| (s + s_val, c + 1));
             let avg = if count > 0 { sum / count } else { 0 };
             L2BlockTimeRow {
                 l2_block_number: g * bucket,
                 block_time: last_time,
-                ms_since_prev_block: avg,
+                s_since_prev_block: avg,
             }
         })
         .collect()
@@ -166,13 +166,13 @@ mod tests {
     // Helper functions for creating test data
     fn create_l2_block_time_row(
         block_num: u64,
-        ms_since_prev: u64,
+        s_since_prev: u64,
         time_offset_secs: i64,
     ) -> L2BlockTimeRow {
         L2BlockTimeRow {
             l2_block_number: block_num,
             block_time: Utc::now() + chrono::Duration::seconds(time_offset_secs),
-            ms_since_prev_block: ms_since_prev,
+            s_since_prev_block: s_since_prev,
         }
     }
 
@@ -294,45 +294,45 @@ mod tests {
 
     #[test]
     fn test_aggregate_l2_block_times_single_row() {
-        let rows = vec![create_l2_block_time_row(10, 1000, 0)];
+        let rows = vec![create_l2_block_time_row(10, 1, 0)];
         let result = aggregate_l2_block_times(rows, 5);
 
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].l2_block_number, 10); // 10 / 5 * 5 = 10
-        assert_eq!(result[0].ms_since_prev_block, 1000);
+        assert_eq!(result[0].s_since_prev_block, 1);
     }
 
     #[test]
     fn test_aggregate_l2_block_times_multiple_in_bucket() {
         let rows = vec![
-            create_l2_block_time_row(10, 1000, 0),
-            create_l2_block_time_row(11, 2000, 1),
-            create_l2_block_time_row(12, 3000, 2),
+            create_l2_block_time_row(10, 1, 0),
+            create_l2_block_time_row(11, 2, 1),
+            create_l2_block_time_row(12, 3, 2),
         ];
         let result = aggregate_l2_block_times(rows, 5);
 
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].l2_block_number, 10); // bucket 2 * 5 = 10
-        assert_eq!(result[0].ms_since_prev_block, 2000); // (1000 + 2000 + 3000) / 3 = 2000
+        assert_eq!(result[0].s_since_prev_block, 2); // (1 + 2 + 3) / 3 = 2
     }
 
     #[test]
     fn test_aggregate_l2_block_times_multiple_buckets() {
-        let rows = vec![create_l2_block_time_row(2, 1000, 0), create_l2_block_time_row(7, 2000, 1)];
+        let rows = vec![create_l2_block_time_row(2, 1, 0), create_l2_block_time_row(7, 2, 1)];
         let result = aggregate_l2_block_times(rows, 5);
 
         assert_eq!(result.len(), 2);
         // First bucket: block 2 -> bucket 0
         assert_eq!(result[0].l2_block_number, 0);
-        assert_eq!(result[0].ms_since_prev_block, 1000);
+        assert_eq!(result[0].s_since_prev_block, 1);
         // Second bucket: block 7 -> bucket 1
         assert_eq!(result[1].l2_block_number, 5);
-        assert_eq!(result[1].ms_since_prev_block, 2000);
+        assert_eq!(result[1].s_since_prev_block, 2);
     }
 
     #[test]
     fn test_aggregate_l2_block_times_zero_bucket() {
-        let rows = vec![create_l2_block_time_row(10, 1000, 0)];
+        let rows = vec![create_l2_block_time_row(10, 1, 0)];
         let result = aggregate_l2_block_times(rows, 0);
 
         assert_eq!(result.len(), 1);
