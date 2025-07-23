@@ -40,7 +40,6 @@ use utoipa::OpenApi;
         routes::core::sequencer_blocks,
         routes::core::l2_fees,
         routes::core::l2_fee_components,
-        routes::core::batch_fee_components,
         routes::aggregated::dashboard_data,
         routes::core::l1_data_cost,
         routes::core::eth_price
@@ -88,7 +87,6 @@ use utoipa::OpenApi;
             PreconfDataResponse,
             L2FeesResponse,
             FeeComponentsResponse,
-            BatchFeeComponentsResponse,
             SequencerFeeRow,
             DashboardDataResponse,
             EthPriceResponse,
