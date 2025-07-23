@@ -2414,34 +2414,69 @@ impl ClickhouseReader {
         }
 
         let mut query = format!(
-            "SELECT bb.batch_id, \
-                    b.l1_block_number AS l1_block_number, \
-                    b.l1_tx_hash AS l1_tx_hash, \
-                    b.proposer_addr AS proposer, \
-                    sum(h.sum_priority_fee) AS priority_fee, \
-                    sum(h.sum_base_fee) AS base_fee, \
-                    toNullable(max(dc.cost)) AS l1_data_cost \
-             FROM {db}.batch_blocks bb \
-             INNER JOIN {db}.batches b \
-               ON bb.batch_id = b.batch_id \
-             INNER JOIN {db}.l1_head_events l1 \
-               ON b.l1_block_number = l1.l1_block_number \
-             LEFT JOIN {db}.l2_head_events h \
-               ON bb.l2_block_number = h.l2_block_number \
-             LEFT JOIN {db}.l1_data_costs dc \
-               ON b.batch_id = dc.batch_id AND b.l1_block_number = dc.l1_block_number \
-             WHERE l1.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
-               AND {filter}",
+            "WITH recent_batches AS (
+            SELECT
+                b.batch_id,
+                b.l1_block_number,
+                b.l1_tx_hash,
+                b.proposer_addr
+            FROM
+                {db}.batches b
+            INNER JOIN
+                {db}.l1_head_events l1 ON b.l1_block_number = l1.l1_block_number
+            WHERE
+                l1.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})",
             interval = range.interval(),
-            filter = self.reorg_filter("h"),
             db = self.db_name,
         );
+
         if let Some(addr) = proposer {
             query.push_str(&format!(" AND b.proposer_addr = unhex('{}')", encode(addr)));
         }
-        query.push_str(
-            " GROUP BY bb.batch_id, b.l1_block_number, b.l1_tx_hash, b.proposer_addr ORDER BY bb.batch_id ASC",
-        );
+
+        query.push_str(&format!(
+            "),
+            recent_batch_blocks AS (
+                SELECT
+                    batch_id,
+                    l2_block_number
+                FROM
+                    {db}.batch_blocks
+                WHERE
+                    batch_id IN (SELECT batch_id FROM recent_batches)
+            )
+            SELECT
+                rb.batch_id,
+                rb.l1_block_number,
+                rb.l1_tx_hash,
+                rb.proposer_addr AS proposer,
+                sum(h.sum_priority_fee) AS priority_fee,
+                sum(h.sum_base_fee) AS base_fee,
+                toNullable(max(dc.cost)) AS l1_data_cost
+            FROM
+                recent_batches rb
+            INNER JOIN
+                recent_batch_blocks bb ON rb.batch_id = bb.batch_id
+            LEFT JOIN
+                {db}.l2_head_events h ON bb.l2_block_number = h.l2_block_number
+            LEFT JOIN
+                {db}.l1_data_costs dc ON rb.batch_id = dc.batch_id AND rb.l1_block_number = dc.l1_block_number
+            WHERE
+                bb.batch_id IN (
+                    SELECT DISTINCT b2.batch_id
+                    FROM {db}.batches b2
+                    INNER JOIN {db}.l1_head_events l1 ON b2.l1_block_number = l1.l1_block_number
+                    WHERE l1.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})
+                )
+                AND {filter}
+            GROUP BY
+                rb.batch_id, rb.l1_block_number, rb.l1_tx_hash, rb.proposer_addr
+            ORDER BY
+                rb.batch_id ASC",
+            interval = range.interval(),
+            filter = self.reorg_filter("h"),
+            db = self.db_name,
+        ));
 
         let rows = self.execute::<RawRow>(&query).await?;
         Ok(rows
