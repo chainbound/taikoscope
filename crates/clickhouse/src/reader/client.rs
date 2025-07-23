@@ -1021,13 +1021,18 @@ impl ClickhouseReader {
         }
 
         let mut query = format!(
-            "SELECT h.l2_block_number, h.block_ts AS block_time, \
-                    toUInt64OrNull(toString((h.block_ts - \
-                        lagInFrame(h.block_ts) OVER (ORDER BY h.l2_block_number)))) \
-                        AS s_since_prev_block \
-             FROM {db}.l2_head_events h \
-             WHERE h.block_ts >= {since} \
-               AND {filter}",
+            "WITH time_diffs AS ( \
+                SELECT h.l2_block_number, \
+                       h.block_ts AS block_time, \
+                       h.sequencer, \
+                       toUInt64OrNull(toString(if(isNull(lagInFrame(h.block_ts) OVER (ORDER BY h.l2_block_number)), NULL, h.block_ts - lagInFrame(h.block_ts) OVER (ORDER BY h.l2_block_number)))) \
+                           AS s_since_prev_block \
+                FROM {db}.l2_head_events h \
+                WHERE {filter} \
+            ) \
+            SELECT l2_block_number, block_time, s_since_prev_block \
+            FROM time_diffs \
+            WHERE block_time >= {since}",
             since = since.timestamp(),
             filter = self.reorg_filter("h"),
             db = self.db_name,
@@ -1129,8 +1134,7 @@ impl ClickhouseReader {
 
         let mut query = format!(
             "SELECT h.l2_block_number, sum_tx, \
-                    toUInt64OrNull(toString((h.block_ts - \
-                        lagInFrame(h.block_ts) OVER (ORDER BY h.l2_block_number)))) AS s_since_prev_block \
+                    toUInt64OrNull(toString(if(isNull(lagInFrame(h.block_ts) OVER (ORDER BY h.l2_block_number)), NULL, h.block_ts - lagInFrame(h.block_ts) OVER (ORDER BY h.l2_block_number)))) AS s_since_prev_block \
              FROM {db}.l2_head_events h \
              WHERE h.block_ts >= {since} \
                AND {filter}",
@@ -1815,16 +1819,21 @@ impl ClickhouseReader {
         let bucket = bucket.unwrap_or(1);
         if bucket <= 1 {
             let mut query = format!(
-                "SELECT h.l2_block_number, \
-                        h.block_ts AS block_time, \
-                        toUInt64OrNull(toString( \
-                            (h.block_ts - \
-                             lagInFrame(h.block_ts) OVER (ORDER BY \
-                             h.l2_block_number)) \
-                        )) AS s_since_prev_block \
-                 FROM {db}.l2_head_events h \
-                 WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
-                   AND {filter}",
+                "WITH time_diffs AS ( \
+                    SELECT h.l2_block_number, \
+                           h.block_ts AS block_time, \
+                           h.sequencer, \
+                           toUInt64OrNull(toString( \
+                               if(isNull(lagInFrame(h.block_ts) OVER (ORDER BY \
+                                h.l2_block_number)), NULL, h.block_ts - lagInFrame(h.block_ts) OVER (ORDER BY \
+                                h.l2_block_number)) \
+                           )) AS s_since_prev_block \
+                    FROM {db}.l2_head_events h \
+                    WHERE {filter} \
+                ) \
+                SELECT l2_block_number, block_time, s_since_prev_block \
+                FROM time_diffs \
+                WHERE block_time >= toUnixTimestamp(now64() - INTERVAL {interval})",
                 interval = range.interval(),
                 filter = self.reorg_filter("h"),
                 db = self.db_name,
@@ -1849,16 +1858,21 @@ impl ClickhouseReader {
         }
 
         let mut inner = format!(
-            "SELECT h.l2_block_number, \
-                    h.block_ts AS block_time, \
-                    toUInt64OrNull(toString( \
-                        (h.block_ts - \
-                         lagInFrame(h.block_ts) OVER (ORDER BY \
-                         h.l2_block_number)) \
-                    )) AS s_since_prev_block \
-             FROM {db}.l2_head_events h \
-             WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
-               AND {filter}",
+            "WITH time_diffs AS ( \
+                SELECT h.l2_block_number, \
+                       h.block_ts AS block_time, \
+                       h.sequencer, \
+                       toUInt64OrNull(toString( \
+                           if(isNull(lagInFrame(h.block_ts) OVER (ORDER BY \
+                            h.l2_block_number)), NULL, h.block_ts - lagInFrame(h.block_ts) OVER (ORDER BY \
+                            h.l2_block_number)) \
+                       )) AS s_since_prev_block \
+                FROM {db}.l2_head_events h \
+                WHERE {filter} \
+            ) \
+            SELECT l2_block_number, block_time, s_since_prev_block \
+            FROM time_diffs \
+            WHERE block_time >= toUnixTimestamp(now64() - INTERVAL {interval})",
             interval = range.interval(),
             filter = self.reorg_filter("h"),
             db = self.db_name,
@@ -1906,25 +1920,31 @@ impl ClickhouseReader {
         }
 
         let mut query = format!(
-            "SELECT h.l2_block_number, \
-                    h.block_ts AS block_time, \
-                    toUInt64OrNull(toString(\
-                        (h.block_ts - \
-                         lagInFrame(h.block_ts) OVER (ORDER BY \
-                         h.l2_block_number))\
-                    )) AS s_since_prev_block \
-             FROM {db}.l2_head_events h \
-             WHERE {filter}",
+            "WITH time_diffs AS ( \
+                SELECT h.l2_block_number, \
+                       h.block_ts AS block_time, \
+                       h.sequencer, \
+                       toUInt64OrNull(toString(\
+                           if(isNull(lagInFrame(h.block_ts) OVER (ORDER BY \
+                            h.l2_block_number)), NULL, h.block_ts - lagInFrame(h.block_ts) OVER (ORDER BY \
+                            h.l2_block_number))\
+                       )) AS s_since_prev_block \
+                FROM {db}.l2_head_events h \
+                WHERE {filter} \
+            ) \
+            SELECT l2_block_number, block_time, s_since_prev_block \
+            FROM time_diffs \
+            WHERE 1=1",
             filter = self.reorg_filter("h"),
             db = self.db_name,
         );
 
         if let Some(start) = start_block {
-            query.push_str(&format!(" AND h.l2_block_number >= {}", start));
+            query.push_str(&format!(" AND l2_block_number >= {}", start));
         }
 
         if let Some(end) = end_block {
-            query.push_str(&format!(" AND h.l2_block_number <= {}", end));
+            query.push_str(&format!(" AND l2_block_number <= {}", end));
         }
 
         if let Some(addr) = sequencer {
@@ -2654,8 +2674,7 @@ impl ClickhouseReader {
         let mut inner = format!(
             "SELECT h.l2_block_number, \
                     sum_tx, \
-                    toUInt64OrNull(toString((h.block_ts - \
-                        lagInFrame(h.block_ts) OVER (ORDER BY h.l2_block_number)))) AS s_since_prev_block \
+                    toUInt64OrNull(toString(if(isNull(lagInFrame(h.block_ts) OVER (ORDER BY h.l2_block_number)), NULL, h.block_ts - lagInFrame(h.block_ts) OVER (ORDER BY h.l2_block_number)))) AS s_since_prev_block \
              FROM {db}.l2_head_events h \
              WHERE h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
                AND {filter}",
@@ -2707,8 +2726,7 @@ impl ClickhouseReader {
 
         let mut query = format!(
             "SELECT h.l2_block_number, sum_tx, \
-                    toUInt64OrNull(toString(((h.block_ts * 1000) - \
-                        lagInFrame(h.block_ts * 1000) OVER (ORDER BY h.l2_block_number)))) \
+                    toUInt64OrNull(toString(if(isNull(lagInFrame(h.block_ts) OVER (ORDER BY h.l2_block_number)), NULL, h.block_ts - lagInFrame(h.block_ts) OVER (ORDER BY h.l2_block_number)))) \
                         AS s_since_prev_block \
              FROM {db}.l2_head_events h \
              WHERE {filter}",
