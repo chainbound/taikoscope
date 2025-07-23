@@ -2,7 +2,7 @@ import React from 'react';
 import { ResponsiveContainer, Sankey, Tooltip } from 'recharts';
 import type { TooltipProps } from 'recharts';
 import { formatEth } from '../utils';
-import { TAIKO_PINK, lightTheme, darkTheme } from '../theme';
+import { TAIKO_PINK, lightTheme } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
 import { calculateProfit } from '../utils/profit';
 
@@ -172,7 +172,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
 }) => {
   const { theme } = useTheme();
   const textColor =
-    theme === 'dark' ? darkTheme.foreground : lightTheme.foreground;
+    theme === 'dark' ? '#e2e8f0' : lightTheme.foreground;
   const { data: feeRes } = useSWR(['l2FeesFlow', timeRange, address], () =>
     fetchL2FeesComponents(timeRange),
   );
