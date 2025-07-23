@@ -56,7 +56,7 @@ describe('helpers', () => {
   it('creates metrics correctly', () => {
     expect(metrics[0].value).toBe('3.0');
     expect(metrics[0].group).toBe('Network Performance');
-    expect(metrics[1].value).toBe('60s');
+    expect(metrics[1].value).toBe('60.0s');
     expect(metrics[1].group).toBe('Network Performance');
     expect(metrics[2].value).toBe('N/A');
     expect(metrics[2].group).toBe('Network Performance');

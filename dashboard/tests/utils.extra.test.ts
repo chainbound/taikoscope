@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatDecimal, formatSeconds, formatHoursMinutes } from '../utils';
+import { formatDecimal, formatSeconds, formatSecondsWithDecimal, formatHoursMinutes } from '../utils';
 
 describe('extra utils', () => {
   describe('formatDecimal', () => {
@@ -22,6 +22,19 @@ describe('extra utils', () => {
       [7200, '2:00h'],
     ])('formats %p seconds to %p', (input, expected) => {
       expect(formatSeconds(input)).toBe(expected);
+    });
+  });
+
+  describe('formatSecondsWithDecimal', () => {
+    it.each([
+      [0, '0.0s'],
+      [3.1, '3.1s'],
+      [2.8, '2.8s'],
+      [119.7, '119.7s'],
+      [120, '2:00min'],
+      [7200, '2:00h'],
+    ])('formats %p seconds to %p', (input, expected) => {
+      expect(formatSecondsWithDecimal(input)).toBe(expected);
     });
   });
 

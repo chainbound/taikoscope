@@ -1,6 +1,7 @@
 import { type MetricData } from '../types';
 import {
   formatSeconds,
+  formatSecondsWithDecimal,
   formatDecimal,
   formatEth,
   formatWithCommas,
@@ -40,7 +41,7 @@ export const createMetrics = (data: MetricInputData): MetricData[] => [
   {
     title: 'L2 Block Cadence',
     value:
-      data.l2Cadence != null ? formatSeconds(data.l2Cadence / 1000) : 'N/A',
+      data.l2Cadence != null ? formatSecondsWithDecimal(data.l2Cadence / 1000) : 'N/A',
     group: 'Network Performance',
   },
   {

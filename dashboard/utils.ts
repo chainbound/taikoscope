@@ -120,6 +120,16 @@ export const formatSeconds = (seconds: number): string => {
   return `${Math.floor(seconds)}s`;
 };
 
+export const formatSecondsWithDecimal = (seconds: number): string => {
+  if (seconds >= 120 * 60) {
+    return formatHoursMinutes(seconds) + 'h';
+  }
+  if (seconds >= 120) {
+    return formatMinutesSeconds(seconds);
+  }
+  return `${formatDecimal(seconds, 1)}s`;
+};
+
 export const formatHoursMinutes = (seconds: number): string => {
   const secs = Math.round(seconds);
   const hrs = Math.floor(secs / 3600);
