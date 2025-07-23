@@ -117,7 +117,7 @@ export const formatSeconds = (seconds: number): string => {
   if (seconds >= 120) {
     return formatMinutesSeconds(seconds);
   }
-  return `${Math.round(seconds)}s`;
+  return `${Math.floor(seconds)}s`;
 };
 
 export const formatHoursMinutes = (seconds: number): string => {
