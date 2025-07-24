@@ -3,6 +3,7 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 
 const navSpy = vi.fn();
+let currentSearchParams = new URLSearchParams();
 
 vi.mock('react-router-dom', async () => {
   const actual =
@@ -12,7 +13,7 @@ vi.mock('react-router-dom', async () => {
   return {
     ...actual,
     useNavigate: () => navSpy,
-    useSearchParams: () => [new URLSearchParams(), vi.fn()],
+    useSearchParams: () => [currentSearchParams, vi.fn()],
   };
 });
 
@@ -28,6 +29,7 @@ describe('useRouterNavigation', () => {
   beforeEach(() => {
     vi.stubGlobal('window', { location: mockLocation, history: { length: 1 } });
     navSpy.mockClear();
+    currentSearchParams = new URLSearchParams();
   });
 
   it('sanitizes table navigation', () => {
@@ -50,5 +52,21 @@ describe('useRouterNavigation', () => {
 
     renderToStaticMarkup(React.createElement(Test));
     expect(navSpy).toHaveBeenCalledWith('/?view=table', { replace: true });
+  });
+
+  it('preserves view param when navigating to a table', () => {
+    currentSearchParams = new URLSearchParams('view=health');
+
+    function Test() {
+      const { navigateToTable } = useRouterNavigation();
+      navigateToTable('verify-times', undefined, '24h');
+      return null;
+    }
+
+    renderToStaticMarkup(React.createElement(Test));
+    expect(navSpy).toHaveBeenCalledWith(
+      '/table/verify-times?range=24h&view=health',
+      { replace: false },
+    );
   });
 });
