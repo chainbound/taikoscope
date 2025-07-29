@@ -4,9 +4,11 @@ use clickhouse_lib::ClickhouseReader;
 use network::http_retry;
 
 use std::{
-    sync::{Arc, Mutex},
+    sync::Arc,
     time::{Duration as StdDuration, Instant},
 };
+
+use tokio::sync::RwLock;
 
 use reqwest::Client;
 use serde_json::Value;
@@ -27,7 +29,7 @@ pub struct ApiState {
     pub(crate) http_client: Client,
     max_requests: u64,
     rate_period: StdDuration,
-    price_cache: Arc<Mutex<CachedPrice>>,
+    price_cache: Arc<RwLock<CachedPrice>>,
 }
 
 #[derive(Debug)]
@@ -50,7 +52,7 @@ impl ApiState {
             http_client: Client::new(),
             max_requests,
             rate_period,
-            price_cache: Arc::new(Mutex::new(CachedPrice {
+            price_cache: Arc::new(RwLock::new(CachedPrice {
                 value: 0.0,
                 updated_at: Instant::now() - StdDuration::from_secs(61),
             })),
@@ -71,14 +73,14 @@ impl ApiState {
     pub async fn eth_price(&self) -> eyre::Result<f64> {
         let now = Instant::now();
         {
-            let cache = self.price_cache.lock().expect("lock poisoned");
+            let cache = self.price_cache.read().await;
             if now.duration_since(cache.updated_at) < StdDuration::from_secs(60) {
                 return Ok(cache.value);
             }
         }
 
         let price = fetch_eth_price(&self.http_client).await?;
-        let mut cache = self.price_cache.lock().expect("lock poisoned");
+        let mut cache = self.price_cache.write().await;
         *cache = CachedPrice { value: price, updated_at: now };
         Ok(price)
     }
