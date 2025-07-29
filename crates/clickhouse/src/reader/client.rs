@@ -3063,7 +3063,7 @@ impl ClickhouseReader {
         let query = format!(
             "SELECT bucket_num AS l2_block_number, \
                 max(block_time) AS block_time, \
-                toUInt32(sum(sum_tx)) AS sum_tx \
+                toUInt32(avg(sum_tx)) AS sum_tx \
          FROM ( \
             SELECT intDiv(l2_block_number, {bucket}) * {bucket} AS bucket_num, \
                    block_time, \
