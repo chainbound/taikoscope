@@ -113,7 +113,7 @@ export const CostChart: React.FC<CostChartProps> = ({
           />
           <Tooltip
             labelFormatter={(v: number) => `Batch ${v}`}
-            formatter={(value: number, _name: string, { payload }: Payload<number, string>) =>
+            formatter={(value: number, _name: string, { payload }: Payload<number, "Cost">) =>
               [`${formatEth(value * 1e9, 3)} ($${payload.costUsd.toFixed(3)})`, 'Cost']
             }
             contentStyle={{

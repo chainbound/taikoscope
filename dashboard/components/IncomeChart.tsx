@@ -95,7 +95,7 @@ export const RevenueChart: React.FC<RevenueChartProps> = ({
           />
           <Tooltip
             labelFormatter={(v: number) => `Batch ${v}`}
-            formatter={(value: number, _name: string, { payload }: Payload<number, string>) =>
+            formatter={(value: number, _name: string, { payload }: Payload<number, "Revenue">) =>
               [`${formatEth(value * 1e9, 3)} ($${payload.revenueUsd.toFixed(3)})`, 'Revenue']
             }
             contentStyle={{

@@ -117,7 +117,7 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
           />
           <Tooltip
             labelFormatter={(v: number) => `Batch ${v}`}
-            formatter={(value: number, _name: string, { payload }: Payload<number, string>) =>
+            formatter={(value: number, _name: string, { payload }: Payload<number, "Profit">) =>
               [`${formatEth(value * 1e9, 3)} ($${payload.profitUsd.toFixed(3)})`, 'Profit']
             }
             contentStyle={{
