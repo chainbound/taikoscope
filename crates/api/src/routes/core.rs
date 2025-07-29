@@ -10,7 +10,7 @@ use crate::{
         validate_unified_query,
     },
 };
-use alloy_primitives::Address;
+use alloy_primitives::{Address, B256};
 use api_types::{
     BatchFeeComponentRow, BatchPostingTimesResponse, BlockProfitItem, BlockProfitsResponse,
     ErrorResponse, EthPriceResponse, FeeComponentsResponse, L1BlockTimesResponse,
@@ -25,7 +25,6 @@ use axum::{
     http::StatusCode,
 };
 use clickhouse_lib::{AddressBytes, BlockFeeComponentRow, L1DataCostRow, ProveCostRow};
-use hex::encode;
 use primitives::WEI_PER_GWEI;
 
 // Legacy type aliases for backward compatibility
@@ -93,9 +92,9 @@ pub async fn preconf_data(
         PreconfDataResponse { candidates: Vec::new(), current_operator: None, next_operator: None };
 
     let resp = data.map_or(empty, |d| PreconfDataResponse {
-        candidates: d.candidates.into_iter().map(|a| format!("0x{}", encode(a))).collect(),
-        current_operator: d.current_operator.map(|a| format!("0x{}", encode(a))),
-        next_operator: d.next_operator.map(|a| format!("0x{}", encode(a))),
+        candidates: d.candidates.into_iter().map(|a| Address::from(a).to_string()).collect(),
+        current_operator: d.current_operator.map(|a| Address::from(a).to_string()),
+        next_operator: d.next_operator.map(|a| Address::from(a).to_string()),
     });
 
     Ok(Json(resp))
@@ -372,7 +371,7 @@ pub async fn sequencer_distribution(
             let tps = (r.max_ts > r.min_ts && r.tx_sum > 0)
                 .then(|| r.tx_sum as f64 / (r.max_ts - r.min_ts) as f64);
             SequencerDistributionItem {
-                address: format!("0x{}", encode(r.sequencer)),
+                address: Address::from(r.sequencer).to_string(),
                 blocks: r.blocks,
                 tps,
             }
@@ -436,7 +435,10 @@ pub async fn sequencer_blocks(
 
     let sequencers: Vec<SequencerBlocksItem> = map
         .into_iter()
-        .map(|(seq, blocks)| SequencerBlocksItem { address: format!("0x{}", encode(seq)), blocks })
+        .map(|(seq, blocks)| SequencerBlocksItem {
+            address: Address::from(seq).to_string(),
+            blocks,
+        })
         .collect();
     tracing::info!(count = sequencers.len(), "Returning sequencer blocks");
     Ok(Json(SequencerBlocksResponse { sequencers }))
@@ -833,7 +835,7 @@ pub async fn l2_fees_components(
     let sequencers: Vec<SequencerFeeRow> = sequencer_fees
         .into_iter()
         .map(|s| SequencerFeeRow {
-            address: format!("0x{}", encode(s.sequencer)),
+            address: Address::from(s.sequencer).to_string(),
             priority_fee: s.priority_fee / WEI_PER_GWEI,
             base_fee: s.base_fee / WEI_PER_GWEI,
             l1_data_cost: s.l1_data_cost / WEI_PER_GWEI,
@@ -847,8 +849,8 @@ pub async fn l2_fees_components(
         .map(|r| BatchFeeComponentRow {
             batch_id: r.batch_id,
             l1_block_number: r.l1_block_number,
-            l1_tx_hash: format!("0x{}", encode(r.l1_tx_hash)),
-            sequencer: format!("0x{}", encode(r.sequencer)),
+            l1_tx_hash: B256::from(r.l1_tx_hash).to_string(),
+            sequencer: Address::from(r.sequencer).to_string(),
             priority_fee: r.priority_fee / WEI_PER_GWEI,
             base_fee: r.base_fee / WEI_PER_GWEI,
             l1_data_cost: r.l1_data_cost.map(|v| v / WEI_PER_GWEI),
