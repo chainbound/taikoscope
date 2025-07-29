@@ -4,7 +4,9 @@ export const SEQUENCER_PAIRS: Array<[string, string]> = [
   ['0x0000008f5dd9a790ffbe9142e6828a11c2cf51c0', 'Chainbound'],
   ['0x205a600d515091b473b6c1a8477d967533d10749', 'Chainbound (Taiko)'],
   ['0x445179507c3b0b84cca739398966236a35ad8ea1', 'Gattaca (Taiko)'],
+  ['0xf3384dcc14f03f079ac7cd3c2299256b19261bb0', 'Gattaca'],
   ['0x75141cd01f50a17a915d59d245ae6b2c947d37d9', 'Nethermind (Taiko)'],
+  ['0xdE023f59daCee4e1B4B4216E1B6DfF624555cd2E', 'Nethermind'],
 ];
 
 export const SEQUENCER_NAME_BY_ADDRESS: Record<string, string> =
