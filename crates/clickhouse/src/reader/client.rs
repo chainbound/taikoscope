@@ -2968,32 +2968,6 @@ impl ClickhouseReader {
         Ok(rows)
     }
 
-    /// Get the average number of blobs per batch for the given range
-    pub async fn get_avg_blobs_per_batch(&self, range: TimeRange) -> Result<Option<f64>> {
-        #[derive(Row, Deserialize)]
-        struct AvgRow {
-            avg: f64,
-        }
-
-        let query = format!(
-            "SELECT avg(b.blob_count) AS avg \
-             FROM {db}.batches b \
-             INNER JOIN {db}.l1_head_events l1_events \
-               ON b.l1_block_number = l1_events.l1_block_number \
-             WHERE l1_events.block_ts >= toUnixTimestamp(now64() - INTERVAL {})",
-            range.interval(),
-            db = self.db_name
-        );
-
-        let rows = self.execute::<AvgRow>(&query).await?;
-        let row = match rows.into_iter().next() {
-            Some(r) => r,
-            None => return Ok(None),
-        };
-
-        if row.avg.is_nan() { Ok(None) } else { Ok(Some(row.avg)) }
-    }
-
     /// Get the distribution of blocks and TPS across different sequencers within a specified time
     /// window.
     pub async fn get_sequencer_distribution_range(

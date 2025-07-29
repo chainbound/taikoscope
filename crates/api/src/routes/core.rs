@@ -12,11 +12,11 @@ use crate::{
 };
 use alloy_primitives::Address;
 use api_types::{
-    AvgBlobsPerBatchResponse, BatchFeeComponentRow, BatchPostingTimesResponse, BlockProfitItem,
-    BlockProfitsResponse, ErrorResponse, EthPriceResponse, FeeComponentsResponse,
-    L1BlockTimesResponse, L1DataCostResponse, L1HeadBlockResponse, L2FeesComponentsResponse,
-    L2FeesResponse, L2HeadBlockResponse, PreconfDataResponse, ProveCostResponse,
-    ProveTimesResponse, SequencerBlocksItem, SequencerBlocksResponse, SequencerDistributionItem,
+    BatchFeeComponentRow, BatchPostingTimesResponse, BlockProfitItem, BlockProfitsResponse,
+    ErrorResponse, EthPriceResponse, FeeComponentsResponse, L1BlockTimesResponse,
+    L1DataCostResponse, L1HeadBlockResponse, L2FeesComponentsResponse, L2FeesResponse,
+    L2HeadBlockResponse, PreconfDataResponse, ProveCostResponse, ProveTimesResponse,
+    SequencerBlocksItem, SequencerBlocksResponse, SequencerDistributionItem,
     SequencerDistributionResponse, SequencerFeeRow, VerifyTimesResponse,
 };
 use axum::{
@@ -153,42 +153,6 @@ pub async fn batch_posting_times(
     };
     tracing::info!(count = rows.len(), "Returning batch posting times");
     Ok(Json(BatchPostingTimesResponse { batches: rows }))
-}
-
-#[utoipa::path(
-    get,
-    path = "/avg-blobs-per-batch",
-    params(
-        PaginatedQuery
-    ),
-    responses(
-        (status = 200, description = "Average blobs per batch", body = AvgBlobsPerBatchResponse),
-        (status = 500, description = "Database error", body = ErrorResponse)
-    ),
-    tag = "taikoscope"
-)]
-/// Get the average number of blobs per batch for the specified time range
-pub async fn avg_blobs_per_batch(
-    Query(params): Query<RangeQuery>,
-    State(state): State<ApiState>,
-) -> Result<Json<AvgBlobsPerBatchResponse>, ErrorResponse> {
-    // Validate time range parameters
-    validate_time_range(&params.time_range)?;
-
-    // Check for range exclusivity
-    let has_time_range = has_time_range_params(&params.time_range);
-    validate_range_exclusivity(has_time_range, false)?;
-
-    let time_range = resolve_time_range_enum(&params.time_range);
-    let avg = match state.client.get_avg_blobs_per_batch(time_range).await {
-        Ok(val) => val,
-        Err(e) => {
-            tracing::error!(error = %e, "Failed to get avg blobs per batch");
-            return Err(ErrorResponse::database_error());
-        }
-    };
-    tracing::info!(avg_blobs_per_batch = ?avg, "Returning avg blobs per batch");
-    Ok(Json(AvgBlobsPerBatchResponse { avg_blobs: avg }))
 }
 
 #[utoipa::path(

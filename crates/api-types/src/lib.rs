@@ -463,13 +463,6 @@ pub struct BatchBlocksResponse {
     pub batches: Vec<BatchBlockItem>,
 }
 
-/// Average number of blobs per batch.
-#[derive(Debug, Serialize, ToSchema)]
-pub struct AvgBlobsPerBatchResponse {
-    /// Average number of blobs per batch.
-    pub avg_blobs: Option<f64>,
-}
-
 /// Interval between consecutive batch postings.
 #[derive(Debug, Serialize, ToSchema)]
 pub struct BatchPostingTimesResponse {

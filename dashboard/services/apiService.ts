@@ -876,18 +876,6 @@ export const fetchBatchBlobCountsAggregated = async (
   };
 };
 
-export const fetchAvgBlobsPerBatch = async (
-  range: TimeRange,
-): Promise<RequestResult<number>> => {
-  const url = `${API_BASE}/avg-blobs-per-batch?${timeRangeToQuery(range)}`;
-  const res = await fetchJson<{ avg_blobs?: number }>(url);
-  return {
-    data: res.data?.avg_blobs ?? null,
-    badRequest: res.badRequest,
-    error: res.error,
-  };
-};
-
 export const fetchAvgL2Tps = async (
   range: TimeRange,
   address?: string,

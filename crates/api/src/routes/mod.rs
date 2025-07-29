@@ -24,7 +24,6 @@ pub fn router(state: ApiState) -> Router {
         .route("/forced-inclusions", get(forced_inclusions))
         .route("/failed-proposals", get(failed_proposals))
         .route("/batch-posting-times", get(batch_posting_times))
-        .route("/avg-blobs-per-batch", get(avg_blobs_per_batch))
         .route("/blobs-per-batch", get(blobs_per_batch))
         .route("/prove-times", get(prove_times))
         .route("/verify-times", get(verify_times))

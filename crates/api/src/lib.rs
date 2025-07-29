@@ -27,7 +27,7 @@ use utoipa::OpenApi;
         routes::table::slashings,
         routes::table::forced_inclusions,
         routes::core::batch_posting_times,
-        routes::core::avg_blobs_per_batch,
+
         routes::table::blobs_per_batch,
         routes::core::prove_times,
         routes::core::verify_times,
@@ -58,7 +58,6 @@ use utoipa::OpenApi;
             ForcedInclusionEventsResponse,
             FailedProposalEventsResponse,
             BatchPostingTimesResponse,
-            AvgBlobsPerBatchResponse,
             BatchBlobsResponse,
             ProveTimesResponse,
             VerifyTimesResponse,
