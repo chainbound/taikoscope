@@ -54,27 +54,48 @@ pub const fn blobs_bucket_size(range: &TimeRange) -> u64 {
 /// Aggregate L2 block times by bucket size
 pub fn aggregate_l2_block_times(rows: Vec<L2BlockTimeRow>, bucket: u64) -> Vec<L2BlockTimeRow> {
     let bucket = bucket.max(1);
-    let mut groups: BTreeMap<u64, Vec<L2BlockTimeRow>> = BTreeMap::new();
-    for row in rows {
-        groups.entry(row.l2_block_number / bucket).or_default().push(row);
+
+    if rows.is_empty() {
+        return Vec::new();
     }
-    groups
-        .into_iter()
-        .map(|(g, mut rs)| {
-            rs.sort_by_key(|r| r.l2_block_number);
-            let last_time = rs.last().map(|r| r.block_time).unwrap_or_default();
-            let (sum, count) = rs
-                .iter()
-                .map(|r| r.s_since_prev_block)
-                .fold((0u64, 0u64), |(s, c), s_val| (s + s_val, c + 1));
-            let avg = if count > 0 { sum / count } else { 0 };
-            L2BlockTimeRow {
-                l2_block_number: g * bucket,
-                block_time: last_time,
-                s_since_prev_block: avg,
+
+    // Pre-allocate with estimated capacity
+    let mut groups: BTreeMap<u64, Vec<L2BlockTimeRow>> = BTreeMap::new();
+
+    // Group rows by bucket
+    for row in rows {
+        let bucket_key = row.l2_block_number / bucket;
+        groups.entry(bucket_key).or_insert_with(|| Vec::with_capacity(bucket as usize)).push(row);
+    }
+
+    // Pre-allocate result vector
+    let mut result = Vec::with_capacity(groups.len());
+
+    // Process each group without unnecessary sorting
+    for (g, rs) in groups {
+        // Find min/max directly without sorting
+        let mut last_time = rs[0].block_time;
+        let mut max_block_num = rs[0].l2_block_number;
+        let mut sum = 0u64;
+        let count = rs.len() as u64;
+
+        for r in &rs {
+            if r.l2_block_number > max_block_num {
+                max_block_num = r.l2_block_number;
+                last_time = r.block_time;
             }
-        })
-        .collect()
+            sum += r.s_since_prev_block;
+        }
+
+        let avg = if count > 0 { sum / count } else { 0 };
+        result.push(L2BlockTimeRow {
+            l2_block_number: g * bucket,
+            block_time: last_time,
+            s_since_prev_block: avg,
+        });
+    }
+
+    result
 }
 
 /// Aggregate batch fee components by bucket size
@@ -83,54 +104,114 @@ pub fn aggregate_batch_fee_components(
     bucket: u64,
 ) -> Vec<BatchFeeComponentRow> {
     let bucket = bucket.max(1);
-    let mut groups: BTreeMap<u64, Vec<BatchFeeComponentRow>> = BTreeMap::new();
-    for row in rows {
-        groups.entry(row.batch_id / bucket).or_default().push(row);
-    }
-    groups
-        .into_iter()
-        .map(|(g, rs)| {
-            let sum_priority: u128 = rs.iter().map(|r| r.priority_fee).sum();
-            let sum_base: u128 = rs.iter().map(|r| r.base_fee).sum();
-            let (sum_l1, any_l1): (u128, bool) = rs.iter().fold((0, false), |(s, a), r| {
-                (s + r.l1_data_cost.unwrap_or(0), a || r.l1_data_cost.is_some())
-            });
-            let (sum_prove, any_prove) = rs.iter().fold((0u128, false), |(s, a), r| {
-                (s + r.amortized_prove_cost.unwrap_or(0), a || r.amortized_prove_cost.is_some())
-            });
 
-            let last_l1 = rs.last().map(|r| r.l1_block_number).unwrap_or_default();
-            let last_hash = rs.last().map(|r| r.l1_tx_hash.clone()).unwrap_or_default();
-            let last_seq = rs.last().map(|r| r.sequencer.clone()).unwrap_or_default();
-            BatchFeeComponentRow {
-                batch_id: g * bucket,
-                l1_block_number: last_l1,
-                l1_tx_hash: last_hash,
-                sequencer: last_seq,
-                priority_fee: sum_priority,
-                base_fee: sum_base,
-                l1_data_cost: any_l1.then_some(sum_l1),
-                amortized_prove_cost: any_prove.then_some(sum_prove),
+    if rows.is_empty() {
+        return Vec::new();
+    }
+
+    // Pre-allocate with estimated capacity
+    let mut groups: BTreeMap<u64, Vec<BatchFeeComponentRow>> = BTreeMap::new();
+
+    // Group rows by bucket
+    for row in rows {
+        let bucket_key = row.batch_id / bucket;
+        groups.entry(bucket_key).or_insert_with(|| Vec::with_capacity(bucket as usize)).push(row);
+    }
+
+    // Pre-allocate result vector
+    let mut result = Vec::with_capacity(groups.len());
+
+    // Process each group with single iteration
+    for (g, rs) in groups {
+        let mut sum_priority = 0u128;
+        let mut sum_base = 0u128;
+        let mut sum_l1 = 0u128;
+        let mut sum_prove = 0u128;
+        let mut any_l1 = false;
+        let mut any_prove = false;
+        let mut last_l1 = 0u64;
+        let mut last_hash = String::new();
+        let mut last_seq = String::new();
+        let mut max_batch_id = 0u64;
+
+        // Single pass through all rows in the group
+        for r in &rs {
+            sum_priority += r.priority_fee;
+            sum_base += r.base_fee;
+
+            if let Some(l1_cost) = r.l1_data_cost {
+                sum_l1 += l1_cost;
+                any_l1 = true;
             }
-        })
-        .collect()
+
+            if let Some(prove_cost) = r.amortized_prove_cost {
+                sum_prove += prove_cost;
+                any_prove = true;
+            }
+
+            // Track the latest entry by batch_id
+            if r.batch_id >= max_batch_id {
+                max_batch_id = r.batch_id;
+                last_l1 = r.l1_block_number;
+                // Only clone when we need to update (reduces string allocations)
+                if last_hash != r.l1_tx_hash {
+                    last_hash = r.l1_tx_hash.clone();
+                }
+                if last_seq != r.sequencer {
+                    last_seq = r.sequencer.clone();
+                }
+            }
+        }
+
+        result.push(BatchFeeComponentRow {
+            batch_id: g * bucket,
+            l1_block_number: last_l1,
+            l1_tx_hash: last_hash,
+            sequencer: last_seq,
+            priority_fee: sum_priority,
+            base_fee: sum_base,
+            l1_data_cost: any_l1.then_some(sum_l1),
+            amortized_prove_cost: any_prove.then_some(sum_prove),
+        });
+    }
+
+    result
 }
 
 /// Aggregate L2 TPS by bucket size
 pub fn aggregate_l2_tps(rows: Vec<L2TpsRow>, bucket: u64) -> Vec<L2TpsRow> {
     let bucket = bucket.max(1);
-    let mut groups: BTreeMap<u64, Vec<L2TpsRow>> = BTreeMap::new();
-    for row in rows {
-        groups.entry(row.l2_block_number / bucket).or_default().push(row);
+
+    if rows.is_empty() {
+        return Vec::new();
     }
-    groups
-        .into_iter()
-        .map(|(g, rs)| {
-            let (sum, count) = rs.iter().fold((0f64, 0u64), |(s, c), r| (s + r.tps, c + 1));
-            let avg = if count > 0 { sum / count as f64 } else { 0.0 };
-            L2TpsRow { l2_block_number: g * bucket, tps: avg }
-        })
-        .collect()
+
+    // Pre-allocate with estimated capacity
+    let mut groups: BTreeMap<u64, Vec<L2TpsRow>> = BTreeMap::new();
+
+    // Group rows by bucket
+    for row in rows {
+        let bucket_key = row.l2_block_number / bucket;
+        groups.entry(bucket_key).or_insert_with(|| Vec::with_capacity(bucket as usize)).push(row);
+    }
+
+    // Pre-allocate result vector
+    let mut result = Vec::with_capacity(groups.len());
+
+    // Process each group directly
+    for (g, rs) in groups {
+        let mut sum = 0f64;
+        let count = rs.len() as f64;
+
+        for r in &rs {
+            sum += r.tps;
+        }
+
+        let avg = if count > 0.0 { sum / count } else { 0.0 };
+        result.push(L2TpsRow { l2_block_number: g * bucket, tps: avg });
+    }
+
+    result
 }
 
 /// Aggregate blobs per batch by bucket size
@@ -139,23 +220,48 @@ pub fn aggregate_blobs_per_batch(
     bucket: u64,
 ) -> Vec<AvgBatchBlobCountRow> {
     let bucket = bucket.max(1);
-    let mut groups: BTreeMap<u64, Vec<BatchBlobCountRow>> = BTreeMap::new();
-    for row in rows {
-        groups.entry(row.batch_id / bucket).or_default().push(row);
+
+    if rows.is_empty() {
+        return Vec::new();
     }
-    groups
-        .into_iter()
-        .map(|(g, rs)| {
-            let sum_blobs: u32 = rs.iter().map(|r| r.blob_count as u32).sum();
-            let last_l1_block = rs.last().map(|r| r.l1_block_number).unwrap_or_default();
-            let avg_blobs = if rs.is_empty() { 0.0 } else { sum_blobs as f64 / rs.len() as f64 };
-            AvgBatchBlobCountRow {
-                l1_block_number: last_l1_block,
-                batch_id: g * bucket,
-                blob_count: avg_blobs,
+
+    // Pre-allocate with estimated capacity
+    let mut groups: BTreeMap<u64, Vec<BatchBlobCountRow>> = BTreeMap::new();
+
+    // Group rows by bucket
+    for row in rows {
+        let bucket_key = row.batch_id / bucket;
+        groups.entry(bucket_key).or_insert_with(|| Vec::with_capacity(bucket as usize)).push(row);
+    }
+
+    // Pre-allocate result vector
+    let mut result = Vec::with_capacity(groups.len());
+
+    // Process each group directly
+    for (g, rs) in groups {
+        let mut sum_blobs = 0u32;
+        let mut last_l1_block = 0u64;
+        let mut max_batch_id = 0u64;
+        let count = rs.len();
+
+        for r in &rs {
+            sum_blobs += r.blob_count as u32;
+            // Track the latest entry by batch_id
+            if r.batch_id >= max_batch_id {
+                max_batch_id = r.batch_id;
+                last_l1_block = r.l1_block_number;
             }
-        })
-        .collect()
+        }
+
+        let avg_blobs = if count > 0 { sum_blobs as f64 / count as f64 } else { 0.0 };
+        result.push(AvgBatchBlobCountRow {
+            l1_block_number: last_l1_block,
+            batch_id: g * bucket,
+            blob_count: avg_blobs,
+        });
+    }
+
+    result
 }
 
 #[cfg(test)]
