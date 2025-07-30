@@ -333,7 +333,7 @@ pub async fn l1_block_times(
     ),
     tag = "taikoscope"
 )]
-/// Get the distribution of blocks and TPS across different sequencers
+/// Get the distribution of blocks, batches, and TPS across different sequencers
 pub async fn sequencer_distribution(
     Query(params): Query<RangeQuery>,
     State(state): State<ApiState>,
@@ -361,6 +361,7 @@ pub async fn sequencer_distribution(
             SequencerDistributionItem {
                 address: format_address(r.sequencer),
                 blocks: r.blocks,
+                batches: r.batches,
                 tps,
             }
         })

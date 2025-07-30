@@ -143,6 +143,7 @@ export const fetchEconomicsData = async (
         name: getSequencerName(s.address),
         address: s.address,
         value: 0,
+        batches: 0,
         tps: null,
       }))
     : [];

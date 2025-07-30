@@ -2998,14 +2998,22 @@ impl ClickhouseReader {
         until: DateTime<Utc>,
     ) -> Result<Vec<SequencerDistributionRow>> {
         let query = format!(
-            "SELECT sequencer,\n\
+            "SELECT h.sequencer,\n\
                    count(DISTINCT h.l2_block_number) AS blocks,\n\
+                   count(DISTINCT b.batch_id) AS batches,\n\
                    toUInt64(min(h.block_ts)) AS min_ts,\n\
                    toUInt64(max(h.block_ts)) AS max_ts,\n\
-                   sum(sum_tx) AS tx_sum\n\
+                   sum(h.sum_tx) AS tx_sum\n\
              FROM {db}.l2_head_events h\n\
-             WHERE h.block_ts > {since}\n               AND h.block_ts <= {until}\n               AND {filter}\n\
-             GROUP BY sequencer\n\
+             LEFT JOIN {db}.batches b ON h.sequencer = b.proposer_addr\n\
+                   AND b.l1_block_number IN (\n\
+                       SELECT l1_block_number FROM {db}.l1_head_events l1\n\
+                       WHERE l1.block_ts > {since} AND l1.block_ts <= {until}\n\
+                   )\n\
+             WHERE h.block_ts > {since}\n\
+               AND h.block_ts <= {until}\n\
+               AND {filter}\n\
+             GROUP BY h.sequencer\n\
              ORDER BY blocks DESC",
             db = self.db_name,
             since = since.timestamp(),

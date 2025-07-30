@@ -217,6 +217,8 @@ pub struct SequencerDistributionRow {
     pub sequencer: AddressBytes,
     /// Number of blocks produced by the sequencer
     pub blocks: u64,
+    /// Number of batches proposed by the sequencer
+    pub batches: u64,
     /// Earliest block timestamp for the sequencer in the selected range
     pub min_ts: u64,
     /// Latest block timestamp for the sequencer in the selected range

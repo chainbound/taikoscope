@@ -54,16 +54,7 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
     return map;
   }, [feeRes]);
 
-  const batchCounts = React.useMemo(() => {
-    const map = new Map<string, number>();
-    if (feeRes?.data?.batches) {
-      feeRes.data.batches.forEach((batch) => {
-        const current = map.get(batch.sequencer) || 0;
-        map.set(batch.sequencer, current + 1);
-      });
-    }
-    return map;
-  }, [feeRes]);
+  // Note: batchCounts now comes directly from sequencer distribution data
 
   const [sortBy, setSortBy] = React.useState<
     'name' | 'blocks' | 'batches' | 'revenue' | 'cost' | 'profit' | 'ratio'
@@ -79,7 +70,7 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
 
   const rows = sequencers.map((seq) => {
     const addr = seq.address || getSequencerAddress(seq.name) || '';
-    const batchCount = batchCounts.get(addr.toLowerCase()) ?? null;
+    const batchCount = seq.batches;
     const fees = feeDataMap.get(addr.toLowerCase());
     const proveEth = (fees?.prove_cost ?? 0) / 1e9;
     const verifyEth = 0;
@@ -293,7 +284,7 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
                 </td>
                 <td className="px-2 py-1">{row.blocks.toLocaleString()}</td>
                 <td className="px-2 py-1">
-                  {row.batches != null ? row.batches.toLocaleString() : 'N/A'}
+                  {row.batches.toLocaleString()}
                 </td>
                 <td
                   className="px-2 py-1"

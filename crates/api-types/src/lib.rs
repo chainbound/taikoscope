@@ -323,13 +323,15 @@ pub struct L2TpsResponse {
     pub blocks: Vec<L2TpsRow>,
 }
 
-/// Number of blocks produced by a sequencer.
+/// Number of blocks and batches produced by a sequencer.
 #[derive(Debug, Serialize, ToSchema)]
 pub struct SequencerDistributionItem {
     /// Sequencer address.
     pub address: String,
     /// Number of blocks produced by the sequencer.
     pub blocks: u64,
+    /// Number of batches proposed by the sequencer.
+    pub batches: u64,
     /// Average transactions per second for the sequencer in the selected range.
     pub tps: Option<f64>,
 }

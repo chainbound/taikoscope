@@ -18,8 +18,8 @@ describe('ProfitRankingTable', () => {
       .mockReturnValueOnce({
         data: {
           data: [
-            { name: 'SeqA', address: '0xseqA', value: 10, tps: null },
-            { name: 'SeqB', address: '0xseqB', value: 5, tps: null },
+            { name: 'SeqA', address: '0xseqA', value: 10, batches: 1, tps: null },
+            { name: 'SeqB', address: '0xseqB', value: 5, batches: 1, tps: null },
           ],
         } as RequestResult<SequencerDistributionDataItem[]>,
       } as unknown as ReturnType<typeof swr.default>)
@@ -56,8 +56,8 @@ describe('ProfitRankingTable', () => {
 
     vi.spyOn(api, 'fetchSequencerDistribution').mockResolvedValue({
       data: [
-        { name: 'SeqA', address: '0xseqA', value: 10, tps: null },
-        { name: 'SeqB', address: '0xseqB', value: 5, tps: null },
+        { name: 'SeqA', address: '0xseqA', value: 10, batches: 1, tps: null },
+        { name: 'SeqB', address: '0xseqB', value: 5, batches: 1, tps: null },
       ],
       badRequest: false,
       error: null,
@@ -121,7 +121,7 @@ describe('ProfitRankingTable', () => {
     vi.mocked(swr.default)
       .mockReturnValueOnce({
         data: {
-          data: [{ name: 'SeqA', address: '0xseqA', value: 1, tps: null }],
+          data: [{ name: 'SeqA', address: '0xseqA', value: 1, batches: 1, tps: null }],
         } as RequestResult<SequencerDistributionDataItem[]>,
       } as unknown as ReturnType<typeof swr.default>)
       .mockReturnValueOnce({
@@ -148,7 +148,7 @@ describe('ProfitRankingTable', () => {
       } as unknown as ReturnType<typeof swr.default>);
 
     vi.spyOn(api, 'fetchSequencerDistribution').mockResolvedValue({
-      data: [{ name: 'SeqA', address: '0xseqA', value: 1, tps: null }],
+      data: [{ name: 'SeqA', address: '0xseqA', value: 1, batches: 1, tps: null }],
       badRequest: false,
       error: null,
     } as RequestResult<SequencerDistributionDataItem[]>);

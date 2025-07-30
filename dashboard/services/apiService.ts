@@ -20,6 +20,7 @@ export interface SequencerDistributionDataItem {
   name: string;
   address: string;
   value: number;
+  batches: number;
   tps: number | null;
 }
 
@@ -682,7 +683,7 @@ export const fetchSequencerDistribution = async (
 ): Promise<RequestResult<SequencerDistributionDataItem[]>> => {
   const url = `${API_BASE}/sequencer-distribution?${timeRangeToQuery(range)}`;
   const res = await fetchJson<{
-    sequencers: { address: string; blocks: number; tps: number | null }[];
+    sequencers: { address: string; blocks: number; batches: number; tps: number | null }[];
   }>(url);
   return {
     data: res.data
@@ -690,6 +691,7 @@ export const fetchSequencerDistribution = async (
         name: getSequencerName(s.address),
         address: s.address,
         value: s.blocks,
+        batches: s.batches,
         tps: s.tps,
       }))
       : null,
