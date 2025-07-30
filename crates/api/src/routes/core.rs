@@ -1,7 +1,10 @@
 //! Core simple API endpoints
 
 use crate::{
-    helpers::bucket_size_from_range,
+    helpers::{
+        bucket_size_from_range, database_error, format_address, parse_address,
+        parse_optional_address, query_error, wei_to_gwei, wei_to_gwei_opt,
+    },
     state::{ApiState, MAX_TABLE_LIMIT},
     validation::{
         CommonQuery, PaginatedQuery, ProfitQuery, QueryMode, UnifiedQuery, has_time_range_params,
@@ -25,7 +28,6 @@ use axum::{
     http::StatusCode,
 };
 use clickhouse_lib::{AddressBytes, BlockFeeComponentRow, L1DataCostRow, ProveCostRow};
-use primitives::WEI_PER_GWEI;
 
 // Legacy type aliases for backward compatibility
 type RangeQuery = CommonQuery;
@@ -43,10 +45,11 @@ type RangeQuery = CommonQuery;
 pub async fn l2_head_block(
     State(state): State<ApiState>,
 ) -> Result<Json<L2HeadBlockResponse>, ErrorResponse> {
-    let num = state.client.get_last_l2_block_number().await.map_err(|e| {
-        tracing::error!("Failed to get L2 head block number: {}", e);
-        ErrorResponse::database_error()
-    })?;
+    let num = state
+        .client
+        .get_last_l2_block_number()
+        .await
+        .map_err(|e| database_error("get L2 head block number", e))?;
     Ok(Json(L2HeadBlockResponse { l2_head_block: num }))
 }
 
@@ -63,10 +66,11 @@ pub async fn l2_head_block(
 pub async fn l1_head_block(
     State(state): State<ApiState>,
 ) -> Result<Json<L1HeadBlockResponse>, ErrorResponse> {
-    let num = state.client.get_last_l1_block_number().await.map_err(|e| {
-        tracing::error!("Failed to get L1 head block number: {}", e);
-        ErrorResponse::database_error()
-    })?;
+    let num = state
+        .client
+        .get_last_l1_block_number()
+        .await
+        .map_err(|e| database_error("get L1 head block number", e))?;
     Ok(Json(L1HeadBlockResponse { l1_head_block: num }))
 }
 
@@ -83,18 +87,19 @@ pub async fn l1_head_block(
 pub async fn preconf_data(
     State(state): State<ApiState>,
 ) -> Result<Json<PreconfDataResponse>, ErrorResponse> {
-    let data = state.client.get_last_preconf_data().await.map_err(|e| {
-        tracing::error!("Failed to get preconf data: {}", e);
-        ErrorResponse::database_error()
-    })?;
+    let data = state
+        .client
+        .get_last_preconf_data()
+        .await
+        .map_err(|e| database_error("get preconf data", e))?;
 
     let empty =
         PreconfDataResponse { candidates: Vec::new(), current_operator: None, next_operator: None };
 
     let resp = data.map_or(empty, |d| PreconfDataResponse {
-        candidates: d.candidates.into_iter().map(|a| Address::from(a).to_string()).collect(),
-        current_operator: d.current_operator.map(|a| Address::from(a).to_string()),
-        next_operator: d.next_operator.map(|a| Address::from(a).to_string()),
+        candidates: d.candidates.into_iter().map(format_address).collect(),
+        current_operator: d.current_operator.map(format_address),
+        next_operator: d.next_operator.map(format_address),
     });
 
     Ok(Json(resp))
@@ -145,10 +150,7 @@ pub async fn batch_posting_times(
         .await
     {
         Ok(r) => r,
-        Err(e) => {
-            tracing::error!(error = %e, "Failed to get batch posting times");
-            return Err(ErrorResponse::database_error());
-        }
+        Err(e) => return Err(query_error("batch posting times", e)),
     };
     tracing::info!(count = rows.len(), "Returning batch posting times");
     Ok(Json(BatchPostingTimesResponse { batches: rows }))
@@ -188,10 +190,7 @@ pub async fn prove_times(
             let bucket = bucket_size_from_range(&time_range);
             let batches = match state.client.get_prove_times(time_range, Some(bucket)).await {
                 Ok(rows) => rows,
-                Err(e) => {
-                    tracing::error!(error = %e, "Failed to get prove times");
-                    return Err(ErrorResponse::database_error());
-                }
+                Err(e) => return Err(query_error("prove times", e)),
             };
             tracing::info!(count = batches.len(), "Returning aggregated prove times");
             Ok(Json(ProveTimesResponse { batches }))
@@ -215,10 +214,7 @@ pub async fn prove_times(
                 .await
             {
                 Ok(rows) => rows,
-                Err(e) => {
-                    tracing::error!(error = %e, "Failed to get prove times");
-                    return Err(ErrorResponse::database_error());
-                }
+                Err(e) => return Err(query_error("prove times", e)),
             };
             tracing::info!(count = batches.len(), "Returning paginated prove times");
             Ok(Json(ProveTimesResponse { batches }))
@@ -260,10 +256,7 @@ pub async fn verify_times(
             let bucket = bucket_size_from_range(&time_range);
             let batches = match state.client.get_verify_times(time_range, Some(bucket)).await {
                 Ok(rows) => rows,
-                Err(e) => {
-                    tracing::error!(error = %e, "Failed to get verify times");
-                    return Err(ErrorResponse::database_error());
-                }
+                Err(e) => return Err(query_error("verify times", e)),
             };
             tracing::info!(count = batches.len(), "Returning aggregated verify times");
             Ok(Json(VerifyTimesResponse { batches }))
@@ -287,10 +280,7 @@ pub async fn verify_times(
                 .await
             {
                 Ok(rows) => rows,
-                Err(e) => {
-                    tracing::error!(error = %e, "Failed to get verify times");
-                    return Err(ErrorResponse::database_error());
-                }
+                Err(e) => return Err(query_error("verify times", e)),
             };
             tracing::info!(count = batches.len(), "Returning paginated verify times");
             Ok(Json(VerifyTimesResponse { batches }))
@@ -325,10 +315,7 @@ pub async fn l1_block_times(
     let time_range = resolve_time_range_enum(&params.time_range);
     let blocks = match state.client.get_l1_block_times(time_range).await {
         Ok(rows) => rows,
-        Err(e) => {
-            tracing::error!(error = %e, "Failed to get L1 block times");
-            return Err(ErrorResponse::database_error());
-        }
+        Err(e) => return Err(query_error("L1 block times", e)),
     };
     tracing::info!(count = blocks.len(), "Returning L1 block times");
     Ok(Json(L1BlockTimesResponse { blocks }))
@@ -361,17 +348,18 @@ pub async fn sequencer_distribution(
     // Determine the exact start and end timestamps for the range
     let (since, until) = resolve_time_range_bounds(&params.time_range);
     // Fetch distribution within the specified window
-    let rows = state.client.get_sequencer_distribution_range(since, until).await.map_err(|e| {
-        tracing::error!(error = %e, "Failed to get sequencer distribution");
-        ErrorResponse::database_error()
-    })?;
+    let rows = state
+        .client
+        .get_sequencer_distribution_range(since, until)
+        .await
+        .map_err(|e| query_error("sequencer distribution", e))?;
     let sequencers: Vec<SequencerDistributionItem> = rows
         .into_iter()
         .map(|r| {
             let tps = (r.max_ts > r.min_ts && r.tx_sum > 0)
                 .then(|| r.tx_sum as f64 / (r.max_ts - r.min_ts) as f64);
             SequencerDistributionItem {
-                address: Address::from(r.sequencer).to_string(),
+                address: format_address(r.sequencer),
                 blocks: r.blocks,
                 tps,
             }
@@ -409,18 +397,13 @@ pub async fn sequencer_blocks(
     validate_range_exclusivity(has_time_range, false)?;
 
     let since = resolve_time_range_since(&params.time_range);
-    let rows = state.client.get_sequencer_blocks_since(since).await.map_err(|e| {
-        tracing::error!(error = %e, "Failed to get sequencer blocks");
-        ErrorResponse::database_error()
-    })?;
+    let rows = state
+        .client
+        .get_sequencer_blocks_since(since)
+        .await
+        .map_err(|e| query_error("sequencer blocks", e))?;
 
-    let filter = params.address.as_ref().and_then(|addr| match addr.parse::<Address>() {
-        Ok(a) => Some(AddressBytes::from(a)),
-        Err(e) => {
-            tracing::warn!(error = %e, "Failed to parse address");
-            None
-        }
-    });
+    let filter = params.address.as_ref().and_then(|addr| parse_address(addr).ok());
 
     use std::collections::BTreeMap;
     let mut map: BTreeMap<AddressBytes, Vec<u64>> = BTreeMap::new();
@@ -435,10 +418,7 @@ pub async fn sequencer_blocks(
 
     let sequencers: Vec<SequencerBlocksItem> = map
         .into_iter()
-        .map(|(seq, blocks)| SequencerBlocksItem {
-            address: Address::from(seq).to_string(),
-            blocks,
-        })
+        .map(|(seq, blocks)| SequencerBlocksItem { address: format_address(seq), blocks })
         .collect();
     tracing::info!(count = sequencers.len(), "Returning sequencer blocks");
     Ok(Json(SequencerBlocksResponse { sequencers }))
@@ -481,14 +461,11 @@ pub async fn l1_data_cost(
         .await
     {
         Ok(r) => r,
-        Err(e) => {
-            tracing::error!("Failed to get L1 data cost: {}", e);
-            return Err(ErrorResponse::database_error());
-        }
+        Err(e) => return Err(query_error("L1 data cost", e)),
     };
     let rows: Vec<L1DataCostRow> = rows
         .into_iter()
-        .map(|r| L1DataCostRow { l1_block_number: r.l1_block_number, cost: r.cost / WEI_PER_GWEI })
+        .map(|r| L1DataCostRow { l1_block_number: r.l1_block_number, cost: wei_to_gwei(r.cost) })
         .collect();
     tracing::info!(count = rows.len(), "Returning L1 data cost");
     Ok(Json(L1DataCostResponse { blocks: rows }))
@@ -531,17 +508,14 @@ pub async fn prove_cost(
         .await
     {
         Ok(r) => r,
-        Err(e) => {
-            tracing::error!("Failed to get prove cost: {}", e);
-            return Err(ErrorResponse::database_error());
-        }
+        Err(e) => return Err(query_error("prove cost", e)),
     };
     let rows: Vec<ProveCostRow> = rows
         .into_iter()
         .map(|r| ProveCostRow {
             l1_block_number: r.l1_block_number,
             batch_id: r.batch_id,
-            cost: r.cost / WEI_PER_GWEI,
+            cost: wei_to_gwei(r.cost),
         })
         .collect();
     tracing::info!(count = rows.len(), "Returning prove cost");
@@ -573,28 +547,13 @@ pub async fn block_profits(
     validate_range_exclusivity(has_time_range, false)?;
 
     let time_range = resolve_time_range_enum(&params.common.time_range);
-    let address = if let Some(addr) = params.common.address.as_ref() {
-        match addr.parse::<Address>() {
-            Ok(a) => Some(AddressBytes::from(a)),
-            Err(e) => {
-                tracing::warn!(error = %e, "Failed to parse address");
-                return Err(ErrorResponse::new(
-                    "invalid-params",
-                    "Bad Request",
-                    StatusCode::BAD_REQUEST,
-                    e.to_string(),
-                ));
-            }
-        }
-    } else {
-        None
-    };
+    let address = parse_optional_address(params.common.address.as_ref())?;
 
-    let rows =
-        state.client.get_l2_fee_components(address, time_range, None).await.map_err(|e| {
-            tracing::error!(error = %e, "Failed to get fee components");
-            ErrorResponse::database_error()
-        })?;
+    let rows = state
+        .client
+        .get_l2_fee_components(address, time_range, None)
+        .await
+        .map_err(|e| query_error("fee components", e))?;
 
     let mut blocks: Vec<BlockProfitItem> = rows
         .into_iter()
@@ -681,10 +640,11 @@ pub async fn l2_fees(
         None
     };
 
-    let rows = state.client.get_l2_fees_by_sequencer(time_range).await.map_err(|e| {
-        tracing::error!(error = %e, "Failed to get L2 fees");
-        ErrorResponse::database_error()
-    })?;
+    let rows = state
+        .client
+        .get_l2_fees_by_sequencer(time_range)
+        .await
+        .map_err(|e| query_error("L2 fees", e))?;
 
     let filtered: Vec<_> = rows
         .into_iter()
@@ -702,10 +662,10 @@ pub async fn l2_fees(
         });
 
     let has_rows = !filtered.is_empty();
-    let priority_fee = has_rows.then_some(priority_sum / WEI_PER_GWEI);
-    let base_fee = has_rows.then_some(base_sum / WEI_PER_GWEI);
-    let l1_data_cost = data_sum / WEI_PER_GWEI;
-    let prove_cost = prove_sum / WEI_PER_GWEI;
+    let priority_fee = has_rows.then_some(wei_to_gwei(priority_sum));
+    let base_fee = has_rows.then_some(wei_to_gwei(base_sum));
+    let l1_data_cost = wei_to_gwei(data_sum);
+    let prove_cost = wei_to_gwei(prove_sum);
 
     tracing::info!("Returning L2 fees summary only");
     Ok(Json(L2FeesResponse {
@@ -744,41 +704,26 @@ pub async fn l2_fee_components(
     validate_range_exclusivity(has_time_range, false)?;
 
     let time_range = resolve_time_range_enum(&params.common.time_range);
-    let address = if let Some(addr) = params.common.address.as_ref() {
-        match addr.parse::<Address>() {
-            Ok(a) => Some(AddressBytes::from(a)),
-            Err(e) => {
-                tracing::warn!(error = %e, "Failed to parse address");
-                return Err(ErrorResponse::new(
-                    "invalid-params",
-                    "Bad Request",
-                    StatusCode::BAD_REQUEST,
-                    e.to_string(),
-                ));
-            }
-        }
-    } else {
-        None
-    };
+    let address = parse_optional_address(params.common.address.as_ref())?;
 
     let bucket = match query_mode {
         QueryMode::Aggregated => Some(bucket_size_from_range(&time_range)),
         QueryMode::Regular { .. } => None,
     };
 
-    let blocks =
-        state.client.get_l2_fee_components(address, time_range, bucket).await.map_err(|e| {
-            tracing::error!(error = %e, "Failed to get fee components");
-            ErrorResponse::database_error()
-        })?;
+    let blocks = state
+        .client
+        .get_l2_fee_components(address, time_range, bucket)
+        .await
+        .map_err(|e| query_error("fee components", e))?;
 
     let blocks: Vec<BlockFeeComponentRow> = blocks
         .into_iter()
         .map(|r| BlockFeeComponentRow {
             l2_block_number: r.l2_block_number,
-            priority_fee: r.priority_fee / WEI_PER_GWEI,
-            base_fee: r.base_fee / WEI_PER_GWEI,
-            l1_data_cost: r.l1_data_cost.map(|v| v / WEI_PER_GWEI),
+            priority_fee: wei_to_gwei(r.priority_fee),
+            base_fee: wei_to_gwei(r.base_fee),
+            l1_data_cost: wei_to_gwei_opt(r.l1_data_cost),
         })
         .collect();
 
@@ -814,11 +759,11 @@ pub async fn l2_fees_components(
 
     let time_range = resolve_time_range_enum(&params.time_range);
 
-    let (sequencer_fees, batch_components, prove_total) =
-        state.client.get_l2_fees_and_components(None, time_range).await.map_err(|e| {
-            tracing::error!(error = %e, "Failed to get L2 fees and components");
-            ErrorResponse::database_error()
-        })?;
+    let (sequencer_fees, batch_components, prove_total) = state
+        .client
+        .get_l2_fees_and_components(None, time_range)
+        .await
+        .map_err(|e| query_error("L2 fees and components", e))?;
 
     // Calculate aggregated totals from sequencer fees
     let priority_fee = sequencer_fees.iter().map(|s| s.priority_fee).sum::<u128>();
@@ -829,17 +774,17 @@ pub async fn l2_fees_components(
     // Calculate amortized prove cost
     let count = batch_components.len() as u128;
     let amortized_prove =
-        if count > 0 { prove_total.map(|c| (c / count) / WEI_PER_GWEI) } else { None };
+        if count > 0 { prove_total.map(|c| wei_to_gwei(c / count)) } else { None };
 
     // Convert sequencer fees to gwei
     let sequencers: Vec<SequencerFeeRow> = sequencer_fees
         .into_iter()
         .map(|s| SequencerFeeRow {
             address: Address::from(s.sequencer).to_string(),
-            priority_fee: s.priority_fee / WEI_PER_GWEI,
-            base_fee: s.base_fee / WEI_PER_GWEI,
-            l1_data_cost: s.l1_data_cost / WEI_PER_GWEI,
-            prove_cost: s.prove_cost / WEI_PER_GWEI,
+            priority_fee: wei_to_gwei(s.priority_fee),
+            base_fee: wei_to_gwei(s.base_fee),
+            l1_data_cost: wei_to_gwei(s.l1_data_cost),
+            prove_cost: wei_to_gwei(s.prove_cost),
         })
         .collect();
 
@@ -850,19 +795,19 @@ pub async fn l2_fees_components(
             batch_id: r.batch_id,
             l1_block_number: r.l1_block_number,
             l1_tx_hash: B256::from(r.l1_tx_hash).to_string(),
-            sequencer: Address::from(r.sequencer).to_string(),
-            priority_fee: r.priority_fee / WEI_PER_GWEI,
-            base_fee: r.base_fee / WEI_PER_GWEI,
-            l1_data_cost: r.l1_data_cost.map(|v| v / WEI_PER_GWEI),
+            sequencer: format_address(r.sequencer),
+            priority_fee: wei_to_gwei(r.priority_fee),
+            base_fee: wei_to_gwei(r.base_fee),
+            l1_data_cost: wei_to_gwei_opt(r.l1_data_cost),
             amortized_prove_cost: amortized_prove,
         })
         .collect();
 
     Ok(Json(L2FeesComponentsResponse {
-        priority_fee: (priority_fee > 0).then_some(priority_fee / WEI_PER_GWEI),
-        base_fee: (base_fee > 0).then_some(base_fee / WEI_PER_GWEI),
-        l1_data_cost: l1_data_cost / WEI_PER_GWEI,
-        prove_cost: prove_cost / WEI_PER_GWEI,
+        priority_fee: (priority_fee > 0).then_some(wei_to_gwei(priority_fee)),
+        base_fee: (base_fee > 0).then_some(wei_to_gwei(base_fee)),
+        l1_data_cost: wei_to_gwei(l1_data_cost),
+        prove_cost: wei_to_gwei(prove_cost),
         sequencers,
         batches,
     }))

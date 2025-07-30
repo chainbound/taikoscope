@@ -26,6 +26,7 @@ use utoipa::OpenApi;
         routes::table::reorgs,
         routes::table::slashings,
         routes::table::forced_inclusions,
+        routes::table::failed_proposals,
         routes::core::batch_posting_times,
 
         routes::table::blobs_per_batch,
@@ -40,7 +41,11 @@ use utoipa::OpenApi;
         routes::core::sequencer_blocks,
         routes::core::l2_fees,
         routes::core::l2_fee_components,
+        routes::core::l2_fees_components,
         routes::aggregated::dashboard_data,
+        routes::aggregated::prove_costs,
+        routes::core::prove_cost,
+        routes::core::block_profits,
         routes::core::l1_data_cost,
         routes::core::eth_price
     ),
@@ -85,10 +90,14 @@ use utoipa::OpenApi;
             HealthResponse,
             PreconfDataResponse,
             L2FeesResponse,
+            L2FeesComponentsResponse,
             FeeComponentsResponse,
             SequencerFeeRow,
             DashboardDataResponse,
             EthPriceResponse,
+            ProposerCostsResponse,
+            ProveCostResponse,
+            BlockProfitsResponse,
             api_types::ErrorResponse,
             L1DataCostResponse
         )

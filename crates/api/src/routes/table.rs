@@ -1,7 +1,7 @@
 //! Paginated table endpoints
 
 use crate::{
-    helpers::bucket_size_from_range,
+    helpers::{bucket_size_from_range, format_address, parse_optional_address, query_error},
     state::{ApiState, MAX_TABLE_LIMIT},
     validation::{
         CommonQuery, PaginatedQuery, QueryMode, UnifiedQuery, has_time_range_params,
@@ -10,16 +10,11 @@ use crate::{
         validate_unified_query,
     },
 };
-use alloy_primitives::Address;
 use api_types::*;
 use axum::{
     Json,
     extract::{Query, State},
-    http::StatusCode,
 };
-use clickhouse_lib::AddressBytes;
-
-use hex::encode;
 
 // Legacy type aliases for backward compatibility
 // type BlockTransactionsQuery = BlockPaginatedQuery; // Removed - not used anymore
@@ -62,10 +57,7 @@ pub async fn reorgs(
         .await
     {
         Ok(rows) => rows,
-        Err(e) => {
-            tracing::error!(error = %e, "Failed to get reorg events");
-            return Err(ErrorResponse::database_error());
-        }
+        Err(e) => return Err(query_error("reorg events", e)),
     };
     let events: Vec<L2ReorgEvent> = rows
         .into_iter()
@@ -75,8 +67,8 @@ pub async fn reorgs(
                 from_block_number,
                 to_block_number: e.l2_block_number,
                 depth: e.depth,
-                old_sequencer: format!("0x{}", encode(e.old_sequencer)),
-                new_sequencer: format!("0x{}", encode(e.new_sequencer)),
+                old_sequencer: format_address(e.old_sequencer),
+                new_sequencer: format_address(e.new_sequencer),
                 inserted_at: e.inserted_at,
             }
         })
@@ -109,10 +101,7 @@ pub async fn slashings(
     let (since, until) = resolve_time_range_bounds(&params.time_range);
     let events = match state.client.get_slashing_events_range(since, until).await {
         Ok(rows) => rows,
-        Err(e) => {
-            tracing::error!(error = %e, "Failed to get slashing events");
-            return Err(ErrorResponse::database_error());
-        }
+        Err(e) => return Err(query_error("slashing events", e)),
     };
     tracing::info!(count = events.len(), "Returning slashing events");
     Ok(Json(SlashingEventsResponse { events }))
@@ -142,10 +131,7 @@ pub async fn forced_inclusions(
     let (since, until) = resolve_time_range_bounds(&params.time_range);
     let events = match state.client.get_forced_inclusions_range(since, until).await {
         Ok(rows) => rows,
-        Err(e) => {
-            tracing::error!(error = %e, "Failed to get forced inclusion events");
-            return Err(ErrorResponse::database_error());
-        }
+        Err(e) => return Err(query_error("forced inclusion events", e)),
     };
     tracing::info!(count = events.len(), "Returning forced inclusion events");
     Ok(Json(ForcedInclusionEventsResponse { events }))
@@ -175,17 +161,14 @@ pub async fn failed_proposals(
     let (since, until) = resolve_time_range_bounds(&params.time_range);
     let events = match state.client.get_failed_proposals_range(since, until).await {
         Ok(rows) => rows,
-        Err(e) => {
-            tracing::error!(error = %e, "Failed to get failed proposal events");
-            return Err(ErrorResponse::database_error());
-        }
+        Err(e) => return Err(query_error("failed proposal events", e)),
     };
     let events: Vec<FailedProposalEvent> = events
         .into_iter()
         .map(|e| FailedProposalEvent {
             l2_block_number: e.l2_block_number,
-            original_sequencer: format!("0x{}", encode(e.original_sequencer)),
-            proposer: format!("0x{}", encode(e.proposer)),
+            original_sequencer: format_address(e.original_sequencer),
+            proposer: format_address(e.proposer),
             l1_block_number: e.l1_block_number,
             inserted_at: e.inserted_at,
         })
@@ -225,29 +208,11 @@ pub async fn l2_tps(
             validate_range_exclusivity(has_time_range, false)?;
 
             let time_range = resolve_time_range_enum(&params.common.time_range);
-            let address = if let Some(addr) = params.common.address.as_ref() {
-                match addr.parse::<Address>() {
-                    Ok(a) => Some(AddressBytes::from(a)),
-                    Err(e) => {
-                        tracing::warn!(error = %e, "Failed to parse address");
-                        return Err(ErrorResponse::new(
-                            "invalid-params",
-                            "Bad Request",
-                            StatusCode::BAD_REQUEST,
-                            e.to_string(),
-                        ));
-                    }
-                }
-            } else {
-                None
-            };
+            let address = parse_optional_address(params.common.address.as_ref())?;
             let bucket = bucket_size_from_range(&time_range);
             let blocks = match state.client.get_l2_tps(address, time_range, Some(bucket)).await {
                 Ok(rows) => rows,
-                Err(e) => {
-                    tracing::error!(error = %e, "Failed to get L2 TPS");
-                    return Err(ErrorResponse::database_error());
-                }
+                Err(e) => return Err(query_error("L2 TPS", e)),
             };
             tracing::info!(count = blocks.len(), "Returning aggregated L2 TPS");
             Ok(Json(L2TpsResponse { blocks }))
@@ -260,22 +225,7 @@ pub async fn l2_tps(
             validate_range_exclusivity(has_time_range, has_slot_range)?;
 
             let since = resolve_time_range_since(&params.common.time_range);
-            let address = if let Some(addr) = params.common.address.as_ref() {
-                match addr.parse::<Address>() {
-                    Ok(a) => Some(AddressBytes::from(a)),
-                    Err(e) => {
-                        tracing::warn!(error = %e, "Failed to parse address");
-                        return Err(ErrorResponse::new(
-                            "invalid-params",
-                            "Bad Request",
-                            StatusCode::BAD_REQUEST,
-                            e.to_string(),
-                        ));
-                    }
-                }
-            } else {
-                None
-            };
+            let address = parse_optional_address(params.common.address.as_ref())?;
 
             let blocks = match state
                 .client
@@ -289,10 +239,7 @@ pub async fn l2_tps(
                 .await
             {
                 Ok(rows) => rows,
-                Err(e) => {
-                    tracing::error!("Failed to get L2 TPS: {}", e);
-                    return Err(ErrorResponse::database_error());
-                }
+                Err(e) => return Err(query_error("L2 TPS", e)),
             };
 
             tracing::info!(count = blocks.len(), "Returning paginated L2 TPS");
@@ -332,30 +279,12 @@ pub async fn l2_block_times(
             validate_range_exclusivity(has_time_range, false)?;
 
             let time_range = resolve_time_range_enum(&params.common.time_range);
-            let address = if let Some(addr) = params.common.address.as_ref() {
-                match addr.parse::<Address>() {
-                    Ok(a) => Some(AddressBytes::from(a)),
-                    Err(e) => {
-                        tracing::warn!(error = %e, "Failed to parse address");
-                        return Err(ErrorResponse::new(
-                            "invalid-params",
-                            "Bad Request",
-                            StatusCode::BAD_REQUEST,
-                            e.to_string(),
-                        ));
-                    }
-                }
-            } else {
-                None
-            };
+            let address = parse_optional_address(params.common.address.as_ref())?;
             let bucket = bucket_size_from_range(&time_range);
             let blocks =
                 match state.client.get_l2_block_times(address, time_range, Some(bucket)).await {
                     Ok(rows) => rows,
-                    Err(e) => {
-                        tracing::error!(error = %e, "Failed to get L2 block times");
-                        return Err(ErrorResponse::database_error());
-                    }
+                    Err(e) => return Err(query_error("L2 block times", e)),
                 };
             tracing::info!(count = blocks.len(), "Returning aggregated L2 block times");
             Ok(Json(L2BlockTimesResponse { blocks }))
@@ -370,22 +299,7 @@ pub async fn l2_block_times(
             validate_range_exclusivity(has_time_range, has_slot_range)?;
 
             let (since, _until) = resolve_time_range_bounds(&params.common.time_range);
-            let address = if let Some(addr) = params.common.address.as_ref() {
-                match addr.parse::<Address>() {
-                    Ok(a) => Some(AddressBytes::from(a)),
-                    Err(e) => {
-                        tracing::warn!(error = %e, "Failed to parse address");
-                        return Err(ErrorResponse::new(
-                            "invalid-params",
-                            "Bad Request",
-                            StatusCode::BAD_REQUEST,
-                            e.to_string(),
-                        ));
-                    }
-                }
-            } else {
-                None
-            };
+            let address = parse_optional_address(params.common.address.as_ref())?;
 
             let rows = match state
                 .client
@@ -399,10 +313,7 @@ pub async fn l2_block_times(
                 .await
             {
                 Ok(r) => r,
-                Err(e) => {
-                    tracing::error!(error = %e, "Failed to get L2 block times");
-                    return Err(ErrorResponse::database_error());
-                }
+                Err(e) => return Err(query_error("L2 block times", e)),
             };
 
             tracing::info!(count = rows.len(), "Returning paginated L2 block times");
@@ -442,30 +353,12 @@ pub async fn l2_gas_used(
             validate_range_exclusivity(has_time_range, false)?;
 
             let time_range = resolve_time_range_enum(&params.common.time_range);
-            let address = if let Some(addr) = params.common.address.as_ref() {
-                match addr.parse::<Address>() {
-                    Ok(a) => Some(AddressBytes::from(a)),
-                    Err(e) => {
-                        tracing::warn!(error = %e, "Failed to parse address");
-                        return Err(ErrorResponse::new(
-                            "invalid-params",
-                            "Bad Request",
-                            StatusCode::BAD_REQUEST,
-                            e.to_string(),
-                        ));
-                    }
-                }
-            } else {
-                None
-            };
+            let address = parse_optional_address(params.common.address.as_ref())?;
             let bucket = bucket_size_from_range(&time_range);
             let blocks = match state.client.get_l2_gas_used(address, time_range, Some(bucket)).await
             {
                 Ok(rows) => rows,
-                Err(e) => {
-                    tracing::error!("Failed to get L2 gas used: {}", e);
-                    return Err(ErrorResponse::database_error());
-                }
+                Err(e) => return Err(query_error("L2 gas used", e)),
             };
             tracing::info!(count = blocks.len(), "Returning aggregated L2 gas used");
             Ok(Json(L2GasUsedResponse { blocks }))
@@ -478,22 +371,7 @@ pub async fn l2_gas_used(
             validate_range_exclusivity(has_time_range, has_slot_range)?;
 
             let since = resolve_time_range_since(&params.common.time_range);
-            let address = if let Some(addr) = params.common.address.as_ref() {
-                match addr.parse::<Address>() {
-                    Ok(a) => Some(AddressBytes::from(a)),
-                    Err(e) => {
-                        tracing::warn!(error = %e, "Failed to parse address");
-                        return Err(ErrorResponse::new(
-                            "invalid-params",
-                            "Bad Request",
-                            StatusCode::BAD_REQUEST,
-                            e.to_string(),
-                        ));
-                    }
-                }
-            } else {
-                None
-            };
+            let address = parse_optional_address(params.common.address.as_ref())?;
 
             let rows = match state
                 .client
@@ -507,10 +385,7 @@ pub async fn l2_gas_used(
                 .await
             {
                 Ok(r) => r,
-                Err(e) => {
-                    tracing::error!("Failed to get L2 gas used: {}", e);
-                    return Err(ErrorResponse::database_error());
-                }
+                Err(e) => return Err(query_error("L2 gas used", e)),
             };
 
             tracing::info!(count = rows.len(), "Returning paginated L2 gas used");
@@ -550,22 +425,7 @@ pub async fn block_transactions(
             validate_range_exclusivity(has_time_range, false)?;
 
             let time_range = resolve_time_range_enum(&params.common.time_range);
-            let address = if let Some(addr) = params.common.address.as_ref() {
-                match addr.parse::<Address>() {
-                    Ok(a) => Some(AddressBytes::from(a)),
-                    Err(e) => {
-                        tracing::warn!(error = %e, "Failed to parse address");
-                        return Err(ErrorResponse::new(
-                            "invalid-params",
-                            "Bad Request",
-                            StatusCode::BAD_REQUEST,
-                            e.to_string(),
-                        ));
-                    }
-                }
-            } else {
-                None
-            };
+            let address = parse_optional_address(params.common.address.as_ref())?;
             let bucket = bucket_size_from_range(&time_range);
             let rows = match state
                 .client
@@ -573,10 +433,7 @@ pub async fn block_transactions(
                 .await
             {
                 Ok(rows) => rows,
-                Err(e) => {
-                    tracing::error!(error = %e, "Failed to get block transactions");
-                    return Err(ErrorResponse::database_error());
-                }
+                Err(e) => return Err(query_error("block transactions", e)),
             };
 
             let blocks: Vec<BlockTransactionsItem> = rows
@@ -599,22 +456,7 @@ pub async fn block_transactions(
             validate_range_exclusivity(has_time_range, has_slot_range)?;
 
             let since = resolve_time_range_since(&params.common.time_range);
-            let address = if let Some(addr) = params.common.address.as_ref() {
-                match addr.parse::<Address>() {
-                    Ok(a) => Some(AddressBytes::from(a)),
-                    Err(e) => {
-                        tracing::warn!(error = %e, "Failed to parse address");
-                        return Err(ErrorResponse::new(
-                            "invalid-params",
-                            "Bad Request",
-                            StatusCode::BAD_REQUEST,
-                            e.to_string(),
-                        ));
-                    }
-                }
-            } else {
-                None
-            };
+            let address = parse_optional_address(params.common.address.as_ref())?;
 
             let rows = match state
                 .client
@@ -629,10 +471,7 @@ pub async fn block_transactions(
                 .await
             {
                 Ok(r) => r,
-                Err(e) => {
-                    tracing::error!(error = %e, "Failed to get block transactions");
-                    return Err(ErrorResponse::database_error());
-                }
+                Err(e) => return Err(query_error("block transactions", e)),
             };
 
             let blocks: Vec<BlockTransactionsItem> = rows
@@ -683,10 +522,7 @@ pub async fn blobs_per_batch(
             let time_range = resolve_time_range_enum(&params.common.time_range);
             let batches = match state.client.get_blobs_per_batch(time_range).await {
                 Ok(rows) => rows,
-                Err(e) => {
-                    tracing::error!(error = %e, "Failed to get blobs per batch");
-                    return Err(ErrorResponse::database_error());
-                }
+                Err(e) => return Err(query_error("blobs per batch", e)),
             };
             tracing::info!(count = batches.len(), "Returning aggregated blobs per batch");
             Ok(Json(BatchBlobsResponse { batches }))
@@ -710,10 +546,7 @@ pub async fn blobs_per_batch(
                 .await
             {
                 Ok(rows) => rows,
-                Err(e) => {
-                    tracing::error!(error = %e, "Failed to get blobs per batch");
-                    return Err(ErrorResponse::database_error());
-                }
+                Err(e) => return Err(query_error("blobs per batch", e)),
             };
             tracing::info!(count = batches.len(), "Returning paginated blobs per batch");
             Ok(Json(BatchBlobsResponse { batches }))

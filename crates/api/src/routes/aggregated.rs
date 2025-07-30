@@ -1,21 +1,18 @@
 //! Aggregated data endpoints with complex processing
 
 use crate::{
+    helpers::{format_address, parse_optional_address, query_error, wei_to_gwei},
     state::ApiState,
     validation::{
         CommonQuery, has_time_range_params, resolve_time_range_enum, resolve_time_range_since,
         validate_range_exclusivity, validate_time_range,
     },
 };
-use alloy_primitives::Address;
 use api_types::*;
 use axum::{
     Json,
     extract::{Query, State},
 };
-use clickhouse_lib::AddressBytes;
-use hex::encode;
-use primitives::WEI_PER_GWEI;
 
 // Legacy type aliases for backward compatibility
 type RangeQuery = CommonQuery;
@@ -44,16 +41,17 @@ pub async fn prove_costs(
 
     let time_range = resolve_time_range_enum(&params.time_range);
 
-    let rows = state.client.get_prove_costs_by_proposer(time_range).await.map_err(|e| {
-        tracing::error!(error = %e, "Failed to get prover costs");
-        ErrorResponse::database_error()
-    })?;
+    let rows = state
+        .client
+        .get_prove_costs_by_proposer(time_range)
+        .await
+        .map_err(|e| query_error("prover costs", e))?;
 
     let proposers: Vec<ProposerCostItem> = rows
         .into_iter()
         .map(|(addr, cost)| ProposerCostItem {
-            address: format!("0x{}", encode(addr)),
-            cost: cost / WEI_PER_GWEI,
+            address: format_address(addr),
+            cost: wei_to_gwei(cost),
         })
         .collect();
 
@@ -85,13 +83,7 @@ pub async fn dashboard_data(
 
     let time_range = resolve_time_range_enum(&params.time_range);
     let since = resolve_time_range_since(&params.time_range);
-    let address = params.address.as_ref().and_then(|addr| match addr.parse::<Address>() {
-        Ok(a) => Some(AddressBytes::from(a)),
-        Err(e) => {
-            tracing::warn!(error = %e, "Failed to parse address");
-            None
-        }
-    });
+    let address = parse_optional_address(params.address.as_ref()).ok().flatten();
 
     let (
         l2_block_cadence,
@@ -126,9 +118,9 @@ pub async fn dashboard_data(
     })?;
 
     let preconf_data = preconf.map(|d| PreconfDataResponse {
-        candidates: d.candidates.into_iter().map(|a| format!("0x{}", encode(a))).collect(),
-        current_operator: d.current_operator.map(|a| format!("0x{}", encode(a))),
-        next_operator: d.next_operator.map(|a| format!("0x{}", encode(a))),
+        candidates: d.candidates.into_iter().map(format_address).collect(),
+        current_operator: d.current_operator.map(format_address),
+        next_operator: d.next_operator.map(format_address),
     });
 
     tracing::info!(
