@@ -399,26 +399,22 @@ pub async fn sequencer_blocks(
     let since = resolve_time_range_since(&params.time_range);
     let rows = state
         .client
-        .get_sequencer_blocks_since(since)
+        .get_sequencer_blocks_grouped_since(since)
         .await
         .map_err(|e| query_error("sequencer blocks", e))?;
 
     let filter = params.address.as_ref().and_then(|addr| parse_address(addr).ok());
 
-    use std::collections::BTreeMap;
-    let mut map: BTreeMap<AddressBytes, Vec<u64>> = BTreeMap::new();
-    for r in rows {
-        if let Some(addr) = filter {
-            if r.sequencer != addr {
-                continue;
-            }
-        }
-        map.entry(r.sequencer).or_default().push(r.l2_block_number);
-    }
-
-    let sequencers: Vec<SequencerBlocksItem> = map
+    let sequencers: Vec<SequencerBlocksItem> = rows
         .into_iter()
-        .map(|(seq, blocks)| SequencerBlocksItem { address: format_address(seq), blocks })
+        .filter_map(|r| {
+            if let Some(addr) = filter {
+                if r.sequencer != addr {
+                    return None;
+                }
+            }
+            Some(SequencerBlocksItem { address: format_address(r.sequencer), blocks: r.blocks })
+        })
         .collect();
     tracing::info!(count = sequencers.len(), "Returning sequencer blocks");
     Ok(Json(SequencerBlocksResponse { sequencers }))

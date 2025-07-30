@@ -234,6 +234,15 @@ pub struct SequencerBlockRow {
     pub l2_block_number: u64,
 }
 
+/// Row representing grouped blocks by sequencer (database-aggregated)
+#[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq)]
+pub struct SequencerBlocksGrouped {
+    /// Sequencer address
+    pub sequencer: AddressBytes,
+    /// Array of L2 block numbers proposed by the sequencer
+    pub blocks: Vec<u64>,
+}
+
 /// Row representing the transaction count of a block and its sequencer
 #[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq)]
 pub struct BlockTransactionRow {

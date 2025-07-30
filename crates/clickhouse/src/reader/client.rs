@@ -18,7 +18,7 @@ use crate::{
         BatchBlobCountRow, BatchFeeComponentRow, BatchPostingTimeRow, BatchProveTimeRow,
         BatchVerifyTimeRow, BlockFeeComponentRow, BlockTransactionRow, FailedProposalRow,
         ForcedInclusionProcessedRow, L1BlockTimeRow, L1DataCostRow, L2BlockTimeRow, L2GasUsedRow,
-        L2ReorgRow, L2TpsRow, PreconfData, ProveCostRow, SequencerBlockRow,
+        L2ReorgRow, L2TpsRow, PreconfData, ProveCostRow, SequencerBlockRow, SequencerBlocksGrouped,
         SequencerDistributionRow, SequencerFeeRow, SlashingEventRow,
     },
     types::{AddressBytes, HashBytes},
@@ -818,6 +818,28 @@ impl ClickhouseReader {
         );
 
         let rows = self.execute::<SequencerBlockRow>(&query).await?;
+        Ok(rows)
+    }
+
+    /// Get sequencer blocks grouped by sequencer address since the given cutoff time.
+    /// This uses database aggregation instead of in-memory grouping for better performance.
+    pub async fn get_sequencer_blocks_grouped_since(
+        &self,
+        since: DateTime<Utc>,
+    ) -> Result<Vec<SequencerBlocksGrouped>> {
+        let query = format!(
+            "SELECT sequencer, groupArray(h.l2_block_number) as blocks \
+             FROM {db}.l2_head_events h \
+             WHERE h.block_ts > {} \
+               AND {filter} \
+             GROUP BY sequencer \
+             ORDER BY sequencer ASC",
+            since.timestamp(),
+            filter = self.reorg_filter("h"),
+            db = self.db_name,
+        );
+
+        let rows = self.execute::<SequencerBlocksGrouped>(&query).await?;
         Ok(rows)
     }
 
