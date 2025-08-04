@@ -11,3 +11,9 @@ button:disabled {
 select:hover {
   cursor: pointer;
 }
+
+/* Ensure chart text remains legible in dark mode */
+.dark .recharts-text,
+.dark .recharts-text tspan {
+  fill: #ffffff !important;
+}

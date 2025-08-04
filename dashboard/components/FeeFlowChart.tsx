@@ -172,7 +172,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
 }) => {
   const { theme } = useTheme();
   const textColor =
-    theme === 'dark' ? '#e2e8f0' : lightTheme.foreground;
+    theme === 'dark' ? '#ffffff' : lightTheme.foreground;
   const { data: feeRes } = useSWR(['l2FeesFlow', timeRange, address], () =>
     fetchL2FeesComponents(timeRange),
   );
