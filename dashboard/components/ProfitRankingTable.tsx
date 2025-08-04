@@ -45,7 +45,7 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
   const { data: feeRes } = useSWR(['profitRankingData', timeRange], () =>
     fetchL2FeesComponents(timeRange),
   );
-  
+
   const feeDataMap = React.useMemo(() => {
     const map = new Map<string, apiService.SequencerFee>();
     feeRes?.data?.sequencers.forEach((f) => {
@@ -77,6 +77,9 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
     const extraEth = proveEth + verifyEth;
     const extraUsd = extraEth * ethPrice;
     if (!fees) {
+      // If no fee data exists, we can't calculate accurate costs or profits
+      // Show N/A for all financial metrics when cloud/prover costs are 0
+      const hasCosts = costPerSeqEth > 0;
       return {
         name: seq.name,
         address: addr,
@@ -84,8 +87,8 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
         batches: batchCount,
         revenueEth: null as number | null,
         revenueUsd: null as number | null,
-        costEth: costPerSeqEth + extraEth,
-        costUsd: costPerSeqUsd + extraUsd,
+        costEth: hasCosts ? costPerSeqEth + extraEth : null,
+        costUsd: hasCosts ? costPerSeqUsd + extraUsd : null,
         profitEth: null as number | null,
         profitUsd: null as number | null,
         ratio: null as number | null,
@@ -298,8 +301,11 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
                     ? formatEth(row.revenueEth * 1e9, 4)
                     : 'N/A'}
                 </td>
-                <td className="px-2 py-1" title={`$${formatUsd(row.costUsd)}`}>
-                  {formatEth(row.costEth * 1e9, 4)}
+                <td
+                  className="px-2 py-1"
+                  title={row.costUsd != null ? `$${formatUsd(row.costUsd)}` : undefined}
+                >
+                  {row.costEth != null ? formatEth(row.costEth * 1e9, 4) : 'N/A'}
                 </td>
                 <td
                   className="px-2 py-1"
