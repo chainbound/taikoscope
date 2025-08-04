@@ -44,15 +44,17 @@ const createSankeyNode = (
     const safeHeight = isNaN(height) ? 0 : height;
 
     // Constants for centering the combined label block
-    const LINE_HEIGHT = 12;           // More conservative estimate for 12px font
-    const NUM_LINES = 2;              // name + value
-    const blockHalf = (LINE_HEIGHT * (NUM_LINES - 1)) / 2;  // = 6 px
+    const LINE_HEIGHT = 12; // More conservative estimate for 12px font
+    const NUM_LINES = 2; // name + value
+    const blockHalf = (LINE_HEIGHT * (NUM_LINES - 1)) / 2; // = 6 px
 
     const isCostNode =
       payload.name === 'Hardware Cost' ||
       payload.name === 'Proposing Cost' ||
       payload.name === 'Proving Cost';
-    const isSubsidyNode = payload.name === 'Subsidy' || (typeof payload.name === 'string' && payload.name.includes('Subsidy'));
+    const isSubsidyNode =
+      payload.name === 'Subsidy' ||
+      (typeof payload.name === 'string' && payload.name.includes('Subsidy'));
     const isProfitNode = payload.name === 'Profit' || payload.profitNode;
     const isPinkNode = payload.name === 'Taiko DAO';
     const hideLabel = payload.hideLabel;
@@ -74,7 +76,15 @@ const createSankeyNode = (
           y={safeY}
           width={safeWidth}
           height={safeHeight}
-          fill={isCostNode ? '#ef4444' : isPinkNode ? TAIKO_PINK : isSubsidyNode ? NODE_GREEN : NODE_GREEN}
+          fill={
+            isCostNode
+              ? '#ef4444'
+              : isPinkNode
+                ? TAIKO_PINK
+                : isSubsidyNode
+                  ? NODE_GREEN
+                  : NODE_GREEN
+          }
           fillOpacity={0.8}
         />
         {!hideLabel && (
@@ -142,7 +152,6 @@ const SankeyLink = (props: any) => {
     payload.target.name === 'Hardware Cost' ||
     payload.target.name === 'Proposing Cost' ||
     payload.target.name === 'Proving Cost' ||
-
     payload.target.name === 'Subsidy' ||
     (typeof payload.target.name === 'string' &&
       payload.target.name.includes('Subsidy'));
@@ -171,8 +180,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
   totalSequencers,
 }) => {
   const { theme } = useTheme();
-  const textColor =
-    theme === 'dark' ? '#e2e8f0' : lightTheme.foreground;
+  const textColor = theme === 'dark' ? '#ffffff' : lightTheme.foreground;
   const { data: feeRes } = useSWR(['l2FeesFlow', timeRange, address], () =>
     fetchL2FeesComponents(timeRange),
   );
@@ -181,8 +189,10 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
   const priorityFee = feeRes?.data?.priority_fee ?? null;
   const baseFee = feeRes?.data?.base_fee ?? null;
   const allSequencerFees = feeRes?.data?.sequencers ?? [];
-  const sequencerFees = address 
-    ? allSequencerFees.filter(s => s.address.toLowerCase() === address.toLowerCase())
+  const sequencerFees = address
+    ? allSequencerFees.filter(
+        (s) => s.address.toLowerCase() === address.toLowerCase(),
+      )
     : allSequencerFees;
 
   // Memoized tooltip value formatter to avoid unnecessary re-renders
@@ -261,7 +271,9 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
   const safeValue = (value: number) => (isFinite(value) ? value : 0);
 
   // Convert fees to USD
-  const priorityFeeUsd = safeValue(((priorityFee ?? 0) / WEI_TO_ETH) * ethPrice);
+  const priorityFeeUsd = safeValue(
+    ((priorityFee ?? 0) / WEI_TO_ETH) * ethPrice,
+  );
   const baseFeeUsd = safeValue(((baseFee ?? 0) / WEI_TO_ETH) * ethPrice);
   const l1DataCostTotalUsd = safeValue(
     ((feeRes?.data?.l1_data_cost ?? 0) / WEI_TO_ETH) * ethPrice,
@@ -293,7 +305,6 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     const l1CostUsd = safeValue((l1CostWei / WEI_TO_ETH) * ethPrice);
     const proveUsd = safeValue((proveWei / WEI_TO_ETH) * ethPrice);
 
-
     const revenue = safeValue(priorityUsd + baseUsd);
     const revenueWei = safeValue(priorityWei + baseWei);
 
@@ -317,7 +328,9 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     const actualL1Cost = safeValue(Math.min(l1CostUsd, remaining));
     remaining -= actualL1Cost;
     const deficitUsd = safeValue(Math.max(0, -profitUsd));
-    const subsidyUsd = safeValue(Math.max(l1CostUsd - actualL1Cost, deficitUsd));
+    const subsidyUsd = safeValue(
+      Math.max(l1CostUsd - actualL1Cost, deficitUsd),
+    );
     const subsidyWei = safeValue(
       ethPrice ? (subsidyUsd / ethPrice) * WEI_TO_ETH : 0,
     );
@@ -355,7 +368,6 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
       actualHardwareCostWei,
       actualL1CostWei,
       actualProveCostWei,
-
     };
   });
 
@@ -369,13 +381,19 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     // Fallback: create a single "Sequencers" node to route fees through
     const sequencerRevenue = safeValue(priorityFeeUsd + baseFeeUsd * 0.75);
     let remaining = sequencerRevenue - totalHardwareCost;
-    const actualProveCost = safeValue(Math.min(l1ProveCost, Math.max(0, remaining)));
+    const actualProveCost = safeValue(
+      Math.min(l1ProveCost, Math.max(0, remaining)),
+    );
     remaining -= actualProveCost;
-    const actualL1Cost = safeValue(Math.min(l1DataCostTotalUsd, Math.max(0, remaining)));
+    const actualL1Cost = safeValue(
+      Math.min(l1DataCostTotalUsd, Math.max(0, remaining)),
+    );
     remaining -= actualL1Cost;
     const l1Subsidy = safeValue(l1DataCostTotalUsd - actualL1Cost);
     const sequencerProfit = safeValue(Math.max(0, remaining));
-    const sequencerRevenueWei = safeValue((priorityFee ?? 0) + (baseFee ?? 0) * 0.75);
+    const sequencerRevenueWei = safeValue(
+      (priorityFee ?? 0) + (baseFee ?? 0) * 0.75,
+    );
     const sequencerProfitWei = safeValue(
       ethPrice ? (sequencerProfit / ethPrice) * WEI_TO_ETH : 0,
     );
@@ -389,14 +407,39 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
 
     nodes = [
       { name: 'Subsidy', value: l1Subsidy, usd: true, depth: 0 },
-      { name: 'Priority Fee', value: priorityFeeUsd, wei: priorityFee ?? 0, depth: 0 },
+      {
+        name: 'Priority Fee',
+        value: priorityFeeUsd,
+        wei: priorityFee ?? 0,
+        depth: 0,
+      },
       { name: 'Base Fee', value: baseFeeUsd, wei: baseFee ?? 0, depth: 0 },
-      { name: 'Sequencers', value: sequencerRevenue, wei: sequencerRevenueWei, depth: 1 },
-      { name: 'Taiko DAO', value: baseFeeDaoUsd, wei: (baseFee ?? 0) * 0.25, depth: 1 },
+      {
+        name: 'Sequencers',
+        value: sequencerRevenue,
+        wei: sequencerRevenueWei,
+        depth: 1,
+      },
+      {
+        name: 'Taiko DAO',
+        value: baseFeeDaoUsd,
+        wei: (baseFee ?? 0) * 0.25,
+        depth: 1,
+      },
       { name: 'Hardware Cost', value: totalHardwareCost, usd: true, depth: 2 },
       { name: 'Proving Cost', value: l1ProveCost, usd: true, depth: 2 },
-      { name: 'Proposing Cost', value: l1DataCostTotalUsd, usd: true, depth: 2 },
-      { name: 'Profit', value: sequencerProfit, wei: sequencerProfitWei, depth: 3 },
+      {
+        name: 'Proposing Cost',
+        value: l1DataCostTotalUsd,
+        usd: true,
+        depth: 2,
+      },
+      {
+        name: 'Profit',
+        value: sequencerProfit,
+        wei: sequencerProfitWei,
+        depth: 3,
+      },
     ];
 
     // Build links with updated indices
@@ -404,7 +447,11 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
       { source: 1, target: 3, value: priorityFeeUsd },
       { source: 2, target: 3, value: safeValue(baseFeeUsd * 0.75) },
       { source: 2, target: daoIndex, value: baseFeeDaoUsd },
-      { source: 3, target: hardwareIndex, value: safeValue(Math.min(totalHardwareCost, sequencerRevenue)) },
+      {
+        source: 3,
+        target: hardwareIndex,
+        value: safeValue(Math.min(totalHardwareCost, sequencerRevenue)),
+      },
       { source: 3, target: proveIndex, value: l1ProveCost },
       { source: 3, target: proposeIndex, value: actualL1Cost },
       { source: 0, target: proposeIndex, value: l1Subsidy },
@@ -412,16 +459,19 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     ].filter((l) => l.value !== 0);
 
     // Ensure Taiko DAO is not a sink so it appears in the middle column
-    const minPositiveDao = links.length ? Math.min(...links.map(l => l.value)) : 0;
+    const minPositiveDao = links.length
+      ? Math.min(...links.map((l) => l.value))
+      : 0;
     const DAO_EPSILON = minPositiveDao > 0 ? minPositiveDao * 0.1 : 1e-6;
-    const daoHasOutflow = links.some((l) => l.source === daoIndex && l.value > 0);
+    const daoHasOutflow = links.some(
+      (l) => l.source === daoIndex && l.value > 0,
+    );
     if (!daoHasOutflow) {
       links.push({ source: daoIndex, target: profitIndex, value: DAO_EPSILON });
       if (nodes[profitIndex]) {
         nodes[profitIndex].value += DAO_EPSILON;
       }
     }
-
   } else {
     const totalActualHardwareCost = seqData.reduce(
       (acc, s) => acc + s.actualHardwareCost,
@@ -464,7 +514,12 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
         usd: true,
         depth: 0,
       },
-      { name: 'Priority Fee', value: priorityFeeUsd, wei: priorityFee ?? 0, depth: 0 },
+      {
+        name: 'Priority Fee',
+        value: priorityFeeUsd,
+        wei: priorityFee ?? 0,
+        depth: 0,
+      },
       { name: 'Base Fee', value: baseFeeUsd, wei: baseFee ?? 0, depth: 0 },
       // Combined sequencer nodes (revenue + subsidy)
       ...seqData.map((s) => ({
@@ -475,9 +530,24 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
         wei: s.revenueWei + s.subsidyWei,
         depth: 1,
       })),
-      { name: 'Taiko DAO', value: baseFeeDaoUsd, wei: (baseFee ?? 0) * 0.25, depth: 1 },
-      { name: 'Hardware Cost', value: totalActualHardwareCost, usd: true, depth: 2 },
-      { name: 'Proving Cost', value: totalActualProveCost, usd: true, depth: 2 },
+      {
+        name: 'Taiko DAO',
+        value: baseFeeDaoUsd,
+        wei: (baseFee ?? 0) * 0.25,
+        depth: 1,
+      },
+      {
+        name: 'Hardware Cost',
+        value: totalActualHardwareCost,
+        usd: true,
+        depth: 2,
+      },
+      {
+        name: 'Proving Cost',
+        value: totalActualProveCost,
+        usd: true,
+        depth: 2,
+      },
       { name: 'Proposing Cost', value: totalL1Cost, usd: true, depth: 2 },
       {
         name: 'Profit',
@@ -537,13 +607,13 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
 
     // --- Ensure every sequencer node has at least one outgoing edge ---
     // Use 10% of the smallest existing link so the line is always visible
-    const minPositive = links.length ? Math.min(...links.map(l => l.value)) : 0;
+    const minPositive = links.length
+      ? Math.min(...links.map((l) => l.value))
+      : 0;
     const EPSILON = minPositive > 0 ? minPositive * 0.1 : 1e-6;
     seqData.forEach((_, i) => {
       const seqIdx = sequencerStartIndex + i;
-      const hasOutflow = links.some(
-        (l) => l.source === seqIdx && l.value > 0,
-      );
+      const hasOutflow = links.some((l) => l.source === seqIdx && l.value > 0);
       if (!hasOutflow) {
         links.push({ source: seqIdx, target: profitIndex, value: EPSILON });
         // keep mass-balance
@@ -563,7 +633,6 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
         nodes[profitIndex].value += EPSILON;
       }
     }
-
   }
 
   // Additional safety checks before processing
@@ -578,8 +647,14 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
   // Validate that all link indices are within bounds
   const maxNodeIndex = nodes.length - 1;
   const validLinks = links.filter((link) => {
-    const sourceValid = Number.isInteger(link.source) && link.source >= 0 && link.source <= maxNodeIndex;
-    const targetValid = Number.isInteger(link.target) && link.target >= 0 && link.target <= maxNodeIndex;
+    const sourceValid =
+      Number.isInteger(link.source) &&
+      link.source >= 0 &&
+      link.source <= maxNodeIndex;
+    const targetValid =
+      Number.isInteger(link.target) &&
+      link.target >= 0 &&
+      link.target <= maxNodeIndex;
     const valueValid = isFinite(link.value) && link.value > 0;
     return sourceValid && targetValid && valueValid;
   });
@@ -648,7 +723,10 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
 
   const data = { nodes: validatedNodes, links: validatedLinks };
 
-  const tooltipContent = ({ active, payload }: TooltipProps<number, string>) => {
+  const tooltipContent = ({
+    active,
+    payload,
+  }: TooltipProps<number, string>) => {
     if (!active || !payload?.[0]) return null;
 
     const { value = 0, payload: itemData } = payload![0];
@@ -666,8 +744,8 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     })();
     return (
       <div className="bg-white dark:bg-gray-800 p-2 border border-gray-200 dark:border-gray-700 rounded shadow-sm">
-        <p className="text-sm font-medium">{nodeLabel}</p>
-        <p className="text-sm text-gray-600 dark:text-gray-300">
+        <p className="text-sm font-medium dark:text-white">{nodeLabel}</p>
+        <p className="text-sm text-gray-600 dark:text-white">
           {formatTooltipValue(value, itemData)}
         </p>
       </div>
