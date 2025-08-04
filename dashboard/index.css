@@ -12,7 +12,15 @@ select:hover {
   cursor: pointer;
 }
 
-/* Ensure chart text is readable in dark mode */
+/* Ensure chart text is readable in both light and dark modes */
+.recharts-layer text {
+  fill: #0f172a;
+}
+
+.recharts-default-tooltip {
+  color: #0f172a;
+}
+
 .dark .recharts-layer text {
   fill: #ffffff;
 }
