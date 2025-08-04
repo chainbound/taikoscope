@@ -1,5 +1,12 @@
 @import 'tailwindcss';
 
+@layer base {
+  html,
+  body {
+    @apply text-gray-900 dark:text-gray-100;
+  }
+}
+
 button:hover {
   cursor: pointer;
 }
