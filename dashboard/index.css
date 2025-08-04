@@ -11,3 +11,12 @@ button:disabled {
 select:hover {
   cursor: pointer;
 }
+
+/* Ensure chart text is readable in dark mode */
+.dark .recharts-layer text {
+  fill: #ffffff;
+}
+
+.dark .recharts-default-tooltip {
+  color: #ffffff;
+}
