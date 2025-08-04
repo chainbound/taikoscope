@@ -66,6 +66,23 @@ impl Extractor {
         preconf_whitelist_address: Address,
         taiko_wrapper_address: Address,
     ) -> Result<Self> {
+        // Validate URL schemes
+        let l1_scheme = l1_rpc_url.scheme();
+        if l1_scheme != "ws" && l1_scheme != "wss" {
+            return Err(eyre::eyre!(
+                "Invalid URL scheme for L1 RPC: expected 'ws://' or 'wss://' but got '{}://'. Please provide a WebSocket endpoint.",
+                l1_scheme
+            ));
+        }
+
+        let l2_scheme = l2_rpc_url.scheme();
+        if l2_scheme != "ws" && l2_scheme != "wss" {
+            return Err(eyre::eyre!(
+                "Invalid URL scheme for L2 RPC: expected 'ws://' or 'wss://' but got '{}://'. Please provide a WebSocket endpoint.",
+                l2_scheme
+            ));
+        }
+
         let l1_ws = RetryWsConnect::from_url(l1_rpc_url);
         let l1_client = ClientBuilder::default().layer(DEFAULT_RETRY_LAYER).pubsub(l1_ws).await?;
         let l1_provider = ProviderBuilder::new().connect_client(l1_client);

@@ -77,10 +77,10 @@ impl NatsStreamOpts {
 /// RPC endpoint configuration options
 #[derive(Debug, Clone, Parser)]
 pub struct RpcOpts {
-    /// L1 RPC URL
+    /// L1 WebSocket RPC URL (must use ws:// or wss:// scheme)
     #[clap(long, env = "L1_RPC_URL")]
     pub l1_url: Url,
-    /// L2 RPC URL
+    /// L2 WebSocket RPC URL (must use ws:// or wss:// scheme)
     #[clap(long, env = "L2_RPC_URL")]
     pub l2_url: Url,
     /// Public RPC URL for health checks

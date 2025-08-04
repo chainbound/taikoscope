@@ -35,7 +35,8 @@ impl IngestorDriver {
             opts.taiko_addresses.preconf_whitelist_address,
             opts.taiko_addresses.taiko_wrapper_address,
         )
-        .await?;
+        .await
+        .wrap_err("Failed to initialize blockchain extractor. Ensure RPC URLs are WebSocket endpoints (ws:// or wss://)")?;
 
         let nats_client = async_nats::connect(&opts.nats_url)
             .await
