@@ -2433,6 +2433,7 @@ impl ClickhouseReader {
             priority_fee: u128,
             base_fee: u128,
             l1_data_cost: Option<u128>,
+            prove_cost: Option<u128>,
         }
 
         let mut query = format!(
@@ -2474,7 +2475,8 @@ impl ClickhouseReader {
                 rb.proposer_addr AS proposer,
                 sum(h.sum_priority_fee) AS priority_fee,
                 sum(h.sum_base_fee) AS base_fee,
-                toNullable(max(dc.cost)) AS l1_data_cost
+                toNullable(max(dc.cost)) AS l1_data_cost,
+                toNullable(max(pc.cost)) AS prove_cost
             FROM
                 recent_batches rb
             INNER JOIN
@@ -2483,6 +2485,8 @@ impl ClickhouseReader {
                 {db}.l2_head_events h ON bb.l2_block_number = h.l2_block_number
             LEFT JOIN
                 {db}.l1_data_costs dc ON rb.batch_id = dc.batch_id AND rb.l1_block_number = dc.l1_block_number
+            LEFT JOIN
+                {db}.prove_costs pc ON rb.batch_id = pc.batch_id
             WHERE
                 bb.batch_id IN (
                     SELECT DISTINCT b2.batch_id
@@ -2511,6 +2515,7 @@ impl ClickhouseReader {
                 priority_fee: r.priority_fee,
                 base_fee: r.base_fee,
                 l1_data_cost: r.l1_data_cost,
+                prove_cost: r.prove_cost,
             })
             .collect())
     }
@@ -3157,13 +3162,12 @@ impl ClickhouseReader {
         &self,
         proposer: Option<AddressBytes>,
         range: TimeRange,
-    ) -> Result<(Vec<SequencerFeeRow>, Vec<BatchFeeComponentRow>, Option<u128>)> {
-        // Fetch all three concurrently
-        let (sequencer_fees, batch_components, prove_total) = try_join!(
+    ) -> Result<(Vec<SequencerFeeRow>, Vec<BatchFeeComponentRow>)> {
+        // Fetch both concurrently
+        let (sequencer_fees, batch_components) = try_join!(
             self.get_l2_fees_by_sequencer(range),
-            self.get_batch_fee_components(proposer, range),
-            self.get_total_prove_cost(proposer, range)
+            self.get_batch_fee_components(proposer, range)
         )?;
-        Ok((sequencer_fees, batch_components, prove_total))
+        Ok((sequencer_fees, batch_components))
     }
 }

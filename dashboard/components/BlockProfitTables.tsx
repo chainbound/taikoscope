@@ -48,7 +48,7 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
         priority: b.priority_fee,
         base: b.base_fee,
         l1Cost: b.l1_data_cost,
-        amortizedProveCost: b.amortized_prove_cost,
+        proveCost: b.prove_cost,
       })) ?? [];
   const batchCount = batchData.length;
   const HOURS_IN_MONTH = 30 * 24;
@@ -64,7 +64,7 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
       priorityFee: b.priority,
       baseFee: b.base,
       l1DataCost: b.l1Cost ?? 0,
-      proveCost: b.amortizedProveCost ?? 0,
+      proveCost: b.proveCost ?? 0,
 
       hardwareCostUsd: operationalCostPerBatchUsd,
       ethPrice,

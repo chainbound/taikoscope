@@ -47,7 +47,7 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
         priority: b.priority_fee,
         base: b.base_fee,
         l1Cost: b.l1_data_cost,
-        amortizedProveCost: b.amortized_prove_cost,
+        proveCost: b.prove_cost,
       })) ?? null;
   const { data: ethPrice = 0, error: ethPriceError } = useEthPrice();
 
@@ -70,7 +70,7 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
       priorityFee: b.priority,
       baseFee: b.base,
       l1DataCost: b.l1Cost ?? 0,
-      proveCost: b.amortizedProveCost ?? 0,
+      proveCost: b.proveCost ?? 0,
 
       hardwareCostUsd: costPerBatchUsd,
       ethPrice,
