@@ -2476,7 +2476,7 @@ impl ClickhouseReader {
                 sum(h.sum_priority_fee) AS priority_fee,
                 sum(h.sum_base_fee) AS base_fee,
                 toNullable(max(dc.cost)) AS l1_data_cost,
-                pc.cost AS prove_cost
+                toNullable(max(pc.cost)) AS prove_cost
             FROM
                 recent_batches rb
             INNER JOIN
@@ -2496,7 +2496,7 @@ impl ClickhouseReader {
                 )
                 AND {filter}
             GROUP BY
-                rb.batch_id, rb.l1_block_number, rb.l1_tx_hash, rb.proposer_addr, pc.cost
+                rb.batch_id, rb.l1_block_number, rb.l1_tx_hash, rb.proposer_addr
             ORDER BY
                 rb.batch_id ASC",
             interval = range.interval(),
