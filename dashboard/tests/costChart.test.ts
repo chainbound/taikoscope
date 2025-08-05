@@ -14,7 +14,7 @@ const batchData = [{
   priority_fee: 100000000,
   base_fee: 200000000,
   l1_data_cost: 50000000,
-  amortized_prove_cost: 25000000,
+  prove_cost: 25000000,
 }];
 
 describe('CostChart', () => {

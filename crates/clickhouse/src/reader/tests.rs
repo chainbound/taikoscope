@@ -140,6 +140,7 @@ struct BatchFeeRow {
     priority_fee: u128,
     base_fee: u128,
     l1_data_cost: Option<u128>,
+    prove_cost: Option<u128>,
 }
 
 #[tokio::test]
@@ -153,6 +154,7 @@ async fn batch_fee_components_returns_expected_rows() {
         priority_fee: 10,
         base_fee: 20,
         l1_data_cost: Some(5),
+        prove_cost: Some(3),
     }]));
 
     let url = url::Url::parse(mock.url()).unwrap();
@@ -170,6 +172,7 @@ async fn batch_fee_components_returns_expected_rows() {
             priority_fee: 10,
             base_fee: 20,
             l1_data_cost: Some(5),
+            prove_cost: Some(3),
         }]
     );
 }
@@ -186,6 +189,7 @@ async fn batch_total_fee_helpers_return_expected_values() {
             priority_fee: 10,
             base_fee: 20,
             l1_data_cost: Some(5),
+            prove_cost: Some(3),
         }]));
     }
 

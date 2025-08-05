@@ -756,7 +756,7 @@ pub async fn l2_fees_components(
 
     let time_range = resolve_time_range_enum(&params.time_range);
 
-    let (sequencer_fees, batch_components, prove_total) = state
+    let (sequencer_fees, batch_components) = state
         .client
         .get_l2_fees_and_components(None, time_range)
         .await
@@ -767,11 +767,6 @@ pub async fn l2_fees_components(
     let base_fee = sequencer_fees.iter().map(|s| s.base_fee).sum::<u128>();
     let l1_data_cost = sequencer_fees.iter().map(|s| s.l1_data_cost).sum::<u128>();
     let prove_cost = sequencer_fees.iter().map(|s| s.prove_cost).sum::<u128>();
-
-    // Calculate amortized prove cost
-    let count = batch_components.len() as u128;
-    let amortized_prove =
-        if count > 0 { prove_total.map(|c| wei_to_gwei(c / count)) } else { None };
 
     // Convert sequencer fees to gwei
     let sequencers: Vec<SequencerFeeRow> = sequencer_fees
@@ -796,7 +791,7 @@ pub async fn l2_fees_components(
             priority_fee: wei_to_gwei(r.priority_fee),
             base_fee: wei_to_gwei(r.base_fee),
             l1_data_cost: wei_to_gwei_opt(r.l1_data_cost),
-            amortized_prove_cost: amortized_prove,
+            prove_cost: wei_to_gwei_opt(r.prove_cost),
         })
         .collect();
 

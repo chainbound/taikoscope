@@ -77,7 +77,7 @@ export interface BatchFeeComponent {
   priority: number;
   base: number;
   l1Cost: number | null;
-  amortizedProveCost: number | null;
+  proveCost: number | null;
 }
 
 export interface BlockProfit {

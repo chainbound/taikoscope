@@ -144,7 +144,7 @@ pub fn aggregate_batch_fee_components(
                 any_l1 = true;
             }
 
-            if let Some(prove_cost) = r.amortized_prove_cost {
+            if let Some(prove_cost) = r.prove_cost {
                 sum_prove += prove_cost;
                 any_prove = true;
             }
@@ -171,7 +171,7 @@ pub fn aggregate_batch_fee_components(
             priority_fee: sum_priority,
             base_fee: sum_base,
             l1_data_cost: any_l1.then_some(sum_l1),
-            amortized_prove_cost: any_prove.then_some(sum_prove),
+            prove_cost: any_prove.then_some(sum_prove),
         });
     }
 
@@ -301,7 +301,7 @@ mod tests {
             priority_fee,
             base_fee,
             l1_data_cost: l1_cost,
-            amortized_prove_cost: prove_cost,
+            prove_cost,
         }
     }
 
@@ -475,7 +475,7 @@ mod tests {
         assert_eq!(result[0].priority_fee, 1000);
         assert_eq!(result[0].base_fee, 2000);
         assert_eq!(result[0].l1_data_cost, Some(500));
-        assert_eq!(result[0].amortized_prove_cost, Some(300));
+        assert_eq!(result[0].prove_cost, Some(300));
     }
 
     #[test]
@@ -508,7 +508,7 @@ mod tests {
         assert_eq!(result[0].priority_fee, 2500); // 1000 + 1500
         assert_eq!(result[0].base_fee, 4500); // 2000 + 2500
         assert_eq!(result[0].l1_data_cost, Some(1100)); // 500 + 600
-        assert_eq!(result[0].amortized_prove_cost, Some(700)); // 300 + 400
+        assert_eq!(result[0].prove_cost, Some(700)); // 300 + 400
         assert_eq!(result[0].l1_block_number, 101); // Last value
         assert_eq!(result[0].l1_tx_hash, "0x1"); // Last value
         assert_eq!(result[0].sequencer, "seq2"); // Last value
@@ -542,7 +542,7 @@ mod tests {
 
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].l1_data_cost, Some(600)); // any=true due to second row
-        assert_eq!(result[0].amortized_prove_cost, Some(300)); // any=true due to first row
+        assert_eq!(result[0].prove_cost, Some(300)); // any=true due to first row
     }
 
     // Tests for aggregate_l2_tps

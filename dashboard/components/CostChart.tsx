@@ -47,7 +47,7 @@ export const CostChart: React.FC<CostChartProps> = ({
         priority: b.priority_fee,
         base: b.base_fee,
         l1Cost: b.l1_data_cost,
-        amortizedProveCost: b.amortized_prove_cost,
+        proveCost: b.prove_cost,
       })) ?? null;
 
   if (!feeData || feeData.length === 0) {
@@ -67,7 +67,7 @@ export const CostChart: React.FC<CostChartProps> = ({
 
   const data = feeData.map((b) => {
     const l1CostEth = (b.l1Cost ?? 0) / 1e9;
-    const proveEth = (b.amortizedProveCost ?? 0) / 1e9;
+    const proveEth = (b.proveCost ?? 0) / 1e9;
     const verifyEth = 0;
     const costEth = baseCostPerBatchEth + proveEth + verifyEth + l1CostEth;
     const costUsd = costEth * ethPrice;

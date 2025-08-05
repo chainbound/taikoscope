@@ -945,7 +945,7 @@ export interface L2FeesComponentsResponse {
     priority_fee: number;
     base_fee: number;
     l1_data_cost: number | null;
-    amortized_prove_cost: number | null;
+    prove_cost: number | null;
   }[];
 }
 
