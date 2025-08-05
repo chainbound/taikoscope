@@ -38,7 +38,7 @@ export const RevenueChart: React.FC<RevenueChartProps> = ({
         priority: b.priority_fee,
         base: b.base_fee,
         l1Cost: b.l1_data_cost,
-        amortizedProveCost: b.amortized_prove_cost,
+        proveCost: b.prove_cost,
       })) ?? null;
   const { data: ethPrice = 0, error: ethPriceError } = useEthPrice();
 

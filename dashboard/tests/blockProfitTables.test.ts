@@ -16,7 +16,7 @@ const feeData = [
     priority: 1e9,
     base: 1e9,
     l1Cost: 0,
-    amortizedProveCost: 0,
+    proveCost: 0,
 
   },
 ];

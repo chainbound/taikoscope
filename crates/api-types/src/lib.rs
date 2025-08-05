@@ -305,8 +305,8 @@ pub struct BatchFeeComponentRow {
     pub base_fee: u128,
     /// L1 data posting cost associated with the batch, if available
     pub l1_data_cost: Option<u128>,
-    /// Prover cost amortized across batches in the selected range
-    pub amortized_prove_cost: Option<u128>,
+    /// Prover cost for the batch, if available
+    pub prove_cost: Option<u128>,
 }
 
 /// Fee components for each batch
