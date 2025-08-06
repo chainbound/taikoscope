@@ -13,7 +13,7 @@ use chainio::{
 use std::pin::Pin;
 
 use alloy::{
-    primitives::{Address, BlockNumber},
+    primitives::{Address, B256, BlockNumber},
     providers::{Provider, ProviderBuilder},
 };
 use alloy_consensus::BlockHeader;
@@ -478,10 +478,11 @@ fn decode_batches_verified(log: &alloy_rpc_types_eth::Log) -> Result<chainio::Ba
     Ok(chainio::BatchesVerified { batch_id: data.batchId, block_hash })
 }
 
-/// Detects reorgs based on block numbers.
+/// Detects reorgs based on block numbers and hashes.
 #[derive(Debug)]
 pub struct ReorgDetector {
     head_number: BlockNumber,
+    head_hash: Option<B256>,
 }
 
 impl Default for ReorgDetector {
@@ -493,7 +494,7 @@ impl Default for ReorgDetector {
 impl ReorgDetector {
     /// Create a new reorg detector
     pub const fn new() -> Self {
-        Self { head_number: 0 }
+        Self { head_number: 0, head_hash: None }
     }
 
     /// Get the current head number
@@ -501,30 +502,59 @@ impl ReorgDetector {
         self.head_number
     }
 
-    /// Checks a new block number against the current head number.
-    /// Returns the reorg depth if the new block number is less than the current head.
-    /// Always updates the internal head number to the new block number.
-    pub fn on_new_block(&mut self, new_block_number: BlockNumber) -> Option<u16> {
-        // Assume no reorg
-        let mut reorg_depth = None;
+    /// Get the current head hash
+    pub const fn head_hash(&self) -> Option<B256> {
+        self.head_hash
+    }
 
-        // A reorg is detected if the new block's number is less than the current head's number.
-        // This check also implies self.head_number must have been initialized (i.e., not 0).
+    /// Checks a new block against the current head.
+    /// Returns (`reorg_depth`, `orphaned_hash`) if a reorg is detected:
+    /// - Traditional reorg: `new_block_number` < `head_number`
+    /// - One-block reorg: same block number but different hash  Always updates the internal head to
+    ///   the new block.
+    pub fn on_new_block_with_hash(
+        &mut self,
+        new_block_number: BlockNumber,
+        new_hash: B256,
+    ) -> Option<(u16, Option<B256>)> {
+        // Check for traditional reorg (block number goes backwards)
         if new_block_number < self.head_number {
-            // Depth is the number of blocks orphaned from the previous chain.
-            // e.g. if old head was 10 and new head is 8, depth is 2 (blocks 10 and 9 are orphaned).
             let depth_val = self.head_number.saturating_sub(new_block_number);
+            let depth = (depth_val > 0).then(|| (depth_val.min(u16::MAX as u64) as u16, None));
 
-            // Ensure a positive depth, then cap at u16::MAX.
-            if depth_val > 0 {
-                reorg_depth = Some(depth_val.min(u16::MAX as u64) as u16);
+            // Update head to new block
+            self.head_number = new_block_number;
+            self.head_hash = Some(new_hash);
+
+            return depth;
+        }
+
+        // Check for one-block reorg (same block number, different hash)
+        if new_block_number == self.head_number {
+            if let Some(current_hash) = self.head_hash {
+                if current_hash != new_hash {
+                    // One-block reorg detected
+                    self.head_hash = Some(new_hash);
+                    return Some((1, Some(current_hash)));
+                }
+                // Same block number and same hash - no reorg, no update needed
+                return None;
             }
         }
 
-        // Always update the head to the new block number.
+        // No reorg - update head to new block
         self.head_number = new_block_number;
+        self.head_hash = Some(new_hash);
 
-        reorg_depth
+        None
+    }
+
+    /// Backward compatibility method - only checks block numbers.
+    /// This is used by deprecated driver code.
+    pub fn on_new_block(&mut self, new_block_number: BlockNumber) -> Option<u16> {
+        // For backward compatibility, we use a dummy hash when only block number is provided
+        let dummy_hash = B256::ZERO;
+        self.on_new_block_with_hash(new_block_number, dummy_hash).map(|(depth, _)| depth)
     }
 }
 
@@ -538,74 +568,146 @@ mod tests {
     #[test]
     fn initial_block() {
         let mut det = ReorgDetector::new();
+        let hash = B256::repeat_byte(5);
         // First block received is 5. head_number is 0. 5 is not < 0. No reorg.
-        assert_eq!(det.on_new_block(5), None);
-        assert_eq!(det.head_number, 5);
+        assert_eq!(det.on_new_block_with_hash(5, hash), None);
+        assert_eq!(det.head_number(), 5);
+        assert_eq!(det.head_hash(), Some(hash));
     }
 
     #[test]
     fn subsequent_blocks_increasing() {
         let mut det = ReorgDetector::new();
-        det.on_new_block(5); // head_number becomes 5
+        let hash5 = B256::repeat_byte(5);
+        let hash6 = B256::repeat_byte(6);
+        let hash7 = B256::repeat_byte(7);
+
+        det.on_new_block_with_hash(5, hash5); // head_number becomes 5
         // New block 6. 6 is not < 5. No reorg.
-        assert_eq!(det.on_new_block(6), None);
-        assert_eq!(det.head_number, 6);
+        assert_eq!(det.on_new_block_with_hash(6, hash6), None);
+        assert_eq!(det.head_number(), 6);
         // New block 7. 7 is not < 6. No reorg.
-        assert_eq!(det.on_new_block(7), None);
-        assert_eq!(det.head_number, 7);
+        assert_eq!(det.on_new_block_with_hash(7, hash7), None);
+        assert_eq!(det.head_number(), 7);
     }
 
     #[test]
     fn reorg_to_lower_number() {
         let mut det = ReorgDetector::new();
-        det.on_new_block(10); // head_number is 10
+        let hash10 = B256::repeat_byte(10);
+        let hash8 = B256::repeat_byte(8);
+
+        det.on_new_block_with_hash(10, hash10); // head_number is 10
         // New block 8. 8 < 10. Reorg. Depth = 10 - 8 = 2.
-        assert_eq!(det.on_new_block(8), Some(2));
-        assert_eq!(det.head_number, 8); // Head is updated to 8
+        assert_eq!(det.on_new_block_with_hash(8, hash8), Some((2, None)));
+        assert_eq!(det.head_number(), 8); // Head is updated to 8
     }
 
     #[test]
     fn reorg_by_one() {
         let mut det = ReorgDetector::new();
-        det.on_new_block(10); // head_number is 10
+        let hash10 = B256::repeat_byte(10);
+        let hash9 = B256::repeat_byte(9);
+
+        det.on_new_block_with_hash(10, hash10); // head_number is 10
         // New block 9. 9 < 10. Reorg. Depth = 10 - 9 = 1.
-        assert_eq!(det.on_new_block(9), Some(1));
-        assert_eq!(det.head_number, 9);
+        assert_eq!(det.on_new_block_with_hash(9, hash9), Some((1, None)));
+        assert_eq!(det.head_number(), 9);
     }
 
     #[test]
     fn same_block_number_no_reorg() {
         let mut det = ReorgDetector::new();
-        det.on_new_block(10); // head_number is 10
-        // New block 10. 10 is not < 10. No reorg.
-        assert_eq!(det.on_new_block(10), None);
-        assert_eq!(det.head_number, 10); // Head is updated to 10 (no change)
+        let hash = B256::repeat_byte(10);
+
+        det.on_new_block_with_hash(10, hash); // head_number is 10
+        // New block 10 with same hash. 10 is not < 10 and hash is same. No reorg.
+        assert_eq!(det.on_new_block_with_hash(10, hash), None);
+        assert_eq!(det.head_number(), 10); // Head is updated to 10 (no change)
     }
 
     #[test]
     fn reorg_depth_capped_at_u16_max() {
         let mut det = ReorgDetector::new();
-        det.on_new_block(u16::MAX as u64 + 10);
+        let hash_high = B256::repeat_byte(255);
+        let hash1 = B256::repeat_byte(1);
+
+        det.on_new_block_with_hash(u16::MAX as u64 + 10, hash_high);
         // New block 1. 1 < u16::MAX + 10. Reorg. Depth = u16::MAX + 10 - 1. Capped to u16::MAX.
-        assert_eq!(det.on_new_block(1), Some(u16::MAX));
-        assert_eq!(det.head_number, 1);
+        assert_eq!(det.on_new_block_with_hash(1, hash1), Some((u16::MAX, None)));
+        assert_eq!(det.head_number(), 1);
     }
 
     #[test]
     fn reorg_from_initial_zero_state() {
         let mut det = ReorgDetector::new(); // head_number is 0
+        let hash = B256::repeat_byte(5);
+
         // New block 5. 5 is not < 0. No reorg.
-        assert_eq!(det.on_new_block(5), None);
-        assert_eq!(det.head_number, 5);
+        assert_eq!(det.on_new_block_with_hash(5, hash), None);
+        assert_eq!(det.head_number(), 5);
     }
 
     #[test]
     fn reorg_to_zero_not_possible_if_blocks_are_positive() {
         let mut det = ReorgDetector::new();
-        det.on_new_block(5); // head_number is 5
+        let hash5 = B256::repeat_byte(5);
+        let hash0 = B256::repeat_byte(0);
+
+        det.on_new_block_with_hash(5, hash5); // head_number is 5
         // New block 0. 0 < 5. Reorg. Depth = 5 - 0 = 5.
-        assert_eq!(det.on_new_block(0), Some(5));
-        assert_eq!(det.head_number, 0);
+        assert_eq!(det.on_new_block_with_hash(0, hash0), Some((5, None)));
+        assert_eq!(det.head_number(), 0);
+    }
+
+    #[test]
+    fn one_block_reorg_same_number_different_hash() {
+        let mut det = ReorgDetector::new();
+        let hash1 = B256::repeat_byte(1);
+        let hash2 = B256::repeat_byte(2);
+
+        // First block 10 with hash1
+        assert_eq!(det.on_new_block_with_hash(10, hash1), None);
+        assert_eq!(det.head_number(), 10);
+        assert_eq!(det.head_hash(), Some(hash1));
+
+        // Same block 10 but with different hash2 - should detect one-block reorg
+        assert_eq!(det.on_new_block_with_hash(10, hash2), Some((1, Some(hash1))));
+        assert_eq!(det.head_number(), 10);
+        assert_eq!(det.head_hash(), Some(hash2));
+    }
+
+    #[test]
+    fn same_block_number_same_hash_no_reorg() {
+        let mut det = ReorgDetector::new();
+        let hash = B256::repeat_byte(1);
+
+        // First block 10 with hash
+        assert_eq!(det.on_new_block_with_hash(10, hash), None);
+        assert_eq!(det.head_number(), 10);
+        assert_eq!(det.head_hash(), Some(hash));
+
+        // Same block 10 with same hash - no reorg
+        assert_eq!(det.on_new_block_with_hash(10, hash), None);
+        assert_eq!(det.head_number(), 10);
+        assert_eq!(det.head_hash(), Some(hash));
+    }
+
+    #[test]
+    fn traditional_reorg_with_hash_tracking() {
+        let mut det = ReorgDetector::new();
+        let hash10 = B256::repeat_byte(10);
+        let hash8 = B256::repeat_byte(8);
+
+        // Block 10
+        assert_eq!(det.on_new_block_with_hash(10, hash10), None);
+        assert_eq!(det.head_number(), 10);
+        assert_eq!(det.head_hash(), Some(hash10));
+
+        // Block 8 - traditional reorg (block number goes backwards)
+        assert_eq!(det.on_new_block_with_hash(8, hash8), Some((2, None)));
+        assert_eq!(det.head_number(), 8);
+        assert_eq!(det.head_hash(), Some(hash8));
     }
 
     #[test]

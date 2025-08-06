@@ -590,10 +590,11 @@ impl ProcessorDriver {
         let old_head = reorg_detector.head_number(); // Capture old head before detection
 
         // Detect reorgs
-        let reorg_depth = reorg_detector.on_new_block(header.number);
+        let reorg_result =
+            reorg_detector.on_new_block_with_hash(header.number, B256::from(*header.hash));
         *last_l2_header = Some((header.number, header.beneficiary));
 
-        if let Some(depth) = reorg_depth {
+        if let Some((depth, orphaned_hash)) = reorg_result {
             let old_seq = prev_header.map(|(_, addr)| addr).unwrap_or(Address::ZERO);
 
             // Insert reorg event
@@ -605,7 +606,18 @@ impl ProcessorDriver {
                 info!(new_head = header.number, depth, "Inserted L2 reorg");
             }
 
-            // Handle orphaned blocks
+            // Handle orphaned hash from one-block reorg
+            if let Some(hash) = orphaned_hash {
+                if let Err(e) =
+                    writer.insert_orphaned_hashes(&[(HashBytes::from(hash), header.number)]).await
+                {
+                    tracing::error!(block_number = header.number, orphaned_hash = ?hash, err = %e, "Failed to insert orphaned hash");
+                } else {
+                    info!(block_number = header.number, orphaned_hash = ?hash, "Inserted orphaned hash");
+                }
+            }
+
+            // Handle orphaned blocks from traditional reorg
             if depth > 0 {
                 let orphaned_block_numbers =
                     calculate_orphaned_blocks(old_head, header.number, depth.into());
