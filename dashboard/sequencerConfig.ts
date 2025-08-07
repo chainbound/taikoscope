@@ -5,6 +5,7 @@ export const SEQUENCER_PAIRS: Array<[string, string]> = [
   ['0x205a600d515091b473b6c1a8477d967533d10749', 'Chainbound (Taiko)'],
   ['0x445179507c3b0b84cca739398966236a35ad8ea1', 'Gattaca (Taiko)'],
   ['0xf3384dcc14f03f079ac7cd3c2299256b19261bb0', 'Gattaca'],
+  ['0x3c96db4a6cef604de81e12959465ba4b918851e4', 'Gattaca'],
   ['0x75141cd01f50a17a915d59d245ae6b2c947d37d9', 'Nethermind (Taiko)'],
   ['0xdE023f59daCee4e1B4B4216E1B6DfF624555cd2E', 'Nethermind'],
 ];
