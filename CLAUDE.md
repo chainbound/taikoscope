@@ -18,6 +18,13 @@
 - Dashboard type checks: `just check-dashboard`
 - Dashboard tests: `just test-dashboard`
 
+## Docker Build Commands
+- Setup multi-platform builds: `just setup-docker` (automatically run by build commands)
+- Build processor: `just build-processor` (defaults to multi-platform build)
+- Build API: `just build-api` (defaults to multi-platform build)
+- Build all images: `just build-all`
+- Single platform builds: `just build-processor platform=linux/amd64`
+
 ## Code Style Guidelines
 - Use Rust 2024 edition
 - Sort imports so that internal crates come first. If there are other
