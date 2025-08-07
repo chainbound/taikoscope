@@ -150,11 +150,11 @@ export const formatLargeNumber = (value: number): string => {
 export const formatWithCommas = (value: number): string =>
   value.toLocaleString();
 
-export const formatEth = (wei: number, decimals?: number): string => {
-  if (!Number.isFinite(wei) || Number.isNaN(wei)) {
+export const formatEth = (gwei: number, decimals?: number): string => {
+  if (!Number.isFinite(gwei) || Number.isNaN(gwei)) {
     return '0 ETH';
   }
-  const eth = wei / 1e9;
+  const eth = gwei / 1e9;
   if (Math.abs(eth) >= 1000) {
     return `${Math.trunc(eth).toLocaleString()} ETH`;
   }

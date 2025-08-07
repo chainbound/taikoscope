@@ -4,12 +4,20 @@ import type { TooltipProps } from 'recharts';
 import { formatEth } from '../utils';
 import { TAIKO_PINK, lightTheme } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
-import { calculateProfit, SEQUENCER_BASE_FEE_RATIO } from '../utils/profit';
+import {
+  convertFeesToUsd,
+  processSequencerData,
+  generateFallbackSankeyData,
+  generateMultiSequencerSankeyData,
+  validateChartData,
+  safeValue,
+  type SankeyChartData,
+} from '../utils/feeFlowCalculations';
 
 const NODE_GREEN = '#22c55e';
+const GWEI_TO_ETH = 1e9;
 import useSWR from 'swr';
 import { fetchL2FeesComponents } from '../services/apiService';
-import { getSequencerName } from '../sequencerConfig';
 import { useEthPrice } from '../services/priceService';
 import { TimeRange } from '../types';
 import { rangeToHours } from '../utils/timeRange';
@@ -25,8 +33,6 @@ interface FeeFlowChartProps {
   /** Total number of sequencers (used for hardware cost scaling) */
   totalSequencers?: number;
 }
-
-const GWEI_TO_ETH = 1e9;
 
 // Format numbers as USD without grouping
 const formatUsd = (value: number) => `$${value.toFixed(1)}`;
@@ -202,8 +208,8 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
       const usd = formatUsd(value);
 
       // If the item already has a `wei` value, use it directly
-      if (itemData?.wei != null) {
-        return `${formatEth(itemData.wei, 4)} (${usd})`;
+      if (itemData?.gwei != null) {
+        return `${formatEth(itemData.gwei, 4)} (${usd})`;
       }
 
       // Otherwise, attempt to derive `wei` from USD using the current ETH price
@@ -222,8 +228,8 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
   const formatNodeValue = React.useCallback(
     (value: number, itemData?: any) => {
       // If the item already has a `wei` value, use it directly
-      if (itemData?.wei != null) {
-        return formatEth(itemData.wei, 4);
+      if (itemData?.gwei != null) {
+        return formatEth(itemData.gwei, 4);
       }
 
       // Otherwise, attempt to derive `wei` from USD using the current ETH price
@@ -267,22 +273,20 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     );
   }
 
-  // Helper function to ensure finite values
-  const safeValue = (value: number) => (isFinite(value) ? value : 0);
-
-  // Convert fees to USD
-  const priorityFeeUsd = safeValue(
-    ((priorityFee ?? 0) / GWEI_TO_ETH) * ethPrice,
-  );
-  const baseFeeUsd = safeValue(((baseFee ?? 0) / GWEI_TO_ETH) * ethPrice);
-  const l1DataCostTotalUsd = safeValue(
-    ((feeRes?.data?.l1_data_cost ?? 0) / GWEI_TO_ETH) * ethPrice,
-  );
-  const l1ProveCost = safeValue(
-    ((feeRes?.data?.prove_cost ?? 0) / GWEI_TO_ETH) * ethPrice,
-  );
-
-  const baseFeeDaoUsd = safeValue(baseFeeUsd * 0.25);
+  // Convert fees to USD using utility function
+  const {
+    priorityFeeUsd,
+    baseFeeUsd,
+    l1DataCostTotalUsd,
+    l1ProveCost,
+    baseFeeDaoUsd,
+  } = convertFeesToUsd({
+    priorityFee: priorityFee ?? 0,
+    baseFee: baseFee ?? 0,
+    l1DataCost: feeRes?.data?.l1_data_cost ?? 0,
+    proveCost: feeRes?.data?.prove_cost ?? 0,
+    ethPrice,
+  });
 
   // Scale operational costs to the selected time range
   const hours = rangeToHours(timeRange);
@@ -294,373 +298,47 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
   const totalHardwareCost = safeValue(rawTotalHardwareCost);
   const hardwareCostPerSeq = safeValue(rawHardwareCostPerSeq);
 
-  const seqData = sequencerFees.map((f) => {
-    const priorityWei = f.priority_fee ?? 0;
-    const baseWei = (f.base_fee ?? 0) * SEQUENCER_BASE_FEE_RATIO;
-    const l1CostWei = f.l1_data_cost ?? 0;
-    const proveWei = f.prove_cost ?? 0;
+  // Process sequencer data using utility function
+  const seqData = processSequencerData(sequencerFees, ethPrice, hardwareCostPerSeq);
 
-    const priorityUsd = safeValue((priorityWei / GWEI_TO_ETH) * ethPrice);
-    const baseUsd = safeValue((baseWei / GWEI_TO_ETH) * ethPrice);
-    const l1CostUsd = safeValue((l1CostWei / GWEI_TO_ETH) * ethPrice);
-    const proveUsd = safeValue((proveWei / GWEI_TO_ETH) * ethPrice);
-
-    const revenue = safeValue(priorityUsd + baseUsd);
-    const revenueWei = safeValue(priorityWei + baseWei);
-
-    const { profitUsd, profitEth } = calculateProfit({
-      priorityFee: priorityWei,
-      baseFee: f.base_fee ?? 0,
-      l1DataCost: l1CostWei,
-      proveCost: proveWei,
-
-      hardwareCostUsd: hardwareCostPerSeq,
-      ethPrice,
-    });
-    const profit = safeValue(profitUsd);
-    const profitWei = safeValue(profitEth * GWEI_TO_ETH);
-    let remaining = revenue;
-    // Always allocate full hardware cost share per sequencer (sum will equal totalHardwareCost)
-    const actualHardwareCost = hardwareCostPerSeq;
-    remaining -= actualHardwareCost;
-    const actualProveCost = safeValue(Math.min(proveUsd, remaining));
-    remaining -= actualProveCost;
-    const actualL1Cost = safeValue(Math.min(l1CostUsd, remaining));
-    remaining -= actualL1Cost;
-    const deficitUsd = safeValue(Math.max(0, -profitUsd));
-    const subsidyUsd = safeValue(
-      (l1CostUsd - actualL1Cost) + deficitUsd,
-    );
-    const subsidyWei = safeValue(
-      ethPrice ? (subsidyUsd / ethPrice) * GWEI_TO_ETH : 0,
-    );
-    const actualHardwareCostWei = safeValue(
-      ethPrice ? (actualHardwareCost / ethPrice) * GWEI_TO_ETH : 0,
-    );
-    const actualL1CostWei = safeValue(
-      ethPrice ? (actualL1Cost / ethPrice) * GWEI_TO_ETH : 0,
-    );
-    const actualProveCostWei = safeValue(
-      ethPrice ? (actualProveCost / ethPrice) * GWEI_TO_ETH : 0,
-    );
-
-    const name = getSequencerName(f.address);
-    const shortAddress =
-      name.toLowerCase() === f.address.toLowerCase()
-        ? f.address.slice(0, 7)
-        : name;
-    return {
-      address: f.address,
-      shortAddress,
-      priorityUsd,
-      baseUsd,
-      revenue,
-      revenueWei,
-      profit,
-      profitWei,
-      actualHardwareCost,
-      actualL1Cost,
-      actualProveCost,
-
-      l1CostUsd,
-      subsidyUsd,
-      subsidyWei,
-      actualHardwareCostWei,
-      actualL1CostWei,
-      actualProveCostWei,
-    };
-  });
-
-  // Sort sequencer nodes by profitability (ascending) to reduce flow crossings
-  seqData.sort((a, b) => a.profit - b.profit);
-
-  // Handle case when no sequencer data is available
-  let nodes: any[], links: { source: number; target: number; value: number }[];
+  // Generate Sankey chart data
+  let chartData: SankeyChartData;
 
   if (seqData.length === 0) {
     // Fallback: create a single "Sequencers" node to route fees through
-    const sequencerRevenue = safeValue(priorityFeeUsd + baseFeeUsd * SEQUENCER_BASE_FEE_RATIO);
-    let remaining = sequencerRevenue - totalHardwareCost;
-    const actualProveCost = safeValue(
-      Math.min(l1ProveCost, Math.max(0, remaining)),
-    );
-    remaining -= actualProveCost;
-    const actualL1Cost = safeValue(
-      Math.min(l1DataCostTotalUsd, Math.max(0, remaining)),
-    );
-    remaining -= actualL1Cost;
-    const l1Subsidy = safeValue(l1DataCostTotalUsd - actualL1Cost);
-    const sequencerProfit = safeValue(Math.max(0, remaining));
-    const sequencerRevenueWei = safeValue(
-      (priorityFee ?? 0) + (baseFee ?? 0) * SEQUENCER_BASE_FEE_RATIO,
-    );
-    const sequencerProfitWei = safeValue(
-      ethPrice ? (sequencerProfit / ethPrice) * GWEI_TO_ETH : 0,
-    );
-
-    // Define node indices for easier reference
-    const daoIndex = 4;
-    const hardwareIndex = 5;
-    const proveIndex = 6;
-    const proposeIndex = 7;
-    const profitIndex = 8;
-
-    nodes = [
-      { name: 'Subsidy', value: l1Subsidy, usd: true, depth: 0 },
-      {
-        name: 'Priority Fee',
-        value: priorityFeeUsd,
-        wei: priorityFee ?? 0,
-        depth: 0,
-      },
-      { name: 'Base Fee', value: baseFeeUsd, wei: baseFee ?? 0, depth: 0 },
-      {
-        name: 'Sequencers',
-        value: sequencerRevenue,
-        wei: sequencerRevenueWei,
-        depth: 1,
-      },
-      {
-        name: 'Taiko DAO',
-        value: baseFeeDaoUsd,
-        wei: (baseFee ?? 0) * 0.25,
-        depth: 1,
-      },
-      { name: 'Hardware Cost', value: totalHardwareCost, usd: true, depth: 2 },
-      { name: 'Proving Cost', value: l1ProveCost, usd: true, depth: 2 },
-      {
-        name: 'Proposing Cost',
-        value: l1DataCostTotalUsd,
-        usd: true,
-        depth: 2,
-      },
-      {
-        name: 'Profit',
-        value: sequencerProfit,
-        wei: sequencerProfitWei,
-        depth: 3,
-      },
-    ];
-
-    // Build links with updated indices
-    links = [
-      { source: 1, target: 3, value: priorityFeeUsd },
-      { source: 2, target: 3, value: safeValue(baseFeeUsd * SEQUENCER_BASE_FEE_RATIO) },
-      { source: 2, target: daoIndex, value: baseFeeDaoUsd },
-      {
-        source: 3,
-        target: hardwareIndex,
-        value: safeValue(Math.min(totalHardwareCost, sequencerRevenue)),
-      },
-      { source: 3, target: proveIndex, value: l1ProveCost },
-      { source: 3, target: proposeIndex, value: actualL1Cost },
-      { source: 0, target: proposeIndex, value: l1Subsidy },
-      { source: 3, target: profitIndex, value: sequencerProfit },
-    ].filter((l) => l.value !== 0);
-
-    // Ensure Taiko DAO is not a sink so it appears in the middle column
-    const minPositiveDao = links.length
-      ? Math.min(...links.map((l) => l.value))
-      : 0;
-    const DAO_EPSILON = minPositiveDao > 0 ? minPositiveDao * 0.1 : 1e-6;
-    const daoHasOutflow = links.some(
-      (l) => l.source === daoIndex && l.value > 0,
-    );
-    if (!daoHasOutflow) {
-      links.push({ source: daoIndex, target: profitIndex, value: DAO_EPSILON });
-      if (nodes[profitIndex]) {
-        nodes[profitIndex].value += DAO_EPSILON;
-      }
-    }
-  } else {
-    const totalActualHardwareCost = seqData.reduce(
-      (acc, s) => acc + s.actualHardwareCost,
-      0,
-    );
-    const totalActualL1Cost = seqData.reduce(
-      (acc, s) => acc + s.actualL1Cost,
-      0,
-    );
-    const totalSubsidy = seqData.reduce((acc, s) => acc + s.subsidyUsd, 0);
-    const totalSubsidyWei = seqData.reduce((acc, s) => acc + s.subsidyWei, 0);
-    const totalActualProveCost = seqData.reduce(
-      (acc, s) => acc + s.actualProveCost,
-      0,
-    );
-
-    // Aggregate profit across all sequencers
-    const totalProfit = seqData.reduce((acc, s) => acc + s.profit, 0);
-    const totalProfitWei = seqData.reduce((acc, s) => acc + s.profitWei, 0);
-
-    const totalL1Cost = totalActualL1Cost + totalSubsidy;
-
-    // Build Sankey data with Subsidy node and combined sequencer nodes
-    const totalSubsidyIndex = 0;
-    const priorityIndex = 1;
-    const baseFeeIndex = 2;
-    const sequencerStartIndex = 3; // first sequencer node index
-    const daoIndex = sequencerStartIndex + seqData.length;
-    const hardwareIndex = daoIndex + 1;
-    const proveIndex = hardwareIndex + 1;
-    const l1Index = hardwareIndex + 2;
-    const profitIndex = l1Index + 1;
-
-    nodes = [
-      // Subsidy node at index 0
-      {
-        name: 'Subsidy',
-        value: totalSubsidy,
-        wei: totalSubsidyWei,
-        usd: true,
-        depth: 0,
-      },
-      {
-        name: 'Priority Fee',
-        value: priorityFeeUsd,
-        wei: priorityFee ?? 0,
-        depth: 0,
-      },
-      { name: 'Base Fee', value: baseFeeUsd, wei: baseFee ?? 0, depth: 0 },
-      // Combined sequencer nodes (revenue + subsidy)
-      ...seqData.map((s) => ({
-        name: s.shortAddress,
-        address: s.address,
-        addressLabel: s.shortAddress,
-        value: s.revenue + s.subsidyUsd,
-        wei: s.revenueWei + s.subsidyWei,
-        depth: 1,
-      })),
-      {
-        name: 'Taiko DAO',
-        value: baseFeeDaoUsd,
-        wei: (baseFee ?? 0) * 0.25,
-        depth: 1,
-      },
-      {
-        name: 'Hardware Cost',
-        value: totalActualHardwareCost,
-        usd: true,
-        depth: 2,
-      },
-      {
-        name: 'Proving Cost',
-        value: totalActualProveCost,
-        usd: true,
-        depth: 2,
-      },
-      { name: 'Proposing Cost', value: totalL1Cost, usd: true, depth: 2 },
-      {
-        name: 'Profit',
-        value: totalProfit,
-        wei: totalProfitWei,
-        profitNode: true,
-        depth: 3,
-      },
-    ];
-
-    links = [
-      // Subsidy → Sequencer nodes (combined)
-      ...seqData.map((s, i) => ({
-        source: totalSubsidyIndex,
-        target: sequencerStartIndex + i,
-        value: s.subsidyUsd,
-      })),
-      // Priority Fee → Sequencer nodes (combined)
-      ...seqData.map((s, i) => ({
-        source: priorityIndex,
-        target: sequencerStartIndex + i,
-        value: s.priorityUsd,
-      })),
-      // Base Fee → Sequencer nodes (combined)
-      ...seqData.map((s, i) => ({
-        source: baseFeeIndex,
-        target: sequencerStartIndex + i,
-        value: s.baseUsd,
-      })),
-      // Base Fee → Taiko DAO
-      { source: baseFeeIndex, target: daoIndex, value: baseFeeDaoUsd },
-      // Sequencer nodes → Hardware Cost
-      ...seqData.map((s, i) => ({
-        source: sequencerStartIndex + i,
-        target: hardwareIndex,
-        value: s.actualHardwareCost,
-      })),
-      // Sequencer nodes → Proving Cost
-      ...seqData.map((s, i) => ({
-        source: sequencerStartIndex + i,
-        target: proveIndex,
-        value: s.actualProveCost,
-      })),
-      // Sequencer nodes → Proposing Cost
-      ...seqData.map((s, i) => ({
-        source: sequencerStartIndex + i,
-        target: l1Index,
-        value: s.l1CostUsd,
-      })),
-      // Sequencer nodes → Profit (single aggregated node)
-      ...seqData.map((s, i) => ({
-        source: sequencerStartIndex + i,
-        target: profitIndex,
-        value: s.profit,
-      })),
-    ].filter((l) => l.value !== 0);
-
-    // --- Ensure every sequencer node has at least one outgoing edge ---
-    // Use 10% of the smallest existing link so the line is always visible
-    const minPositive = links.length
-      ? Math.min(...links.map((l) => l.value))
-      : 0;
-    const EPSILON = minPositive > 0 ? minPositive * 0.1 : 1e-6;
-    seqData.forEach((_, i) => {
-      const seqIdx = sequencerStartIndex + i;
-      const hasOutflow = links.some((l) => l.source === seqIdx && l.value > 0);
-      if (!hasOutflow) {
-        links.push({ source: seqIdx, target: profitIndex, value: EPSILON });
-        // keep mass-balance
-        if (nodes[profitIndex]) {
-          nodes[profitIndex].value += EPSILON;
-        }
-      }
+    chartData = generateFallbackSankeyData({
+      priorityFeeUsd,
+      baseFeeUsd,
+      baseFeeDaoUsd,
+      l1DataCostTotalUsd,
+      l1ProveCost,
+      totalHardwareCost,
+      priorityFee,
+      baseFee,
+      ethPrice,
     });
-
-    // --- Ensure Taiko DAO node has an outgoing edge so it sits with sequencers ---
-    const daoHasOutflow2 = links.some(
-      (l) => l.source === daoIndex && l.value > 0,
-    );
-    if (!daoHasOutflow2) {
-      links.push({ source: daoIndex, target: profitIndex, value: EPSILON });
-      if (nodes[profitIndex]) {
-        nodes[profitIndex].value += EPSILON;
-      }
-    }
-  }
-
-  // Additional safety checks before processing
-  if (!nodes || !links || nodes.length === 0 || links.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-full text-gray-500">
-        Insufficient data for flow chart
-      </div>
+  } else {
+    // Multi-sequencer scenario
+    chartData = generateMultiSequencerSankeyData(
+      seqData,
+      priorityFeeUsd,
+      baseFeeUsd,
+      baseFeeDaoUsd,
+      priorityFee,
+      baseFee,
     );
   }
 
-  // Validate that all link indices are within bounds
-  const maxNodeIndex = nodes.length - 1;
-  const validLinks = links.filter((link) => {
-    const sourceValid =
-      Number.isInteger(link.source) &&
-      link.source >= 0 &&
-      link.source <= maxNodeIndex;
-    const targetValid =
-      Number.isInteger(link.target) &&
-      link.target >= 0 &&
-      link.target <= maxNodeIndex;
-    const valueValid = isFinite(link.value) && link.value > 0;
-    return sourceValid && targetValid && valueValid;
-  });
+  // Validate and process chart data using utility function
+  const validatedChartData = validateChartData(chartData);
 
-  // If we don't have valid links, don't render the chart
-  if (validLinks.length === 0) {
+  // Check if we have valid data after processing
+  if (
+    !validatedChartData.nodes ||
+    !validatedChartData.links ||
+    validatedChartData.nodes.length === 0 ||
+    validatedChartData.links.length === 0
+  ) {
     return (
       <div className="flex items-center justify-center h-full text-gray-500">
         Unable to create flow chart with current data
@@ -668,60 +346,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     );
   }
 
-  // Remove nodes that have no remaining links after filtering
-  const usedIndices = new Set<number>();
-  validLinks.forEach((l) => {
-    usedIndices.add(l.source);
-    usedIndices.add(l.target);
-  });
-  const indexMap = new Map<number, number>();
-  const filteredNodes = nodes.filter((_, idx) => {
-    if (usedIndices.has(idx)) {
-      indexMap.set(idx, indexMap.size);
-      return true;
-    }
-    return false;
-  });
-
-  // Ensure we have nodes after filtering
-  if (filteredNodes.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-full text-gray-500">
-        No valid nodes for flow chart
-      </div>
-    );
-  }
-
-  const remappedLinks = validLinks.map((l) => ({
-    ...l,
-    source: indexMap.get(l.source) as number,
-    target: indexMap.get(l.target) as number,
-  }));
-
-  // Final validation: ensure all values are valid numbers
-  const validatedNodes = filteredNodes.map((node) => ({
-    ...node,
-    value: safeValue(node.value),
-    wei: (node as any).wei ? safeValue((node as any).wei) : (node as any).wei,
-  }));
-
-  const validatedLinks = remappedLinks
-    .map((link) => ({
-      ...link,
-      value: safeValue(link.value),
-    }))
-    .filter((link) => link.value > 0 && isFinite(link.value));
-
-  // Final check to ensure we have valid data
-  if (validatedNodes.length === 0 || validatedLinks.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-full text-gray-500">
-        Invalid chart data structure
-      </div>
-    );
-  }
-
-  const data = { nodes: validatedNodes, links: validatedLinks };
+  const data = validatedChartData;
 
   const tooltipContent = ({
     active,
