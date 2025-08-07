@@ -26,7 +26,7 @@ interface FeeFlowChartProps {
   totalSequencers?: number;
 }
 
-const WEI_TO_ETH = 1e9;
+const GWEI_TO_ETH = 1e9;
 
 // Format numbers as USD without grouping
 const formatUsd = (value: number) => `$${value.toFixed(1)}`;
@@ -208,7 +208,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
 
       // Otherwise, attempt to derive `wei` from USD using the current ETH price
       if (ethPrice && ethPrice > 0) {
-        const wei = (value / ethPrice) * WEI_TO_ETH;
+        const wei = (value / ethPrice) * GWEI_TO_ETH;
         return `${formatEth(wei, 4)} (${usd})`;
       }
 
@@ -228,7 +228,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
 
       // Otherwise, attempt to derive `wei` from USD using the current ETH price
       if (ethPrice && ethPrice > 0) {
-        const wei = (value / ethPrice) * WEI_TO_ETH;
+        const wei = (value / ethPrice) * GWEI_TO_ETH;
         return formatEth(wei, 4);
       }
 
@@ -272,14 +272,14 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
 
   // Convert fees to USD
   const priorityFeeUsd = safeValue(
-    ((priorityFee ?? 0) / WEI_TO_ETH) * ethPrice,
+    ((priorityFee ?? 0) / GWEI_TO_ETH) * ethPrice,
   );
-  const baseFeeUsd = safeValue(((baseFee ?? 0) / WEI_TO_ETH) * ethPrice);
+  const baseFeeUsd = safeValue(((baseFee ?? 0) / GWEI_TO_ETH) * ethPrice);
   const l1DataCostTotalUsd = safeValue(
-    ((feeRes?.data?.l1_data_cost ?? 0) / WEI_TO_ETH) * ethPrice,
+    ((feeRes?.data?.l1_data_cost ?? 0) / GWEI_TO_ETH) * ethPrice,
   );
   const l1ProveCost = safeValue(
-    ((feeRes?.data?.prove_cost ?? 0) / WEI_TO_ETH) * ethPrice,
+    ((feeRes?.data?.prove_cost ?? 0) / GWEI_TO_ETH) * ethPrice,
   );
 
   const baseFeeDaoUsd = safeValue(baseFeeUsd * 0.25);
@@ -300,10 +300,10 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     const l1CostWei = f.l1_data_cost ?? 0;
     const proveWei = f.prove_cost ?? 0;
 
-    const priorityUsd = safeValue((priorityWei / WEI_TO_ETH) * ethPrice);
-    const baseUsd = safeValue((baseWei / WEI_TO_ETH) * ethPrice);
-    const l1CostUsd = safeValue((l1CostWei / WEI_TO_ETH) * ethPrice);
-    const proveUsd = safeValue((proveWei / WEI_TO_ETH) * ethPrice);
+    const priorityUsd = safeValue((priorityWei / GWEI_TO_ETH) * ethPrice);
+    const baseUsd = safeValue((baseWei / GWEI_TO_ETH) * ethPrice);
+    const l1CostUsd = safeValue((l1CostWei / GWEI_TO_ETH) * ethPrice);
+    const proveUsd = safeValue((proveWei / GWEI_TO_ETH) * ethPrice);
 
     const revenue = safeValue(priorityUsd + baseUsd);
     const revenueWei = safeValue(priorityWei + baseWei);
@@ -318,7 +318,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
       ethPrice,
     });
     const profit = safeValue(profitUsd);
-    const profitWei = safeValue(profitEth * WEI_TO_ETH);
+    const profitWei = safeValue(profitEth * GWEI_TO_ETH);
     let remaining = revenue;
     // Always allocate full hardware cost share per sequencer (sum will equal totalHardwareCost)
     const actualHardwareCost = hardwareCostPerSeq;
@@ -332,16 +332,16 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
       Math.max(l1CostUsd - actualL1Cost, deficitUsd),
     );
     const subsidyWei = safeValue(
-      ethPrice ? (subsidyUsd / ethPrice) * WEI_TO_ETH : 0,
+      ethPrice ? (subsidyUsd / ethPrice) * GWEI_TO_ETH : 0,
     );
     const actualHardwareCostWei = safeValue(
-      ethPrice ? (actualHardwareCost / ethPrice) * WEI_TO_ETH : 0,
+      ethPrice ? (actualHardwareCost / ethPrice) * GWEI_TO_ETH : 0,
     );
     const actualL1CostWei = safeValue(
-      ethPrice ? (actualL1Cost / ethPrice) * WEI_TO_ETH : 0,
+      ethPrice ? (actualL1Cost / ethPrice) * GWEI_TO_ETH : 0,
     );
     const actualProveCostWei = safeValue(
-      ethPrice ? (actualProveCost / ethPrice) * WEI_TO_ETH : 0,
+      ethPrice ? (actualProveCost / ethPrice) * GWEI_TO_ETH : 0,
     );
 
     const name = getSequencerName(f.address);
@@ -395,7 +395,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
       (priorityFee ?? 0) + (baseFee ?? 0) * 0.75,
     );
     const sequencerProfitWei = safeValue(
-      ethPrice ? (sequencerProfit / ethPrice) * WEI_TO_ETH : 0,
+      ethPrice ? (sequencerProfit / ethPrice) * GWEI_TO_ETH : 0,
     );
 
     // Define node indices for easier reference

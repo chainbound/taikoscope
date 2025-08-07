@@ -17,7 +17,7 @@ export interface ProfitResult {
   profitUsd: number;
 }
 
-const WEI_TO_ETH = 1e9;
+const GWEI_TO_ETH = 1e9;
 
 export const calculateProfit = ({
   priorityFee = 0,
@@ -27,12 +27,12 @@ export const calculateProfit = ({
   hardwareCostUsd,
   ethPrice,
 }: ProfitParams): ProfitResult => {
-  const revenueEth = ((priorityFee ?? 0) + (baseFee ?? 0) * 0.75) / WEI_TO_ETH;
+  const revenueEth = ((priorityFee ?? 0) + (baseFee ?? 0) * 0.75) / GWEI_TO_ETH;
   const revenueUsd = revenueEth * ethPrice;
   const hardwareCostEth = ethPrice && ethPrice > 0 ? hardwareCostUsd / ethPrice : 0;
   const costEth =
     hardwareCostEth +
-    ((l1DataCost ?? 0) + (proveCost ?? 0)) / WEI_TO_ETH;
+    ((l1DataCost ?? 0) + (proveCost ?? 0)) / GWEI_TO_ETH;
   const costUsd = costEth * ethPrice;
   const profitUsd = revenueUsd - costUsd;
   const profitEth = revenueEth - costEth;
