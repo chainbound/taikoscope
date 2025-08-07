@@ -586,7 +586,7 @@ impl ProcessorDriver {
         }
     }
 
-    /// Handle L2 header with reorg detection
+    /// Handle L2 header with duplicate filtering and reorg detection
     async fn handle_l2_header(
         writer: &ClickhouseWriter,
         clickhouse_reader: &Option<ClickhouseReader>,
@@ -596,15 +596,13 @@ impl ProcessorDriver {
         processed_l2_headers: &mut VecDeque<BlockHash>,
         header: primitives::headers::L2Header,
     ) -> Result<()> {
-        // Check if this header has already been processed to avoid duplicate reorg detection
+        // Check if this header has already been processed to avoid duplicate processing
         if processed_l2_headers.contains(&header.hash) {
             tracing::warn!(
                 header_number = header.number,
                 header_hash = ?header.hash,
-                "Duplicate L2Header detected from RPC, skipping reorg detection"
+                "Duplicate L2Header detected from RPC, skipping processing"
             );
-            // Still insert the header for completeness, but skip reorg detection
-            Self::insert_l2_header_with_stats(writer, extractor, &header).await;
             return Ok(());
         }
 
