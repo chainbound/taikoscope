@@ -375,7 +375,7 @@ impl ProcessorDriver {
                 Ok(())
             }
         } else {
-            Self::process_event_log_and_drop(event).await
+            Self::process_event_log_and_drop(event, processed_l2_headers).await
         }
     }
 
@@ -528,7 +528,10 @@ impl ProcessorDriver {
         Ok(())
     }
 
-    async fn process_event_log_and_drop(event: TaikoEvent) -> Result<()> {
+    async fn process_event_log_and_drop(
+        event: TaikoEvent,
+        processed_l2_headers: &mut VecDeque<BlockHash>,
+    ) -> Result<()> {
         match event {
             TaikoEvent::BatchProposed(wrapper) => {
                 info!(
@@ -566,6 +569,22 @@ impl ProcessorDriver {
                 );
             }
             TaikoEvent::L2Header(header) => {
+                // Check if this header has already been processed to avoid duplicate processing
+                if processed_l2_headers.contains(&header.hash) {
+                    tracing::warn!(
+                        header_number = header.number,
+                        header_hash = ?header.hash,
+                        "Duplicate L2Header detected from RPC, skipping processing (dropped - DB writes disabled)"
+                    );
+                    return Ok(());
+                }
+
+                // Add header to FIFO set, maintaining capacity of 1000
+                processed_l2_headers.push_back(header.hash);
+                if processed_l2_headers.len() > 1000 {
+                    processed_l2_headers.pop_front();
+                }
+
                 info!(
                     header_number = header.number,
                     "Received L2Header event (dropped - DB writes disabled)"
