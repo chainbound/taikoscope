@@ -56,6 +56,45 @@ dev-pipeline:
 ci:
     @just fmt lint lint-dashboard test check-dashboard test-dashboard
 
+# smart CI that only runs relevant tooling based on changed files
+ci-smart:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    # Check if there are any changes in dashboard/ directory
+    dashboard_changes=$(git diff --name-only HEAD~1 2>/dev/null | grep -c "^dashboard/" || echo "0")
+    # Check if there are any changes outside dashboard/ directory (Rust code)
+    rust_changes=$(git diff --name-only HEAD~1 2>/dev/null | grep -v "^dashboard/" | wc -l | tr -d ' ')
+
+    # If no git history (new repo), run everything
+    if ! git rev-parse HEAD~1 >/dev/null 2>&1; then
+        echo "No git history found, running all CI checks..."
+        just ci-rust ci-dashboard
+        exit 0
+    fi
+
+    # Run appropriate CI based on changes
+    if [[ "$rust_changes" -gt 0 ]] && [[ "$dashboard_changes" -gt 0 ]]; then
+        echo "Changes detected in both Rust and dashboard code, running all CI checks..."
+        just ci-rust ci-dashboard
+    elif [[ "$rust_changes" -gt 0 ]]; then
+        echo "Changes detected in Rust code only, running Rust CI checks..."
+        just ci-rust
+    elif [[ "$dashboard_changes" -gt 0 ]]; then
+        echo "Changes detected in dashboard code only, running dashboard CI checks..."
+        just ci-dashboard
+    else
+        echo "No changes detected, skipping CI checks..."
+    fi
+
+# run CI checks for Rust code only
+ci-rust:
+    @just fmt lint test
+
+# run CI checks for dashboard code only
+ci-dashboard:
+    @just lint-dashboard check-dashboard test-dashboard
+
 # run tests
 test:
     cargo nextest run --workspace --all-targets

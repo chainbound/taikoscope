@@ -8,7 +8,10 @@
 - Linting: `just lint` or `cargo clippy --examples --tests --benches --all-features`
 - Format code: `just fmt` or `cargo +nightly fmt --all`
 - Run CI checks: `just ci` (runs fmt, lint, test, check-dashboard, test-dashboard)
-- Always run `just ci` after any changes
+- Smart CI: `just ci-smart` (automatically detects changed files and runs only relevant tooling)
+- Rust-only CI: `just ci-rust` (runs fmt, lint, test)
+- Dashboard-only CI: `just ci-dashboard` (runs lint-dashboard, check-dashboard, test-dashboard)
+- Always run `just ci-smart` after changes, or `just ci` for full manual control
 - Dashboard install dependencies: `just install-dashboard`
 - Dashboard dev server: `just dev-dashboard`
 - Dashboard build: `just build-dashboard`
