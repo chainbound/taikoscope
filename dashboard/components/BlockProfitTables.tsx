@@ -69,17 +69,17 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
       hardwareCostUsd: operationalCostPerBatchUsd,
       ethPrice,
     });
-    const profitWei = profitEth * 1e9;
-    const revenueWei = revenueEth * 1e9;
-    const costWei = costEth * 1e9;
+    const profitGwei = profitEth * 1e9;
+    const revenueGwei = revenueEth * 1e9;
+    const costGwei = costEth * 1e9;
 
     return {
       batch: b.batch,
       txHash: b.txHash,
       sequencer: b.sequencer,
-      revenue: revenueWei,
-      cost: costWei,
-      profit: profitWei, // Store as wei for consistency
+      revenue: revenueGwei,
+      cost: costGwei,
+      profit: profitGwei,
       profitEth, // Store ETH value for sorting and display
       revenueEth,
       costEth,

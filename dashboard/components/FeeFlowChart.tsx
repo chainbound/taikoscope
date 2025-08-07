@@ -207,15 +207,15 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     (value: number, itemData?: any) => {
       const usd = formatUsd(value);
 
-      // If the item already has a `wei` value, use it directly
+      // If the item already has a `gwei` value, use it directly
       if (itemData?.gwei != null) {
         return `${formatEth(itemData.gwei, 4)} (${usd})`;
       }
 
-      // Otherwise, attempt to derive `wei` from USD using the current ETH price
+      // Otherwise, attempt to derive `gwei` from USD using the current ETH price
       if (ethPrice && ethPrice > 0) {
-        const wei = (value / ethPrice) * GWEI_TO_ETH;
-        return `${formatEth(wei, 4)} (${usd})`;
+        const gwei = (value / ethPrice) * GWEI_TO_ETH;
+        return `${formatEth(gwei, 4)} (${usd})`;
       }
 
       // Fallback when ETH price is unavailable: return USD only
@@ -227,15 +227,15 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
   // Node value formatter - shows only ETH values without USD
   const formatNodeValue = React.useCallback(
     (value: number, itemData?: any) => {
-      // If the item already has a `wei` value, use it directly
+      // If the item already has a `gwei` value, use it directly
       if (itemData?.gwei != null) {
         return formatEth(itemData.gwei, 4);
       }
 
-      // Otherwise, attempt to derive `wei` from USD using the current ETH price
+      // Otherwise, attempt to derive `gwei` from USD using the current ETH price
       if (ethPrice && ethPrice > 0) {
-        const wei = (value / ethPrice) * GWEI_TO_ETH;
-        return formatEth(wei, 4);
+        const gwei = (value / ethPrice) * GWEI_TO_ETH;
+        return formatEth(gwei, 4);
       }
 
       // Fallback when ETH price is unavailable: return 0 ETH
