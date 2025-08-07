@@ -4,6 +4,7 @@ use eyre::{Context, Result};
 use tokio_stream::StreamExt;
 use tracing::info;
 
+use crate::subscription::subscribe_with_retry;
 use config::Opts;
 use extractor::{
     BatchProposedStream, BatchesProvedStream, BatchesVerifiedStream, Extractor,
@@ -58,40 +59,42 @@ impl IngestorDriver {
         Ok(Self { extractor, jetstream })
     }
 
-    async fn get_l1_headers(&self) -> Result<L1HeaderStream> {
-        self.extractor.get_l1_header_stream().await
+    async fn get_l1_headers(&self) -> L1HeaderStream {
+        subscribe_with_retry(|| self.extractor.get_l1_header_stream(), "l1 headers").await
     }
 
-    async fn get_l2_headers(&self) -> Result<L2HeaderStream> {
-        self.extractor.get_l2_header_stream().await
+    async fn get_l2_headers(&self) -> L2HeaderStream {
+        subscribe_with_retry(|| self.extractor.get_l2_header_stream(), "l2 headers").await
     }
 
-    async fn get_batch_proposed(&self) -> Result<BatchProposedStream> {
-        self.extractor.get_batch_proposed_stream().await
+    async fn get_batch_proposed(&self) -> BatchProposedStream {
+        subscribe_with_retry(|| self.extractor.get_batch_proposed_stream(), "batch proposed").await
     }
 
-    async fn get_forced_inclusion(&self) -> Result<ForcedInclusionStream> {
-        self.extractor.get_forced_inclusion_stream().await
+    async fn get_forced_inclusion(&self) -> ForcedInclusionStream {
+        subscribe_with_retry(|| self.extractor.get_forced_inclusion_stream(), "forced inclusion")
+            .await
     }
 
-    async fn get_batches_proved(&self) -> Result<BatchesProvedStream> {
-        self.extractor.get_batches_proved_stream().await
+    async fn get_batches_proved(&self) -> BatchesProvedStream {
+        subscribe_with_retry(|| self.extractor.get_batches_proved_stream(), "batches proved").await
     }
 
-    async fn get_batches_verified(&self) -> Result<BatchesVerifiedStream> {
-        self.extractor.get_batches_verified_stream().await
+    async fn get_batches_verified(&self) -> BatchesVerifiedStream {
+        subscribe_with_retry(|| self.extractor.get_batches_verified_stream(), "batches verified")
+            .await
     }
 
     /// Start the ingestor event loop, extracting events and publishing to NATS
     pub async fn start(self) -> Result<()> {
         info!("Starting ingestor event loop");
 
-        let l1_stream = self.get_l1_headers().await?;
-        let l2_stream = self.get_l2_headers().await?;
-        let batch_stream = self.get_batch_proposed().await?;
-        let forced_stream = self.get_forced_inclusion().await?;
-        let proved_stream = self.get_batches_proved().await?;
-        let verified_stream = self.get_batches_verified().await?;
+        let l1_stream = self.get_l1_headers().await;
+        let l2_stream = self.get_l2_headers().await;
+        let batch_stream = self.get_batch_proposed().await;
+        let forced_stream = self.get_forced_inclusion().await;
+        let proved_stream = self.get_batches_proved().await;
+        let verified_stream = self.get_batches_verified().await;
 
         self.event_loop(
             l1_stream,
@@ -117,66 +120,106 @@ impl IngestorDriver {
 
         loop {
             tokio::select! {
-                // Handle events
                 maybe_l1 = l1_stream.next() => {
-                    if let Some(header) = maybe_l1 {
-                        info!(block_number = header.number, "Publishing L1 header");
-                        let event = TaikoEvent::L1Header(header);
-                        if let Err(e) = publish_event_with_retry(&self.jetstream, &event, 10).await {
-                            tracing::error!(err = %e, "Failed to publish L1Header");
+                    match maybe_l1 {
+                        Some(header) => {
+                            info!(block_number = header.number, "Publishing L1 header");
+                            let event = TaikoEvent::L1Header(header);
+                            if let Err(e) = publish_event_with_retry(&self.jetstream, &event, 10).await {
+                                tracing::error!(err = %e, "Failed to publish L1Header");
+                            }
+                        }
+                        None => {
+                            tracing::warn!("L1 header stream ended; re-subscribing…");
+                            l1_stream = self.get_l1_headers().await;
                         }
                     }
                 }
                 maybe_l2 = l2_stream.next() => {
-                    if let Some(header) = maybe_l2 {
-                        info!(block_number = header.number, "Publishing L2 header");
-                        let event = TaikoEvent::L2Header(header);
-                        if let Err(e) = publish_event_with_retry(&self.jetstream, &event, 10).await {
-                            tracing::error!(err = %e, "Failed to publish L2Header");
+                    match maybe_l2 {
+                        Some(header) => {
+                            info!(block_number = header.number, "Publishing L2 header");
+                            let event = TaikoEvent::L2Header(header);
+                            if let Err(e) = publish_event_with_retry(&self.jetstream, &event, 10).await {
+                                tracing::error!(err = %e, "Failed to publish L2Header");
+                            }
+                        }
+                        None => {
+                            tracing::warn!("L2 header stream ended; re-subscribing…");
+                            l2_stream = self.get_l2_headers().await;
                         }
                     }
                 }
                 maybe_batch = batch_stream.next() => {
-                    if let Some((batch, l1_tx_hash)) = maybe_batch {
-                        info!(block_number = batch.last_block_number(), "Publishing BatchProposed");
-                        let wrapper = BatchProposedWrapper::from((batch, l1_tx_hash));
-                        let event = TaikoEvent::BatchProposed(wrapper);
-                        if let Err(e) = publish_event_with_retry(&self.jetstream, &event, 10).await {
-                            tracing::error!(err = %e, "Failed to publish BatchProposed");
+                    match maybe_batch {
+                        Some((batch, l1_tx_hash)) => {
+                            info!(block_number = batch.last_block_number(), "Publishing BatchProposed");
+                            let wrapper = BatchProposedWrapper::from((batch, l1_tx_hash));
+                            let event = TaikoEvent::BatchProposed(wrapper);
+                            if let Err(e) = publish_event_with_retry(&self.jetstream, &event, 10).await {
+                                tracing::error!(err = %e, "Failed to publish BatchProposed");
+                            }
+                        }
+                        None => {
+                            tracing::warn!("Batch proposed stream ended; re-subscribing…");
+                            batch_stream = self.get_batch_proposed().await;
                         }
                     }
                 }
                 maybe_fi = forced_stream.next() => {
-                    if let Some(fi) = maybe_fi {
-                        info!(blob_hash = ?fi.forcedInclusion.blobHash, "Publishing forced inclusion processed");
-                        let wrapper = ForcedInclusionProcessedWrapper::from(fi);
-                        let event = TaikoEvent::ForcedInclusionProcessed(wrapper);
-                        if let Err(e) = publish_event_with_retry(&self.jetstream, &event, 10).await {
-                            tracing::error!(err = %e, "Failed to publish ForcedInclusionProcessed");
+                    match maybe_fi {
+                        Some(fi) => {
+                            info!(blob_hash = ?fi.forcedInclusion.blobHash, "Publishing forced inclusion processed");
+                            let wrapper = ForcedInclusionProcessedWrapper::from(fi);
+                            let event = TaikoEvent::ForcedInclusionProcessed(wrapper);
+                            if let Err(e) = publish_event_with_retry(&self.jetstream, &event, 10).await {
+                                tracing::error!(err = %e, "Failed to publish ForcedInclusionProcessed");
+                            }
+                        }
+                        None => {
+                            tracing::warn!("Forced inclusion stream ended; re-subscribing…");
+                            forced_stream = self.get_forced_inclusion().await;
                         }
                     }
                 }
                 maybe_proved = proved_stream.next() => {
-                    if let Some((proved, l1_block_number, l1_tx_hash)) = maybe_proved {
-                        info!(batch_ids = ?proved.batch_ids_proved(), "Publishing batches proved");
-                        let wrapper = BatchesProvedWrapper::from((proved, l1_block_number, l1_tx_hash));
-                        let event = TaikoEvent::BatchesProved(wrapper);
-                        if let Err(e) = publish_event_with_retry(&self.jetstream, &event, 10).await {
-                            tracing::error!(err = %e, "Failed to publish BatchesProved");
+                    match maybe_proved {
+                        Some((proved, l1_block_number, l1_tx_hash)) => {
+                            info!(batch_ids = ?proved.batch_ids_proved(), "Publishing batches proved");
+                            let wrapper = BatchesProvedWrapper::from((proved, l1_block_number, l1_tx_hash));
+                            let event = TaikoEvent::BatchesProved(wrapper);
+                            if let Err(e) = publish_event_with_retry(&self.jetstream, &event, 10).await {
+                                tracing::error!(err = %e, "Failed to publish BatchesProved");
+                            }
+                        }
+                        None => {
+                            tracing::warn!("Batches proved stream ended; re-subscribing…");
+                            proved_stream = self.get_batches_proved().await;
                         }
                     }
                 }
                 maybe_verified = verified_stream.next() => {
-                    if let Some((verified, l1_block_number, l1_tx_hash)) = maybe_verified {
-                        info!(batch_ids = ?verified.batch_id(), "Publishing batches verified");
-                        let wrapper = BatchesVerifiedWrapper::from((verified, l1_block_number, l1_tx_hash));
-                        let event = TaikoEvent::BatchesVerified(wrapper);
-                        if let Err(e) = publish_event_with_retry(&self.jetstream, &event, 10).await {
-                            tracing::error!(err = %e, "Failed to publish BatchesVerified");
+                    match maybe_verified {
+                        Some((verified, l1_block_number, l1_tx_hash)) => {
+                            info!(batch_ids = ?verified.batch_id(), "Publishing batches verified");
+                            let wrapper = BatchesVerifiedWrapper::from((verified, l1_block_number, l1_tx_hash));
+                            let event = TaikoEvent::BatchesVerified(wrapper);
+                            if let Err(e) = publish_event_with_retry(&self.jetstream, &event, 10).await {
+                                tracing::error!(err = %e, "Failed to publish BatchesVerified");
+                            }
+                        }
+                        None => {
+                            tracing::warn!("Batches verified stream ended; re-subscribing…");
+                            verified_stream = self.get_batches_verified().await;
                         }
                     }
                 }
+                else => {
+                    tracing::error!("All event streams ended and failed to re-subscribe. Shutting down ingestor loop");
+                    break;
+                }
             }
         }
+        Ok(())
     }
 }
