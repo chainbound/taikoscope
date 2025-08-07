@@ -780,16 +780,16 @@ impl ProcessorDriver {
     /// Each monitor runs in its own task and reports incidents via the
     /// [`IncidentClient`].
     fn spawn_monitors(&self) {
+        if !self.instatus_monitors_enabled {
+            return;
+        }
+
         if let Some(url) = &self.public_rpc_url {
             tracing::info!(url = url.as_str(), "public rpc monitor enabled");
             let incident = self.instatus_monitors_enabled.then(|| {
                 (self.incident_client.clone(), self.instatus_public_api_component_id.clone())
             });
             spawn_public_rpc_monitor(url.clone(), incident);
-        }
-
-        if !self.instatus_monitors_enabled {
-            return;
         }
 
         // Only spawn monitors if we have a clickhouse reader (database writes enabled)
