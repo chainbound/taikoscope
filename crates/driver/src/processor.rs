@@ -586,89 +586,148 @@ impl ProcessorDriver {
         last_l2_header: &mut Option<(u64, Address)>,
         header: primitives::headers::L2Header,
     ) -> Result<()> {
-        let prev_header = *last_l2_header;
-        let old_head = reorg_detector.head_number(); // Capture old head before detection
+        // Process reorg detection
+        Self::process_reorg_detection(
+            writer,
+            clickhouse_reader,
+            reorg_detector,
+            last_l2_header,
+            &header,
+        )
+        .await;
 
-        // Detect reorgs
+        // Insert L2 header with block statistics
+        Self::insert_l2_header_with_stats(writer, extractor, &header).await;
+
+        Ok(())
+    }
+
+    /// Process reorg detection and handle orphaned blocks/hashes
+    async fn process_reorg_detection(
+        writer: &ClickhouseWriter,
+        clickhouse_reader: &Option<ClickhouseReader>,
+        reorg_detector: &mut ReorgDetector,
+        last_l2_header: &mut Option<(u64, Address)>,
+        header: &primitives::headers::L2Header,
+    ) {
+        let prev_header = *last_l2_header;
+        let old_head = reorg_detector.head_number();
+
         let reorg_result =
             reorg_detector.on_new_block_with_hash(header.number, B256::from(*header.hash));
         *last_l2_header = Some((header.number, header.beneficiary));
 
         if let Some((depth, orphaned_hash)) = reorg_result {
-            let old_seq = prev_header.map(|(_, addr)| addr).unwrap_or(Address::ZERO);
+            Self::handle_reorg_event(
+                writer,
+                clickhouse_reader,
+                prev_header,
+                old_head,
+                header,
+                depth,
+                orphaned_hash,
+            )
+            .await;
+        }
+    }
 
-            // Insert reorg event
-            if let Err(e) =
-                writer.insert_l2_reorg(header.number, depth, old_seq, header.beneficiary).await
-            {
-                tracing::error!(block_number = header.number, depth = depth, err = %e, "Failed to insert L2 reorg");
-            } else {
-                info!(new_head = header.number, depth, "Inserted L2 reorg");
-            }
+    /// Handle a detected reorg event by inserting reorg data and orphaned hashes
+    async fn handle_reorg_event(
+        writer: &ClickhouseWriter,
+        clickhouse_reader: &Option<ClickhouseReader>,
+        prev_header: Option<(u64, Address)>,
+        old_head: u64,
+        header: &primitives::headers::L2Header,
+        depth: u16,
+        orphaned_hash: Option<B256>,
+    ) {
+        let old_seq = prev_header.map(|(_, addr)| addr).unwrap_or(Address::ZERO);
 
-            // Handle orphaned hash from one-block reorg
-            if let Some(hash) = orphaned_hash {
-                if let Err(e) =
-                    writer.insert_orphaned_hashes(&[(HashBytes::from(hash), header.number)]).await
-                {
-                    tracing::error!(block_number = header.number, orphaned_hash = ?hash, err = %e, "Failed to insert orphaned hash");
-                } else {
-                    info!(block_number = header.number, orphaned_hash = ?hash, "Inserted orphaned hash");
-                }
-            }
-
-            // Handle orphaned blocks from traditional reorg
-            if depth > 0 {
-                let orphaned_block_numbers =
-                    calculate_orphaned_blocks(old_head, header.number, depth.into());
-
-                if !orphaned_block_numbers.is_empty() {
-                    if let Some(reader) = clickhouse_reader {
-                        match reader.get_latest_hashes_for_blocks(&orphaned_block_numbers).await {
-                            Ok(orphaned_hashes) => {
-                                if !orphaned_hashes.is_empty() {
-                                    if let Err(e) =
-                                        writer.insert_orphaned_hashes(&orphaned_hashes).await
-                                    {
-                                        tracing::error!(
-                                            count = orphaned_hashes.len(),
-                                            err = %e,
-                                            "Failed to insert orphaned hashes"
-                                        );
-                                    } else {
-                                        info!(
-                                            count = orphaned_hashes.len(),
-                                            "Inserted orphaned hashes for reorg"
-                                        );
-                                    }
-                                }
-                            }
-                            Err(e) => {
-                                tracing::error!(err = %e, "Failed to fetch orphaned hashes");
-                            }
-                        }
-                    }
-                }
-            }
+        // Insert reorg event
+        if let Err(e) =
+            writer.insert_l2_reorg(header.number, depth, old_seq, header.beneficiary).await
+        {
+            tracing::error!(block_number = header.number, depth, err = %e, "Failed to insert L2 reorg");
+        } else {
+            info!(new_head = header.number, depth, "Inserted L2 reorg");
         }
 
-        // Calculate L2 block statistics using the extractor
-        let (sum_gas_used, sum_tx, sum_priority_fee) = match extractor
-            .get_l2_block_stats(header.number, header.base_fee_per_gas)
-            .await
+        // Handle orphaned hash from one-block reorg
+        if let Some(hash) = orphaned_hash {
+            Self::insert_orphaned_hash(writer, hash, header.number).await;
+        }
+
+        // Handle orphaned blocks from traditional reorg
+        if depth > 0 {
+            Self::handle_traditional_reorg_orphans(
+                writer,
+                clickhouse_reader,
+                old_head,
+                header.number,
+                depth,
+            )
+            .await;
+        }
+    }
+
+    /// Insert a single orphaned hash
+    async fn insert_orphaned_hash(writer: &ClickhouseWriter, hash: B256, block_number: u64) {
+        if let Err(e) =
+            writer.insert_orphaned_hashes(&[(HashBytes::from(hash), block_number)]).await
         {
-            Ok(stats) => stats,
-            Err(e) => {
-                tracing::error!(header_number = header.number, err = %e, "Failed to get L2 block stats, using defaults");
-                (0, 0, 0)
-            }
+            tracing::error!(block_number, orphaned_hash = ?hash, err = %e, "Failed to insert orphaned hash");
+        } else {
+            info!(block_number, orphaned_hash = ?hash, "Inserted orphaned hash");
+        }
+    }
+
+    /// Handle orphaned blocks from traditional reorgs
+    async fn handle_traditional_reorg_orphans(
+        writer: &ClickhouseWriter,
+        clickhouse_reader: &Option<ClickhouseReader>,
+        old_head: u64,
+        new_head: u64,
+        depth: u16,
+    ) {
+        let orphaned_block_numbers = calculate_orphaned_blocks(old_head, new_head, depth.into());
+        if orphaned_block_numbers.is_empty() {
+            return;
+        }
+
+        let Some(reader) = clickhouse_reader else {
+            return;
         };
 
-        // Calculate sum_base_fee using the base fee per gas and gas used
+        match reader.get_latest_hashes_for_blocks(&orphaned_block_numbers).await {
+            Ok(orphaned_hashes) if !orphaned_hashes.is_empty() => {
+                if let Err(e) = writer.insert_orphaned_hashes(&orphaned_hashes).await {
+                    tracing::error!(count = orphaned_hashes.len(), err = %e, "Failed to insert orphaned hashes");
+                } else {
+                    info!(count = orphaned_hashes.len(), "Inserted orphaned hashes for reorg");
+                }
+            }
+            Ok(_) => {} // No orphaned hashes found
+            Err(e) => tracing::error!(err = %e, "Failed to fetch orphaned hashes"),
+        }
+    }
+
+    /// Insert L2 header with calculated block statistics
+    async fn insert_l2_header_with_stats(
+        writer: &ClickhouseWriter,
+        extractor: &Extractor,
+        header: &primitives::headers::L2Header,
+    ) {
+        let (sum_gas_used, sum_tx, sum_priority_fee) = extractor
+            .get_l2_block_stats(header.number, header.base_fee_per_gas)
+            .await
+            .unwrap_or_else(|e| {
+                tracing::error!(header_number = header.number, err = %e, "Failed to get L2 block stats, using defaults");
+                (0, 0, 0)
+            });
+
         let sum_base_fee =
             sum_gas_used.saturating_mul(header.base_fee_per_gas.unwrap_or(0) as u128);
 
-        // Convert L2Header to L2HeadEvent format expected by ClickHouse
         let event = L2HeadEvent {
             l2_block_number: header.number,
             block_hash: HashBytes(*header.hash),
@@ -688,8 +747,6 @@ impl ProcessorDriver {
                 sum_gas_used, sum_tx, "Inserted L2 header with stats"
             );
         }
-
-        Ok(())
     }
 
     /// Spawn all background monitors used by the processor.
