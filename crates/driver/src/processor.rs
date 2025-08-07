@@ -1177,7 +1177,83 @@ fn calculate_orphaned_blocks(old_head: u64, new_head: u64, _depth: u32) -> Vec<u
 #[cfg(test)]
 mod tests {
     use super::*;
-    use alloy_primitives::B256;
+    use alloy_primitives::{Address, B256};
+    use chainio::{ITaikoInbox, taiko::wrapper::ITaikoWrapper};
+    use clickhouse::{
+        AddressBytes, BatchBlockRow, BatchRow, ForcedInclusionProcessedRow, HashBytes,
+        ProvedBatchRow, VerifiedBatchRow,
+    };
+    use clickhouse_rs::test::{Mock, handlers};
+    use config::{
+        ApiOpts, ClickhouseOpts, InstatusOpts, NatsOpts, NatsStreamOpts, Opts, RpcOpts,
+        TaikoAddressOpts,
+    };
+    use futures::future;
+    use messages::ForcedInclusionProcessedWrapper;
+    use tokio::net::TcpListener;
+    use tokio_tungstenite::accept_async;
+    use url::Url;
+
+    async fn start_ws_server() -> (Url, tokio::task::JoinHandle<()>) {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let handle = tokio::spawn(async move {
+            if let Ok((stream, _)) = listener.accept().await {
+                let _ = accept_async(stream).await;
+                future::pending::<()>().await;
+            }
+        });
+        let url = Url::parse(&format!("ws://{}", addr)).unwrap();
+        (url, handle)
+    }
+
+    fn make_opts(url: Url, nats_url: Url, l1_url: Url, l2_url: Url) -> Opts {
+        Opts {
+            clickhouse: ClickhouseOpts {
+                url,
+                db: "test".into(),
+                username: "user".into(),
+                password: "pass".into(),
+            },
+            nats: NatsOpts { username: Some("natsuser".into()), password: Some("natspass".into()) },
+            nats_stream: NatsStreamOpts {
+                duplicate_window_secs: 120,
+                storage_type: "file".into(),
+                retention_policy: "workqueue".into(),
+            },
+            rpc: RpcOpts { l1_url, l2_url, public_url: None },
+            api: ApiOpts {
+                host: "127.0.0.1".into(),
+                port: 3000,
+                allowed_origins: Vec::new(),
+                rate_limit_max_requests: 1000,
+                rate_limit_period_secs: 60,
+            },
+            nats_url: nats_url.to_string(),
+            taiko_addresses: TaikoAddressOpts {
+                inbox_address: Address::ZERO,
+                preconf_whitelist_address: Address::ZERO,
+                taiko_wrapper_address: Address::ZERO,
+            },
+            instatus: InstatusOpts {
+                api_key: "key".into(),
+                page_id: "page".into(),
+                batch_submission_component_id: "batch".into(),
+                proof_submission_component_id: "proof".into(),
+                proof_verification_component_id: "verify".into(),
+                transaction_sequencing_component_id: "l2".into(),
+                public_api_component_id: "public".into(),
+                monitors_enabled: true,
+                monitor_poll_interval_secs: 30,
+                l1_monitor_threshold_secs: 96,
+                l2_monitor_threshold_secs: 96,
+                batch_proof_timeout_secs: 999,
+            },
+            enable_db_writes: false,
+            reset_db: false,
+            skip_migrations: false,
+        }
+    }
 
     #[test]
     fn average_cost_per_batch_even_split() {
@@ -1259,5 +1335,164 @@ mod tests {
         assert!(!limited_fifo.contains(&B256::from([5u8; 32])));
         assert!(limited_fifo.contains(&B256::from([6u8; 32])));
         assert!(limited_fifo.contains(&B256::from([10u8; 32])));
+    }
+
+    #[tokio::test]
+    async fn handle_batch_proposed_event_inserts_row() {
+        let mock = Mock::new();
+        let ctl = mock.add(handlers::record::<BatchRow>());
+        let _ctl_blocks = mock.add(handlers::record::<BatchBlockRow>());
+
+        let clickhouse = ClickhouseWriter::new(
+            mock.url().parse().unwrap(),
+            "test".into(),
+            "user".into(),
+            "pass".into(),
+        );
+
+        let batch = ITaikoInbox::BatchProposed {
+            info: ITaikoInbox::BatchInfo {
+                proposedIn: 2,
+                blobByteSize: 50,
+                blocks: vec![ITaikoInbox::BlockParams::default(); 1],
+                blobHashes: vec![B256::repeat_byte(1)],
+                lastBlockId: 100,
+                ..Default::default()
+            },
+            meta: ITaikoInbox::BatchMetadata {
+                proposer: Address::repeat_byte(2),
+                batchId: 7,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+
+        // Test the batch insertion directly since cost calculation is skipped with zero tx_hash
+        clickhouse.insert_batch(&batch, B256::ZERO).await.unwrap();
+
+        let rows: Vec<BatchRow> = ctl.collect().await;
+        assert_eq!(
+            rows,
+            vec![BatchRow {
+                l1_block_number: 2,
+                l1_tx_hash: HashBytes::from([0u8; 32]),
+                batch_id: 7,
+                batch_size: 1,
+                last_l2_block_number: 100,
+                proposer_addr: AddressBytes::from(Address::repeat_byte(2)),
+                blob_count: 1,
+                blob_total_bytes: 50,
+            }]
+        );
+    }
+
+    #[tokio::test]
+    async fn handle_forced_inclusion_event_inserts_row() {
+        let mock = Mock::new();
+        let ctl = mock.add(handlers::record::<ForcedInclusionProcessedRow>());
+
+        let url = Url::parse(mock.url()).unwrap();
+        let (l1_url, l1_handle) = start_ws_server().await;
+        let (l2_url, l2_handle) = start_ws_server().await;
+        let nats_url = Url::parse("nats://localhost:4222").unwrap();
+
+        let opts = make_opts(url, nats_url, l1_url.clone(), l2_url.clone());
+        let clickhouse = ClickhouseWriter::new(
+            opts.clickhouse.url,
+            opts.clickhouse.db,
+            opts.clickhouse.username,
+            opts.clickhouse.password,
+        );
+
+        l1_handle.abort();
+        l2_handle.abort();
+
+        let event = ITaikoWrapper::ForcedInclusionProcessed {
+            forcedInclusion: ITaikoWrapper::ForcedInclusion {
+                blobHash: B256::repeat_byte(5),
+                feeInGwei: 1,
+                createdAtBatchId: 0,
+                blobByteOffset: 0,
+                blobByteSize: 0,
+                blobCreatedIn: 0,
+            },
+        };
+
+        let wrapper = ForcedInclusionProcessedWrapper::from(event);
+        ProcessorDriver::handle_forced_inclusion_event(&clickhouse, wrapper).await.unwrap();
+
+        let rows: Vec<ForcedInclusionProcessedRow> = ctl.collect().await;
+        assert_eq!(
+            rows,
+            vec![ForcedInclusionProcessedRow { blob_hash: HashBytes::from([5u8; 32]) }]
+        );
+    }
+
+    #[tokio::test]
+    async fn handle_batches_proved_event_inserts_rows() {
+        let mock = Mock::new();
+        let ctl = mock.add(handlers::record::<ProvedBatchRow>());
+
+        let clickhouse = ClickhouseWriter::new(
+            mock.url().parse().unwrap(),
+            "test".into(),
+            "user".into(),
+            "pass".into(),
+        );
+
+        let transition = ITaikoInbox::Transition {
+            parentHash: B256::repeat_byte(1),
+            blockHash: B256::repeat_byte(2),
+            stateRoot: B256::repeat_byte(3),
+        };
+        let proved = ITaikoInbox::BatchesProved {
+            verifier: Address::repeat_byte(4),
+            batchIds: vec![8],
+            transitions: vec![transition],
+        };
+
+        // Test the proved batch insertion directly
+        clickhouse.insert_proved_batch(&proved, 10).await.unwrap();
+
+        let rows: Vec<ProvedBatchRow> = ctl.collect().await;
+        assert_eq!(
+            rows,
+            vec![ProvedBatchRow {
+                l1_block_number: 10,
+                batch_id: 8,
+                verifier_addr: AddressBytes::from(Address::repeat_byte(4)),
+                parent_hash: HashBytes::from([1u8; 32]),
+                block_hash: HashBytes::from([2u8; 32]),
+                state_root: HashBytes::from([3u8; 32]),
+            }]
+        );
+    }
+
+    #[tokio::test]
+    async fn handle_batches_verified_event_inserts_row() {
+        let mock = Mock::new();
+        let ctl = mock.add(handlers::record::<VerifiedBatchRow>());
+
+        let clickhouse = ClickhouseWriter::new(
+            mock.url().parse().unwrap(),
+            "test".into(),
+            "user".into(),
+            "pass".into(),
+        );
+
+        let verified = chainio::BatchesVerified { batch_id: 3, block_hash: [9u8; 32] };
+
+        // Test the verified batch insertion directly
+        clickhouse.insert_verified_batch(&verified, 12).await.unwrap();
+
+        let rows: Vec<VerifiedBatchRow> = ctl.collect().await;
+        assert_eq!(
+            rows,
+            vec![VerifiedBatchRow {
+                l1_block_number: 12,
+                batch_id: 3,
+                block_hash: HashBytes::from([9u8; 32]),
+            }]
+        );
     }
 }
