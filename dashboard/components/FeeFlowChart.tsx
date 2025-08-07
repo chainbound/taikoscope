@@ -329,7 +329,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     remaining -= actualL1Cost;
     const deficitUsd = safeValue(Math.max(0, -profitUsd));
     const subsidyUsd = safeValue(
-      Math.max(l1CostUsd - actualL1Cost, deficitUsd),
+      (l1CostUsd - actualL1Cost) + deficitUsd,
     );
     const subsidyWei = safeValue(
       ethPrice ? (subsidyUsd / ethPrice) * GWEI_TO_ETH : 0,
