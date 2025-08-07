@@ -1,8 +1,8 @@
 //! Taikoscope Processor Driver
 
-use std::time::Duration;
+use std::{collections::VecDeque, time::Duration};
 
-use alloy_primitives::{Address, B256};
+use alloy_primitives::{Address, B256, BlockHash};
 use clickhouse::{AddressBytes, ClickhouseReader, ClickhouseWriter, HashBytes, L2HeadEvent};
 use config::Opts;
 use extractor::{Extractor, ReorgDetector};
@@ -44,6 +44,7 @@ pub struct ProcessorDriver {
     batch_proof_timeout_secs: u64,
     public_rpc_url: Option<Url>,
     nats_stream_config: config::NatsStreamOpts,
+    processed_l2_headers: VecDeque<BlockHash>,
 }
 
 impl ProcessorDriver {
@@ -168,6 +169,7 @@ impl ProcessorDriver {
             batch_proof_timeout_secs: opts.instatus.batch_proof_timeout_secs,
             public_rpc_url: opts.rpc.public_url,
             nats_stream_config: opts.nats_stream,
+            processed_l2_headers: VecDeque::new(),
         })
     }
 
@@ -200,6 +202,7 @@ impl ProcessorDriver {
         let mut last_l2_header = self.last_l2_header;
         let enable_db_writes = self.enable_db_writes;
         let nats_stream_config = self.nats_stream_config;
+        let mut processed_l2_headers = self.processed_l2_headers;
 
         let jetstream = async_nats::jetstream::new(nats_client);
 
@@ -277,6 +280,7 @@ impl ProcessorDriver {
                                     &mut reorg_detector,
                                     &mut last_l2_header,
                                     enable_db_writes,
+                                    &mut processed_l2_headers,
                                     &msg,
                                 )
                                 .await
@@ -341,6 +345,7 @@ impl ProcessorDriver {
         Ok(())
     }
 
+    #[allow(clippy::too_many_arguments)]
     async fn process_message(
         clickhouse_writer: &Option<ClickhouseWriter>,
         clickhouse_reader: &Option<ClickhouseReader>,
@@ -348,6 +353,7 @@ impl ProcessorDriver {
         reorg_detector: &mut ReorgDetector,
         last_l2_header: &mut Option<(u64, Address)>,
         enable_db_writes: bool,
+        processed_l2_headers: &mut VecDeque<BlockHash>,
         msg: &async_nats::jetstream::Message,
     ) -> Result<()> {
         let event: TaikoEvent = serde_json::from_slice(&msg.payload)?;
@@ -360,6 +366,7 @@ impl ProcessorDriver {
                     extractor,
                     reorg_detector,
                     last_l2_header,
+                    processed_l2_headers,
                     event,
                 )
                 .await
@@ -378,6 +385,7 @@ impl ProcessorDriver {
         extractor: &Extractor,
         reorg_detector: &mut ReorgDetector,
         last_l2_header: &mut Option<(u64, Address)>,
+        processed_l2_headers: &mut VecDeque<BlockHash>,
         event: TaikoEvent,
     ) -> Result<()> {
         match event {
@@ -511,6 +519,7 @@ impl ProcessorDriver {
                     extractor,
                     reorg_detector,
                     last_l2_header,
+                    processed_l2_headers,
                     header,
                 )
                 .await?;
@@ -584,9 +593,28 @@ impl ProcessorDriver {
         extractor: &Extractor,
         reorg_detector: &mut ReorgDetector,
         last_l2_header: &mut Option<(u64, Address)>,
+        processed_l2_headers: &mut VecDeque<BlockHash>,
         header: primitives::headers::L2Header,
     ) -> Result<()> {
-        // Process reorg detection
+        // Check if this header has already been processed to avoid duplicate reorg detection
+        if processed_l2_headers.contains(&header.hash) {
+            tracing::warn!(
+                header_number = header.number,
+                header_hash = ?header.hash,
+                "Duplicate L2Header detected from RPC, skipping reorg detection"
+            );
+            // Still insert the header for completeness, but skip reorg detection
+            Self::insert_l2_header_with_stats(writer, extractor, &header).await;
+            return Ok(());
+        }
+
+        // Add header to FIFO set, maintaining capacity of 1000
+        processed_l2_headers.push_back(header.hash);
+        if processed_l2_headers.len() > 1000 {
+            processed_l2_headers.pop_front();
+        }
+
+        // Process reorg detection for new headers
         Self::process_reorg_detection(
             writer,
             clickhouse_reader,
@@ -929,6 +957,7 @@ fn calculate_orphaned_blocks(old_head: u64, new_head: u64, _depth: u32) -> Vec<u
 #[cfg(test)]
 mod tests {
     use super::*;
+    use alloy_primitives::B256;
 
     #[test]
     fn average_cost_per_batch_even_split() {
@@ -970,5 +999,45 @@ mod tests {
         // Test case 5: Adjacent blocks (old_head=5, new_head=4)
         let result5 = calculate_orphaned_blocks(5, 4, 1);
         assert_eq!(result5, vec![5], "Should return [5] when old_head=5, new_head=4");
+    }
+
+    #[test]
+    fn fifo_set_behavior() {
+        let mut fifo = VecDeque::new();
+
+        // Test adding items
+        let hash1 = B256::from([1u8; 32]);
+        let hash2 = B256::from([2u8; 32]);
+        let hash3 = B256::from([3u8; 32]);
+
+        fifo.push_back(hash1);
+        fifo.push_back(hash2);
+        fifo.push_back(hash3);
+
+        assert_eq!(fifo.len(), 3);
+        assert!(fifo.contains(&hash1));
+        assert!(fifo.contains(&hash2));
+        assert!(fifo.contains(&hash3));
+
+        // Test FIFO capacity management (simulate 1000 limit)
+        const TEST_LIMIT: usize = 5;
+        let mut limited_fifo = VecDeque::new();
+
+        // Add more items than the limit
+        for i in 1..=10 {
+            let hash = B256::from([i as u8; 32]);
+            limited_fifo.push_back(hash);
+
+            if limited_fifo.len() > TEST_LIMIT {
+                limited_fifo.pop_front();
+            }
+        }
+
+        assert_eq!(limited_fifo.len(), TEST_LIMIT);
+        // Should contain hashes 6-10, not 1-5
+        assert!(!limited_fifo.contains(&B256::from([1u8; 32])));
+        assert!(!limited_fifo.contains(&B256::from([5u8; 32])));
+        assert!(limited_fifo.contains(&B256::from([6u8; 32])));
+        assert!(limited_fifo.contains(&B256::from([10u8; 32])));
     }
 }
