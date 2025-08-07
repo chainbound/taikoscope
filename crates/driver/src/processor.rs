@@ -15,8 +15,10 @@ use incident::{
 use nats_utils::TaikoEvent;
 use tokio::sync::broadcast;
 use tokio_stream::StreamExt;
-use tracing::{debug, info};
+use tracing::info;
 use url::Url;
+
+use crate::subscription::subscribe_with_retry;
 
 /// An EPOCH is a series of 32 slots.
 const EPOCH_SLOTS: u64 = 32;
@@ -44,6 +46,17 @@ pub struct ProcessorDriver {
     batch_proof_timeout_secs: u64,
     public_rpc_url: Option<Url>,
     nats_stream_config: config::NatsStreamOpts,
+    processed_l2_headers: VecDeque<BlockHash>,
+}
+
+/// Components extracted from `ProcessorDriver` for message processing
+struct ProcessorComponents {
+    clickhouse_writer: Option<ClickhouseWriter>,
+    clickhouse_reader: Option<ClickhouseReader>,
+    extractor: Extractor,
+    reorg_detector: ReorgDetector,
+    last_l2_header: Option<(u64, Address)>,
+    enable_db_writes: bool,
     processed_l2_headers: VecDeque<BlockHash>,
 }
 
@@ -194,19 +207,58 @@ impl ProcessorDriver {
         // Spawn monitors before starting the event loop
         self.spawn_monitors();
 
-        let nats_client = self.nats_client;
-        let clickhouse_writer = self.clickhouse_writer;
-        let clickhouse_reader = self.clickhouse_reader;
-        let extractor = self.extractor;
-        let mut reorg_detector = self.reorg_detector;
-        let mut last_l2_header = self.last_l2_header;
-        let enable_db_writes = self.enable_db_writes;
-        let nats_stream_config = self.nats_stream_config;
-        let mut processed_l2_headers = self.processed_l2_headers;
+        // Setup NATS infrastructure with retry
+        let consumer = self.setup_nats_infrastructure().await?;
 
-        let jetstream = async_nats::jetstream::new(nats_client);
+        // Extract components for processing
+        let ProcessorComponents {
+            clickhouse_writer,
+            clickhouse_reader,
+            extractor,
+            mut reorg_detector,
+            mut last_l2_header,
+            enable_db_writes,
+            mut processed_l2_headers,
+        } = self.into_components();
 
-        // Health check: Verify NATS connection is alive by attempting to get stream info
+        // Run the message processing loop (as static reference since self is consumed)
+        Self::run_message_processing_loop_static(
+            consumer,
+            clickhouse_writer,
+            clickhouse_reader,
+            extractor,
+            &mut reorg_detector,
+            &mut last_l2_header,
+            enable_db_writes,
+            &mut processed_l2_headers,
+            shutdown_rx,
+        )
+        .await
+    }
+
+    /// Extract components from self for processing
+    fn into_components(self) -> ProcessorComponents {
+        ProcessorComponents {
+            clickhouse_writer: self.clickhouse_writer,
+            clickhouse_reader: self.clickhouse_reader,
+            extractor: self.extractor,
+            reorg_detector: self.reorg_detector,
+            last_l2_header: self.last_l2_header,
+            enable_db_writes: self.enable_db_writes,
+            processed_l2_headers: self.processed_l2_headers,
+        }
+    }
+
+    /// Setup NATS infrastructure with retry logic for robustness
+    async fn setup_nats_infrastructure(
+        &self,
+    ) -> Result<
+        async_nats::jetstream::consumer::Consumer<async_nats::jetstream::consumer::pull::Config>,
+    > {
+        let jetstream = async_nats::jetstream::new(self.nats_client.clone());
+        let nats_stream_config = &self.nats_stream_config;
+
+        // Health check: Verify NATS connection is alive
         match jetstream.get_stream("taiko").await {
             Ok(_) => {
                 info!("NATS connection health check passed - stream accessible");
@@ -216,133 +268,201 @@ impl ProcessorDriver {
             }
         }
 
-        // Get or create the stream first with configurable settings
+        // Create stream with retry using our existing pattern
+        let _stream = subscribe_with_retry(
+            || async {
+                jetstream
+                    .get_or_create_stream(async_nats::jetstream::stream::Config {
+                        name: "taiko".to_owned(),
+                        subjects: vec!["taiko.events".to_owned()],
+                        duplicate_window: nats_stream_config.get_duplicate_window(),
+                        storage: nats_stream_config.get_storage_type(),
+                        retention: nats_stream_config.get_retention_policy(),
+                        ..Default::default()
+                    })
+                    .await
+                    .map_err(|e| eyre::eyre!("NATS stream creation failed: {}", e))
+            },
+            "NATS stream creation",
+        )
+        .await;
+
         info!(
             duplicate_window_secs = nats_stream_config.duplicate_window_secs,
             storage_type = nats_stream_config.storage_type,
             retention_policy = nats_stream_config.retention_policy,
-            "Creating NATS stream with configuration"
+            "Successfully created NATS stream with configuration"
         );
 
-        let _stream = jetstream
-            .get_or_create_stream(async_nats::jetstream::stream::Config {
-                name: "taiko".to_owned(),
-                subjects: vec!["taiko.events".to_owned()],
-                duplicate_window: nats_stream_config.get_duplicate_window(),
-                storage: nats_stream_config.get_storage_type(),
-                retention: nats_stream_config.get_retention_policy(),
-                ..Default::default()
-            })
-            .await
-            .map_err(|e| eyre::eyre!("Failed to create NATS stream: {}", e))?;
+        // Create consumer with retry - CRITICAL: Use durable consumer to avoid reprocessing
+        let consumer = subscribe_with_retry(
+            || async {
+                jetstream
+                    .create_consumer_on_stream(
+                        async_nats::jetstream::consumer::pull::Config {
+                            durable_name: Some("processor".to_owned()),
+                            // IMPORTANT: Explicit ack mode to prevent duplicate processing
+                            ack_policy: async_nats::jetstream::consumer::AckPolicy::Explicit,
+                            // Ensure we don't redeliver messages too quickly
+                            max_deliver: 3,
+                            ack_wait: Duration::from_secs(30),
+                            ..Default::default()
+                        },
+                        "taiko",
+                    )
+                    .await
+                    .map_err(|e| eyre::eyre!("NATS consumer creation failed: {}", e))
+            },
+            "NATS consumer creation",
+        )
+        .await;
 
-        // Create the consumer with enhanced error handling
-        info!("Creating durable consumer 'processor' on stream 'taiko'");
-        let consumer = jetstream
-            .create_consumer_on_stream(
-                async_nats::jetstream::consumer::pull::Config {
-                    durable_name: Some("processor".to_owned()),
-                    ..Default::default()
-                },
-                "taiko",
-            )
-            .await
-            .map_err(|e| eyre::eyre!("Failed to create NATS consumer: {}", e))?;
+        info!("Successfully created durable NATS consumer 'processor' with explicit ACK policy");
+        Ok(consumer)
+    }
 
-        info!("Successfully created NATS consumer, starting message processing loop");
-
-        let mut messages = consumer.messages().await?;
-        let mut shutdown_rx = shutdown_rx;
+    /// Run the main message processing loop with reconnection handling
+    #[allow(clippy::too_many_arguments)]
+    async fn run_message_processing_loop_static(
+        consumer: async_nats::jetstream::consumer::Consumer<
+            async_nats::jetstream::consumer::pull::Config,
+        >,
+        clickhouse_writer: Option<ClickhouseWriter>,
+        clickhouse_reader: Option<ClickhouseReader>,
+        extractor: Extractor,
+        reorg_detector: &mut ReorgDetector,
+        last_l2_header: &mut Option<(u64, Address)>,
+        enable_db_writes: bool,
+        processed_l2_headers: &mut VecDeque<BlockHash>,
+        mut shutdown_rx: Option<broadcast::Receiver<()>>,
+    ) -> Result<()> {
+        info!("Starting message processing loop");
 
         loop {
-            let message_future = messages.next();
-            let shutdown_future = async {
-                if let Some(ref mut rx) = shutdown_rx {
-                    rx.recv().await.ok();
-                } else {
-                    std::future::pending().await
+            // Get message stream - recreate if it fails to avoid getting stuck
+            let mut messages = match consumer.messages().await {
+                Ok(msgs) => msgs,
+                Err(e) => {
+                    tracing::error!(err = %e, "Failed to get message stream, recreating consumer...");
+                    // Note: Cannot recreate consumer in static context - this is a limitation
+                    // In production, consider using a different architecture or connection pooling
+                    tracing::error!("Cannot recreate consumer in static context, exiting loop");
+                    return Err(eyre::eyre!("NATS consumer failed and cannot be recreated"));
                 }
             };
 
-            tokio::select! {
-                message = message_future => {
-                    match message {
-                        Some(Ok(msg)) => {
-                            // Try to process the message with retry logic
-                            let mut retries = 0;
-                            const MAX_RETRIES: u32 = 3;
+            loop {
+                let message_future = messages.next();
+                let shutdown_future = async {
+                    if let Some(ref mut rx) = shutdown_rx {
+                        rx.recv().await.ok();
+                    } else {
+                        std::future::pending().await
+                    }
+                };
 
-                            loop {
-                                match Self::process_message(
+                tokio::select! {
+                    message = message_future => {
+                        match message {
+                            Some(Ok(msg)) => {
+                                // Process message with retry but careful ACK handling
+                                Self::process_message_with_retry_static(
                                     &clickhouse_writer,
                                     &clickhouse_reader,
                                     &extractor,
-                                    &mut reorg_detector,
-                                    &mut last_l2_header,
+                                    reorg_detector,
+                                    last_l2_header,
                                     enable_db_writes,
-                                    &mut processed_l2_headers,
+                                    processed_l2_headers,
                                     &msg,
-                                )
-                                .await
-                                {
-                                    Ok(()) => {
-                                        // Success - acknowledge the message
-                                        if let Err(e) = msg.ack().await {
-                                            tracing::error!(err = %e, "Failed to ack message");
-                                        }
-                                        break;
-                                    }
-                                    Err(e) => {
-                                        if retries >= MAX_RETRIES {
-                                            tracing::error!(
-                                                err = %e,
-                                                retries = retries,
-                                                "Failed to process message after all retries, nacking message"
-                                            );
-                                            // Nack the message to put it back in the queue
-                                            if let Err(nack_err) = msg
-                                                .ack_with(async_nats::jetstream::AckKind::Nak(None))
-                                                .await
-                                            {
-                                                tracing::error!(err = %nack_err, "Failed to nack message");
-                                            }
-                                            break;
-                                        }
-                                        retries += 1;
-                                        tracing::warn!(
-                                            err = %e,
-                                            retry = retries,
-                                            max_retries = MAX_RETRIES,
-                                            "Failed to process message, retrying..."
-                                        );
-                                        // Exponential backoff
-                                        tokio::time::sleep(Duration::from_millis(100 * (1 << retries)))
-                                            .await;
-                                    }
-                                }
+                                ).await;
+                            }
+                            Some(Err(e)) => {
+                                tracing::error!(err = %e, "Error receiving message from NATS, will recreate stream");
+                                break; // Break inner loop to recreate consumer
+                            }
+                            None => {
+                                tracing::warn!("NATS message stream ended, recreating consumer");
+                                break; // Break inner loop to recreate consumer
                             }
                         }
-                        Some(Err(e)) => {
-                            tracing::error!(err = %e, "Error receiving message from NATS");
-                            // Wait a bit before continuing to avoid tight loop on persistent errors
-                            tokio::time::sleep(Duration::from_millis(1000)).await;
-                        }
-                        None => {
-                            debug!("NATS message stream ended");
-                            break;
-                        }
                     }
-                }
-                _ = shutdown_future => {
-                    info!("Shutdown signal received, stopping message processing");
-                    break;
+                    _ = shutdown_future => {
+                        info!("Shutdown signal received, stopping message processing");
+                        return Ok(());
+                    }
                 }
             }
         }
+    }
 
-        info!("Message processing loop completed");
+    /// Process a single message with retry logic, ensuring proper ACK handling to prevent
+    /// duplicates
+    #[allow(clippy::too_many_arguments)]
+    async fn process_message_with_retry_static(
+        clickhouse_writer: &Option<ClickhouseWriter>,
+        clickhouse_reader: &Option<ClickhouseReader>,
+        extractor: &Extractor,
+        reorg_detector: &mut ReorgDetector,
+        last_l2_header: &mut Option<(u64, Address)>,
+        enable_db_writes: bool,
+        processed_l2_headers: &mut VecDeque<BlockHash>,
+        msg: &async_nats::jetstream::Message,
+    ) {
+        let mut retries = 0;
+        const MAX_RETRIES: u32 = 3;
 
-        Ok(())
+        loop {
+            match Self::process_message(
+                clickhouse_writer,
+                clickhouse_reader,
+                extractor,
+                reorg_detector,
+                last_l2_header,
+                enable_db_writes,
+                processed_l2_headers,
+                msg,
+            )
+            .await
+            {
+                Ok(()) => {
+                    // CRITICAL: Only ACK after successful processing to prevent duplicates
+                    if let Err(e) = msg.ack().await {
+                        tracing::error!(err = %e, "Failed to ack message - may cause redelivery");
+                    }
+                    break;
+                }
+                Err(e) => {
+                    if retries >= MAX_RETRIES {
+                        tracing::error!(
+                            err = %e,
+                            retries = retries,
+                            msg_subject = ?msg.subject,
+                            "Failed to process message after all retries, nacking to prevent loss but may cause redelivery"
+                        );
+                        // NACK with delay to avoid immediate redelivery storms
+                        if let Err(nack_err) = msg
+                            .ack_with(async_nats::jetstream::AckKind::Nak(Some(
+                                Duration::from_secs(30),
+                            )))
+                            .await
+                        {
+                            tracing::error!(err = %nack_err, "Failed to nack message");
+                        }
+                        break;
+                    }
+                    retries += 1;
+                    tracing::warn!(
+                        err = %e,
+                        retry = retries,
+                        max_retries = MAX_RETRIES,
+                        "Failed to process message, retrying..."
+                    );
+                    // Exponential backoff
+                    tokio::time::sleep(Duration::from_millis(100 * (1 << retries))).await;
+                }
+            }
+        }
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -390,127 +510,19 @@ impl ProcessorDriver {
     ) -> Result<()> {
         match event {
             TaikoEvent::BatchProposed(wrapper) => {
-                let batch = &wrapper.batch;
-                let l1_tx_hash = wrapper.l1_tx_hash;
-
-                if let Err(e) = writer.insert_batch(batch, l1_tx_hash).await {
-                    tracing::error!(batch_last_block = ?batch.last_block_number(), err = %e, "Failed to insert batch");
-                } else {
-                    info!(last_block_number = ?batch.last_block_number(), "Inserted batch");
-                }
-
-                // Calculate and insert L1 data cost
-                if let Some(cost) = Self::fetch_transaction_cost(extractor, l1_tx_hash).await {
-                    if let Err(e) = writer
-                        .insert_l1_data_cost(batch.info.proposedIn, batch.meta.batchId, cost)
-                        .await
-                    {
-                        tracing::error!(
-                            l1_block_number = batch.info.proposedIn,
-                            tx_hash = ?l1_tx_hash,
-                            err = %e,
-                            "Failed to insert L1 data cost"
-                        );
-                    } else {
-                        info!(
-                            l1_block_number = batch.info.proposedIn,
-                            tx_hash = ?l1_tx_hash,
-                            cost,
-                            "Inserted L1 data cost"
-                        );
-                    }
-                }
+                Self::handle_batch_proposed_event(writer, extractor, wrapper).await
             }
             TaikoEvent::ForcedInclusionProcessed(wrapper) => {
-                let event = &wrapper.event;
-                if let Err(e) = writer.insert_forced_inclusion(event).await {
-                    tracing::error!(blob_hash = ?event.forcedInclusion.blobHash, err = %e, "Failed to insert forced inclusion");
-                } else {
-                    info!(blob_hash = ?event.forcedInclusion.blobHash, "Inserted forced inclusion");
-                }
+                Self::handle_forced_inclusion_event(writer, wrapper).await
             }
             TaikoEvent::BatchesProved(wrapper) => {
-                let proved = &wrapper.proved;
-                let l1_block_number = wrapper.l1_block_number;
-                let l1_tx_hash = wrapper.l1_tx_hash;
-
-                if let Err(e) = writer.insert_proved_batch(proved, l1_block_number).await {
-                    tracing::error!(batch_ids = ?proved.batch_ids_proved(), err = %e, "Failed to insert proved batch");
-                } else {
-                    info!(batch_ids = ?proved.batch_ids_proved(), "Inserted proved batch");
-                }
-
-                // Calculate and insert prove costs
-                if let Some(cost) = Self::fetch_transaction_cost(extractor, l1_tx_hash).await {
-                    let cost_per_batch =
-                        average_cost_per_batch(cost, proved.batch_ids_proved().len());
-                    for batch_id in proved.batch_ids_proved() {
-                        if let Err(e) = writer
-                            .insert_prove_cost(l1_block_number, *batch_id, cost_per_batch)
-                            .await
-                        {
-                            tracing::error!(
-                                l1_block_number,
-                                batch_id,
-                                tx_hash = ?l1_tx_hash,
-                                err = %e,
-                                "Failed to insert prove cost"
-                            );
-                        } else {
-                            info!(
-                                l1_block_number,
-                                batch_id,
-                                tx_hash = ?l1_tx_hash,
-                                cost = cost_per_batch,
-                                "Inserted prove cost"
-                            );
-                        }
-                    }
-                }
+                Self::handle_batches_proved_event(writer, extractor, wrapper).await
             }
             TaikoEvent::BatchesVerified(wrapper) => {
-                let verified = &wrapper.verified;
-                let l1_block_number = wrapper.l1_block_number;
-                let l1_tx_hash = wrapper.l1_tx_hash;
-
-                if let Err(e) = writer.insert_verified_batch(verified, l1_block_number).await {
-                    tracing::error!(batch_id = verified.batch_id, err = %e, "Failed to insert verified batch");
-                } else {
-                    info!(batch_id = verified.batch_id, "Inserted verified batch");
-                }
-
-                // Calculate and insert verify cost
-                if let Some(cost) = Self::fetch_transaction_cost(extractor, l1_tx_hash).await {
-                    if let Err(e) =
-                        writer.insert_verify_cost(l1_block_number, verified.batch_id, cost).await
-                    {
-                        tracing::error!(
-                            l1_block_number,
-                            batch_id = verified.batch_id,
-                            tx_hash = ?l1_tx_hash,
-                            err = %e,
-                            "Failed to insert verify cost"
-                        );
-                    } else {
-                        info!(
-                            l1_block_number,
-                            batch_id = verified.batch_id,
-                            tx_hash = ?l1_tx_hash,
-                            cost,
-                            "Inserted verify cost"
-                        );
-                    }
-                }
+                Self::handle_batches_verified_event(writer, extractor, wrapper).await
             }
             TaikoEvent::L1Header(header) => {
-                if let Err(e) = writer.insert_l1_header(&header).await {
-                    tracing::error!(header_number = header.number, err = %e, "Failed to insert L1 header");
-                } else {
-                    info!(header_number = header.number, "Inserted L1 header");
-                }
-
-                // Process preconfirmation data like the original driver
-                Self::process_preconf_data(writer, extractor, &header).await;
+                Self::handle_l1_header_event(writer, extractor, header).await
             }
             TaikoEvent::L2Header(header) => {
                 Self::handle_l2_header(
@@ -522,10 +534,9 @@ impl ProcessorDriver {
                     processed_l2_headers,
                     header,
                 )
-                .await?;
+                .await
             }
         }
-        Ok(())
     }
 
     async fn process_event_log_and_drop(
@@ -594,8 +605,200 @@ impl ProcessorDriver {
         Ok(())
     }
 
+    /// Handle `BatchProposed` event with database insertion
+    async fn handle_batch_proposed_event(
+        writer: &ClickhouseWriter,
+        extractor: &Extractor,
+        wrapper: messages::BatchProposedWrapper,
+    ) -> Result<()> {
+        let batch = &wrapper.batch;
+        let l1_tx_hash = wrapper.l1_tx_hash;
+
+        // Insert batch with error handling
+        Self::with_db_error_context(
+            writer.insert_batch(batch, l1_tx_hash),
+            "insert batch",
+            format!("batch_last_block={:?}", batch.last_block_number()),
+        )
+        .await?;
+
+        info!(last_block_number = ?batch.last_block_number(), "Inserted batch");
+
+        // Calculate and insert L1 data cost
+        if let Some(cost) = Self::fetch_transaction_cost(extractor, l1_tx_hash).await {
+            Self::with_db_error_context(
+                writer.insert_l1_data_cost(batch.info.proposedIn, batch.meta.batchId, cost),
+                "insert L1 data cost",
+                format!("l1_block_number={}, tx_hash={:?}", batch.info.proposedIn, l1_tx_hash),
+            )
+            .await?;
+
+            info!(
+                l1_block_number = batch.info.proposedIn,
+                tx_hash = ?l1_tx_hash,
+                cost,
+                "Inserted L1 data cost"
+            );
+        }
+
+        Ok(())
+    }
+
+    /// Handle `ForcedInclusionProcessed` event with database insertion
+    async fn handle_forced_inclusion_event(
+        writer: &ClickhouseWriter,
+        wrapper: messages::ForcedInclusionProcessedWrapper,
+    ) -> Result<()> {
+        let event = &wrapper.event;
+
+        Self::with_db_error_context(
+            writer.insert_forced_inclusion(event),
+            "insert forced inclusion",
+            format!("blob_hash={:?}", event.forcedInclusion.blobHash),
+        )
+        .await?;
+
+        info!(blob_hash = ?event.forcedInclusion.blobHash, "Inserted forced inclusion");
+        Ok(())
+    }
+
+    /// Handle `BatchesProved` event with database insertion and cost calculation
+    async fn handle_batches_proved_event(
+        writer: &ClickhouseWriter,
+        extractor: &Extractor,
+        wrapper: messages::BatchesProvedWrapper,
+    ) -> Result<()> {
+        let proved = &wrapper.proved;
+        let l1_block_number = wrapper.l1_block_number;
+        let l1_tx_hash = wrapper.l1_tx_hash;
+
+        // Insert proved batch
+        Self::with_db_error_context(
+            writer.insert_proved_batch(proved, l1_block_number),
+            "insert proved batch",
+            format!("batch_ids={:?}", proved.batch_ids_proved()),
+        )
+        .await?;
+
+        info!(batch_ids = ?proved.batch_ids_proved(), "Inserted proved batch");
+
+        // Calculate and insert prove costs for each batch
+        if let Some(cost) = Self::fetch_transaction_cost(extractor, l1_tx_hash).await {
+            let cost_per_batch = average_cost_per_batch(cost, proved.batch_ids_proved().len());
+
+            for batch_id in proved.batch_ids_proved() {
+                Self::with_db_error_context(
+                    writer.insert_prove_cost(l1_block_number, *batch_id, cost_per_batch),
+                    "insert prove cost",
+                    format!(
+                        "l1_block_number={}, batch_id={}, tx_hash={:?}",
+                        l1_block_number, batch_id, l1_tx_hash
+                    ),
+                )
+                .await?;
+
+                info!(
+                    l1_block_number,
+                    batch_id,
+                    tx_hash = ?l1_tx_hash,
+                    cost = cost_per_batch,
+                    "Inserted prove cost"
+                );
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Handle `BatchesVerified` event with database insertion and cost calculation
+    async fn handle_batches_verified_event(
+        writer: &ClickhouseWriter,
+        extractor: &Extractor,
+        wrapper: messages::BatchesVerifiedWrapper,
+    ) -> Result<()> {
+        let verified = &wrapper.verified;
+        let l1_block_number = wrapper.l1_block_number;
+        let l1_tx_hash = wrapper.l1_tx_hash;
+
+        // Insert verified batch
+        Self::with_db_error_context(
+            writer.insert_verified_batch(verified, l1_block_number),
+            "insert verified batch",
+            format!("batch_id={}", verified.batch_id),
+        )
+        .await?;
+
+        info!(batch_id = verified.batch_id, "Inserted verified batch");
+
+        // Calculate and insert verify cost
+        if let Some(cost) = Self::fetch_transaction_cost(extractor, l1_tx_hash).await {
+            Self::with_db_error_context(
+                writer.insert_verify_cost(l1_block_number, verified.batch_id, cost),
+                "insert verify cost",
+                format!(
+                    "l1_block_number={}, batch_id={}, tx_hash={:?}",
+                    l1_block_number, verified.batch_id, l1_tx_hash
+                ),
+            )
+            .await?;
+
+            info!(
+                l1_block_number,
+                batch_id = verified.batch_id,
+                tx_hash = ?l1_tx_hash,
+                cost,
+                "Inserted verify cost"
+            );
+        }
+
+        Ok(())
+    }
+
+    /// Handle `L1Header` event with database insertion and preconf data processing
+    async fn handle_l1_header_event(
+        writer: &ClickhouseWriter,
+        extractor: &Extractor,
+        header: primitives::headers::L1Header,
+    ) -> Result<()> {
+        // Insert L1 header
+        Self::with_db_error_context(
+            writer.insert_l1_header(&header),
+            "insert L1 header",
+            format!("header_number={}", header.number),
+        )
+        .await?;
+
+        info!(header_number = header.number, "Inserted L1 header");
+
+        // Process preconfirmation data (same as original driver)
+        Self::process_preconf_data(writer, extractor, &header).await;
+
+        Ok(())
+    }
+
+    /// Shared database error handling utility to reduce code duplication
+    async fn with_db_error_context<F, T>(future: F, operation: &str, context: String) -> Result<T>
+    where
+        F: std::future::Future<Output = Result<T, eyre::Error>>,
+    {
+        future.await.map_err(|e| {
+            tracing::error!(
+                err = %e,
+                operation = operation,
+                context = context,
+                "Database operation failed"
+            );
+            eyre::eyre!("Failed to {}: {} - {}", operation, context, e)
+        })
+    }
+
     /// Fetch transaction cost for a given transaction hash
     async fn fetch_transaction_cost(extractor: &Extractor, tx_hash: B256) -> Option<u128> {
+        if tx_hash.is_zero() {
+            tracing::debug!("Skipping cost calculation for zero transaction hash");
+            return None;
+        }
+
         match extractor.get_receipt(tx_hash).await {
             Ok(receipt) => Some(primitives::l1_data_cost::cost_from_receipt(&receipt)),
             Err(e) => {
