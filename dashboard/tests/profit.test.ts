@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calculateProfit, calculateNetProfit } from '../utils/profit';
+import { calculateProfit, calculateNetProfit, SEQUENCER_BASE_FEE_RATIO } from '../utils/profit';
 
 describe('calculateProfit', () => {
   it('computes positive profit', () => {
@@ -45,7 +45,7 @@ describe('calculateProfit', () => {
       l1DataCost: 5,
       proveCost: 5,
     });
-    expect(profit).toBeCloseTo(10 + 20 * 0.75 - 5 - 5);
+    expect(profit).toBeCloseTo(10 + 20 * SEQUENCER_BASE_FEE_RATIO - 5 - 5);
   });
 
   it('handles zero ETH price without NaN', () => {

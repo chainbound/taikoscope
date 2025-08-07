@@ -8,7 +8,7 @@ import {
 import * as apiService from '../services/apiService';
 import { getSequencerAddress } from '../sequencerConfig';
 import { addressLink, formatEth, formatDecimal } from '../utils';
-import { calculateProfit } from '../utils/profit';
+import { calculateProfit, SEQUENCER_BASE_FEE_RATIO } from '../utils/profit';
 import { useEthPrice } from '../services/priceService';
 import { rangeToHours } from '../utils/timeRange';
 
@@ -95,7 +95,7 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
       };
     }
     const revenueEth =
-      ((fees.priority_fee ?? 0) + (fees.base_fee ?? 0) * 0.75) / 1e9;
+      ((fees.priority_fee ?? 0) + (fees.base_fee ?? 0) * SEQUENCER_BASE_FEE_RATIO) / 1e9;
     const l1CostEth = (fees.l1_data_cost ?? 0) / 1e9;
     const revenueUsd = revenueEth * ethPrice;
     const l1CostUsd = l1CostEth * ethPrice;

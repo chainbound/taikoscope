@@ -19,6 +19,13 @@ export interface ProfitResult {
 
 const GWEI_TO_ETH = 1e9;
 
+/**
+ * Fee distribution ratio:
+ * - Priority fees: 100% to the sequencer
+ * - Base fees: 75% to the sequencer, 25% to the Taiko DAO
+ */
+export const SEQUENCER_BASE_FEE_RATIO = 0.75;
+
 export const calculateProfit = ({
   priorityFee = 0,
   baseFee = 0,
@@ -27,7 +34,7 @@ export const calculateProfit = ({
   hardwareCostUsd,
   ethPrice,
 }: ProfitParams): ProfitResult => {
-  const revenueEth = ((priorityFee ?? 0) + (baseFee ?? 0) * 0.75) / GWEI_TO_ETH;
+  const revenueEth = ((priorityFee ?? 0) + (baseFee ?? 0) * SEQUENCER_BASE_FEE_RATIO) / GWEI_TO_ETH;
   const revenueUsd = revenueEth * ethPrice;
   const hardwareCostEth = ethPrice && ethPrice > 0 ? hardwareCostUsd / ethPrice : 0;
   const costEth =
@@ -64,7 +71,7 @@ export const calculateNetProfit = ({
 }: NetProfitParams): number => {
   return (
     (priorityFee ?? 0) +
-    (baseFee ?? 0) * 0.75 -
+    (baseFee ?? 0) * SEQUENCER_BASE_FEE_RATIO -
     (l1DataCost ?? 0) -
     (proveCost ?? 0)
   );

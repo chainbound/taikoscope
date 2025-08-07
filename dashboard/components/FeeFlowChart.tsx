@@ -4,7 +4,7 @@ import type { TooltipProps } from 'recharts';
 import { formatEth } from '../utils';
 import { TAIKO_PINK, lightTheme } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
-import { calculateProfit } from '../utils/profit';
+import { calculateProfit, SEQUENCER_BASE_FEE_RATIO } from '../utils/profit';
 
 const NODE_GREEN = '#22c55e';
 import useSWR from 'swr';
@@ -296,7 +296,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
 
   const seqData = sequencerFees.map((f) => {
     const priorityWei = f.priority_fee ?? 0;
-    const baseWei = (f.base_fee ?? 0) * 0.75;
+    const baseWei = (f.base_fee ?? 0) * SEQUENCER_BASE_FEE_RATIO;
     const l1CostWei = f.l1_data_cost ?? 0;
     const proveWei = f.prove_cost ?? 0;
 
@@ -379,7 +379,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
 
   if (seqData.length === 0) {
     // Fallback: create a single "Sequencers" node to route fees through
-    const sequencerRevenue = safeValue(priorityFeeUsd + baseFeeUsd * 0.75);
+    const sequencerRevenue = safeValue(priorityFeeUsd + baseFeeUsd * SEQUENCER_BASE_FEE_RATIO);
     let remaining = sequencerRevenue - totalHardwareCost;
     const actualProveCost = safeValue(
       Math.min(l1ProveCost, Math.max(0, remaining)),
@@ -392,7 +392,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     const l1Subsidy = safeValue(l1DataCostTotalUsd - actualL1Cost);
     const sequencerProfit = safeValue(Math.max(0, remaining));
     const sequencerRevenueWei = safeValue(
-      (priorityFee ?? 0) + (baseFee ?? 0) * 0.75,
+      (priorityFee ?? 0) + (baseFee ?? 0) * SEQUENCER_BASE_FEE_RATIO,
     );
     const sequencerProfitWei = safeValue(
       ethPrice ? (sequencerProfit / ethPrice) * GWEI_TO_ETH : 0,
@@ -445,7 +445,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     // Build links with updated indices
     links = [
       { source: 1, target: 3, value: priorityFeeUsd },
-      { source: 2, target: 3, value: safeValue(baseFeeUsd * 0.75) },
+      { source: 2, target: 3, value: safeValue(baseFeeUsd * SEQUENCER_BASE_FEE_RATIO) },
       { source: 2, target: daoIndex, value: baseFeeDaoUsd },
       {
         source: 3,
