@@ -772,7 +772,7 @@ pub async fn l2_fees_components(
     let sequencers: Vec<SequencerFeeRow> = sequencer_fees
         .into_iter()
         .map(|s| SequencerFeeRow {
-            address: Address::from(s.sequencer).to_string(),
+            address: format_address(s.sequencer),
             priority_fee: wei_to_gwei(s.priority_fee),
             base_fee: wei_to_gwei(s.base_fee),
             l1_data_cost: wei_to_gwei(s.l1_data_cost),

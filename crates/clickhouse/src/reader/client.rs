@@ -2931,7 +2931,12 @@ impl ClickhouseReader {
                 GROUP BY b.proposer_addr \
             ) \
             SELECT \
-                coalesce(r.seq_addr, c.seq_addr) AS sequencer, \
+                CAST(
+  coalesce(
+    nullIf(r.seq_addr, unhex('0000000000000000000000000000000000000000')),
+    nullIf(c.seq_addr, unhex('0000000000000000000000000000000000000000'))
+  ) AS FixedString(20)
+) AS sequencer,
                 coalesce(r.priority_fee, toUInt128(0)) AS priority_fee, \
                 coalesce(r.base_fee, toUInt128(0)) AS base_fee, \
                 coalesce(c.l1_data_cost, toUInt128(0)) AS l1_data_cost, \
