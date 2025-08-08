@@ -55,9 +55,11 @@ export const useRouterNavigation = () => {
         const params: Record<string, string> = {};
         const sequencer = searchParams.get('sequencer');
         const range = searchParams.get('range');
+        const view = searchParams.get('view');
 
         if (sequencer) params.sequencer = sequencer;
         if (range) params.range = range;
+        if (view) params.view = view;
 
         const queryString = createSearchParams(params).toString();
         safeNavigate(navigate, `/${queryString ? `?${queryString}` : ''}`);
