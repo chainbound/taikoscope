@@ -1,7 +1,6 @@
 import React from 'react';
 import { TimeRange } from '../types';
 import { RefreshCountdown } from './RefreshCountdown';
-import { TAIKO_PINK } from '../theme';
 import { isValidRefreshRate } from '../utils';
 import { isValidTimeRange, formatTimeRangeDisplay } from '../utils/timeRange';
 import { useRouterNavigation } from '../hooks/useRouterNavigation';
@@ -64,9 +63,8 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   return (
     <header className="flex flex-col md:flex-row justify-between items-center pb-4 border-b border-gray-200 dark:border-gray-700">
       <div className="flex items-baseline space-x-4">
-        <h1
-          className="text-3xl font-bold"
-          style={{ color: TAIKO_PINK }}
+          <h1
+          className="text-3xl font-bold text-brand"
         >
           {' '}
           {/* Updated Taiko Pink */}
@@ -85,8 +83,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
               onClick={() =>
                 updateSearchParams({ view: tab.view, table: null })
               }
-              className={`px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md ${(viewParam && viewParam === tab.view) ? 'bg-gray-200 dark:bg-gray-700' : 'bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'}` }
-              style={{ color: TAIKO_PINK }}
+              className={`px-2 py-1 text-sm border border-border rounded-md ${(viewParam && viewParam === tab.view) ? 'bg-muted' : 'bg-card hover:bg-muted' } text-brand`}
             >
               {tab.label}
             </button>
@@ -96,8 +93,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
           href="https://status.taiko.xyz/"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-sm hover:underline"
-          style={{ color: TAIKO_PINK }}
+          className="text-sm hover:underline text-brand"
         >
           Status Page
         </a>

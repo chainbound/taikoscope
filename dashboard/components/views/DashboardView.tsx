@@ -7,7 +7,8 @@ import { ProfitRankingTable } from '../ProfitRankingTable';
 import { BlockProfitTables } from '../BlockProfitTables';
 import { FeeFlowChart } from '../FeeFlowChart';
 import { ChartCard } from '../ChartCard';
-import { TAIKO_PINK } from '../../theme';
+// brand color exposed via chartTheme
+import { chartSeries } from '../charts/chartTheme';
 import { TimeRange, MetricData, ChartsData } from '../../types';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { DEFAULT_VIEW } from '../../constants';
@@ -228,7 +229,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <GasUsedChart
           key={`${timeRange}-g`}
           data={chartsData.l2GasUsedData}
-          lineColor="#E573B5"
+          lineColor={chartSeries.accent3}
         />
       </ChartCard>,
       <ChartCard
@@ -240,7 +241,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <BlockTxChart
           key={`${timeRange}-t`}
           data={chartsData.blockTxData}
-          lineColor="#4E79A7"
+          lineColor={chartSeries.accent1}
         />
       </ChartCard>,
     ];
@@ -255,7 +256,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <BatchProcessChart
           key={timeRange}
           data={chartsData.secondsToProveData}
-          lineColor={TAIKO_PINK}
+          lineColor={chartSeries.primary}
         />
       </ChartCard>,
       <ChartCard
@@ -267,7 +268,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <BatchProcessChart
           key={`${timeRange}-v`}
           data={chartsData.secondsToVerifyData}
-          lineColor="#5DA5DA"
+          lineColor={chartSeries.accent4}
         />
       </ChartCard>,
       <ChartCard
@@ -290,7 +291,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <BlockTimeDistributionChart
           key={`${timeRange}-d`}
           data={chartsData.l2BlockTimeData}
-          barColor="#FAA43A"
+          barColor={chartSeries.accent5}
         />
       </ChartCard>,
     ];

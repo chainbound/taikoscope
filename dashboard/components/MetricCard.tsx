@@ -1,5 +1,4 @@
 import React from 'react';
-import { TAIKO_PINK } from '../theme';
 
 interface MetricCardProps {
   title: React.ReactNode;
@@ -54,8 +53,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
             href={link}
             target="_blank"
             rel="noopener noreferrer"
-            className="hover:underline"
-            style={{ color: TAIKO_PINK }}
+            className="hover:underline text-brand"
           >
             {value}
           </a>

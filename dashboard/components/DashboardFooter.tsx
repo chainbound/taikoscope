@@ -1,5 +1,4 @@
 import React from 'react';
-import { TAIKO_PINK } from '../theme';
 import { TAIKOSCAN_BASE, ETHERSCAN_BASE } from '../utils';
 
 interface DashboardFooterProps {
@@ -11,13 +10,13 @@ export const DashboardFooter: React.FC<DashboardFooterProps> = ({
   l2HeadBlock,
   l1HeadBlock,
 }) => (
-  <footer className="mt-8 px-4 py-6 md:px-6 lg:px-8 border-t border-gray-200 dark:border-gray-700">
+  <footer className="mt-8 px-4 py-6 md:px-6 lg:px-8 border-t border-border">
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-center">
       <div>
         <span className="text-sm text-gray-500 dark:text-gray-400">
           L2 Head Block
         </span>
-        <p className="text-2xl font-semibold" style={{ color: TAIKO_PINK }}>
+        <p className="text-2xl font-semibold text-brand">
           {Number.isFinite(Number(l2HeadBlock.replace(/,/g, ''))) ? (
             <a
               href={`${TAIKOSCAN_BASE}/block/${Number(
@@ -25,8 +24,7 @@ export const DashboardFooter: React.FC<DashboardFooterProps> = ({
               )}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:underline"
-              style={{ color: TAIKO_PINK }}
+              className="hover:underline text-brand"
             >
               {l2HeadBlock}
             </a>
@@ -39,7 +37,7 @@ export const DashboardFooter: React.FC<DashboardFooterProps> = ({
         <span className="text-sm text-gray-500 dark:text-gray-400">
           L1 Head Block
         </span>
-        <p className="text-2xl font-semibold" style={{ color: TAIKO_PINK }}>
+        <p className="text-2xl font-semibold text-brand">
           {Number.isFinite(Number(l1HeadBlock.replace(/,/g, ''))) ? (
             <a
               href={`${ETHERSCAN_BASE}/block/${Number(
@@ -47,8 +45,7 @@ export const DashboardFooter: React.FC<DashboardFooterProps> = ({
               )}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:underline"
-              style={{ color: TAIKO_PINK }}
+              className="hover:underline text-brand"
             >
               {l1HeadBlock}
             </a>
@@ -64,8 +61,7 @@ export const DashboardFooter: React.FC<DashboardFooterProps> = ({
         href="https://chainbound.io/"
         target="_blank"
         rel="noopener noreferrer"
-        className="hover:underline"
-        style={{ color: TAIKO_PINK }}
+        className="hover:underline text-brand"
       >
         Chainbound
       </a>
@@ -74,8 +70,7 @@ export const DashboardFooter: React.FC<DashboardFooterProps> = ({
         href="https://x.com/chainbound_"
         target="_blank"
         rel="noopener noreferrer"
-        className="hover:underline"
-        style={{ color: TAIKO_PINK }}
+        className="hover:underline text-brand"
       >
         X
       </a>
@@ -84,8 +79,7 @@ export const DashboardFooter: React.FC<DashboardFooterProps> = ({
         href="https://github.com/chainbound/taikoscope/"
         target="_blank"
         rel="noopener noreferrer"
-        className="hover:underline"
-        style={{ color: TAIKO_PINK }}
+        className="hover:underline text-brand"
       >
         GitHub
       </a>
