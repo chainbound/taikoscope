@@ -4,7 +4,9 @@
 --   primary key to be a prefix of ORDER BY, so reordering to (batch_id, l1_block_number)
 --   would violate that constraint. We leave these tables unchanged.
 -- - l2_reorgs is primarily time-filtered but often displayed around a block;
---   keep inserted_at first and add l2_block_number as a secondary key.
+--   keep inserted_at first and add a secondary key for block navigation.
+--   ClickHouse 25.x disallows adding existing columns directly into ORDER BY.
+--   To comply, we add a new sortable column, backfill it, then update ORDER BY.
 --
 -- Operational notes:
 -- - This issues asynchronous mutations to avoid long blocking rewrites on large tables.
@@ -19,6 +21,14 @@
 --   -- Revert l2_reorgs ORDER BY key
 --   -- ALTER TABLE ${DB}.l2_reorgs MODIFY ORDER BY (inserted_at) SETTINGS mutations_sync = 0, replication_alter_partitions_sync = 2;
 
+-- Step 1: add a new column dedicated for sorting (cannot reference existing columns in ORDER BY modification)
 ALTER TABLE ${DB}.l2_reorgs
-    MODIFY ORDER BY (inserted_at, l2_block_number)
+    ADD COLUMN IF NOT EXISTS l2_block_number_sort UInt64 DEFAULT 0 AFTER l2_block_number;
+
+-- Step 2: backfill the sortable column from the existing data
+ALTER TABLE ${DB}.l2_reorgs UPDATE l2_block_number_sort = l2_block_number WHERE 1;
+
+-- Step 3: modify ORDER BY to include only newly added columns per ClickHouse rules
+ALTER TABLE ${DB}.l2_reorgs
+    MODIFY ORDER BY (inserted_at, l2_block_number_sort)
     SETTINGS mutations_sync = 0, replication_alter_partitions_sync = 2;

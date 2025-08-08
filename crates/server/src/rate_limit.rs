@@ -6,10 +6,10 @@ use std::{
     time::Duration,
 };
 
+use api_types::ErrorResponse;
 use axum::{
-    body::Body,
     http::{Request, StatusCode},
-    response::Response,
+    response::{IntoResponse, Response},
 };
 use tower::{Layer, Service};
 
@@ -60,11 +60,18 @@ where
         if self.limiter.try_acquire() {
             Box::pin(self.inner.call(req))
         } else {
-            let resp = Response::builder()
-                .status(StatusCode::TOO_MANY_REQUESTS)
-                .header(axum::http::header::RETRY_AFTER, self.period.as_secs().to_string())
-                .body(Body::empty())
-                .unwrap();
+            let error_body = ErrorResponse::new(
+                "rate-limit",
+                "Too Many Requests",
+                StatusCode::TOO_MANY_REQUESTS,
+                format!("Rate limit exceeded. Retry after {} seconds", self.period.as_secs()),
+            );
+            let mut resp = axum::Json(error_body).into_response();
+            *resp.status_mut() = StatusCode::TOO_MANY_REQUESTS;
+            resp.headers_mut().insert(
+                axum::http::header::RETRY_AFTER,
+                axum::http::HeaderValue::from_str(&self.period.as_secs().to_string()).unwrap(),
+            );
             Box::pin(std::future::ready(Ok(resp)))
         }
     }

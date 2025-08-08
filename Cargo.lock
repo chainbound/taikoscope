@@ -4227,6 +4227,7 @@ name = "server"
 version = "0.1.0"
 dependencies = [
  "api",
+ "api-types",
  "axum",
  "chrono",
  "clickhouse 0.1.0",
