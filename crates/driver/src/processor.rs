@@ -103,15 +103,8 @@ impl ProcessorDriver {
             info!("⚠️  Skipping database migrations");
         } else {
             info!("🚀 Running database migrations...");
-            if let Err(e) = migration_writer.init_db(opts.reset_db).await {
-                if opts.skip_migrations_on_failure {
-                    tracing::error!(err = %e, "Database migrations failed; continuing without migrations due to SKIP_MIGRATIONS_ON_FAILURE");
-                } else {
-                    return Err(e);
-                }
-            } else {
-                info!("✅ Database migrations completed");
-            }
+            migration_writer.init_db(opts.reset_db).await?;
+            info!("✅ Database migrations completed");
         }
 
         // Only keep the writer for event processing if database writes are enabled
@@ -1259,7 +1252,6 @@ mod tests {
             enable_db_writes: false,
             reset_db: false,
             skip_migrations: false,
-            skip_migrations_on_failure: false,
         }
     }
 
