@@ -28,7 +28,6 @@ ALTER TABLE ${DB}.l2_reorgs
 -- Step 2: backfill the sortable column from the existing data
 ALTER TABLE ${DB}.l2_reorgs UPDATE l2_block_number_sort = l2_block_number WHERE 1;
 
--- Step 3: modify ORDER BY to include only newly added columns per ClickHouse rules
-ALTER TABLE ${DB}.l2_reorgs
-    MODIFY ORDER BY (inserted_at, l2_block_number_sort)
-    SETTINGS mutations_sync = 0, replication_alter_partitions_sync = 2;
+-- Note: ClickHouse 25.x rejects modifying ORDER BY using a column once it exists,
+-- and this cannot be done safely online without a deep table rewrite.
+-- We keep the new sortable column for query use and skip modifying ORDER BY.
