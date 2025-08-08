@@ -1,5 +1,34 @@
 @import 'tailwindcss';
 
+/* Design tokens (semantic) */
+:root {
+  --color-brand: #e81899;
+  --bg: #ffffff;
+  --fg: #0f172a;
+  --card: #ffffff;
+  --card-fg: #0f172a;
+  --border: #e2e8f0;
+  --muted: #f1f5f9;
+  --muted-fg: #64748b;
+  --ring: var(--color-brand);
+}
+
+.dark {
+  --bg: #0f172a;
+  --fg: #f8fafc;
+  --card: #1e293b;
+  --card-fg: #f8fafc;
+  --border: #334155;
+  --muted: #1e293b;
+  --muted-fg: #94a3b8;
+}
+
+/* Helpful defaults */
+body {
+  background-color: var(--bg);
+  color: var(--fg);
+}
+
 button:hover {
   cursor: pointer;
 }

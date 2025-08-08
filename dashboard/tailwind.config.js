@@ -5,7 +5,15 @@ export default {
   theme: {
     extend: {
       colors: {
-        'taiko-pink': '#e81899',
+        brand: 'var(--color-brand)',
+        bg: 'var(--bg)',
+        fg: 'var(--fg)',
+        card: 'var(--card)',
+        'card-fg': 'var(--card-fg)',
+        border: 'var(--border)',
+        muted: 'var(--muted)',
+        'muted-fg': 'var(--muted-fg)',
+        ring: 'var(--ring)',
       },
     },
   },
