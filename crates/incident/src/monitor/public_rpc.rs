@@ -76,6 +76,7 @@ async fn check_once(
                 }
             }
             Err(e) => {
+                // Include brief error context in logs
                 error!(error = %e, url = url.as_str(), "public rpc check failed again");
                 if let Some((ic, cid)) = incident {
                     open_if_needed(ic, cid, incident_id).await;

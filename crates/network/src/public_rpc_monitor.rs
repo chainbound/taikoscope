@@ -1,7 +1,7 @@
 use std::time::Duration;
 
-use eyre::{Result, eyre};
-use reqwest::{Client, Url};
+use eyre::{Context, Result, eyre};
+use reqwest::{Client, Url, header::CONTENT_TYPE};
 use serde_json::json;
 use tokio::time::timeout;
 use tracing::{error, info, warn};
@@ -60,8 +60,38 @@ pub async fn check_syncing(client: &Client, url: &Url) -> Result<bool> {
     });
     let resp = timeout(Duration::from_secs(5), client.post(url.clone()).json(&body).send())
         .await
-        .map_err(|_| eyre!("request timed out"))??;
-    let value: serde_json::Value = resp.json().await?;
+        .map_err(|_| eyre!("request timed out"))??
+        .error_for_status()
+        .wrap_err("http error from public rpc")?;
+
+    // Capture status and content-type before consuming the body
+    let status = resp.status();
+    let content_type =
+        resp.headers().get(CONTENT_TYPE).and_then(|h| h.to_str().ok()).unwrap_or("").to_lowercase();
+
+    let text = resp.text().await.unwrap_or_default();
+
+    // Try to parse JSON regardless of content-type; some servers omit headers
+    let value: serde_json::Value = match serde_json::from_str(&text) {
+        Ok(v) => v,
+        Err(e) => {
+            let snippet = text.chars().take(200).collect::<String>();
+            return Err(eyre!(
+                "invalid or non-json response (status {} content-type {}): {} ({})",
+                status,
+                content_type,
+                snippet,
+                e
+            ));
+        }
+    };
+
+    // Treat explicit JSON-RPC error as unhealthy
+    if let Some(err) = value.get("error") {
+        return Err(eyre!("jsonrpc error: {}", err));
+    }
+
+    // eth_syncing is healthy when result is exactly false; any other value means syncing/unhealthy
     let syncing = !matches!(value.get("result"), Some(serde_json::Value::Bool(false)));
     Ok(syncing)
 }

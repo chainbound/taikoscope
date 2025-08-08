@@ -17,6 +17,95 @@ select:hover {
   fill: #ffffff;
 }
 
+/* Strengthen selectors to catch all chart text variants */
+.dark .recharts-cartesian-axis text,
+.dark .recharts-label,
+.dark .recharts-text,
+.dark .recharts-legend-item-text {
+  fill: #ffffff !important;
+  color: #ffffff !important;
+}
+
+.dark .recharts-label tspan {
+  fill: #ffffff !important;
+}
+
+/* Tooltip readability in dark mode */
 .dark .recharts-default-tooltip {
   color: #ffffff;
+  background-color: rgba(15, 23, 42, 0.9);
+  border-color: #334155;
+}
+
+/* Tooltip label and items */
+.dark .recharts-tooltip-label,
+.dark .recharts-tooltip-item-list,
+.dark .recharts-tooltip-item {
+  color: #ffffff !important;
+}
+
+/* Dark mode axis and grid contrast tuning */
+.dark .recharts-cartesian-axis text {
+  fill: #f8fafc !important; /* brightest ticks */
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.2px;
+}
+
+.dark .recharts-cartesian-axis .recharts-cartesian-axis-line,
+.dark .recharts-cartesian-axis .recharts-cartesian-axis-tick-line,
+.dark .recharts-cartesian-axis line {
+  stroke: #94a3b8 !important; /* light slate for axis lines */
+  stroke-opacity: 0.7;
+}
+
+.dark .recharts-cartesian-grid line {
+  stroke: rgba(148, 163, 184, 0.18) !important; /* subtler grid */
+  stroke-width: 1;
+  shape-rendering: crispEdges;
+  stroke-dasharray: 2 6 !important;
+}
+
+.dark .recharts-label text,
+.dark .recharts-label tspan {
+  fill: #f8fafc !important;
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.2px;
+}
+
+.dark .recharts-legend-item-text {
+  color: #f8fafc !important;
+}
+
+/* Make lines a bit thicker in dark to improve contrast */
+.dark .recharts-line .recharts-line-curve {
+  stroke-width: 2.5 !important;
+}
+
+/* Bump common series colors for better dark contrast */
+.dark .recharts-line-curve[stroke="#8884d8"] {
+  stroke: #a5b4fc !important; /* indigo-300 */
+}
+.dark .recharts-line-curve[stroke="#4E79A7"] {
+  stroke: #93c5fd !important; /* blue-300 */
+}
+.dark .recharts-line-curve[stroke="#E573B5"] {
+  stroke: #f9a8d4 !important; /* pink-300 */
+}
+
+/* Force dark tooltip even if inline styles are set */
+.dark .recharts-default-tooltip {
+  background-color: rgba(15, 23, 42, 0.95) !important;
+  border-color: #475569 !important;
+  color: #ffffff !important;
+}
+
+/* Extra safety: force tick text variants to pure white */
+.dark .recharts-cartesian-axis-tick text,
+.dark .recharts-cartesian-axis-tick-value,
+.dark .recharts-cartesian-axis-tick-value tspan,
+.dark .recharts-text tspan {
+  fill: #ffffff !important;
+  color: #ffffff !important;
 }

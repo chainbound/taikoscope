@@ -187,6 +187,10 @@ export const TableRoute: React.FC = () => {
             return name !== undefined ? Number(name) : undefined;
           }
           // Otherwise fall back to the numeric value or block/batch fields
+          // Reorgs use l2_block_number internally for pagination, which maps to
+          // the "to_block_number" field in the UI payload
+          const reorgToBlock = (item as { to_block_number?: number }).to_block_number;
+          if (reorgToBlock !== undefined) return reorgToBlock;
           return (
             (item as { value?: number }).value ??
             (item as { l2_block_number?: number }).l2_block_number ??
