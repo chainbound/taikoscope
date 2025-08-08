@@ -1,0 +1,25 @@
+{
+  "root": true,
+  "env": { "browser": true, "es2022": true },
+  "extends": ["eslint:recommended", "plugin:react/recommended", "plugin:@typescript-eslint/recommended", "prettier"],
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": { "ecmaVersion": "latest", "sourceType": "module" },
+  "plugins": ["react", "@typescript-eslint"],
+  "rules": {
+    "no-restricted-syntax": [
+      "error,",
+      {
+        "selector": "JSXAttribute[name.name='style'][value.expression && (value.expression.properties || value.expression.type === 'ObjectExpression')]",
+        "message": "Avoid inline style objects for colors/borders/backgrounds; use Tailwind utilities or CSS variables."
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "files": ["**/*.ts", "**/*.tsx"],
+      "rules": {
+        "react/react-in-jsx-scope": "off"
+      }
+    }
+  ]
+}

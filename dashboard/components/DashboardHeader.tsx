@@ -10,6 +10,7 @@ import { useSearchParams, useLocation } from 'react-router-dom';
 import { showToast } from '../utils/toast';
 import { DayPicker } from 'react-day-picker';
 import * as Popover from '@radix-ui/react-popover';
+import { TabList, Tab } from './ui/Tabs';
 
 interface ImportMetaEnv {
   readonly VITE_NETWORK_NAME?: string;
@@ -72,23 +73,21 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
         </h1>
       </div>
       <div className="flex flex-wrap items-center gap-2 mt-4 md:mt-0 justify-center md:justify-end">
-        <div className="flex gap-2">
+        <TabList>
           {[
             { view: 'economics', label: 'Economics' },
             { view: 'performance', label: 'Performance' },
             { view: 'health', label: 'Health' },
-          ].map((tab) => (
-            <button
-              key={tab.view}
-              onClick={() =>
-                updateSearchParams({ view: tab.view, table: null })
-              }
-              className={`px-2 py-1 text-sm border border-border rounded-md ${(viewParam && viewParam === tab.view) ? 'bg-muted' : 'bg-card hover:bg-muted' } text-brand`}
+          ].map((t) => (
+            <Tab
+              key={t.view}
+              selected={Boolean(viewParam && viewParam === t.view)}
+              onClick={() => updateSearchParams({ view: t.view, table: null })}
             >
-              {tab.label}
-            </button>
+              {t.label}
+            </Tab>
           ))}
-        </div>
+        </TabList>
         <a
           href="https://status.taiko.xyz/"
           target="_blank"
