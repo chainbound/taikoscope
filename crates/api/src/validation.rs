@@ -376,11 +376,18 @@ pub fn resolve_time_range_bounds(
         .and_then(|ms| chrono::Utc.timestamp_millis_opt(ms as i64).single())
         .unwrap_or_else(|| now - ChronoDuration::hours(1));
 
-    let end = time_params
-        .created_lt
-        .or(time_params.created_lte)
-        .and_then(|ms| chrono::Utc.timestamp_millis_opt(ms as i64).single())
-        .unwrap_or(now);
+    // Preserve exclusivity semantics for created[lt] by subtracting 1 ms
+    // from the computed upper bound, since downstream queries use
+    // "inserted_at <= end". This makes the effective condition
+    // "inserted_at < created[lt]" when created[lt] is provided.
+    let end = if let Some(ms_lt) = time_params.created_lt {
+        let adjusted = ms_lt.saturating_sub(1);
+        chrono::Utc.timestamp_millis_opt(adjusted as i64).single().unwrap_or(now)
+    } else if let Some(ms_lte) = time_params.created_lte {
+        chrono::Utc.timestamp_millis_opt(ms_lte as i64).single().unwrap_or(now)
+    } else {
+        now
+    };
 
     (start, end)
 }
