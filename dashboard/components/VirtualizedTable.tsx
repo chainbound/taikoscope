@@ -115,7 +115,7 @@ const VirtualizedTable: React.FC<VirtualizedTableProps> = ({
     return (
       <div
         style={style}
-        className={`flex items-center border-b border-border cursor-pointer hover:bg-muted ${
+        className={`flex items-center border-b border-gray-100 dark:border-border cursor-pointer hover:bg-muted ${
           isEven ? 'bg-card' : 'bg-muted'
         }`}
         onClick={() => onRowClick?.(row)}
@@ -141,7 +141,7 @@ const VirtualizedTable: React.FC<VirtualizedTableProps> = ({
     <div className="bg-card text-card-fg border rounded-lg border-slate-300 dark:border-slate-700">
       {/* Search Bar */}
       {onSearch && (
-        <div className="p-4 border-b border-border">
+        <div className="p-4 border-b border-gray-100 dark:border-border">
           <Input
             placeholder="Search table data..."
             value={searchTerm}
@@ -152,7 +152,7 @@ const VirtualizedTable: React.FC<VirtualizedTableProps> = ({
       )}
 
       {/* Header */}
-      <div className="flex bg-muted border-b border-border">
+      <div className="flex bg-muted border-b border-gray-100 dark:border-border">
         {columns.map((column) => (
           <div
             key={column.key}
@@ -213,7 +213,7 @@ const VirtualizedTable: React.FC<VirtualizedTableProps> = ({
       </List>
 
       {/* Footer with stats */}
-      <div className="px-4 py-2 bg-muted border-t border-border text-sm text-gray-600 dark:text-gray-400">
+      <div className="px-4 py-2 bg-muted border-t border-gray-100 dark:border-border text-sm text-gray-600 dark:text-gray-400">
         Showing {sortedData.length} of {data.length} rows
         {searchTerm && ` (filtered by "${searchTerm}")`}
       </div>

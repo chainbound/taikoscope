@@ -307,7 +307,7 @@ export const AdvancedDataTable: React.FC<AdvancedDataTableProps> = ({
           <div className="bg-card text-card-fg border rounded-lg overflow-hidden border-slate-300 dark:border-slate-700">
             {/* Search Bar */}
             {enableSearch && (
-              <div className="p-4 border-b border-border">
+              <div className="p-4 border-b border-gray-100 dark:border-border">
                 <Input
                   placeholder={searchPlaceholder}
                   value={searchTerm}
@@ -350,7 +350,7 @@ export const AdvancedDataTable: React.FC<AdvancedDataTableProps> = ({
                   {rows.map((row, index) => (
                     <tr
                       key={index}
-                      className="border-t border-border hover:bg-muted cursor-pointer"
+                      className="border-t border-gray-100 dark:border-border hover:bg-muted cursor-pointer"
                       onClick={() => onRowClick?.(row)}
                     >
                       {enhancedColumns.map((column) => (
@@ -390,7 +390,7 @@ export const AdvancedDataTable: React.FC<AdvancedDataTableProps> = ({
                   {extraTable.rows.map((row, index) => (
                     <tr
                       key={index}
-                      className="border-t border-border hover:bg-muted cursor-pointer"
+                      className="border-t border-gray-100 dark:border-border hover:bg-muted cursor-pointer"
                       onClick={() => extraTable.onRowClick?.(row)}
                     >
                       {extraTable.columns.map((column) => (

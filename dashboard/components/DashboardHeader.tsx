@@ -226,7 +226,7 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
       <Popover.Trigger asChild>
         <button
           disabled={isChanging}
-          className="p-1 border border-border rounded-md text-sm bg-card text-card-fg min-w-[3rem]"
+          className="p-1 border border-gray-100 dark:border-border rounded-md text-sm bg-card text-card-fg min-w-[3rem]"
           title={customTooltip}
         >
           {buttonLabel}
@@ -235,7 +235,7 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
       <Popover.Content
         side="bottom"
         align="end"
-        className="bg-card text-card-fg border border-border rounded-md shadow-lg p-2 space-y-1 z-10"
+        className="bg-card text-card-fg border border-gray-100 dark:border-border rounded-md shadow-lg p-2 space-y-1 z-10"
       >
         {presetRanges.map((r) => (
           <button
@@ -267,7 +267,7 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
               placeholder="hh:mm"
               value={fromTime}
               onChange={(e) => setFromTime(e.target.value)}
-              className="border border-border rounded p-1 text-sm bg-card text-card-fg"
+              className="border border-gray-100 dark:border-border rounded p-1 text-sm bg-card text-card-fg"
             />
             <span className="text-sm">to</span>
             <input
@@ -276,7 +276,7 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
               placeholder="hh:mm"
               value={toTime}
               onChange={(e) => setToTime(e.target.value)}
-              className="border border-border rounded p-1 text-sm bg-card text-card-fg"
+              className="border border-gray-100 dark:border-border rounded p-1 text-sm bg-card text-card-fg"
             />
           </div>
           <button

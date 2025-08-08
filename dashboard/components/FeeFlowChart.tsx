@@ -368,7 +368,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
       return itemData.addressLabel ?? itemData.address ?? itemData.name;
     })();
     return (
-      <div className="bg-card text-card-fg p-2 border border-border rounded shadow-sm">
+      <div className="bg-card text-card-fg p-2 border border-gray-100 dark:border-border rounded shadow-sm">
         <p className="text-sm font-medium dark:text-white">{nodeLabel}</p>
         <p className="text-sm text-gray-600 dark:text-white">
           {formatTooltipValue(value, itemData)}
