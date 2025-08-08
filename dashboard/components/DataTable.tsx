@@ -329,7 +329,7 @@ export const DataTable: React.FC<DataTableProps> = ({
             {extraTable.title}
           </h3>
           <div className="overflow-x-auto">
-            <table className="min-w-full border border-gray-200 dark:border-gray-700 divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
+            <table className="min-w-full border border-border divide-y divide-gray-200 dark:divide-gray-700 bg-card text-card-fg">
               <thead>
                 <tr>
                   {extraTable.columns.map((col) => (
@@ -356,7 +356,7 @@ export const DataTable: React.FC<DataTableProps> = ({
                   extraTable.rows.map((row, idx) => (
                     <tr
                       key={idx}
-                      className={`border-t border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 ${extraTable.onRowClick && !isNavigating ? 'cursor-pointer' : ''} ${isNavigating ? 'pointer-events-none opacity-50' : ''}`}
+                      className={`border-t border-border hover:bg-muted ${extraTable.onRowClick && !isNavigating ? 'cursor-pointer' : ''} ${isNavigating ? 'pointer-events-none opacity-50' : ''}`}
                       onClick={
                         extraTable.onRowClick && !isNavigating
                           ? () => {

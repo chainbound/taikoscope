@@ -12,14 +12,13 @@ export interface TabProps extends React.ButtonHTMLAttributes<HTMLButtonElement> 
 }
 
 export const Tab: React.FC<TabProps> = ({ selected = false, className, children, ...props }) => {
-  const base = 'px-2 py-1 text-sm border rounded-md';
+  const base = 'px-2 py-1 text-sm rounded-md border transition-colors';
   const appearance = selected
-    ? 'bg-muted border-border'
-    : 'bg-card hover:bg-muted border-border';
-  const color = 'text-[var(--color-brand)]';
+    ? 'bg-muted border-[var(--ring)] text-[var(--color-brand)] font-semibold'
+    : 'bg-card border-border text-[var(--muted-fg)] hover:text-[var(--color-brand)] hover:bg-muted';
 
   return (
-    <button role="tab" aria-selected={selected} className={cn(base, appearance, color, className)} {...props}>
+    <button role="tab" aria-selected={selected} className={cn(base, appearance, className)} {...props}>
       {children}
     </button>
   );

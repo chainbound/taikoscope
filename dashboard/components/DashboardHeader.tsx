@@ -65,11 +65,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   return (
     <header className="flex flex-col md:flex-row justify-between items-center pb-4 border-b border-gray-200 dark:border-gray-700">
       <div className="flex items-baseline space-x-4">
-          <h1
-          className="text-3xl font-bold text-brand"
-        >
-          {' '}
-          {/* Updated Taiko Pink */}
+          <h1 className="text-3xl font-bold text-brand">
           {DASHBOARD_TITLE}
         </h1>
       </div>
@@ -229,7 +225,7 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
       <Popover.Trigger asChild>
         <button
           disabled={isChanging}
-          className="p-1 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 min-w-[3rem]"
+          className="p-1 border border-border rounded-md text-sm bg-card text-card-fg min-w-[3rem]"
           title={customTooltip}
         >
           {buttonLabel}
@@ -238,7 +234,7 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
       <Popover.Content
         side="bottom"
         align="end"
-        className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg p-2 space-y-1 z-10"
+        className="bg-card text-card-fg border border-border rounded-md shadow-lg p-2 space-y-1 z-10"
       >
         {presetRanges.map((r) => (
           <button
@@ -270,7 +266,7 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
               placeholder="hh:mm"
               value={fromTime}
               onChange={(e) => setFromTime(e.target.value)}
-              className="border rounded p-1 text-sm bg-white dark:bg-gray-800"
+              className="border border-border rounded p-1 text-sm bg-card text-card-fg"
             />
             <span className="text-sm">to</span>
             <input
@@ -279,7 +275,7 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
               placeholder="hh:mm"
               value={toTime}
               onChange={(e) => setToTime(e.target.value)}
-              className="border rounded p-1 text-sm bg-white dark:bg-gray-800"
+              className="border border-border rounded p-1 text-sm bg-card text-card-fg"
             />
           </div>
           <button

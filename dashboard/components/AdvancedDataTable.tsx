@@ -371,7 +371,7 @@ export const AdvancedDataTable: React.FC<AdvancedDataTableProps> = ({
       {extraTable && (
         <div>
           <h2 className="text-xl font-semibold mb-4">{extraTable.title}</h2>
-          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+          <div className="bg-card text-card-fg border border-border rounded-lg overflow-hidden">
             <div className="overflow-x-auto">
               <table className="min-w-full">
                 <thead className="bg-gray-50 dark:bg-gray-800">
@@ -390,7 +390,7 @@ export const AdvancedDataTable: React.FC<AdvancedDataTableProps> = ({
                   {extraTable.rows.map((row, index) => (
                     <tr
                       key={index}
-                      className="border-t border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
+                      className="border-t border-border hover:bg-muted cursor-pointer"
                       onClick={() => extraTable.onRowClick?.(row)}
                     >
                       {extraTable.columns.map((column) => (
