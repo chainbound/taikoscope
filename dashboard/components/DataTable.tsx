@@ -159,7 +159,7 @@ export const DataTable: React.FC<DataTableProps> = ({
           }}
           disabled={isNavigating}
           className={`flex items-center space-x-1 ${isNavigating ? 'opacity-50 cursor-not-allowed' : ''}`}
-          style={{ color: TAIKO_PINK }}
+          style={{ color: 'var(--color-brand)' }}
         >
           <span>&larr;</span>
           <span>Back</span>
@@ -168,7 +168,7 @@ export const DataTable: React.FC<DataTableProps> = ({
           <button
             onClick={extraAction.onClick}
             className=""
-            style={{ color: TAIKO_PINK }}
+            style={{ color: 'var(--color-brand)' }}
           >
             {extraAction.label}
           </button>
@@ -281,11 +281,7 @@ export const DataTable: React.FC<DataTableProps> = ({
             onClick={serverPagination.onPrev}
             disabled={serverPagination.disablePrev || isNavigating}
             className={`disabled:text-gray-400 dark:disabled:text-gray-500 ${isNavigating ? 'opacity-50' : ''}`}
-            style={
-              serverPagination.disablePrev || isNavigating
-                ? undefined
-                : { color: TAIKO_PINK }
-            }
+            style={serverPagination.disablePrev || isNavigating ? undefined : { color: 'var(--color-brand)' }}
           >
             Prev
           </button>
@@ -296,11 +292,7 @@ export const DataTable: React.FC<DataTableProps> = ({
             onClick={serverPagination.onNext}
             disabled={serverPagination.disableNext || isNavigating}
             className={`disabled:text-gray-400 dark:disabled:text-gray-500 ${isNavigating ? 'opacity-50' : ''}`}
-            style={
-              serverPagination.disableNext || isNavigating
-                ? undefined
-                : { color: TAIKO_PINK }
-            }
+            style={serverPagination.disableNext || isNavigating ? undefined : { color: 'var(--color-brand)' }}
           >
             Next
           </button>
@@ -312,9 +304,7 @@ export const DataTable: React.FC<DataTableProps> = ({
               onClick={() => setPage((p) => p - 1)}
               disabled={disablePrev || isNavigating}
               className={`disabled:text-gray-400 dark:disabled:text-gray-500 ${isNavigating ? 'opacity-50' : ''}`}
-              style={
-                disablePrev || isNavigating ? undefined : { color: TAIKO_PINK }
-              }
+              style={disablePrev || isNavigating ? undefined : { color: 'var(--color-brand)' }}
             >
               Prev
             </button>
@@ -325,9 +315,7 @@ export const DataTable: React.FC<DataTableProps> = ({
               onClick={() => setPage((p) => p + 1)}
               disabled={disableNext || isNavigating}
               className={`disabled:text-gray-400 dark:disabled:text-gray-500 ${isNavigating ? 'opacity-50' : ''}`}
-              style={
-                disableNext || isNavigating ? undefined : { color: TAIKO_PINK }
-              }
+              style={disableNext || isNavigating ? undefined : { color: 'var(--color-brand)' }}
             >
               Next
             </button>
@@ -404,11 +392,7 @@ export const DataTable: React.FC<DataTableProps> = ({
                 onClick={extraTable.pagination.onPrev}
                 disabled={extraTable.pagination.disablePrev || isNavigating}
                 className={`disabled:text-gray-400 dark:disabled:text-gray-500 ${isNavigating ? 'opacity-50' : ''}`}
-                style={
-                  extraTable.pagination.disablePrev || isNavigating
-                    ? undefined
-                    : { color: TAIKO_PINK }
-                }
+                style={extraTable.pagination.disablePrev || isNavigating ? undefined : { color: 'var(--color-brand)' }}
               >
                 Prev
               </button>
@@ -419,11 +403,7 @@ export const DataTable: React.FC<DataTableProps> = ({
                 onClick={extraTable.pagination.onNext}
                 disabled={extraTable.pagination.disableNext || isNavigating}
                 className={`disabled:text-gray-400 dark:disabled:text-gray-500 ${isNavigating ? 'opacity-50' : ''}`}
-                style={
-                  extraTable.pagination.disableNext || isNavigating
-                    ? undefined
-                    : { color: TAIKO_PINK }
-                }
+                style={extraTable.pagination.disableNext || isNavigating ? undefined : { color: 'var(--color-brand)' }}
               >
                 Next
               </button>

@@ -1,7 +1,10 @@
 //! Paginated table endpoints
 
 use crate::{
-    helpers::{blobs_bucket_size, bucket_size_from_range, format_address, parse_optional_address, query_error},
+    helpers::{
+        blobs_bucket_size, bucket_size_from_range, format_address, parse_optional_address,
+        query_error,
+    },
     state::{ApiState, MAX_TABLE_LIMIT},
     validation::{
         CommonQuery, PaginatedQuery, QueryMode, UnifiedQuery, has_time_range_params,
@@ -520,7 +523,7 @@ pub async fn blobs_per_batch(
             validate_range_exclusivity(has_time_range, false)?;
 
             let time_range = resolve_time_range_enum(&params.common.time_range);
-            let bucket = blobs_bucket_size(&time_range);
+            let _bucket = blobs_bucket_size(&time_range);
             let batches = match state.client.get_blobs_per_batch(time_range).await {
                 Ok(rows) => rows,
                 Err(e) => return Err(query_error("blobs per batch", e)),
