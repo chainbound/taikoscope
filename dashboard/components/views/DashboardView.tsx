@@ -395,6 +395,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               cloudCost={cloudCost}
               proverCost={proverCost}
               feesData={feesData}
+              sequencers={chartsData.sequencerDistribution as any}
             />
             <BlockProfitTables
               timeRange={timeRange}

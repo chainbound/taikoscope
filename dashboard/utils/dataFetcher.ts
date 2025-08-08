@@ -1,5 +1,5 @@
 import { TimeRange, type TimeSeriesData } from '../types';
-import { getSequencerAddress, getSequencerName } from '../sequencerConfig';
+import { getSequencerAddress } from '../sequencerConfig';
 import { normalizeTimeRange } from './timeRange';
 import {
   fetchDashboardData,
@@ -10,7 +10,7 @@ import {
   fetchSequencerDistribution,
   fetchBlockTransactionsAggregated,
   fetchBatchBlobCountsAggregated,
-  fetchL2FeesComponents,
+  fetchL2Fees,
   fetchL2HeadNumber,
   fetchL1HeadNumber,
   type PreconfData,
@@ -129,33 +129,26 @@ export const fetchEconomicsData = async (
   _selectedSequencer: string | null,
 ): Promise<EconomicsData> => {
   const normalizedRange = normalizeTimeRange(timeRange);
-  const [l2FeesRes, l2BlockRes, l1BlockRes] = await Promise.all([
-    fetchL2FeesComponents(
-      normalizedRange,
-    ),
+  const [feesSummaryRes, l2BlockRes, l1BlockRes, distRes] = await Promise.all([
+    fetchL2Fees(normalizedRange),
     fetchL2HeadNumber(),
     fetchL1HeadNumber(),
+    fetchSequencerDistribution(normalizedRange),
   ]);
 
-  const sequencerDist = l2FeesRes.data
-    ? l2FeesRes.data.sequencers.map((s) => ({
-        name: getSequencerName(s.address),
-        address: s.address,
-        value: 0,
-        batches: 0,
-        tps: null,
-      }))
+  const sequencerDist = distRes.data
+    ? distRes.data
     : [];
 
   return {
-    priorityFee: l2FeesRes.data?.priority_fee ?? null,
-    baseFee: l2FeesRes.data?.base_fee ?? null,
-    l1DataCost: l2FeesRes.data?.l1_data_cost ?? 0,
-    proveCost: l2FeesRes.data?.prove_cost ?? 0,
+    priorityFee: feesSummaryRes.data?.priority_fee ?? null,
+    baseFee: feesSummaryRes.data?.base_fee ?? null,
+    l1DataCost: feesSummaryRes.data?.l1_data_cost ?? 0,
+    proveCost: feesSummaryRes.data?.prove_cost ?? 0,
 
     l2Block: l2BlockRes.data,
     l1Block: l1BlockRes.data,
     sequencerDist,
-    badRequestResults: [l2FeesRes, l2BlockRes, l1BlockRes],
+    badRequestResults: [feesSummaryRes, l2BlockRes, l1BlockRes, distRes],
   };
 };

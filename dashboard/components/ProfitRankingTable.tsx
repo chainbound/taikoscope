@@ -19,6 +19,7 @@ interface ProfitRankingTableProps {
   cloudCost: number;
   proverCost: number;
   feesData?: L2FeesComponentsResponse | null;
+  sequencers?: SequencerDistributionDataItem[];
 }
 
 const formatUsd = (value: number): string => {
@@ -37,11 +38,22 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
   cloudCost,
   proverCost,
   feesData,
+  sequencers: sequencersProp,
 }) => {
-  const { data: distRes } = useSWR(['profitRankingSeq', timeRange], () =>
-    fetchSequencerDistribution(timeRange),
+
+  const sequencers = React.useMemo(() => {
+    if (Array.isArray(sequencersProp) && sequencersProp.length > 0) {
+      return sequencersProp;
+    }
+    return undefined;
+  }, [sequencersProp]);
+
+  const { data: distRes } = useSWR(
+    sequencers ? null : ['profitRankingSeq', timeRange],
+    () => fetchSequencerDistribution(timeRange),
   );
-  const sequencers = distRes?.data ?? [];
+  const sequencersFetched = distRes?.data ?? [];
+  const sequencersEffective = sequencers ?? sequencersFetched;
 
   const { data: ethPrice = 0 } = useEthPrice();
   // Fallback fetch for fees data when not provided via props
@@ -63,7 +75,7 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
     const byName = new Map<string, Agg>();
     // Build an address->name map from the distribution response to keep keys consistent with table rows
     const addrToName = new Map<string, string>();
-    sequencers.forEach((s: SequencerDistributionDataItem) => {
+    sequencersEffective.forEach((s: SequencerDistributionDataItem) => {
       addrToName.set(s.address.toLowerCase(), s.name);
     });
     // Primary source: per-sequencer aggregates from API
@@ -128,7 +140,7 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
   // Group distribution by name so duplicates are merged (e.g., Gattaca addresses)
   const distByName = React.useMemo(() => {
     const map = new Map<string, { name: string; address: string; blocks: number; batches: number }>();
-    sequencers.forEach((seq: SequencerDistributionDataItem) => {
+    sequencersEffective.forEach((seq: SequencerDistributionDataItem) => {
       const name = seq.name;
       const repAddr = getSequencerAddress(name) || seq.address || '';
       const prev = map.get(name);
@@ -145,7 +157,7 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
       }
     });
     return Array.from(map.values());
-  }, [sequencers]);
+  }, [sequencersEffective]);
 
   const rows = distByName.map((seq) => {
     const addr = seq.address;

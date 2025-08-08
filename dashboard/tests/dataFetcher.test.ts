@@ -81,13 +81,14 @@ describe('dataFetcher', () => {
 
   it('fetches economics data', async () => {
     setAll({
-      fetchL2FeesComponents: ok({
+      fetchL2Fees: ok({
         priority_fee: 1,
         base_fee: 2,
         l1_data_cost: 4,
         prove_cost: 5,
         sequencers: [],
       }),
+      fetchSequencerDistribution: ok([]),
       fetchL2HeadNumber: ok(2),
       fetchL1HeadNumber: ok(3),
     });
@@ -101,18 +102,19 @@ describe('dataFetcher', () => {
     expect(res.proveCost).toBe(5);
 
     expect(res.sequencerDist).toEqual([]);
-    expect(res.badRequestResults).toHaveLength(3);
+    expect(res.badRequestResults).toHaveLength(4);
   });
 
   it('defaults economics costs to zero when missing', async () => {
     setAll({
-      fetchL2FeesComponents: ok({
+      fetchL2Fees: ok({
         priority_fee: null,
         base_fee: null,
         l1_data_cost: null,
         prove_cost: null,
         sequencers: [],
       }),
+      fetchSequencerDistribution: ok([]),
       fetchL2HeadNumber: ok(null),
       fetchL1HeadNumber: ok(null),
     });
@@ -123,7 +125,7 @@ describe('dataFetcher', () => {
     expect(res.l1DataCost).toBe(0);
     expect(res.proveCost).toBe(0);
 
-    expect(res.badRequestResults).toHaveLength(3);
+    expect(res.badRequestResults).toHaveLength(4);
   });
 
   it('resets isTimeRangeChanging on fetch error', async () => {
