@@ -65,7 +65,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   return (
     <header className="flex flex-col md:flex-row justify-between items-center pb-4 border-b border-gray-200 dark:border-gray-700">
       <div className="flex items-baseline space-x-4">
-          <h1 className="text-3xl font-bold text-brand">
+          <h1 className="text-3xl font-bold" style={{ color: 'var(--color-brand)' }}>
           {DASHBOARD_TITLE}
         </h1>
       </div>
@@ -89,7 +89,8 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
           href="https://status.taiko.xyz/"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-sm hover:underline text-brand"
+          className="text-sm hover:underline"
+          style={{ color: 'var(--color-brand)' }}
         >
           Status Page
         </a>
