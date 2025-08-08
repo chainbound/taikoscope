@@ -53,9 +53,9 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   const [searchParams] = useSearchParams();
   const location = useLocation();
   const isDashboardRoute = location.pathname === '/';
-  const viewParam = isDashboardRoute
-    ? (searchParams.get('view') ?? DEFAULT_VIEW)
-    : searchParams.get('view'); // view only relevant on dashboard, harmless elsewhere
+  // If a view is present anywhere, use it for highlighting; otherwise default only on dashboard
+  const rawView = searchParams.get('view');
+  const viewParam = rawView ?? (isDashboardRoute ? DEFAULT_VIEW : null);
   React.useEffect(() => {
     if (errorMessage) {
       showToast(errorMessage);
@@ -85,7 +85,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
               onClick={() =>
                 updateSearchParams({ view: tab.view, table: null })
               }
-              className={`px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md ${isDashboardRoute && viewParam === tab.view ? 'bg-gray-200 dark:bg-gray-700' : 'bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+              className={`px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md ${(viewParam && viewParam === tab.view) ? 'bg-gray-200 dark:bg-gray-700' : 'bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'}` }
               style={{ color: TAIKO_PINK }}
             >
               {tab.label}

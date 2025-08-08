@@ -19,6 +19,12 @@ export const useRouterNavigation = () => {
     ) => {
       const queryParams: Record<string, string> = {};
 
+      // Preserve current dashboard view if present
+      const currentView = searchParams.get('view');
+      if (currentView) {
+        queryParams.view = currentView;
+      }
+
       if (range) {
         queryParams.range = range;
       }
@@ -33,7 +39,7 @@ export const useRouterNavigation = () => {
       const path = `/table/${tableType}${queryString ? `?${queryString}` : ''}`;
       safeNavigate(navigate, path);
     },
-    [navigate],
+    [navigate, searchParams],
   );
 
   const navigateToSequencer = useCallback(
