@@ -81,7 +81,7 @@ where
 mod tests {
     use super::RateLimitLayer;
     use axum::{
-        body::Body,
+        body::{self, Body},
         http::{Request, StatusCode},
         response::Response,
     };
@@ -102,5 +102,30 @@ mod tests {
         assert_eq!(resp.status(), StatusCode::TOO_MANY_REQUESTS);
         let retry = resp.headers().get(axum::http::header::RETRY_AFTER).unwrap();
         assert_eq!(retry.to_str().unwrap(), "30");
+    }
+
+    #[tokio::test]
+    async fn returns_json_error_body_on_rate_limit() {
+        let layer = RateLimitLayer::new(1, Duration::from_secs(30));
+        let inner = service_fn(|_req: Request<Body>| async move {
+            Ok::<_, Infallible>(Response::new(Body::empty()))
+        });
+        let mut svc = layer.layer(inner);
+
+        // First request is allowed
+        let _ = svc.ready().await.unwrap().call(Request::new(Body::empty())).await.unwrap();
+        // Second request should be rate-limited with JSON body
+        let resp = svc.ready().await.unwrap().call(Request::new(Body::empty())).await.unwrap();
+
+        assert_eq!(resp.status(), StatusCode::TOO_MANY_REQUESTS);
+        let retry = resp.headers().get(axum::http::header::RETRY_AFTER).unwrap();
+        assert_eq!(retry.to_str().unwrap(), "30");
+
+        let bytes = body::to_bytes(resp.into_body(), usize::MAX).await.unwrap();
+        let err: api_types::ErrorResponse = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(err.r#type, "rate-limit");
+        assert_eq!(err.title, "Too Many Requests");
+        assert_eq!(err.status, StatusCode::TOO_MANY_REQUESTS.as_u16());
+        assert!(err.detail.to_lowercase().contains("rate limit exceeded"));
     }
 }
