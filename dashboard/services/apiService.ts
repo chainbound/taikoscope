@@ -171,17 +171,21 @@ export const fetchL2ReorgEvents = async (
   startingAfter?: number,
   endingBefore?: number,
 ): Promise<RequestResult<L2ReorgEvent[]>> => {
-  let url = `${API_BASE}/reorgs?`;
-  if (startingAfter === undefined && endingBefore === undefined) {
-    url += `${timeRangeToQuery(range)}&limit=${limit}`;
-  } else {
-    url += `${rangeToQuery(range)}&limit=${limit}`;
-  }
+  // Always use explicit time bounds; paginate by shifting created window markers.
+  const baseParams = new URLSearchParams(timeRangeToQuery(range));
+  baseParams.set('limit', String(limit));
+
   if (startingAfter !== undefined) {
-    url += `&starting_after=${startingAfter}`;
+    // Move the upper bound down exclusively to avoid duplicates
+    baseParams.delete('created[lte]');
+    baseParams.set('created[lt]', String(startingAfter));
   } else if (endingBefore !== undefined) {
-    url += `&ending_before=${endingBefore}`;
+    // Move the lower bound up exclusively to avoid duplicates
+    baseParams.delete('created[gt]');
+    baseParams.set('created[gt]', String(endingBefore));
   }
+
+  const url = `${API_BASE}/reorgs?${baseParams.toString()}`;
   const res = await fetchJson<{
     events: {
       from_block_number: number;

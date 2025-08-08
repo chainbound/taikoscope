@@ -189,6 +189,11 @@ export const TableRoute: React.FC = () => {
             const name = (item as { name?: string }).name;
             return name !== undefined ? Number(name) : undefined;
           }
+          // For reorgs, paginate by timestamp to respect time window exclusivity
+          if (tableType === 'reorgs') {
+            const ts = (item as { timestamp?: number }).timestamp;
+            return ts !== undefined ? ts : undefined;
+          }
           // Otherwise fall back to the numeric value or block/batch fields
           // Reorgs use l2_block_number internally for pagination, which maps to
           // the "to_block_number" field in the UI payload
@@ -251,6 +256,10 @@ export const TableRoute: React.FC = () => {
                 if (nextCursor !== undefined)
                   params.set('start', String(nextCursor));
                 params.delete('end');
+                // Preserve explicit time range bounds for subsequent pages
+                const rangeParam = params.get('range') || '24h';
+                // Only preset ranges are supported here; they will be converted by the API service
+                params.set('range', rangeParam);
                 setSearchParams(params);
               },
               onPrev: () => {
@@ -265,6 +274,9 @@ export const TableRoute: React.FC = () => {
                   if (prevCursor !== undefined) params.set('end', String(prevCursor));
                   params.delete('start');
                 }
+                // Preserve explicit time range bounds for previous pages as well
+                const rangeParam = params.get('range') || '24h';
+                params.set('range', rangeParam);
                 setSearchParams(params);
               },
               disableNext,
