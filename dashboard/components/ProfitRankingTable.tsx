@@ -5,8 +5,8 @@ import {
   fetchSequencerDistribution,
   fetchL2FeesComponents,
 } from '../services/apiService';
-import * as apiService from '../services/apiService';
-import { getSequencerAddress } from '../sequencerConfig';
+// removed unused namespace import
+import { getSequencerAddress, getSequencerName } from '../sequencerConfig';
 import { addressLink, formatEth, formatDecimal } from '../utils';
 import { calculateProfit, SEQUENCER_BASE_FEE_RATIO } from '../utils/profit';
 import { useEthPrice } from '../services/priceService';
@@ -46,12 +46,64 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
     fetchL2FeesComponents(timeRange),
   );
 
-  const feeDataMap = React.useMemo(() => {
-    const map = new Map<string, apiService.SequencerFee>();
-    feeRes?.data?.sequencers.forEach((f) => {
-      map.set(f.address.toLowerCase(), f);
+  // Aggregate fees and costs by sequencer name so multiple addresses (e.g., Gattaca) are combined
+  const feeAggByName = React.useMemo(() => {
+    type Agg = {
+      priority_fee: number;
+      base_fee: number;
+      l1_data_cost: number;
+      prove_cost: number;
+    };
+
+    const byName = new Map<string, Agg>();
+    // Build an address->name map from the distribution response to keep keys consistent with table rows
+    const addrToName = new Map<string, string>();
+    sequencers.forEach((s) => {
+      addrToName.set(s.address.toLowerCase(), s.name);
     });
-    return map;
+    // Primary source: per-sequencer aggregates from API
+    feeRes?.data?.sequencers.forEach((f) => {
+      const name = addrToName.get(f.address.toLowerCase()) ?? getSequencerName(f.address);
+      const cur = byName.get(name) ?? {
+        priority_fee: 0,
+        base_fee: 0,
+        l1_data_cost: 0,
+        prove_cost: 0,
+      };
+      cur.priority_fee += f.priority_fee ?? 0;
+      cur.base_fee += f.base_fee ?? 0;
+      cur.l1_data_cost += f.l1_data_cost ?? 0;
+      cur.prove_cost += f.prove_cost ?? 0;
+      byName.set(name, cur);
+    });
+
+    // Fallback: if costs are missing due to proposer/coinbase attribution, use batch-level totals
+    const batchCostByName = new Map<string, { l1_data_cost: number; prove_cost: number }>();
+    feeRes?.data?.batches.forEach((b) => {
+      const name = addrToName.get(b.sequencer.toLowerCase()) ?? getSequencerName(b.sequencer);
+      const cur = batchCostByName.get(name) ?? { l1_data_cost: 0, prove_cost: 0 };
+      cur.l1_data_cost += b.l1_data_cost ?? 0;
+      cur.prove_cost += b.prove_cost ?? 0;
+      batchCostByName.set(name, cur);
+    });
+
+    // Merge fallback costs only when primary costs are zero/missing
+    for (const [name, costs] of batchCostByName.entries()) {
+      const seqCosts = byName.get(name);
+      if (!seqCosts) {
+        byName.set(name, {
+          priority_fee: 0,
+          base_fee: 0,
+          l1_data_cost: costs.l1_data_cost,
+          prove_cost: costs.prove_cost,
+        });
+      } else {
+        if ((seqCosts.l1_data_cost ?? 0) === 0) seqCosts.l1_data_cost = costs.l1_data_cost;
+        if ((seqCosts.prove_cost ?? 0) === 0) seqCosts.prove_cost = costs.prove_cost;
+      }
+    }
+
+    return byName;
   }, [feeRes]);
 
   // Note: batchCounts now comes directly from sequencer distribution data
@@ -68,22 +120,43 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
   const costPerSeqUsd = ((cloudCost + proverCost) / MONTH_HOURS) * hours;
   const costPerSeqEth = ethPrice && ethPrice > 0 ? costPerSeqUsd / ethPrice : 0;
 
-  const rows = sequencers.map((seq) => {
-    const addr = seq.address || getSequencerAddress(seq.name) || '';
+  // Group distribution by name so duplicates are merged (e.g., Gattaca addresses)
+  const distByName = React.useMemo(() => {
+    const map = new Map<string, { name: string; address: string; blocks: number; batches: number }>();
+    sequencers.forEach((seq) => {
+      const name = seq.name;
+      const repAddr = getSequencerAddress(name) || seq.address || '';
+      const prev = map.get(name);
+      if (prev) {
+        prev.blocks += seq.value;
+        prev.batches += seq.batches;
+      } else {
+        map.set(name, {
+          name,
+          address: repAddr,
+          blocks: seq.value,
+          batches: seq.batches,
+        });
+      }
+    });
+    return Array.from(map.values());
+  }, [sequencers]);
+
+  const rows = distByName.map((seq) => {
+    const addr = seq.address;
     const batchCount = seq.batches;
-    const fees = feeDataMap.get(addr.toLowerCase());
-    const proveEth = (fees?.prove_cost ?? 0) / 1e9;
+    const fees = feeAggByName.get(seq.name);
+    const proveEth = ((fees?.prove_cost ?? 0) / 1e9);
     const verifyEth = 0;
     const extraEth = proveEth + verifyEth;
     const extraUsd = extraEth * ethPrice;
     if (!fees) {
-      // If no fee data exists, we can't calculate accurate costs or profits
-      // Show N/A for all financial metrics when cloud/prover costs are 0
-      const hasCosts = costPerSeqEth > 0;
+      // If no fee data exists for this name, show N/A unless there are operational costs
+      const hasCosts = costPerSeqEth > 0 || extraEth > 0;
       return {
         name: seq.name,
         address: addr,
-        blocks: seq.value,
+        blocks: seq.blocks,
         batches: batchCount,
         revenueEth: null as number | null,
         revenueUsd: null as number | null,
@@ -114,7 +187,7 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
     return {
       name: seq.name,
       address: addr,
-      blocks: seq.value,
+      blocks: seq.blocks,
       batches: batchCount,
       revenueEth,
       revenueUsd,
