@@ -16,6 +16,7 @@ import { TimeRange, BatchFeeComponent } from '../types';
 import { rangeToHours } from '../utils/timeRange';
 import { formatEth } from '../utils';
 import { getSequencerName } from '../sequencerConfig';
+import { SEQUENCER_BASE_FEE_RATIO } from '../utils/profit';
 
 interface EconomicsChartProps {
   timeRange: TimeRange;
@@ -72,7 +73,7 @@ export const EconomicsChart: React.FC<EconomicsChartProps> = ({
   const baseCostPerBatchEth = ethPrice ? baseCostPerBatchUsd / ethPrice : 0;
 
   const data = feeData.map((b) => {
-    const revenueEth = (b.priority + b.base) / 1e9;
+    const revenueEth = (b.priority + b.base * SEQUENCER_BASE_FEE_RATIO) / 1e9;
     const proveEth = (b.proveCost ?? 0) / 1e9;
     const verifyEth = 0;
     const costEth = baseCostPerBatchEth + proveEth + verifyEth + (b.l1Cost ?? 0) / 1e9;

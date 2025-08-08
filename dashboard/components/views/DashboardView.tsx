@@ -338,7 +338,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   return (
     <div
       className={
-        `bg-bg text-fg ${isMainDashboardView ? 'pt-2 pb-4 px-4 md:pt-2 md:pb-6 md:px-6 lg:pt-2 lg:pb-8 lg:px-8' : 'p-4 md:p-6 lg:p-8'}`
+        `bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 border border-gray-100 dark:border-border ${isMainDashboardView ? 'pt-2 pb-4 px-4 md:pt-2 md:pb-6 md:px-6 lg:pt-2 lg:pb-8 lg:px-8' : 'p-4 md:p-6 lg:p-8'}`
       }
       style={{ fontFamily: "'Inter', sans-serif" }}
     >
