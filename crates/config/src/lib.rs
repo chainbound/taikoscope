@@ -241,6 +241,11 @@ pub struct Opts {
     /// Skip database migrations on startup (useful for development)
     #[clap(long, env = "SKIP_MIGRATIONS", default_value = "false")]
     pub skip_migrations: bool,
+
+    /// If migrations fail at startup, allow continuing without them
+    /// to avoid crash loops. Default: disabled.
+    #[clap(long, env = "SKIP_MIGRATIONS_ON_FAILURE", default_value = "false")]
+    pub skip_migrations_on_failure: bool,
 }
 
 #[cfg(test)]

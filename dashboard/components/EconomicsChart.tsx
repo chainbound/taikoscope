@@ -15,6 +15,7 @@ import { fetchL2FeesComponents, type L2FeesComponentsResponse } from '../service
 import { TimeRange, BatchFeeComponent } from '../types';
 import { rangeToHours } from '../utils/timeRange';
 import { formatEth } from '../utils';
+import { getSequencerName } from '../sequencerConfig';
 
 interface EconomicsChartProps {
   timeRange: TimeRange;
@@ -129,7 +130,8 @@ export const EconomicsChart: React.FC<EconomicsChartProps> = ({
           <Tooltip
             labelFormatter={(v: number, payload) => {
               const seq = payload?.[0]?.payload?.sequencer as string | undefined;
-              return seq ? `Batch ${v} - ${seq}` : `Batch ${v}`;
+              const label = seq ? getSequencerName(seq) : undefined;
+              return label ? `Batch ${v} - ${label}` : `Batch ${v}`;
             }}
             formatter={(value: number, name: string, { payload }: Payload<number, string>) => {
               if (name === 'Revenue')
