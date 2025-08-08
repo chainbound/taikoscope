@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import { FixedSizeList as List } from 'react-window';
+import { Input } from './ui/Input';
 
 interface Column {
   key: string;
@@ -114,15 +115,15 @@ const VirtualizedTable: React.FC<VirtualizedTableProps> = ({
     return (
       <div
         style={style}
-        className={`flex items-center border-b border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 ${
-          isEven ? 'bg-white dark:bg-gray-900' : 'bg-gray-50 dark:bg-gray-800'
+        className={`flex items-center border-b border-border cursor-pointer hover:bg-muted ${
+          isEven ? 'bg-card' : 'bg-muted'
         }`}
         onClick={() => onRowClick?.(row)}
       >
         {columns.map((column) => (
           <div
             key={column.key}
-            className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100 truncate"
+            className="px-4 py-2 text-sm truncate"
             style={{
               width: column.width || `${100 / columns.length}%`,
               minWidth: column.width || 120,
@@ -137,22 +138,21 @@ const VirtualizedTable: React.FC<VirtualizedTableProps> = ({
   };
 
   return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg">
+    <div className="bg-card text-card-fg border border-border rounded-lg">
       {/* Search Bar */}
       {onSearch && (
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-          <input
-            type="text"
+        <div className="p-4 border-b border-border">
+          <Input
             placeholder="Search table data..."
             value={searchTerm}
             onChange={(e) => onSearch(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+            className="w-full"
           />
         </div>
       )}
 
       {/* Header */}
-      <div className="flex bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+      <div className="flex bg-muted border-b border-border">
         {columns.map((column) => (
           <div
             key={column.key}
@@ -166,7 +166,7 @@ const VirtualizedTable: React.FC<VirtualizedTableProps> = ({
               {/* Column Header */}
               <div className="flex items-center space-x-1">
                 <span
-                  className={`text-sm font-medium text-gray-900 dark:text-gray-100 ${
+                  className={`text-sm font-medium ${
                     column.sortable
                       ? 'cursor-pointer hover:text-blue-600 dark:hover:text-blue-400'
                       : ''
@@ -186,14 +186,13 @@ const VirtualizedTable: React.FC<VirtualizedTableProps> = ({
 
               {/* Column Filter */}
               {column.filterable && (
-                <input
-                  type="text"
+                <Input
                   placeholder={`Filter ${column.label}`}
                   value={localFilters[column.key] || ''}
                   onChange={(e) =>
                     handleFilterChange(column.key, e.target.value)
                   }
-                  className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                  className="px-2 py-1 text-xs"
                   onClick={(e) => e.stopPropagation()}
                 />
               )}
@@ -214,7 +213,7 @@ const VirtualizedTable: React.FC<VirtualizedTableProps> = ({
       </List>
 
       {/* Footer with stats */}
-      <div className="px-4 py-2 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-400">
+      <div className="px-4 py-2 bg-muted border-t border-border text-sm text-gray-600 dark:text-gray-400">
         Showing {sortedData.length} of {data.length} rows
         {searchTerm && ` (filtered by "${searchTerm}")`}
       </div>

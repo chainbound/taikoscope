@@ -132,7 +132,7 @@ test-dashboard:
 
 # lint dashboard files for trailing whitespace
 lint-dashboard:
-    cd dashboard && npm run lint:whitespace
+    cd dashboard && npm run lint:whitespace && npm run lint:dashboard
 
 # build and push the ingestor docker image with the given tag for the given platforms
 build-ingestor tag='latest' platform='linux/arm64':

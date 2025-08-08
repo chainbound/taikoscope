@@ -106,19 +106,19 @@ export const CostChart: React.FC<CostChartProps> = ({
               position: 'insideLeft',
               offset: -16,
               fontSize: 10,
-              fill: '#666666',
+              fill: 'var(--chart-tick)',
             }}
           />
           <Tooltip
             labelFormatter={(v: number) => `Batch ${v}`}
-            formatter={(value: number, _name: string, { payload }: Payload<number, "Cost">) =>
+            formatter={(value: number, _name: string, { payload }: Payload<number, 'Cost'>) =>
               [`${formatEth(value * 1e9, 3)} ($${payload.costUsd.toFixed(3)})`, 'Cost']
             }
             contentStyle={{
-              backgroundColor: 'rgba(255,255,255,0.8)',
-              borderColor: '#E573B5',
+              backgroundColor: 'var(--chart-tooltip-bg)',
+              borderColor: 'var(--color-brand)',
             }}
-            labelStyle={{ color: '#333' }}
+            labelStyle={{ color: 'var(--chart-tooltip-label)' }}
           />
           <Line
             type="monotone"

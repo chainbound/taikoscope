@@ -28,7 +28,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
 
   return (
     <div
-      className={`bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 transition-shadow duration-200 ${isAddress ? 'min-w-0 w-full col-span-2 sm:col-span-2 md:col-span-2 lg:col-span-2 xl:col-span-2 2xl:col-span-2' : ''} ${className ?? ''}`.trim()}
+      className={`bg-card text-card-fg p-4 rounded-lg border border-border transition-shadow duration-200 ${isAddress ? 'min-w-0 w-full col-span-2 sm:col-span-2 md:col-span-2 lg:col-span-2 xl:col-span-2 2xl:col-span-2' : ''} ${className ?? ''}`.trim()}
     >
       <div className="relative">
         <h3 className="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400 truncate pr-8" title={titleTooltip}>

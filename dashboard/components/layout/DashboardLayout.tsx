@@ -39,7 +39,7 @@ export const DashboardLayout: React.FC = () => {
   }, [searchParams, setSearchParams, location.pathname]);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 flex flex-col">
+    <div className="min-h-screen bg-bg text-fg flex flex-col">
       <main className="flex-grow px-4 py-6 md:px-6 lg:px-8">
         <Outlet
           context={{

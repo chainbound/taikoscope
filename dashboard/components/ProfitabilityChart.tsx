@@ -115,14 +115,14 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({
           />
           <Tooltip
             labelFormatter={(v: number) => `Batch ${v}`}
-            formatter={(value: number, _name: string, { payload }: Payload<number, "Profit">) =>
+            formatter={(value: number, _name: string, { payload }: Payload<number, 'Profit'>) =>
               [`${formatEth(value * 1e9, 3)} ($${payload.profitUsd.toFixed(3)})`, 'Profit']
             }
             contentStyle={{
-              backgroundColor: 'rgba(255,255,255,0.8)',
+              backgroundColor: 'var(--chart-tooltip-bg)',
               borderColor: '#8884d8',
             }}
-            labelStyle={{ color: '#333' }}
+            labelStyle={{ color: 'var(--chart-tooltip-label)' }}
           />
           <Line
             type="monotone"

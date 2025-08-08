@@ -110,7 +110,7 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
     <div>
       <h3 className="text-lg font-semibold mb-2">{title}</h3>
       <div className="overflow-x-auto">
-        <table className="min-w-full border border-gray-200 dark:border-gray-700 divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
+        <table className="min-w-full border border-border divide-y divide-gray-200 dark:divide-gray-700 bg-card text-card-fg">
           <thead>
             <tr>
               <th className="px-2 py-1 text-left">Batch</th>
@@ -124,7 +124,7 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
             {items?.map((b) => (
               <tr
                 key={b.batch}
-                className="border-t border-gray-200 dark:border-gray-700"
+                className="border-t border-border"
               >
                 <td className="px-2 py-1">
                   {l1TxLink(b.txHash, b.batch.toLocaleString())}

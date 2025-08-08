@@ -11,6 +11,7 @@ import { showToast } from '../utils/toast';
 import { DayPicker } from 'react-day-picker';
 import * as Popover from '@radix-ui/react-popover';
 import { TabList, Tab } from './ui/Tabs';
+import { Select } from './ui/Select';
 
 interface ImportMetaEnv {
   readonly VITE_NETWORK_NAME?: string;
@@ -319,24 +320,16 @@ export const RefreshRateInput: React.FC<RefreshRateInputProps> = ({
 
   return (
     <div className="flex items-center space-x-1">
-      <label
-        htmlFor="refreshRate"
-        className="text-sm text-gray-600 dark:text-gray-300"
-      >
+      <label htmlFor="refreshRate" className="text-sm text-muted-fg">
         Refresh
       </label>
-      <select
-        id="refreshRate"
-        value={refreshRate}
-        onChange={handleChange}
-        className="p-1 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-center"
-      >
+      <Select id="refreshRate" value={refreshRate} onChange={handleChange} className="text-sm text-center">
         {options.map(({ label, value }) => (
           <option key={value} value={value}>
             {label}
           </option>
         ))}
-      </select>
+      </Select>
     </div>
   );
 };

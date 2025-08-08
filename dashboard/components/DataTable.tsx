@@ -147,7 +147,7 @@ export const DataTable: React.FC<DataTableProps> = ({
     : (page + 1) * rowsPerPage >= currentTotalRecords;
 
   return (
-    <div className="p-4">
+    <div className="p-4 bg-bg text-fg">
       <div className="flex items-center mb-4 space-x-4">
         <button
           onClick={() => {
@@ -204,13 +204,13 @@ export const DataTable: React.FC<DataTableProps> = ({
         </div>
       )}
       <div className="overflow-x-auto">
-        <table className="min-w-full border border-gray-200 dark:border-gray-700 divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
+        <table className="min-w-full border border-border divide-y divide-gray-200 dark:divide-gray-700 bg-card text-card-fg">
           <thead>
             <tr>
               {columns.map((col) => (
                 <th
                   key={col.key}
-                  className={`px-2 py-1 text-left text-gray-900 dark:text-gray-100 ${
+                  className={`px-2 py-1 text-left ${
                     col.sortable ? 'cursor-pointer select-none' : ''
                   }`}
                   onClick={
@@ -248,7 +248,7 @@ export const DataTable: React.FC<DataTableProps> = ({
               pageRows.map((row, idx) => (
                 <tr
                   key={idx}
-                  className={`border-t border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 ${onRowClick && !isNavigating ? 'cursor-pointer' : ''} ${isNavigating ? 'pointer-events-none opacity-50' : ''}`}
+                  className={`border-t border-border hover:bg-muted ${onRowClick && !isNavigating ? 'cursor-pointer' : ''} ${isNavigating ? 'pointer-events-none opacity-50' : ''}`}
                   onClick={
                     onRowClick && !isNavigating
                       ? () => {
@@ -264,7 +264,7 @@ export const DataTable: React.FC<DataTableProps> = ({
                   {columns.map((col) => (
                     <td
                       key={col.key}
-                      className="px-2 py-1 text-gray-900 dark:text-gray-100"
+                      className="px-2 py-1"
                     >
                       {row[col.key] as React.ReactNode}
                     </td>

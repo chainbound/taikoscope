@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import VirtualizedTable from './VirtualizedTable';
+import { Input } from './ui/Input';
 import {
   exportTableData,
   ExportFormat,
@@ -219,7 +220,7 @@ export const AdvancedDataTable: React.FC<AdvancedDataTableProps> = ({
     searchTerm || Object.values(filters).some((v) => v) || sortBy;
 
   return (
-    <div className="bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 p-4 md:p-6 lg:p-8">
+    <div className="bg-bg text-fg p-4 md:p-6 lg:p-8">
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 space-y-4 md:space-y-0">
         <div className="flex items-center space-x-4">
@@ -303,16 +304,15 @@ export const AdvancedDataTable: React.FC<AdvancedDataTableProps> = ({
             onSearch={enableSearch ? handleSearch : undefined}
           />
         ) : (
-          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+          <div className="bg-card text-card-fg border border-border rounded-lg overflow-hidden">
             {/* Search Bar */}
             {enableSearch && (
-              <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-                <input
-                  type="text"
+              <div className="p-4 border-b border-border">
+                <Input
                   placeholder={searchPlaceholder}
                   value={searchTerm}
                   onChange={(e) => handleSearch(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                  className="w-full"
                 />
               </div>
             )}
@@ -320,17 +320,16 @@ export const AdvancedDataTable: React.FC<AdvancedDataTableProps> = ({
             {/* Table */}
             <div className="overflow-x-auto">
               <table className="min-w-full">
-                <thead className="bg-gray-50 dark:bg-gray-800">
+                <thead className="bg-muted">
                   <tr>
                     {enhancedColumns.map((column) => (
                       <th key={column.key} className="px-4 py-3 text-left">
                         <div className="flex flex-col space-y-1">
-                          <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                          <span className="text-sm font-medium">
                             {column.label}
                           </span>
                           {column.filterable && (
-                            <input
-                              type="text"
+                            <Input
                               placeholder={`Filter ${column.label}`}
                               value={filters[column.key] || ''}
                               onChange={(e) =>
@@ -339,7 +338,7 @@ export const AdvancedDataTable: React.FC<AdvancedDataTableProps> = ({
                                   [column.key]: e.target.value,
                                 }))
                               }
-                              className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                              className="px-2 py-1 text-xs"
                             />
                           )}
                         </div>
@@ -351,7 +350,7 @@ export const AdvancedDataTable: React.FC<AdvancedDataTableProps> = ({
                   {rows.map((row, index) => (
                     <tr
                       key={index}
-                      className="border-t border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
+                      className="border-t border-border hover:bg-muted cursor-pointer"
                       onClick={() => onRowClick?.(row)}
                     >
                       {enhancedColumns.map((column) => (
