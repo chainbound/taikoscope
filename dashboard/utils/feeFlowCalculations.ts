@@ -216,51 +216,59 @@ export const processSequencerData = (
   ethPrice: number,
   hardwareCostPerSeq: number,
 ): ProcessedSequencerData[] => {
-  const seqData = sequencerFees.map((f) =>
-    calculateSequencerData(f, ethPrice, hardwareCostPerSeq),
-  );
+  // First, aggregate raw fee rows by operator name so we can recompute
+  // cost allocation and subsidy at the group level (prevents false subsidy
+  // when individual addresses are net-negative but the group is net-positive).
+  type RawAgg = {
+    representative: string; // address to keep for labeling/links
+    count: number; // number of addresses in the group
+    priority_fee: number;
+    base_fee: number;
+    l1_data_cost: number;
+    prove_cost: number;
+  };
 
-  // Group sequencers by name (e.g., multiple Gattaca addresses become one node)
-  const groupedByName = new Map<string, ProcessedSequencerData[]>();
-  
-  for (const seq of seqData) {
-    const name = seq.shortAddress;
-    if (!groupedByName.has(name)) {
-      groupedByName.set(name, []);
+  const feesByName = new Map<string, RawAgg>();
+  for (const f of sequencerFees) {
+    const name = getSequencerName(f.address);
+    const existing = feesByName.get(name);
+    if (!existing) {
+      feesByName.set(name, {
+        representative: f.address,
+        count: 1,
+        priority_fee: f.priority_fee ?? 0,
+        base_fee: f.base_fee ?? 0,
+        l1_data_cost: f.l1_data_cost ?? 0,
+        prove_cost: f.prove_cost ?? 0,
+      });
+    } else {
+      existing.count += 1;
+      existing.priority_fee += f.priority_fee ?? 0;
+      existing.base_fee += f.base_fee ?? 0;
+      existing.l1_data_cost += f.l1_data_cost ?? 0;
+      existing.prove_cost += f.prove_cost ?? 0;
     }
-    groupedByName.get(name)!.push(seq);
   }
 
-  // Consolidate groups with multiple addresses into single nodes
+  // Recompute per-group processed data using aggregated raw numbers and
+  // aggregated hardware costs (per-sequencer cost * number of addresses).
   const consolidatedData: ProcessedSequencerData[] = [];
-  
-  for (const [name, group] of groupedByName) {
-    if (group.length === 1) {
-      // Single address, use as-is
-      consolidatedData.push(group[0]);
-    } else {
-      // Multiple addresses with same name - aggregate them
-      const aggregated: ProcessedSequencerData = {
-        address: group[0].address, // Use first address as representative
-        shortAddress: name,
-        priorityUsd: group.reduce((sum, s) => sum + s.priorityUsd, 0),
-        baseUsd: group.reduce((sum, s) => sum + s.baseUsd, 0),
-        revenue: group.reduce((sum, s) => sum + s.revenue, 0),
-        revenueGwei: group.reduce((sum, s) => sum + s.revenueGwei, 0),
-        profit: group.reduce((sum, s) => sum + s.profit, 0),
-        profitGwei: group.reduce((sum, s) => sum + s.profitGwei, 0),
-        actualHardwareCost: group.reduce((sum, s) => sum + s.actualHardwareCost, 0),
-        actualL1Cost: group.reduce((sum, s) => sum + s.actualL1Cost, 0),
-        actualProveCost: group.reduce((sum, s) => sum + s.actualProveCost, 0),
-        l1CostUsd: group.reduce((sum, s) => sum + s.l1CostUsd, 0),
-        subsidyUsd: group.reduce((sum, s) => sum + s.subsidyUsd, 0),
-        subsidyGwei: group.reduce((sum, s) => sum + s.subsidyGwei, 0),
-        actualHardwareCostGwei: group.reduce((sum, s) => sum + s.actualHardwareCostGwei, 0),
-        actualL1CostGwei: group.reduce((sum, s) => sum + s.actualL1CostGwei, 0),
-        actualProveCostGwei: group.reduce((sum, s) => sum + s.actualProveCostGwei, 0),
-      };
-      consolidatedData.push(aggregated);
-    }
+  for (const [name, agg] of feesByName.entries()) {
+    const aggregatedFee: SequencerFeeData = {
+      address: agg.representative,
+      priority_fee: agg.priority_fee,
+      base_fee: agg.base_fee,
+      l1_data_cost: agg.l1_data_cost,
+      prove_cost: agg.prove_cost,
+    };
+    const processed = calculateSequencerData(
+      aggregatedFee,
+      ethPrice,
+      hardwareCostPerSeq * Math.max(1, agg.count),
+    );
+    // Override shortAddress to the operator name for clarity
+    processed.shortAddress = name;
+    consolidatedData.push(processed);
   }
 
   // Sort sequencer nodes by profitability (ascending) to reduce flow crossings
