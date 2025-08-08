@@ -36,7 +36,7 @@ export const CostChart: React.FC<CostChartProps> = ({
     ['l2FeesComponents', timeRange, address],
     () => fetchL2FeesComponents(timeRange),
   );
-  const { data: ethPrice = 0, error: ethPriceError } = useEthPrice();
+  const { data: ethPrice = 0 } = useEthPrice();
   const feeData: BatchFeeComponent[] | null =
     feeRes?.data?.batches
       ?.filter((b) => !address || b.sequencer === address)
@@ -76,9 +76,7 @@ export const CostChart: React.FC<CostChartProps> = ({
 
   return (
     <>
-      {ethPriceError && (
-        <div className="text-red-500 text-xs mb-1">ETH price unavailable</div>
-      )}
+      {/* Continue rendering; USD values may be zero when price missing */}
       <ResponsiveContainer width="100%" height={240}>
         <LineChart
           data={data}

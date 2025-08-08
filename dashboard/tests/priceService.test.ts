@@ -1,5 +1,4 @@
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
-import * as toast from '../utils/toast';
 import { getEthPrice } from '../services/priceService.ts';
 
 const originalFetch = globalThis.fetch;
@@ -42,27 +41,18 @@ describe('getEthPrice', () => {
     expect(price).toBe(2000);
   });
 
-  it('handles fetch failure', async () => {
-    globalThis.fetch = mockFetch(0, false);
-    const spy = vi.spyOn(toast, 'showToast').mockImplementation(() => {});
-    const price = await getEthPrice();
-    expect(price).toBe(0);
-    expect(spy).toHaveBeenCalled();
-    spy.mockRestore();
-  });
+it('rejects on fetch failure', async () => {
+  globalThis.fetch = mockFetch(0, false);
+  await expect(getEthPrice()).rejects.toThrowError();
+});
 
-  it('returns 0 on network error', async () => {
-    globalThis.fetch = mockFetchWithNetworkError();
-    const spy = vi.spyOn(toast, 'showToast').mockImplementation(() => {});
-    const price = await getEthPrice();
-    expect(price).toBe(0);
-    expect(spy).toHaveBeenCalled();
-    spy.mockRestore();
-  });
+it('rejects on network error', async () => {
+  globalThis.fetch = mockFetchWithNetworkError();
+  await expect(getEthPrice()).rejects.toThrowError();
+});
 
-  it('handles invalid response format', async () => {
-    globalThis.fetch = mockFetchWithInvalidResponse();
-    const price = await getEthPrice();
-    expect(price).toBe(0);
-  });
+it('rejects on invalid response format', async () => {
+  globalThis.fetch = mockFetchWithInvalidResponse();
+  await expect(getEthPrice()).rejects.toThrowError();
+});
 });

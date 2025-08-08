@@ -270,14 +270,8 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     );
   }
 
-  // Guard against invalid ethPrice that could cause NaN
-  if (!ethPrice || isNaN(ethPrice) || ethPrice <= 0) {
-    return (
-      <div className="flex items-center justify-center h-full text-gray-500">
-        ETH price unavailable
-      </div>
-    );
-  }
+  // Do not block rendering if ETH price is missing; downstream formatters
+  // already fallback to USD-only values and 0 ETH when needed.
 
   // Convert fees to USD using utility function
   const {

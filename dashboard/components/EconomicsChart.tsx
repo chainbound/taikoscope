@@ -53,7 +53,7 @@ export const EconomicsChart: React.FC<EconomicsChartProps> = ({
         l1Cost: b.l1_data_cost,
         proveCost: b.prove_cost,
       })) ?? null;
-  const { data: ethPrice = 0, error: ethPriceError } = useEthPrice();
+  const { data: ethPrice = 0 } = useEthPrice();
 
   if (!feeData || feeData.length === 0) {
     return (
@@ -93,9 +93,7 @@ export const EconomicsChart: React.FC<EconomicsChartProps> = ({
 
   return (
     <>
-      {ethPriceError && (
-        <div className="text-red-500 text-xs mb-1">ETH price unavailable</div>
-      )}
+      {/* If ETH price is missing we still render using 0-derived ETH and USD-only tooltips */}
       <ResponsiveContainer width="100%" height={240}>
         <LineChart
           data={data}
