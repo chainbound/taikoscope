@@ -3,7 +3,7 @@
 # Run with Debian, libclang has issues with Alpine.
 # Make sure to update rust-toolchain.toml when updating the base image,
 # and vice versa.
-FROM rust:1.88-bookworm AS base
+FROM rust:1.89-bookworm AS base
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
