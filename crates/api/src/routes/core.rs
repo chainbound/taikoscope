@@ -664,14 +664,20 @@ pub async fn l2_fees(
     let l1_data_cost = wei_to_gwei(data_sum);
     let prove_cost = wei_to_gwei(prove_sum);
 
-    tracing::info!("Returning L2 fees summary only");
-    Ok(Json(L2FeesResponse {
-        priority_fee,
-        base_fee,
-        l1_data_cost,
-        prove_cost,
-        sequencers: vec![],
-    }))
+    // Per-sequencer breakdown (gwei)
+    let sequencers: Vec<SequencerFeeRow> = filtered
+        .into_iter()
+        .map(|s| SequencerFeeRow {
+            address: format_address(s.sequencer),
+            priority_fee: wei_to_gwei(s.priority_fee),
+            base_fee: wei_to_gwei(s.base_fee),
+            l1_data_cost: wei_to_gwei(s.l1_data_cost),
+            prove_cost: wei_to_gwei(s.prove_cost),
+        })
+        .collect();
+
+    tracing::info!(count = sequencers.len(), "Returning L2 fees with per-sequencer breakdown");
+    Ok(Json(L2FeesResponse { priority_fee, base_fee, l1_data_cost, prove_cost, sequencers }))
 }
 
 #[utoipa::path(
