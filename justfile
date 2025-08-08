@@ -166,7 +166,7 @@ build-processor tag='latest' platform='linux/amd64,linux/arm64': setup-docker
         --push .
 
 # build and push the api docker image (defaults to arm64/Graviton)
-build-api tag='latest' platform='linux/arm64': setup-docker
+build-api tag='latest' platform='linux/arm64':
     docker buildx build \
         --label "org.opencontainers.image.commit=$(git rev-parse --short HEAD)" \
         --platform {{platform}} \
