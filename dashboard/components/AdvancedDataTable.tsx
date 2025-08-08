@@ -304,7 +304,7 @@ export const AdvancedDataTable: React.FC<AdvancedDataTableProps> = ({
             onSearch={enableSearch ? handleSearch : undefined}
           />
         ) : (
-          <div className="bg-card text-card-fg border border-border rounded-lg overflow-hidden">
+          <div className="bg-card text-card-fg border rounded-lg overflow-hidden border-slate-300 dark:border-slate-700">
             {/* Search Bar */}
             {enableSearch && (
               <div className="p-4 border-b border-border">
@@ -371,7 +371,7 @@ export const AdvancedDataTable: React.FC<AdvancedDataTableProps> = ({
       {extraTable && (
         <div>
           <h2 className="text-xl font-semibold mb-4">{extraTable.title}</h2>
-          <div className="bg-card text-card-fg border border-border rounded-lg overflow-hidden">
+          <div className="bg-card text-card-fg border rounded-lg overflow-hidden border-slate-300 dark:border-slate-700">
             <div className="overflow-x-auto">
               <table className="min-w-full">
                 <thead className="bg-gray-50 dark:bg-gray-800">

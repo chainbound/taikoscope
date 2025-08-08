@@ -138,7 +138,7 @@ const VirtualizedTable: React.FC<VirtualizedTableProps> = ({
   };
 
   return (
-    <div className="bg-card text-card-fg border border-border rounded-lg">
+    <div className="bg-card text-card-fg border rounded-lg border-slate-300 dark:border-slate-700">
       {/* Search Bar */}
       {onSearch && (
         <div className="p-4 border-b border-border">

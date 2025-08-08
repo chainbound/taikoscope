@@ -16,7 +16,7 @@ export const ProfitCalculator: React.FC<ProfitCalculatorProps> = ({
   onProverCostChange,
 }) => {
   return (
-    <div className="mt-6 p-4 border border-border rounded-md bg-card text-card-fg">
+    <div className="mt-6 p-4 border rounded-md bg-card text-card-fg border-slate-300 dark:border-slate-700">
       <h2 className="text-lg font-semibold mb-2">Hardware Costs</h2>
       <div className="flex flex-col sm:flex-row sm:space-x-4 space-y-2 sm:space-y-0">
         <label className="flex flex-col text-sm">

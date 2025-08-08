@@ -15,6 +15,10 @@ export default {
         'muted-fg': 'var(--muted-fg)',
         ring: 'var(--ring)',
       },
+      // Ensure default border color utilities (e.g., `border`, `border-b`) use our semantic token
+      borderColor: {
+        DEFAULT: 'var(--border)',
+      },
     },
   },
   plugins: [],
