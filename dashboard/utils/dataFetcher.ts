@@ -10,7 +10,7 @@ import {
   fetchSequencerDistribution,
   fetchBlockTransactionsAggregated,
   fetchBatchBlobCountsAggregated,
-  fetchL2Fees,
+  fetchL2FeesComponents,
   fetchL2HeadNumber,
   fetchL1HeadNumber,
   type PreconfData,
@@ -126,13 +126,12 @@ export const fetchMainDashboardData = async (
 
 export const fetchEconomicsData = async (
   timeRange: TimeRange,
-  selectedSequencer: string | null,
+  _selectedSequencer: string | null,
 ): Promise<EconomicsData> => {
   const normalizedRange = normalizeTimeRange(timeRange);
   const [l2FeesRes, l2BlockRes, l1BlockRes] = await Promise.all([
-    fetchL2Fees(
+    fetchL2FeesComponents(
       normalizedRange,
-      selectedSequencer ? getSequencerAddress(selectedSequencer) : undefined,
     ),
     fetchL2HeadNumber(),
     fetchL1HeadNumber(),
