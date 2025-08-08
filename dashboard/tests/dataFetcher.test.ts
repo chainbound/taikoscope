@@ -88,8 +88,8 @@ describe('dataFetcher', () => {
         prove_cost: 5,
         sequencers: [],
       }),
-      fetchL2HeadBlock: ok(2),
-      fetchL1HeadBlock: ok(3),
+      fetchL2HeadNumber: ok(2),
+      fetchL1HeadNumber: ok(3),
     });
 
     const res = await fetchEconomicsData('1h', null);
@@ -113,8 +113,8 @@ describe('dataFetcher', () => {
         prove_cost: null,
         sequencers: [],
       }),
-      fetchL2HeadBlock: ok(null),
-      fetchL1HeadBlock: ok(null),
+      fetchL2HeadNumber: ok(null),
+      fetchL1HeadNumber: ok(null),
     });
 
     const res = await fetchEconomicsData('1h', null);

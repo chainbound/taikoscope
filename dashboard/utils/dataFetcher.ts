@@ -11,8 +11,8 @@ import {
   fetchBlockTransactionsAggregated,
   fetchBatchBlobCountsAggregated,
   fetchL2Fees,
-  fetchL2HeadBlock,
-  fetchL1HeadBlock,
+  fetchL2HeadNumber,
+  fetchL1HeadNumber,
   type PreconfData,
   type SequencerDistributionDataItem,
   type BlockTransaction,
@@ -134,8 +134,8 @@ export const fetchEconomicsData = async (
       normalizedRange,
       selectedSequencer ? getSequencerAddress(selectedSequencer) : undefined,
     ),
-    fetchL2HeadBlock(normalizedRange),
-    fetchL1HeadBlock(normalizedRange),
+    fetchL2HeadNumber(),
+    fetchL1HeadNumber(),
   ]);
 
   const sequencerDist = l2FeesRes.data
