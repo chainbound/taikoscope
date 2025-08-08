@@ -3,6 +3,8 @@ import useSWR from 'swr';
 import { TimeRange } from '../types';
 import {
   fetchSequencerDistribution,
+  type L2FeesComponentsResponse,
+  type SequencerDistributionDataItem,
   fetchL2FeesComponents,
 } from '../services/apiService';
 // removed unused namespace import
@@ -16,6 +18,7 @@ interface ProfitRankingTableProps {
   timeRange: TimeRange;
   cloudCost: number;
   proverCost: number;
+  feesData?: L2FeesComponentsResponse | null;
 }
 
 const formatUsd = (value: number): string => {
@@ -33,6 +36,7 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
   timeRange,
   cloudCost,
   proverCost,
+  feesData,
 }) => {
   const { data: distRes } = useSWR(['profitRankingSeq', timeRange], () =>
     fetchSequencerDistribution(timeRange),
@@ -40,11 +44,12 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
   const sequencers = distRes?.data ?? [];
 
   const { data: ethPrice = 0 } = useEthPrice();
-
-
-  const { data: feeRes } = useSWR(['profitRankingData', timeRange], () =>
-    fetchL2FeesComponents(timeRange),
+  // Fallback fetch for fees data when not provided via props
+  const { data: feesRes } = useSWR(
+    feesData === undefined ? ['l2FeesComponents', timeRange] : null,
+    () => fetchL2FeesComponents(timeRange),
   );
+  const effectiveFees = feesData ?? feesRes?.data ?? null;
 
   // Aggregate fees and costs by sequencer name so multiple addresses (e.g., Gattaca) are combined
   const feeAggByName = React.useMemo(() => {
@@ -58,11 +63,11 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
     const byName = new Map<string, Agg>();
     // Build an address->name map from the distribution response to keep keys consistent with table rows
     const addrToName = new Map<string, string>();
-    sequencers.forEach((s) => {
+    sequencers.forEach((s: SequencerDistributionDataItem) => {
       addrToName.set(s.address.toLowerCase(), s.name);
     });
     // Primary source: per-sequencer aggregates from API
-    feeRes?.data?.sequencers.forEach((f) => {
+    effectiveFees?.sequencers.forEach((f) => {
       const name = addrToName.get(f.address.toLowerCase()) ?? getSequencerName(f.address);
       const cur = byName.get(name) ?? {
         priority_fee: 0,
@@ -79,7 +84,7 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
 
     // Fallback: if costs are missing due to proposer/coinbase attribution, use batch-level totals
     const batchCostByName = new Map<string, { l1_data_cost: number; prove_cost: number }>();
-    feeRes?.data?.batches.forEach((b) => {
+    effectiveFees?.batches.forEach((b) => {
       const name = addrToName.get(b.sequencer.toLowerCase()) ?? getSequencerName(b.sequencer);
       const cur = batchCostByName.get(name) ?? { l1_data_cost: 0, prove_cost: 0 };
       cur.l1_data_cost += b.l1_data_cost ?? 0;
@@ -104,7 +109,7 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
     }
 
     return byName;
-  }, [feeRes]);
+  }, [effectiveFees, sequencers]);
 
   // Note: batchCounts now comes directly from sequencer distribution data
 
@@ -123,7 +128,7 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
   // Group distribution by name so duplicates are merged (e.g., Gattaca addresses)
   const distByName = React.useMemo(() => {
     const map = new Map<string, { name: string; address: string; blocks: number; batches: number }>();
-    sequencers.forEach((seq) => {
+    sequencers.forEach((seq: SequencerDistributionDataItem) => {
       const name = seq.name;
       const repAddr = getSequencerAddress(name) || seq.address || '';
       const prev = map.get(name);
@@ -237,7 +242,7 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
     return data;
   }, [rows, sortBy, sortDirection]);
 
-  if (!feeRes) {
+  if (!effectiveFees) {
     return (
       <div className="flex items-center justify-center h-20 text-gray-500 dark:text-gray-400">
         Loading...

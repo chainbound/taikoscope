@@ -15,6 +15,8 @@ import { useEthPrice } from '../../services/priceService';
 import { rangeToHours } from '../../utils/timeRange';
 import { calculateHardwareCost } from '../../utils/hardwareCost';
 import { formatEth, parseEthValue } from '../../utils';
+import useSWR from 'swr';
+import { fetchL2FeesComponents } from '../../services/apiService';
 
 const SequencerPieChart = lazy(() =>
   import('../SequencerPieChart').then((m) => ({
@@ -96,6 +98,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [proverCost, setProverCost] = useState(0);
 
   const { data: ethPrice = 0 } = useEthPrice();
+  const { data: l2FeesRes } = useSWR(
+    isEconomicsView ? ['l2FeesComponents', timeRange] : null,
+    () => fetchL2FeesComponents(timeRange),
+  );
+  const feesData = l2FeesRes?.data ?? null;
   const metricsWithHardware = React.useMemo(() => {
     if (!isEconomicsView) return metricsData.metrics;
     const hours = rangeToHours(timeRange);
@@ -370,6 +377,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               address={selectedSequencer || undefined}
               height={400}
               totalSequencers={chartsData.sequencerDistribution.length}
+              feesData={feesData}
             />
             <div className="mt-6">
               <h3 className="text-lg font-semibold mb-2">PnL Trend per Batch</h3>
@@ -379,12 +387,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 proverCost={proverCost}
                 address={selectedSequencer || undefined}
                 totalSequencers={chartsData.sequencerDistribution.length}
+                feesData={feesData}
               />
             </div>
             <ProfitRankingTable
               timeRange={timeRange}
               cloudCost={cloudCost}
               proverCost={proverCost}
+              feesData={feesData}
             />
             <BlockProfitTables
               timeRange={timeRange}
@@ -392,6 +402,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               proverCost={proverCost}
               address={selectedSequencer || undefined}
               totalSequencers={chartsData.sequencerDistribution.length}
+              feesData={feesData}
             />
           </>
         )}

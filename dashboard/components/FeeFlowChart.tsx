@@ -17,7 +17,7 @@ import {
 const NODE_GREEN = '#22c55e';
 const GWEI_TO_ETH = 1e9;
 import useSWR from 'swr';
-import { fetchL2FeesComponents } from '../services/apiService';
+import { fetchL2FeesComponents, type L2FeesComponentsResponse } from '../services/apiService';
 import { useEthPrice } from '../services/priceService';
 import { TimeRange } from '../types';
 import { rangeToHours } from '../utils/timeRange';
@@ -32,6 +32,8 @@ interface FeeFlowChartProps {
   height?: number;
   /** Total number of sequencers (used for hardware cost scaling) */
   totalSequencers?: number;
+  /** Pre-fetched L2 fees + components data to avoid duplicate requests */
+  feesData?: L2FeesComponentsResponse | null;
 }
 
 // Format numbers as USD without grouping
@@ -184,17 +186,21 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
   address,
   height = 480,
   totalSequencers,
+  feesData,
 }) => {
   const { theme } = useTheme();
   const textColor = theme === 'dark' ? '#ffffff' : lightTheme.foreground;
-  const { data: feeRes } = useSWR(['l2FeesFlow', timeRange, address], () =>
-    fetchL2FeesComponents(timeRange),
-  );
   const { data: ethPrice = 0 } = useEthPrice();
+  // Fallback fetch when feesData not provided via props
+  const { data: feesRes } = useSWR(
+    feesData === undefined ? ['l2FeesComponents', timeRange] : null,
+    () => fetchL2FeesComponents(timeRange),
+  );
+  const effectiveFees = feesData ?? feesRes?.data ?? null;
 
-  const priorityFee = feeRes?.data?.priority_fee ?? null;
-  const baseFee = feeRes?.data?.base_fee ?? null;
-  const allSequencerFees = feeRes?.data?.sequencers ?? [];
+  const priorityFee = effectiveFees?.priority_fee ?? null;
+  const baseFee = effectiveFees?.base_fee ?? null;
+  const allSequencerFees = effectiveFees?.sequencers ?? [];
   const sequencerFees = address
     ? allSequencerFees.filter(
         (s) => s.address.toLowerCase() === address.toLowerCase(),
@@ -249,7 +255,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     [textColor, formatNodeValue],
   );
 
-  if (!feeRes) {
+  if (!effectiveFees) {
     return (
       <div className="flex items-center justify-center h-full text-gray-500">
         Loading...
@@ -283,8 +289,8 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
   } = convertFeesToUsd({
     priorityFee: priorityFee ?? 0,
     baseFee: baseFee ?? 0,
-    l1DataCost: feeRes?.data?.l1_data_cost ?? 0,
-    proveCost: feeRes?.data?.prove_cost ?? 0,
+    l1DataCost: effectiveFees?.l1_data_cost ?? 0,
+    proveCost: effectiveFees?.prove_cost ?? 0,
     ethPrice,
   });
 

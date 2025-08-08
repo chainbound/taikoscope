@@ -9,9 +9,9 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import type { Payload } from 'recharts/types/component/DefaultTooltipContent';
-import useSWR from 'swr';
 import { useEthPrice } from '../services/priceService';
-import { fetchL2FeesComponents } from '../services/apiService';
+import useSWR from 'swr';
+import { fetchL2FeesComponents, type L2FeesComponentsResponse } from '../services/apiService';
 import { TimeRange, BatchFeeComponent } from '../types';
 import { rangeToHours } from '../utils/timeRange';
 import { formatEth } from '../utils';
@@ -23,6 +23,8 @@ interface EconomicsChartProps {
   address?: string;
   /** Total number of sequencers for scaling network-wide costs */
   totalSequencers?: number;
+  /** Pre-fetched L2 fees + components data to avoid duplicate requests */
+  feesData?: L2FeesComponentsResponse | null;
 }
 
 export const EconomicsChart: React.FC<EconomicsChartProps> = ({
@@ -31,13 +33,16 @@ export const EconomicsChart: React.FC<EconomicsChartProps> = ({
   proverCost,
   address,
   totalSequencers,
+  feesData,
 }) => {
-  const { data: feeRes } = useSWR(
-    ['l2FeesComponents', timeRange, address],
+  // Fallback fetch when feesData not provided via props
+  const { data: feesRes } = useSWR(
+    feesData === undefined ? ['l2FeesComponents', timeRange] : null,
     () => fetchL2FeesComponents(timeRange),
   );
+  const effectiveFees = feesData ?? feesRes?.data ?? null;
   const feeData: BatchFeeComponent[] | null =
-    feeRes?.data?.batches
+    effectiveFees?.batches
       ?.filter((b) => !address || b.sequencer === address)
       .map((b) => ({
         batch: b.batch_id,

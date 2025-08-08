@@ -165,11 +165,46 @@ build-processor tag='latest' platform='linux/amd64,linux/arm64': setup-docker
         --tag ghcr.io/chainbound/taikoscope-processor:{{tag}} \
         --push .
 
-# build and push the api docker image with the given tag for the given platforms
-build-api tag='latest' platform='linux/amd64,linux/arm64': setup-docker
+# build and push the api docker image (defaults to arm64/Graviton)
+build-api tag='latest' platform='linux/arm64': setup-docker
     docker buildx build \
         --label "org.opencontainers.image.commit=$(git rev-parse --short HEAD)" \
         --platform {{platform}} \
+        --file Dockerfile.api \
+        --tag ghcr.io/chainbound/taikoscope-api:{{tag}} \
+        --push .
+
+# multi-arch api build and push (amd64 + arm64)
+build-api-multi tag='latest': setup-docker
+    docker buildx build \
+        --label "org.opencontainers.image.commit=$(git rev-parse --short HEAD)" \
+        --platform linux/amd64,linux/arm64 \
+        --file Dockerfile.api \
+        --tag ghcr.io/chainbound/taikoscope-api:{{tag}} \
+        --push .
+
+# fast local build of the API (single-arch, no push, loads into local Docker)
+build-api-local tag='dev':
+    docker build \
+        --label "org.opencontainers.image.commit=$(git rev-parse --short HEAD)" \
+        --file Dockerfile.api \
+        --tag taikoscope-api:{{tag}} \
+        .
+
+# single-arch API build and push for amd64
+build-api-amd64 tag='latest': setup-docker
+    docker buildx build \
+        --label "org.opencontainers.image.commit=$(git rev-parse --short HEAD)" \
+        --platform linux/amd64 \
+        --file Dockerfile.api \
+        --tag ghcr.io/chainbound/taikoscope-api:{{tag}} \
+        --push .
+
+# single-arch API build and push for arm64 (Graviton)
+build-api-arm64 tag='latest': setup-docker
+    docker buildx build \
+        --label "org.opencontainers.image.commit=$(git rev-parse --short HEAD)" \
+        --platform linux/arm64 \
         --file Dockerfile.api \
         --tag ghcr.io/chainbound/taikoscope-api:{{tag}} \
         --push .

@@ -1,6 +1,5 @@
 import React from 'react';
-import useSWR from 'swr';
-import { fetchL2FeesComponents } from '../services/apiService';
+import type { L2FeesComponentsResponse } from '../services/apiService';
 import { useEthPrice } from '../services/priceService';
 import { TimeRange } from '../types';
 import { rangeToHours } from '../utils/timeRange';
@@ -15,6 +14,8 @@ interface BlockProfitTablesProps {
   address?: string;
   /** Total number of sequencers for scaling network-wide costs */
   totalSequencers?: number;
+  /** Pre-fetched L2 fees + components data to avoid duplicate requests */
+  feesData?: L2FeesComponentsResponse | null;
 }
 
 const formatUsd = (value: number): string => {
@@ -32,14 +33,11 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
   proverCost,
   address,
   totalSequencers,
+  feesData,
 }) => {
   const { data: ethPrice = 0 } = useEthPrice();
-  const { data: feeRes } = useSWR(
-    ['l2FeesComponents', timeRange, address],
-    () => fetchL2FeesComponents(timeRange),
-  );
   const batchData =
-    feeRes?.data?.batches
+    feesData?.batches
       ?.filter((b) => !address || b.sequencer === address)
       .map((b) => ({
         batch: b.batch_id,
