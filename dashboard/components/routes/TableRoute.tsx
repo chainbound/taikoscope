@@ -123,14 +123,17 @@ export const TableRoute: React.FC = () => {
         let res;
         let aggRes;
         if (tableType === 'reorgs' || tableType === 'prove-times' || tableType === 'verify-times') {
+          // For reorgs, fetch one extra item on the first page to detect if a next page exists
+          const isFirstPage = startingAfter === undefined && endingBefore === undefined;
+          const fetchLimit = tableType === 'reorgs' && isFirstPage ? PAGE_LIMIT + 1 : PAGE_LIMIT;
           if (config.aggregatedFetcher) {
             [res, aggRes] = await Promise.all([
-              config.fetcher(range, PAGE_LIMIT, startingAfter, endingBefore),
+              config.fetcher(range, fetchLimit, startingAfter, endingBefore),
               config.aggregatedFetcher(range),
             ]);
           } else {
             [res] = await Promise.all([
-              config.fetcher(range, PAGE_LIMIT, startingAfter, endingBefore),
+              config.fetcher(range, fetchLimit, startingAfter, endingBefore),
             ]);
           }
         } else if (config.supportsPagination) {
@@ -177,7 +180,7 @@ export const TableRoute: React.FC = () => {
           data = chartData;
         }
 
-        // Calculate pagination cursors from original data before reversing
+        // Calculate pagination cursors from original data before reversing/slicing
         const originalData = data;
 
         const getCursor = (item: Record<string, unknown>) => {
@@ -198,13 +201,22 @@ export const TableRoute: React.FC = () => {
             (item as { batch?: number }).batch
           );
         };
-        const nextCursor =
-          originalData.length > 0 ? getCursor(originalData[originalData.length - 1]) : undefined;
+        const isFirstReorgsPage = tableType === 'reorgs' && startingAfter === undefined && endingBefore === undefined;
+        const nextCursor = originalData.length > 0
+          ? (isFirstReorgsPage && originalData.length > PAGE_LIMIT
+            ? getCursor(originalData[PAGE_LIMIT - 1])
+            : getCursor(originalData[originalData.length - 1]))
+          : undefined;
         const prevCursor =
           originalData.length > 0 ? getCursor(originalData[0]) : undefined;
 
         if (config.reverseOrder) {
           data = [...data].reverse();
+        }
+
+        // If we fetched an extra item on the first reorgs page, trim the display to PAGE_LIMIT
+        if (isFirstReorgsPage && originalData.length > PAGE_LIMIT) {
+          data = data.slice(0, PAGE_LIMIT);
         }
 
         const title =
@@ -228,7 +240,9 @@ export const TableRoute: React.FC = () => {
           // Only show pagination controls when NOT in a custom range on l2-tps
           if (config.supportsPagination && !(config.aggregatedFetcher && isCustomAbsoluteRange)) {
             const disablePrev = page === 0;
-            const disableNext = originalData.length < PAGE_LIMIT;
+            const disableNext = isFirstReorgsPage
+              ? originalData.length <= PAGE_LIMIT
+              : originalData.length < PAGE_LIMIT;
             view.serverPagination = {
               page,
               onNext: () => {
