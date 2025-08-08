@@ -1,0 +1,8 @@
+.recharts-cartesian-grid line { stroke: var(--chart-grid) !important; }
+.recharts-cartesian-axis text { fill: var(--chart-tick) !important; }
+.recharts-cartesian-axis .recharts-cartesian-axis-line,
+.recharts-cartesian-axis .recharts-cartesian-axis-tick-line,
+.recharts-cartesian-axis line { stroke: var(--chart-tick) !important; stroke-opacity: 0.7; }
+
+.recharts-default-tooltip { background-color: var(--chart-tooltip-bg) !important; }
+.recharts-tooltip-label { color: var(--chart-tooltip-label) !important; }

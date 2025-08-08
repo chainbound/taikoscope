@@ -39,23 +39,23 @@ const BlockTxChartComponent: React.FC<BlockTxChartProps> = ({
         data={sortedData}
         margin={{ top: 5, right: 20, left: 20, bottom: 40 }}
       >
-        <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+        <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
         <XAxis
           dataKey="block_number"
           tickFormatter={(v: number) => v.toLocaleString()}
-          stroke="#666666"
+          stroke="var(--chart-tick)"
           fontSize={12}
           label={{
             value: 'L2 Block Number',
             position: 'insideBottom',
             offset: -35,
             fontSize: 10,
-            fill: '#666666',
+            fill: 'var(--chart-tick)',
           }}
           padding={{ left: isMobile ? 5 : 10, right: isMobile ? 5 : 10 }}
         />
         <YAxis
-          stroke="#666666"
+          stroke="var(--chart-tick)"
           fontSize={12}
           domain={[0, 'auto']}
           allowDecimals={false}
@@ -66,7 +66,7 @@ const BlockTxChartComponent: React.FC<BlockTxChartProps> = ({
             position: 'insideLeft',
             offset: -16,
             fontSize: 10,
-            fill: '#666666',
+            fill: 'var(--chart-tick)',
           }}
         />
         <Tooltip
@@ -77,10 +77,10 @@ const BlockTxChartComponent: React.FC<BlockTxChartProps> = ({
           }}
           formatter={(value: number) => [value.toLocaleString(), 'avg txs']}
           contentStyle={{
-            backgroundColor: 'rgba(255, 255, 255, 0.8)',
+            backgroundColor: 'var(--chart-tooltip-bg)',
             borderColor: lineColor,
           }}
-          labelStyle={{ color: '#333' }}
+          labelStyle={{ color: 'var(--chart-tooltip-label)' }}
         />
         <Line
           type="monotone"

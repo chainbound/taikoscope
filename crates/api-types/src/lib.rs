@@ -76,19 +76,7 @@ pub struct HealthResponse {
     pub status: String,
 }
 
-/// Timestamp of the most recent L2 block.
-#[derive(Debug, Serialize, ToSchema)]
-pub struct L2HeadResponse {
-    /// Time when the last L2 block was produced.
-    pub last_l2_head_time: Option<String>,
-}
-
-/// Timestamp of the most recent L1 block.
-#[derive(Debug, Serialize, ToSchema)]
-pub struct L1HeadResponse {
-    /// Time when the last L1 block was produced.
-    pub last_l1_head_time: Option<String>,
-}
+// Removed legacy L2HeadResponse and L1HeadResponse
 
 /// List of validator slashing events.
 #[derive(Debug, Serialize, ToSchema)]
@@ -150,26 +138,7 @@ pub struct FailedProposalEventsResponse {
     pub events: Vec<FailedProposalEvent>,
 }
 
-/// Gateways that submitted batches in the requested range.
-#[derive(Debug, Serialize, ToSchema)]
-pub struct ActiveGatewaysResponse {
-    /// Gateways that submitted batches in the requested range.
-    pub gateways: Vec<String>,
-}
-
-/// Current operator address.
-#[derive(Debug, Serialize, ToSchema)]
-pub struct CurrentOperatorResponse {
-    /// Current operator address, if any.
-    pub operator: Option<String>,
-}
-
-/// Address of the next operator.
-#[derive(Debug, Serialize, ToSchema)]
-pub struct NextOperatorResponse {
-    /// Address of the next operator, if configured.
-    pub operator: Option<String>,
-}
+// Removed legacy ActiveGatewaysResponse, CurrentOperatorResponse, NextOperatorResponse
 
 /// Preconfiguration data containing sequencer candidates and operators.
 #[derive(Debug, Serialize, ToSchema)]
@@ -182,33 +151,8 @@ pub struct PreconfDataResponse {
     pub next_operator: Option<String>,
 }
 
-/// Average time in milliseconds to prove a batch.
-#[derive(Debug, Serialize, ToSchema)]
-pub struct AvgProveTimeResponse {
-    /// Average time in milliseconds to prove a batch.
-    pub avg_prove_time_ms: Option<u64>,
-}
-
-/// Average delay between L2 blocks in milliseconds.
-#[derive(Debug, Serialize, ToSchema)]
-pub struct L2BlockCadenceResponse {
-    /// Average delay between L2 blocks in milliseconds.
-    pub l2_block_cadence_ms: Option<u64>,
-}
-
-/// Average delay between batch submissions.
-#[derive(Debug, Serialize, ToSchema)]
-pub struct BatchPostingCadenceResponse {
-    /// Average delay between batch submissions in milliseconds.
-    pub batch_posting_cadence_ms: Option<u64>,
-}
-
-/// Average L2 transactions per second.
-#[derive(Debug, Serialize, ToSchema)]
-pub struct AvgL2TpsResponse {
-    /// Average L2 transactions per second.
-    pub avg_tps: Option<f64>,
-}
+// Removed legacy AvgProveTimeResponse, L2BlockCadenceResponse, BatchPostingCadenceResponse,
+// AvgL2TpsResponse
 
 /// Total L2 fees broken down by component.
 #[derive(Debug, Serialize, ToSchema)]
@@ -225,12 +169,7 @@ pub struct L2FeesResponse {
     pub sequencers: Vec<SequencerFeeRow>,
 }
 
-/// Estimated cloud infrastructure cost in USD.
-#[derive(Debug, Serialize, ToSchema)]
-pub struct CloudCostResponse {
-    /// Estimated infrastructure cost in USD for the requested range.
-    pub cost_usd: f64,
-}
+// Removed legacy CloudCostResponse
 
 /// Time to prove individual batches.
 #[derive(Debug, Serialize, ToSchema)]
@@ -309,12 +248,7 @@ pub struct BatchFeeComponentRow {
     pub prove_cost: Option<u128>,
 }
 
-/// Fee components for each batch
-#[derive(Debug, Serialize, ToSchema)]
-pub struct BatchFeeComponentsResponse {
-    /// Fee components per batch
-    pub batches: Vec<BatchFeeComponentRow>,
-}
+// Removed legacy BatchFeeComponentsResponse
 
 /// TPS values for each L2 block.
 #[derive(Debug, Serialize, ToSchema)]
@@ -442,28 +376,7 @@ pub struct AvgBatchBlobCountRow {
     pub blob_count: f64,
 }
 
-/// Aggregated blob count per batch response.
-#[derive(Debug, Serialize, ToSchema)]
-pub struct AvgBatchBlobsResponse {
-    /// Aggregated blob count per batch.
-    pub batches: Vec<AvgBatchBlobCountRow>,
-}
-
-/// Mapping entry of a batch to its corresponding L1 block number.
-#[derive(Debug, Serialize, ToSchema)]
-pub struct BatchBlockItem {
-    /// Batch ID
-    pub batch: u64,
-    /// L1 block number that included the batch
-    pub block_number: u64,
-}
-
-/// Mapping of batches to their corresponding L1 block number.
-#[derive(Debug, Serialize, ToSchema)]
-pub struct BatchBlocksResponse {
-    /// Mapping entries for each batch.
-    pub batches: Vec<BatchBlockItem>,
-}
+// Removed legacy AvgBatchBlobsResponse, BatchBlockItem, BatchBlocksResponse
 
 /// Interval between consecutive batch postings.
 #[derive(Debug, Serialize, ToSchema)]

@@ -11,6 +11,11 @@
   --muted: #f1f5f9;
   --muted-fg: #64748b;
   --ring: var(--color-brand);
+  /* Charts */
+  --chart-tick: #666666;
+  --chart-grid: #e0e0e0;
+  --chart-tooltip-bg: rgba(255, 255, 255, 0.9);
+  --chart-tooltip-label: #333333;
 }
 
 .dark {
@@ -21,6 +26,11 @@
   --border: #334155;
   --muted: #1e293b;
   --muted-fg: #94a3b8;
+  /* Charts */
+  --chart-tick: #f8fafc;
+  --chart-grid: rgba(148, 163, 184, 0.18);
+  --chart-tooltip-bg: rgba(15, 23, 42, 0.95);
+  --chart-tooltip-label: #ffffff;
 }
 
 /* Helpful defaults */

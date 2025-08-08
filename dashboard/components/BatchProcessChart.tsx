@@ -44,23 +44,23 @@ const BatchProcessChartComponent: React.FC<BatchProcessChartProps> = ({
         data={data}
         margin={{ top: 5, right: 20, left: 20, bottom: 40 }}
       >
-        <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+        <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
         <XAxis
           dataKey="name"
           tickFormatter={(v) => Number(v).toLocaleString()}
-          stroke="#666666"
+          stroke="var(--chart-tick)"
           fontSize={12}
           label={{
             value: 'Batch ID',
             position: 'insideBottom',
             offset: -35,
             fontSize: 10,
-            fill: '#666666',
+            fill: 'var(--chart-tick)',
           }}
           padding={{ left: isMobile ? 5 : 10, right: isMobile ? 5 : 10 }}
         />
         <YAxis
-          stroke="#666666"
+          stroke="var(--chart-tick)"
           fontSize={12}
           tickFormatter={(v) =>
             showHours
@@ -79,18 +79,18 @@ const BatchProcessChartComponent: React.FC<BatchProcessChartProps> = ({
             position: 'insideLeft',
             offset: -5,
             fontSize: 10,
-            fill: '#666666',
+            fill: 'var(--chart-tick)',
           }}
         />
         <Tooltip
           formatter={(value: number) => [formatValue(value)]}
           labelFormatter={(label) => `Batch ${Number(label).toLocaleString()}`}
           contentStyle={{
-            backgroundColor: 'rgba(255, 255, 255, 0.9)',
+            backgroundColor: 'var(--chart-tooltip-bg)',
             borderColor: lineColor,
             borderRadius: '4px',
           }}
-          labelStyle={{ color: '#333', fontWeight: 'bold' }}
+          labelStyle={{ color: 'var(--chart-tooltip-label)', fontWeight: 'bold' }}
         />
         <Line
           type="monotone"
