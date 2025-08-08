@@ -1,6 +1,6 @@
 import React, { lazy } from 'react';
 import { ChartCard } from '../ChartCard';
-import { TAIKO_PINK } from '../../theme';
+import { chartSeries } from '../charts/chartTheme';
 import { TimeRange, TimeSeriesData, PieChartDataItem } from '../../types';
 import { formatTimeRangeDisplay } from '../../utils/timeRange';
 import type {
@@ -79,7 +79,7 @@ export const ChartsGrid: React.FC<ChartsGridProps> = ({
         <GasUsedChart
           key={timeRange}
           data={chartsData.l2GasUsedData}
-          lineColor="#E573B5"
+          lineColor={chartSeries.accent3}
         />
       </ChartCard>
       <ChartCard
@@ -90,7 +90,7 @@ export const ChartsGrid: React.FC<ChartsGridProps> = ({
         <BlockTxChart
           key={timeRange}
           data={chartsData.blockTxData}
-          lineColor="#4E79A7"
+          lineColor={chartSeries.accent1}
         />
       </ChartCard>
     </>
@@ -106,7 +106,7 @@ export const ChartsGrid: React.FC<ChartsGridProps> = ({
         <BatchProcessChart
           key={timeRange}
           data={chartsData.secondsToProveData}
-          lineColor={TAIKO_PINK}
+          lineColor={chartSeries.primary}
         />
       </ChartCard>
       <ChartCard
@@ -117,7 +117,7 @@ export const ChartsGrid: React.FC<ChartsGridProps> = ({
         <BatchProcessChart
           key={timeRange}
           data={chartsData.secondsToVerifyData}
-          lineColor="#5DA5DA"
+          lineColor={chartSeries.accent4}
         />
       </ChartCard>
       <ChartCard
@@ -128,14 +128,14 @@ export const ChartsGrid: React.FC<ChartsGridProps> = ({
         <BlobsPerBatchChart
           key={timeRange}
           data={chartsData.batchBlobCounts}
-          barColor="#A0CBE8"
+          barColor={chartSeries.accent2}
         />
       </ChartCard>
       <ChartCard title="L2 Block Time Distribution" loading={isLoading}>
         <BlockTimeDistributionChart
           key={timeRange}
           data={chartsData.l2BlockTimeData}
-          barColor="#FAA43A"
+          barColor={chartSeries.accent5}
         />
       </ChartCard>
     </>

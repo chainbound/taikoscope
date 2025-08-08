@@ -3,7 +3,7 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import type { Payload } from 'recharts/types/component/DefaultTooltipContent';
 import { PieChartDataItem } from '../types';
 import { formatSequencerTooltip } from '../utils';
-import { TAIKO_PINK } from '../theme';
+// brand color provided via CSS variable
 
 interface SequencerPieChartProps {
   data: PieChartDataItem[];
@@ -17,7 +17,7 @@ const SEQUENCER_COLORS: { [key: string]: string } = {
 };
 
 const FALLBACK_COLORS = [
-  TAIKO_PINK,
+  'var(--color-brand)',
   '#E573B5',
   '#5DA5DA',
   '#FAA43A',

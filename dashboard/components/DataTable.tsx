@@ -1,5 +1,4 @@
 import React from 'react';
-import { TAIKO_PINK } from '../theme';
 
 const DEFAULT_ROWS_PER_PAGE = 50;
 

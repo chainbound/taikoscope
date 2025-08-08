@@ -2,7 +2,7 @@ import React from 'react';
 import { ResponsiveContainer, Sankey, Tooltip } from 'recharts';
 import type { TooltipProps } from 'recharts';
 import { formatEth } from '../utils';
-import { TAIKO_PINK, lightTheme } from '../theme';
+import { lightTheme } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
 import {
   convertFeesToUsd,
@@ -88,7 +88,7 @@ const createSankeyNode = (
             isCostNode
               ? '#ef4444'
               : isPinkNode
-                ? TAIKO_PINK
+                ? 'var(--color-brand)'
                 : isSubsidyNode
                   ? NODE_GREEN
                   : NODE_GREEN

@@ -6,7 +6,7 @@ import {
   validateExportData,
 } from '../utils/exportUtils';
 import { tableCache } from '../utils/smartCache';
-import { TAIKO_PINK } from '../theme';
+// brand color provided via Tailwind token
 
 interface Column {
   key: string;
@@ -226,7 +226,7 @@ export const AdvancedDataTable: React.FC<AdvancedDataTableProps> = ({
           <button
             onClick={onBack}
             className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
-            style={{ color: TAIKO_PINK }}
+            style={{ color: 'var(--color-brand)' }}
           >
             ← Back
           </button>
@@ -274,7 +274,7 @@ export const AdvancedDataTable: React.FC<AdvancedDataTableProps> = ({
             <button
               onClick={extraAction.onClick}
               className="px-4 py-2 text-sm rounded-md"
-              style={{ backgroundColor: TAIKO_PINK, color: 'white' }}
+              style={{ backgroundColor: 'var(--color-brand)', color: 'white' }}
             >
               {extraAction.label}
             </button>

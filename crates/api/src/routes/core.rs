@@ -3,7 +3,8 @@
 use crate::{
     helpers::{
         bucket_size_from_range, database_error, format_address, parse_address,
-        parse_optional_address, query_error, wei_to_gwei, wei_to_gwei_opt,
+        parse_optional_address, prove_bucket_size, query_error, verify_bucket_size, wei_to_gwei,
+        wei_to_gwei_opt,
     },
     state::{ApiState, MAX_TABLE_LIMIT},
     validation::{
@@ -187,7 +188,7 @@ pub async fn prove_times(
             validate_range_exclusivity(has_time_range, false)?;
 
             let time_range = resolve_time_range_enum(&params.common.time_range);
-            let bucket = bucket_size_from_range(&time_range);
+            let bucket = prove_bucket_size(&time_range);
             let batches = match state.client.get_prove_times(time_range, Some(bucket)).await {
                 Ok(rows) => rows,
                 Err(e) => return Err(query_error("prove times", e)),
@@ -253,7 +254,7 @@ pub async fn verify_times(
             validate_range_exclusivity(has_time_range, false)?;
 
             let time_range = resolve_time_range_enum(&params.common.time_range);
-            let bucket = bucket_size_from_range(&time_range);
+            let bucket = verify_bucket_size(&time_range);
             let batches = match state.client.get_verify_times(time_range, Some(bucket)).await {
                 Ok(rows) => rows,
                 Err(e) => return Err(query_error("verify times", e)),

@@ -10,7 +10,7 @@ import {
 } from 'recharts';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { L2ReorgEvent } from '../types';
-import { TAIKO_PINK } from '../theme';
+// brand color via CSS variable
 import { formatDateTime } from '../utils';
 
 interface ReorgDepthChartProps {
@@ -33,23 +33,23 @@ const ReorgDepthChartComponent: React.FC<ReorgDepthChartProps> = ({ data }) => {
         data={data}
         margin={{ top: 5, right: 20, left: 20, bottom: 40 }}
       >
-        <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+        <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
         <XAxis
           dataKey="timestamp"
           tickFormatter={(v: number) => formatDateTime(v)}
-          stroke="#666666"
+          stroke="var(--chart-tick)"
           fontSize={12}
           label={{
             value: 'Time',
             position: 'insideBottom',
             offset: -35,
             fontSize: 10,
-            fill: '#666666',
+            fill: 'var(--chart-tick)',
           }}
           padding={{ left: isMobile ? 5 : 10, right: isMobile ? 5 : 10 }}
         />
         <YAxis
-          stroke="#666666"
+          stroke="var(--chart-tick)"
           fontSize={12}
           domain={[0, 'dataMax']}
           label={{
@@ -58,19 +58,19 @@ const ReorgDepthChartComponent: React.FC<ReorgDepthChartProps> = ({ data }) => {
             position: 'insideLeft',
             offset: -16,
             fontSize: 10,
-            fill: '#666666',
+            fill: 'var(--chart-tick)',
           }}
         />
         <Tooltip
           labelFormatter={(label: number) => formatDateTime(label)}
           formatter={(value: number) => [value.toString(), 'depth']}
           contentStyle={{
-            backgroundColor: 'rgba(255, 255, 255, 0.8)',
-            borderColor: TAIKO_PINK,
+            backgroundColor: 'var(--chart-tooltip-bg)',
+            borderColor: 'var(--color-brand)',
           }}
-          labelStyle={{ color: '#333' }}
+          labelStyle={{ color: 'var(--chart-tooltip-label)' }}
         />
-        <Bar dataKey="depth" fill={TAIKO_PINK} name="Depth" />
+        <Bar dataKey="depth" fill={'var(--color-brand)'} name="Depth" />
       </BarChart>
     </ResponsiveContainer>
   );

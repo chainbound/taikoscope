@@ -1,5 +1,5 @@
 import React from 'react';
-import { TAIKO_PINK } from '../theme';
+// brand color via CSS variable
 
 interface RefreshCountdownProps {
   refreshRate: number;
@@ -50,7 +50,7 @@ export const RefreshCountdown: React.FC<RefreshCountdownProps> = ({
         cx="18"
         cy="18"
         r={radius}
-        stroke={TAIKO_PINK}
+        stroke={'var(--color-brand)'}
         strokeWidth="4"
         fill="none"
         strokeDasharray={circumference}
