@@ -10,7 +10,7 @@ export const getEthPrice = async (): Promise<number> => {
   let res: Response;
   try {
     res = await fetch(API_URL);
-  } catch (_err) {
+  } catch {
     throw new Error('Failed to fetch ETH price');
   }
   if (!res.ok) {
@@ -24,7 +24,7 @@ export const getEthPrice = async (): Promise<number> => {
       throw new Error('Failed to fetch ETH price');
     }
     return price;
-  } catch (_err) {
+  } catch {
     throw new Error('Failed to fetch ETH price');
   }
 };

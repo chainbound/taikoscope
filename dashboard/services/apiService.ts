@@ -346,6 +346,7 @@ export interface PreconfData {
 export const fetchPreconfData = async (
   _range: TimeRange = '1h',
 ): Promise<RequestResult<PreconfData>> => {
+  void _range;
   const url = `${API_BASE}/preconf-data`;
   const res = await fetchJson<PreconfData>(url);
   return {

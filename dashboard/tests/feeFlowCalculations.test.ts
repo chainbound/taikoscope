@@ -267,7 +267,7 @@ describe('feeFlowCalculations', () => {
 
     it('should filter out zero-value links', () => {
       const result = generateFallbackSankeyData(fallbackParams);
-      
+
       result.links.forEach(link => {
         expect(link.value).toBeGreaterThan(0);
       });
@@ -331,7 +331,7 @@ describe('feeFlowCalculations', () => {
       expect(result.nodes.length).toBeGreaterThan(mockProcessedData.length + 3); // At least sequencers + fee sources + costs + profit
 
       // Check for sequencer nodes
-      const sequencerNodes = result.nodes.filter(n => 
+      const sequencerNodes = result.nodes.filter(n =>
         mockProcessedData.some(s => s.shortAddress === n.name)
       );
       expect(sequencerNodes).toHaveLength(mockProcessedData.length);
@@ -348,7 +348,7 @@ describe('feeFlowCalculations', () => {
       );
 
       // Should have links from fee sources to sequencers
-      const feeToSequencerLinks = result.links.filter(l => 
+      const feeToSequencerLinks = result.links.filter(l =>
         l.source <= 2 && l.target >= 3 && l.target < 3 + mockProcessedData.length
       );
       expect(feeToSequencerLinks.length).toBeGreaterThan(0);
@@ -372,7 +372,7 @@ describe('feeFlowCalculations', () => {
 
       const profitNode = result.nodes.find(n => n.profitNode);
       const expectedTotalProfit = mockProcessedData.reduce((acc, s) => acc + s.profit, 0);
-      
+
       // The function may add epsilon values to ensure visual connectivity
       // Allow for reasonable epsilon additions (up to 5% of expected profit or 50, whichever is larger)
       const tolerance = Math.max(expectedTotalProfit * 0.05, 50);

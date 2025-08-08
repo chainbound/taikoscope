@@ -86,7 +86,7 @@ export interface FallbackCalculationParams {
 }
 
 // Helper function to ensure finite values
-export const safeValue = (value: number): number => 
+export const safeValue = (value: number): number =>
   (isFinite(value) ? value : 0);
 
 /**
@@ -150,7 +150,7 @@ export const calculateSequencerData = (
     hardwareCostUsd: hardwareCostPerSeq,
     ethPrice,
   });
-  
+
   const profit = safeValue(profitUsd);
   const profitGwei = safeValue(profitEth * GWEI_TO_ETH);
 
@@ -291,20 +291,20 @@ export const generateFallbackSankeyData = ({
 }: FallbackCalculationParams): SankeyChartData => {
   const sequencerRevenue = safeValue(priorityFeeUsd + baseFeeUsd * SEQUENCER_BASE_FEE_RATIO);
   let remaining = sequencerRevenue - totalHardwareCost;
-  
+
   const actualProveCost = safeValue(
     Math.min(l1ProveCost, Math.max(0, remaining)),
   );
   remaining -= actualProveCost;
-  
+
   const actualL1Cost = safeValue(
     Math.min(l1DataCostTotalUsd, Math.max(0, remaining)),
   );
   remaining -= actualL1Cost;
-  
+
   const l1Subsidy = safeValue(l1DataCostTotalUsd - actualL1Cost);
   const sequencerProfit = safeValue(Math.max(0, remaining));
-  
+
   const sequencerRevenueGwei = safeValue(
     (priorityFee ?? 0) + (baseFee ?? 0) * SEQUENCER_BASE_FEE_RATIO,
   );
@@ -380,7 +380,7 @@ export const generateFallbackSankeyData = ({
   const daoHasOutflow = links.some(
     (l) => l.source === daoIndex && l.value > 0,
   );
-  
+
   if (!daoHasOutflow) {
     links.push({ source: daoIndex, target: profitIndex, value: DAO_EPSILON });
     if (nodes[profitIndex]) {
@@ -540,7 +540,7 @@ export const generateMultiSequencerSankeyData = (
     ? Math.min(...links.map((l) => l.value))
     : 0;
   const EPSILON = minPositive > 0 ? minPositive * 0.1 : 1e-6;
-  
+
   seqData.forEach((_, i) => {
     const seqIdx = sequencerStartIndex + i;
     const hasOutflow = links.some((l) => l.source === seqIdx && l.value > 0);
@@ -606,7 +606,7 @@ export const validateChartData = (
     usedIndices.add(l.source);
     usedIndices.add(l.target);
   });
-  
+
   const indexMap = new Map<number, number>();
   const filteredNodes = nodes.filter((_, idx) => {
     if (usedIndices.has(idx)) {

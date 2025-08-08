@@ -128,6 +128,7 @@ export const fetchEconomicsData = async (
   timeRange: TimeRange,
   _selectedSequencer: string | null,
 ): Promise<EconomicsData> => {
+  void _selectedSequencer;
   const normalizedRange = normalizeTimeRange(timeRange);
   const [feesSummaryRes, l2BlockRes, l1BlockRes, distRes] = await Promise.all([
     fetchL2Fees(normalizedRange),
