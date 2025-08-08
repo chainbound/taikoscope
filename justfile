@@ -135,7 +135,7 @@ lint-dashboard:
     cd dashboard && npm run lint:whitespace
 
 # build and push the ingestor docker image with the given tag for the given platforms
-build-ingestor tag='latest' platform='linux/amd64,linux/arm64':
+build-ingestor tag='latest' platform='linux/arm64':
     docker buildx build \
         --label "org.opencontainers.image.commit=$(git rev-parse --short HEAD)" \
         --platform {{platform}} \
@@ -144,20 +144,8 @@ build-ingestor tag='latest' platform='linux/amd64,linux/arm64':
         --push .
 
 
-# setup docker buildx for multi-platform builds
-setup-docker:
-    #!/usr/bin/env bash
-    if ! docker buildx ls | grep -q "multiplatform.*docker-container"; then
-        echo "Creating multiplatform buildx builder..."
-        docker buildx create --name multiplatform --driver docker-container --use
-        docker buildx inspect --bootstrap
-    else
-        echo "Multiplatform builder already exists"
-        docker buildx use multiplatform
-    fi
-
 # build and push the docker image with the given tag for the given platforms
-build-processor tag='latest' platform='linux/amd64,linux/arm64': setup-docker
+build-processor tag='latest' platform='linux/arm64':
     docker buildx build \
         --label "org.opencontainers.image.commit=$(git rev-parse --short HEAD)" \
         --platform {{platform}} \
@@ -176,7 +164,7 @@ build-api tag='latest' platform='linux/arm64':
 
 
 # build and push both taikoscope and taikoscope-api docker images
-build-all tag='latest' platform='linux/amd64,linux/arm64': setup-docker
+build-all tag='latest' platform='linux/arm64':
     @echo "Building taikoscope images..."
     docker buildx build \
         --label "org.opencontainers.image.commit=$(git rev-parse --short HEAD)" \

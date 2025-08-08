@@ -40,10 +40,14 @@ COPY --from=planner /app/recipe.json recipe.json
 ARG TARGETARCH
 
 RUN --mount=type=cache,target=$SCCACHE_DIR,sharing=locked \
+    --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
+    --mount=type=cache,target=/usr/local/cargo/git,sharing=locked \
     cargo chef cook --release --recipe-path recipe.json
 
 COPY . .
 RUN --mount=type=cache,target=$SCCACHE_DIR,sharing=locked \
+    --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
+    --mount=type=cache,target=/usr/local/cargo/git,sharing=locked \
     if [ "$TARGETARCH" = "arm64" ]; then \
     echo "Building for arm64 with JEMALLOC_SYS_WITH_LG_PAGE=16"; \
     # Force jemalloc to use 64 KiB pages on ARM
