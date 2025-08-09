@@ -12,6 +12,7 @@ import type { Payload } from 'recharts/types/component/DefaultTooltipContent';
 import useSWR from 'swr';
 import { useEthPrice } from '../services/priceService';
 import { formatEth } from '../utils';
+import { SEQUENCER_BASE_FEE_RATIO } from '../utils/profit';
 import { fetchL2FeesComponents } from '../services/apiService';
 import { TimeRange, BatchFeeComponent } from '../types';
 
@@ -51,7 +52,7 @@ export const RevenueChart: React.FC<RevenueChartProps> = ({
   }
 
   const data = feeData.map((b) => {
-    const revenueEth = (b.priority + b.base) / 1e9;
+    const revenueEth = (b.priority + b.base * SEQUENCER_BASE_FEE_RATIO) / 1e9;
     const revenueUsd = revenueEth * ethPrice;
     return { batch: b.batch, revenueEth, revenueUsd };
   });
