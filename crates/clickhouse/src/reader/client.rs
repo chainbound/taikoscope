@@ -2483,6 +2483,8 @@ impl ClickhouseReader {
                 recent_batch_blocks bb ON rb.batch_id = bb.batch_id
             LEFT JOIN
                 {db}.l2_head_events h ON bb.l2_block_number = h.l2_block_number
+                    AND h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})
+                    AND {filter}
             LEFT JOIN
                 {db}.l1_data_costs dc ON rb.batch_id = dc.batch_id AND rb.l1_block_number = dc.l1_block_number
             LEFT JOIN
@@ -2494,7 +2496,6 @@ impl ClickhouseReader {
                     INNER JOIN {db}.l1_head_events l1 ON b2.l1_block_number = l1.l1_block_number
                     WHERE l1.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})
                 )
-                AND {filter}
             GROUP BY
                 rb.batch_id, rb.l1_block_number, rb.l1_tx_hash, rb.proposer_addr
             ORDER BY
