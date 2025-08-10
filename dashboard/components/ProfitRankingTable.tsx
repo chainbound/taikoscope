@@ -63,7 +63,7 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
   );
   const effectiveFees = feesData ?? feesRes?.data ?? null;
 
-  // Aggregate fees and costs by sequencer name so multiple addresses (e.g., Gattaca) are combined
+  // Aggregate fees and costs by sequencer name from batch components to align with batch tables
   const feeAggByName = React.useMemo(() => {
     type Agg = {
       priority_fee: number;
@@ -78,7 +78,25 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
     sequencersEffective.forEach((s: SequencerDistributionDataItem) => {
       addrToName.set(s.address.toLowerCase(), s.name);
     });
-    // Primary source: per-sequencer aggregates from API
+
+    // Primary source: per-batch components within the selected range
+    effectiveFees?.batches.forEach((b) => {
+      const name = addrToName.get(b.sequencer.toLowerCase()) ?? getSequencerName(b.sequencer);
+      const cur = byName.get(name) ?? {
+        priority_fee: 0,
+        base_fee: 0,
+        l1_data_cost: 0,
+        prove_cost: 0,
+      };
+      cur.priority_fee += b.priority_fee ?? 0;
+      cur.base_fee += b.base_fee ?? 0;
+      cur.l1_data_cost += b.l1_data_cost ?? 0;
+      cur.prove_cost += b.prove_cost ?? 0;
+      byName.set(name, cur);
+    });
+
+    // Fallback: if batch rows are missing fields (e.g., in tests or partial data),
+    // fill zeros from per-sequencer aggregates without double counting
     effectiveFees?.sequencers.forEach((f) => {
       const name = addrToName.get(f.address.toLowerCase()) ?? getSequencerName(f.address);
       const cur = byName.get(name) ?? {
@@ -87,41 +105,15 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
         l1_data_cost: 0,
         prove_cost: 0,
       };
-      cur.priority_fee += f.priority_fee ?? 0;
-      cur.base_fee += f.base_fee ?? 0;
-      cur.l1_data_cost += f.l1_data_cost ?? 0;
-      cur.prove_cost += f.prove_cost ?? 0;
+      if ((cur.priority_fee ?? 0) === 0) cur.priority_fee = (f.priority_fee ?? 0);
+      if ((cur.base_fee ?? 0) === 0) cur.base_fee = (f.base_fee ?? 0);
+      if ((cur.l1_data_cost ?? 0) === 0) cur.l1_data_cost = (f.l1_data_cost ?? 0);
+      if ((cur.prove_cost ?? 0) === 0) cur.prove_cost = (f.prove_cost ?? 0);
       byName.set(name, cur);
     });
 
-    // Fallback: if costs are missing due to proposer/coinbase attribution, use batch-level totals
-    const batchCostByName = new Map<string, { l1_data_cost: number; prove_cost: number }>();
-    effectiveFees?.batches.forEach((b) => {
-      const name = addrToName.get(b.sequencer.toLowerCase()) ?? getSequencerName(b.sequencer);
-      const cur = batchCostByName.get(name) ?? { l1_data_cost: 0, prove_cost: 0 };
-      cur.l1_data_cost += b.l1_data_cost ?? 0;
-      cur.prove_cost += b.prove_cost ?? 0;
-      batchCostByName.set(name, cur);
-    });
-
-    // Merge fallback costs only when primary costs are zero/missing
-    for (const [name, costs] of batchCostByName.entries()) {
-      const seqCosts = byName.get(name);
-      if (!seqCosts) {
-        byName.set(name, {
-          priority_fee: 0,
-          base_fee: 0,
-          l1_data_cost: costs.l1_data_cost,
-          prove_cost: costs.prove_cost,
-        });
-      } else {
-        if ((seqCosts.l1_data_cost ?? 0) === 0) seqCosts.l1_data_cost = costs.l1_data_cost;
-        if ((seqCosts.prove_cost ?? 0) === 0) seqCosts.prove_cost = costs.prove_cost;
-      }
-    }
-
     return byName;
-  }, [effectiveFees, sequencers]);
+  }, [effectiveFees, sequencersEffective]);
 
   // Note: batchCounts now comes directly from sequencer distribution data
 
