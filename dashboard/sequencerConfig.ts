@@ -11,6 +11,7 @@ export const SEQUENCER_PAIRS: Array<[string, string]> = [
   ['0xdE023f59daCee4e1B4B4216E1B6DfF624555cd2E', 'Nethermind'],
   // Mainnet
   ['0x000cb000E880A92a8f383D69dA2142a969B93DE7', 'Chainbound'],
+  ['0xe2dA8aC2E550cd141198a117520D4EDc8692AB74', 'Gattaca'],
   ['0x5F62d006C10C009ff50C878Cd6157aC861C99990', 'Taiko'],
 ];
 
