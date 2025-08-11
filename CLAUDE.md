@@ -40,6 +40,10 @@
 - Error handling: Prefer `?` operator with contextual error info
 - Avoid lines with trailing whitespace (spaces or tabs)
 
+## Dashboard Style Guidelines
+- All dashboard changes must look great in both light and dark modes
+- Test UI components and styling in both themes before finalizing changes
+
 ## NATS Exactly-Once Configuration
 - Publishing uses `publish_event_with_retry()` with 10 retries and exponential backoff (first retry after 1s)
 - Each event includes a unique `Msg-Id` header based on `TaikoEvent::dedup_id()`
