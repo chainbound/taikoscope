@@ -91,6 +91,14 @@ select:focus {
   fill: #ffffff;
 }
 
+/* Ensure FeeFlowChart inline <text> elements are readable in dark mode */
+.fee-flow-chart text {
+  fill: var(--fg);
+}
+@media (prefers-color-scheme: dark) {
+  .fee-flow-chart text { fill: #ffffff; }
+}
+
 /* Strengthen selectors to catch all chart text variants */
 :root.dark .recharts-cartesian-axis text,
 :root.dark .recharts-label,

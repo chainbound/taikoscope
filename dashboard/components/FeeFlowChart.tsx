@@ -378,7 +378,7 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
   };
 
   return (
-    <div className="mt-6" style={{ height }}>
+    <div className="mt-6 fee-flow-chart" style={{ height }}>
       <ResponsiveContainer width="100%" height="100%">
         <Sankey
           data={data}
