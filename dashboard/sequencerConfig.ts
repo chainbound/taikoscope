@@ -11,6 +11,7 @@ export const SEQUENCER_PAIRS: Array<[string, string]> = [
   ['0x000cb000E880A92a8f383D69dA2142a969B93DE7', 'Chainbound'],
   ['0xe2dA8aC2E550cd141198a117520D4EDc8692AB74', 'Gattaca'],
   ['0x5F62d006C10C009ff50C878Cd6157aC861C99990', 'Taiko'],
+  ['0x7A853a6480F4D7dB79AE91c16c960dBbB6710d25', 'Taiko Fallback'],
   // Test addresses used in unit tests
   ['0x00a00800c28f2616360dcfadee02d761d14ad94e', 'Chainbound A'],
   ['0x00b00194cdc219921784ab1eb4eaa9634fe1f1a8', 'Chainbound B'],
