@@ -203,6 +203,7 @@ export const TableRoute: React.FC = () => {
             (item as { value?: number }).value ??
             (item as { l2_block_number?: number }).l2_block_number ??
             (item as { block?: number }).block ??
+            (item as { block_number?: number }).block_number ??
             (item as { batch?: number }).batch
           );
         };
