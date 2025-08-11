@@ -32,6 +32,7 @@ pub struct ProcessorDriver {
     clickhouse_reader: Option<ClickhouseReader>,
     extractor: Extractor,
     reorg_detector: ReorgDetector,
+    l1_reorg_detector: ReorgDetector,
     last_l2_header: Option<(u64, Address)>,
     enable_db_writes: bool,
     incident_client: IncidentClient,
@@ -56,6 +57,7 @@ struct ProcessorComponents {
     clickhouse_reader: Option<ClickhouseReader>,
     extractor: Extractor,
     reorg_detector: ReorgDetector,
+    l1_reorg_detector: ReorgDetector,
     last_l2_header: Option<(u64, Address)>,
     enable_db_writes: bool,
     processed_l2_headers: VecDeque<BlockHash>,
@@ -133,6 +135,7 @@ impl ProcessorDriver {
 
         // Initialize reorg detector
         let reorg_detector = ReorgDetector::new();
+        let l1_reorg_detector = ReorgDetector::new();
 
         // init incident client and component IDs if monitors are enabled
         let (
@@ -168,6 +171,7 @@ impl ProcessorDriver {
             clickhouse_reader,
             extractor,
             reorg_detector,
+            l1_reorg_detector,
             last_l2_header: None,
             enable_db_writes: opts.enable_db_writes,
             incident_client,
@@ -246,6 +250,7 @@ impl ProcessorDriver {
             clickhouse_reader,
             extractor,
             mut reorg_detector,
+            mut l1_reorg_detector,
             mut last_l2_header,
             enable_db_writes,
             mut processed_l2_headers,
@@ -258,6 +263,7 @@ impl ProcessorDriver {
             clickhouse_reader,
             extractor,
             &mut reorg_detector,
+            &mut l1_reorg_detector,
             &mut last_l2_header,
             enable_db_writes,
             &mut processed_l2_headers,
@@ -274,6 +280,7 @@ impl ProcessorDriver {
             clickhouse_reader: self.clickhouse_reader,
             extractor: self.extractor,
             reorg_detector: self.reorg_detector,
+            l1_reorg_detector: self.l1_reorg_detector,
             last_l2_header: self.last_l2_header,
             enable_db_writes: self.enable_db_writes,
             processed_l2_headers: self.processed_l2_headers,
@@ -362,6 +369,7 @@ impl ProcessorDriver {
         clickhouse_reader: Option<ClickhouseReader>,
         extractor: Extractor,
         reorg_detector: &mut ReorgDetector,
+        l1_reorg_detector: &mut ReorgDetector,
         last_l2_header: &mut Option<(u64, Address)>,
         enable_db_writes: bool,
         processed_l2_headers: &mut VecDeque<BlockHash>,
@@ -403,6 +411,7 @@ impl ProcessorDriver {
                                     &clickhouse_reader,
                                     &extractor,
                                     reorg_detector,
+                                    l1_reorg_detector,
                                     last_l2_header,
                                     enable_db_writes,
                                     processed_l2_headers,
@@ -437,6 +446,7 @@ impl ProcessorDriver {
         clickhouse_reader: &Option<ClickhouseReader>,
         extractor: &Extractor,
         reorg_detector: &mut ReorgDetector,
+        l1_reorg_detector: &mut ReorgDetector,
         last_l2_header: &mut Option<(u64, Address)>,
         enable_db_writes: bool,
         processed_l2_headers: &mut VecDeque<BlockHash>,
@@ -452,6 +462,7 @@ impl ProcessorDriver {
                 clickhouse_reader,
                 extractor,
                 reorg_detector,
+                l1_reorg_detector,
                 last_l2_header,
                 enable_db_writes,
                 processed_l2_headers,
@@ -506,6 +517,7 @@ impl ProcessorDriver {
         clickhouse_reader: &Option<ClickhouseReader>,
         extractor: &Extractor,
         reorg_detector: &mut ReorgDetector,
+        l1_reorg_detector: &mut ReorgDetector,
         last_l2_header: &mut Option<(u64, Address)>,
         enable_db_writes: bool,
         processed_l2_headers: &mut VecDeque<BlockHash>,
@@ -521,6 +533,7 @@ impl ProcessorDriver {
                     clickhouse_reader,
                     extractor,
                     reorg_detector,
+                    l1_reorg_detector,
                     last_l2_header,
                     processed_l2_headers,
                     kv_store,
@@ -542,6 +555,7 @@ impl ProcessorDriver {
         clickhouse_reader: &Option<ClickhouseReader>,
         extractor: &Extractor,
         reorg_detector: &mut ReorgDetector,
+        _l1_reorg_detector: &mut ReorgDetector,
         last_l2_header: &mut Option<(u64, Address)>,
         processed_l2_headers: &mut VecDeque<BlockHash>,
         kv_store: Option<&kv::Store>,
@@ -601,7 +615,14 @@ impl ProcessorDriver {
                 Self::handle_batches_verified_event(writer, extractor, wrapper.clone()).await
             }
             TaikoEvent::L1Header(header) => {
-                Self::handle_l1_header_event(writer, extractor, header.clone()).await
+                Self::handle_l1_header_event(
+                    writer,
+                    clickhouse_reader,
+                    _l1_reorg_detector,
+                    extractor,
+                    header.clone(),
+                )
+                .await
             }
             TaikoEvent::L2Header(header) => {
                 Self::handle_l2_header(
@@ -849,9 +870,16 @@ impl ProcessorDriver {
     /// Handle `L1Header` event with database insertion and preconf data processing
     async fn handle_l1_header_event(
         writer: &ClickhouseWriter,
+        clickhouse_reader: &Option<ClickhouseReader>,
+        l1_reorg_detector: &mut ReorgDetector,
         extractor: &Extractor,
         header: primitives::headers::L1Header,
     ) -> Result<()> {
+        // Detect L1 reorgs similar to L2 approach
+        let old_head = l1_reorg_detector.head_number();
+        let reorg_result =
+            l1_reorg_detector.on_new_block_with_hash(header.number, B256::from(*header.hash));
+
         // Insert L1 header
         Self::with_db_error_context(
             writer.insert_l1_header(&header),
@@ -864,6 +892,57 @@ impl ProcessorDriver {
 
         // Process preconfirmation data (same as original driver)
         Self::process_preconf_data(writer, extractor, &header).await;
+
+        // If an L1 reorg is detected, record orphaned L1 block hashes for the reorged range
+        if let Some((depth, orphaned_hash)) = reorg_result {
+            // Handle one-block reorg orphaned hash
+            if let Some(hash) = orphaned_hash {
+                if let Err(e) = writer
+                    .insert_orphaned_l1_hashes(&[(HashBytes::from(hash), header.number)])
+                    .await
+                {
+                    tracing::error!(
+                        block_number = header.number,
+                        orphaned_hash = ?hash,
+                        err = %e,
+                        "Failed to insert orphaned L1 hash"
+                    );
+                } else {
+                    info!(block_number = header.number, orphaned_hash = ?hash, "Inserted orphaned L1 hash");
+                }
+            }
+
+            if depth > 0 {
+                if let Some(reader) = clickhouse_reader {
+                    let new_head = header.number;
+                    let orphaned_start = new_head.saturating_add(1);
+                    let orphaned_end = old_head; // inclusive
+                    if orphaned_end >= orphaned_start {
+                        let orphaned_numbers: Vec<u64> = (orphaned_start..=orphaned_end).collect();
+                        if let Ok(orphaned_hashes) =
+                            reader.get_latest_l1_hashes_for_blocks(&orphaned_numbers).await
+                        {
+                            if !orphaned_hashes.is_empty() {
+                                if let Err(e) =
+                                    writer.insert_orphaned_l1_hashes(&orphaned_hashes).await
+                                {
+                                    tracing::error!(
+                                        count = orphaned_hashes.len(),
+                                        err = %e,
+                                        "Failed to insert orphaned L1 hashes"
+                                    );
+                                } else {
+                                    info!(
+                                        count = orphaned_hashes.len(),
+                                        "Inserted orphaned L1 hashes for reorg"
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         Ok(())
     }

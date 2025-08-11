@@ -86,4 +86,3 @@ CREATE TABLE IF NOT EXISTS ${DB}.l1_data_costs (
     inserted_at DateTime64(3) DEFAULT now64()
 ) ENGINE = MergeTree()
 ORDER BY (l1_block_number);
-
