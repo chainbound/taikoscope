@@ -236,6 +236,9 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
         side="bottom"
         align="end"
         className="bg-card text-card-fg border border-gray-100 dark:border-border rounded-md shadow-lg p-2 space-y-1 z-10"
+        style={{
+          backgroundColor: '#ffffff',
+        }}
       >
         {presetRanges.map((r) => (
           <button
@@ -268,6 +271,7 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
               value={fromTime}
               onChange={(e) => setFromTime(e.target.value)}
               className="border border-gray-100 dark:border-border rounded p-1 text-sm bg-card text-card-fg"
+              style={{ backgroundColor: '#ffffff' }}
             />
             <span className="text-sm">to</span>
             <input
@@ -277,6 +281,7 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
               value={toTime}
               onChange={(e) => setToTime(e.target.value)}
               className="border border-gray-100 dark:border-border rounded p-1 text-sm bg-card text-card-fg"
+              style={{ backgroundColor: '#ffffff' }}
             />
           </div>
           <button
