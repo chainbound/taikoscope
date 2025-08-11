@@ -200,12 +200,61 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
 
   const priorityFee = effectiveFees?.priority_fee ?? null;
   const baseFee = effectiveFees?.base_fee ?? null;
-  const allSequencerFees = effectiveFees?.sequencers ?? [];
-  const sequencerFees = address
-    ? allSequencerFees.filter(
-        (s) => s.address.toLowerCase() === address.toLowerCase(),
-      )
-    : allSequencerFees;
+  // Prefer batch-based aggregation for per-operator attribution (aligns with ranking)
+  const batchRows = effectiveFees?.batches ?? [];
+  const filteredBatches = address
+    ? batchRows.filter((b) => b.sequencer.toLowerCase() === address.toLowerCase())
+    : batchRows;
+  if (filteredBatches.length > 0) {
+    const byAddress = new Map<string, { priority_fee: number; base_fee: number; l1_data_cost: number; prove_cost: number }>();
+    for (const b of filteredBatches) {
+      const cur = byAddress.get(b.sequencer) ?? {
+        priority_fee: 0,
+        base_fee: 0,
+        l1_data_cost: 0,
+        prove_cost: 0,
+      };
+      cur.priority_fee += b.priority_fee ?? 0;
+      cur.base_fee += b.base_fee ?? 0;
+      cur.l1_data_cost += b.l1_data_cost ?? 0;
+      cur.prove_cost += b.prove_cost ?? 0;
+      byAddress.set(b.sequencer, cur);
+    }
+    // Map aggregated totals to SequencerFee objects for downstream processing
+    // Note: we intentionally ignore the top-level sequencers[] summary when batches are present
+    // to ensure attribution matches ranking and block tables.
+  }
+  const sequencerFees = (() => {
+    if (filteredBatches.length > 0) {
+      const byAddress = new Map<string, { priority_fee: number; base_fee: number; l1_data_cost: number; prove_cost: number }>();
+      for (const b of filteredBatches) {
+        const cur = byAddress.get(b.sequencer) ?? {
+          priority_fee: 0,
+          base_fee: 0,
+          l1_data_cost: 0,
+          prove_cost: 0,
+        };
+        cur.priority_fee += b.priority_fee ?? 0;
+        cur.base_fee += b.base_fee ?? 0;
+        cur.l1_data_cost += b.l1_data_cost ?? 0;
+        cur.prove_cost += b.prove_cost ?? 0;
+        byAddress.set(b.sequencer, cur);
+      }
+      return Array.from(byAddress.entries()).map(([addr, v]) => ({
+        address: addr,
+        priority_fee: v.priority_fee,
+        base_fee: v.base_fee,
+        l1_data_cost: v.l1_data_cost,
+        prove_cost: v.prove_cost,
+      }));
+    }
+    const allSequencerFees = effectiveFees?.sequencers ?? [];
+    return address
+      ? allSequencerFees.filter(
+          (s) => s.address.toLowerCase() === address.toLowerCase(),
+        )
+      : allSequencerFees;
+  })();
 
   // Memoized tooltip value formatter to avoid unnecessary re-renders
   // NOTE: Depends on `ethPrice`, so it is recreated only when the price changes
