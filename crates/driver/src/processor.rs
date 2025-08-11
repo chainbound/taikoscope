@@ -461,8 +461,8 @@ impl ProcessorDriver {
             .await
             {
                 Ok(()) => {
-                    // CRITICAL: Only ACK after successful processing to prevent duplicates
-                    if let Err(e) = msg.ack().await {
+                    // CRITICAL: Only ACK after successful processing; use explicit ACK kind
+                    if let Err(e) = msg.ack_with(async_nats::jetstream::AckKind::Ack).await {
                         tracing::error!(err = %e, "Failed to ack message - may cause redelivery");
                     }
                     break;
@@ -547,48 +547,61 @@ impl ProcessorDriver {
         kv_store: Option<&kv::Store>,
         event: TaikoEvent,
     ) -> Result<()> {
-        // Exactly-once guard using JetStream KV "create-only" semantics
+        // Exactly-once guard using JetStream KV create-only marker
+        // Key states:
+        //  - absent: attempt create("in_progress:<ts>") and proceed
+        //  - existing & value starts with "done": skip (already processed)
+        //  - existing & not done: treat as duplicate/in-flight and skip (or retry later)
         if let Some(kv) = kv_store {
             let dedup_id = event.dedup_id();
-            // Attempt to create the key only if it does not already exist
-            match kv
-                .create(
-                    dedup_id.clone(),
-                    chrono::Utc::now().timestamp_millis().to_string().into_bytes().into(),
-                )
-                .await
-            {
+            let now_ms = chrono::Utc::now().timestamp_millis();
+            let marker = format!("in_progress:{}", now_ms);
+
+            // Try to create the key first
+            match kv.create(dedup_id.clone(), marker.clone().into_bytes().into()).await {
                 Ok(_) => {
-                    tracing::debug!(dedup_id = %dedup_id, "Dedup gate passed - processing event");
+                    tracing::debug!(dedup_id = %dedup_id, "Dedup gate created marker - processing event");
                 }
-                Err(e) => {
-                    // If the key already exists, treat as duplicate and skip processing
-                    let err_str = e.to_string();
-                    if err_str.contains("already exists") || err_str.contains("exists") {
-                        tracing::warn!(dedup_id = %dedup_id, "Duplicate event detected by KV gate - skipping");
-                        return Ok(());
+                Err(_) => {
+                    // Key exists or transient error - inspect current value
+                    match kv.get(dedup_id.clone()).await {
+                        Ok(Some(value)) => {
+                            let val = std::str::from_utf8(value.as_ref()).unwrap_or("");
+                            if val.starts_with("done") {
+                                tracing::warn!(dedup_id = %dedup_id, "Duplicate event detected by KV gate - skipping");
+                                return Ok(());
+                            }
+                            // Another worker likely processing or left stale marker; skip to avoid
+                            // dup writes
+                            return Err(eyre::eyre!("event processing in progress"));
+                        }
+                        Ok(None) => {
+                            // Key disappeared; ask for a retry
+                            return Err(eyre::eyre!("kv key vanished; retry"));
+                        }
+                        Err(e) => {
+                            return Err(eyre::eyre!("kv get failed: {}", e));
+                        }
                     }
-                    // Unknown KV error - bubble up to retry message processing
-                    return Err(eyre::eyre!("KV create failed: {}", err_str));
                 }
             }
         }
 
-        match event {
+        let result = match &event {
             TaikoEvent::BatchProposed(wrapper) => {
-                Self::handle_batch_proposed_event(writer, extractor, wrapper).await
+                Self::handle_batch_proposed_event(writer, extractor, wrapper.clone()).await
             }
             TaikoEvent::ForcedInclusionProcessed(wrapper) => {
-                Self::handle_forced_inclusion_event(writer, wrapper).await
+                Self::handle_forced_inclusion_event(writer, wrapper.clone()).await
             }
             TaikoEvent::BatchesProved(wrapper) => {
-                Self::handle_batches_proved_event(writer, extractor, wrapper).await
+                Self::handle_batches_proved_event(writer, extractor, wrapper.clone()).await
             }
             TaikoEvent::BatchesVerified(wrapper) => {
-                Self::handle_batches_verified_event(writer, extractor, wrapper).await
+                Self::handle_batches_verified_event(writer, extractor, wrapper.clone()).await
             }
             TaikoEvent::L1Header(header) => {
-                Self::handle_l1_header_event(writer, extractor, header).await
+                Self::handle_l1_header_event(writer, extractor, header.clone()).await
             }
             TaikoEvent::L2Header(header) => {
                 Self::handle_l2_header(
@@ -598,11 +611,24 @@ impl ProcessorDriver {
                     reorg_detector,
                     last_l2_header,
                     processed_l2_headers,
-                    header,
+                    header.clone(),
                 )
                 .await
             }
+        };
+
+        // If processing succeeded, mark KV as done (best-effort) before returning
+        if result.is_ok() {
+            if let Some(kv) = kv_store {
+                let dedup_id = event.dedup_id();
+                if let Err(e) = kv.put(dedup_id.clone(), b"done".as_slice().into()).await {
+                    // Non-fatal: log and continue
+                    tracing::error!(dedup_id = %dedup_id, err = %e, "Failed to finalize KV marker");
+                }
+            }
         }
+
+        result
     }
 
     async fn process_event_log_and_drop(
