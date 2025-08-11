@@ -362,7 +362,9 @@ describe('feeFlowCalculations', () => {
       );
 
       const profitNode = result.nodes.find(n => n.profitNode);
-      const expectedTotalProfit = mockProcessedData.reduce((acc, s) => acc + s.profit, 0);
+      // Profit node now aggregates only positive profits (loss-makers contribute 0; covered by subsidy)
+      const expectedTotalProfit = mockProcessedData
+        .reduce((acc, s) => acc + Math.max(0, s.profit), 0);
 
       // The function may add epsilon values to ensure visual connectivity
       // Allow for reasonable epsilon additions (up to 5% of expected profit or 50, whichever is larger)

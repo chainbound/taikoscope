@@ -225,7 +225,9 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
     // to ensure attribution matches ranking and block tables.
   }
   const sequencerFees = (() => {
+    const allSequencerFees = effectiveFees?.sequencers ?? [];
     if (filteredBatches.length > 0) {
+      // Primary: batch aggregation per address
       const byAddress = new Map<string, { priority_fee: number; base_fee: number; l1_data_cost: number; prove_cost: number }>();
       for (const b of filteredBatches) {
         const cur = byAddress.get(b.sequencer) ?? {
@@ -240,20 +242,37 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
         cur.prove_cost += b.prove_cost ?? 0;
         byAddress.set(b.sequencer, cur);
       }
-      return Array.from(byAddress.entries()).map(([addr, v]) => ({
+      // Merge in any sequencers that have summary rows but no batches in-range (e.g., fallback proposer)
+      for (const f of allSequencerFees) {
+        const key = f.address;
+        if (!byAddress.has(key)) {
+          const sum = (f.priority_fee ?? 0) + (f.base_fee ?? 0) + (f.l1_data_cost ?? 0) + (f.prove_cost ?? 0);
+          if (sum > 0) {
+            byAddress.set(key, {
+              priority_fee: f.priority_fee ?? 0,
+              base_fee: f.base_fee ?? 0,
+              l1_data_cost: f.l1_data_cost ?? 0,
+              prove_cost: f.prove_cost ?? 0,
+            });
+          }
+        }
+      }
+      const merged = Array.from(byAddress.entries()).map(([addr, v]) => ({
         address: addr,
         priority_fee: v.priority_fee,
         base_fee: v.base_fee,
         l1_data_cost: v.l1_data_cost,
         prove_cost: v.prove_cost,
       }));
+      return address
+        ? merged.filter((s) => s.address.toLowerCase() === address.toLowerCase())
+        : merged;
     }
-    const allSequencerFees = effectiveFees?.sequencers ?? [];
-    return address
-      ? allSequencerFees.filter(
-          (s) => s.address.toLowerCase() === address.toLowerCase(),
-        )
+    // No batch rows: fall back to summary
+    const baseList = address
+      ? allSequencerFees.filter((s) => s.address.toLowerCase() === address.toLowerCase())
       : allSequencerFees;
+    return baseList;
   })();
 
   // Memoized tooltip value formatter to avoid unnecessary re-renders

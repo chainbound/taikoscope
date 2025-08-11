@@ -356,20 +356,15 @@ export const generateFallbackSankeyData = ({
     { source: 3, target: profitIndex, value: sequencerProfit },
   ].filter((l) => l.value !== 0);
 
-  // Ensure Taiko DAO is not a sink so it appears in the middle column
-  const minPositiveDao = links.length
-    ? Math.min(...links.map((l) => l.value))
-    : 0;
-  const DAO_EPSILON = minPositiveDao > 0 ? minPositiveDao * 0.1 : 1e-6;
-  const daoHasOutflow = links.some(
-    (l) => l.source === daoIndex && l.value > 0,
-  );
-
+  // Visual positioning rule: ensure Taiko DAO appears in the same column as
+  // sequencers (not as a rightmost sink). We add a tiny epsilon outflow from
+  // DAO to Profit solely to influence layout. This does not materially affect
+  // totals.
+  const DAO_EPSILON = 1e-9; // ultra-small layout hint; invisible in UI
+  const daoHasOutflow = links.some((l) => l.source === daoIndex && l.value > 0);
   if (!daoHasOutflow) {
     links.push({ source: daoIndex, target: profitIndex, value: DAO_EPSILON });
-    if (nodes[profitIndex]) {
-      nodes[profitIndex].value += DAO_EPSILON;
-    }
+    // Do not mutate profit node value; avoid affecting totals
   }
 
   return { nodes, links };
@@ -392,9 +387,15 @@ export const generateMultiSequencerSankeyData = (
   const totalSubsidy = seqData.reduce((acc, s) => acc + s.subsidyUsd, 0);
   const totalSubsidyGwei = seqData.reduce((acc, s) => acc + s.subsidyGwei, 0);
 
-  // Aggregate profit across all sequencers (profit may be negative per sequencer)
-  const totalProfit = seqData.reduce((acc, s) => acc + s.profit, 0);
-  const totalProfitGwei = seqData.reduce((acc, s) => acc + s.profitGwei, 0);
+  // Compute post-subsidy profit per sequencer and totals (loss-makers zeroed by subsidy)
+  const postProfitPerSeqUsd = seqData.map(
+    (s) => Math.max(0, s.profit),
+  );
+  const postProfitPerSeqGwei = seqData.map(
+    (s) => Math.max(0, s.profitGwei),
+  );
+  const totalProfit = postProfitPerSeqUsd.reduce((a, b) => a + b, 0);
+  const totalProfitGwei = postProfitPerSeqGwei.reduce((a, b) => a + b, 0);
 
   // Proposing cost equals full L1 cost; subsidy flows into sequencers not L1
   const totalL1Cost = totalActualL1Cost;
@@ -502,11 +503,11 @@ export const generateMultiSequencerSankeyData = (
       target: l1Index,
       value: s.actualL1Cost,
     })),
-    // Sequencer nodes → Profit (single aggregated node)
-    ...seqData.map((s, i) => ({
+    // Sequencer nodes → Profit (post-subsidy; loss-makers contribute 0)
+    ...postProfitPerSeqUsd.map((p, i) => ({
       source: sequencerStartIndex + i,
       target: profitIndex,
-      value: s.profit,
+      value: p,
     })),
   ].filter((l) => l.value !== 0);
 
@@ -529,15 +530,15 @@ export const generateMultiSequencerSankeyData = (
     }
   });
 
-  // --- Ensure Taiko DAO node has an outgoing edge so it sits with sequencers ---
-  const daoHasOutflow2 = links.some(
-    (l) => l.source === daoIndex && l.value > 0,
-  );
+  // Visual positioning rule: ensure Taiko DAO appears in the same column as
+  // sequencers (not as a rightmost sink). We add a tiny epsilon outflow from
+  // DAO to Profit solely to influence layout. This does not materially affect
+  // totals.
+  const DAO_EPSILON2 = 1e-9; // ultra-small layout hint; invisible in UI
+  const daoHasOutflow2 = links.some((l) => l.source === daoIndex && l.value > 0);
   if (!daoHasOutflow2) {
-    links.push({ source: daoIndex, target: profitIndex, value: EPSILON });
-    if (nodes[profitIndex]) {
-      nodes[profitIndex].value += EPSILON;
-    }
+    links.push({ source: daoIndex, target: profitIndex, value: DAO_EPSILON2 });
+    // Do not mutate profit node value; avoid affecting totals
   }
 
   return { nodes, links };
