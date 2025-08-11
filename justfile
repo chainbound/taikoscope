@@ -163,7 +163,7 @@ build-api tag='latest' platform='linux/arm64':
         --push .
 
 
-# build and push both taikoscope and taikoscope-api docker images
+# build and push all docker images
 build-all tag='latest' platform='linux/arm64':
     @echo "Building taikoscope images..."
     docker buildx build \
