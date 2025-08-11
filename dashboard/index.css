@@ -39,6 +39,12 @@ body {
   color: var(--fg);
 }
 
+/* Global link color: Taiko pink */
+a,
+a:visited {
+  color: var(--color-brand);
+}
+
 button:hover {
   cursor: pointer;
 }
@@ -49,6 +55,12 @@ button:disabled {
 
 select:hover {
   cursor: pointer;
+}
+
+/* Remove default macOS black focus ring on native select; rely on custom ring */
+select:focus {
+  outline: none !important;
+  box-shadow: none;
 }
 
 /* Ensure chart text is readable in dark mode */

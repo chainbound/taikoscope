@@ -226,7 +226,7 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
       <Popover.Trigger asChild>
         <button
           disabled={isChanging}
-          className="p-1 border border-gray-100 dark:border-border rounded-md text-sm bg-card text-card-fg min-w-[3rem]"
+          className="p-1 border border-gray-300 dark:border-border rounded-md text-sm bg-card text-card-fg min-w-[3rem]"
           title={customTooltip}
         >
           {buttonLabel}

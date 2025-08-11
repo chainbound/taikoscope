@@ -15,7 +15,7 @@ export const Tab: React.FC<TabProps> = ({ selected = false, className, children,
   const base = 'px-2 py-1 text-sm rounded-md border transition-colors';
   const appearance = selected
     ? 'bg-muted border-[var(--ring)] text-[var(--color-brand)] font-semibold'
-    : 'bg-card border-gray-100 dark:border-border text-[var(--muted-fg)] hover:text-[var(--color-brand)] hover:bg-muted';
+    : 'bg-card border-gray-300 dark:border-border text-[var(--muted-fg)] hover:text-[var(--color-brand)] hover:bg-muted';
 
   return (
     <button role="tab" aria-selected={selected} className={cn(base, appearance, className)} {...props}>
