@@ -266,6 +266,19 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
               }
             }}
             defaultMonth={date}
+            style={{
+              // React Day Picker v8 uses CSS variables for accents
+              ['--rdp-accent-color' as unknown as keyof React.CSSProperties]:
+                'var(--color-brand)',
+              ['--rdp-today-color' as unknown as keyof React.CSSProperties]:
+                'var(--color-brand)',
+            }}
+            styles={{
+              nav_button: { color: 'var(--color-brand)' },
+              caption_label: { color: 'var(--color-brand)', fontWeight: 600 },
+              day_selected: { backgroundColor: 'var(--color-brand)', color: '#fff' },
+              day_today: { color: 'var(--color-brand)' },
+            }}
           />
           <div className="flex items-center space-x-2">
             <input
