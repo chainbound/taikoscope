@@ -306,6 +306,7 @@ export const RefreshRateInput: React.FC<RefreshRateInputProps> = ({
   refreshRate,
   onRefreshRateChange,
 }) => {
+  const selectRef = React.useRef<HTMLSelectElement>(null);
   const options = [
     { label: 'Off', value: 0 },
     { label: '5 min', value: 5 * 60_000 },
@@ -317,6 +318,8 @@ export const RefreshRateInput: React.FC<RefreshRateInputProps> = ({
     const value = Number(e.target.value);
     if (isValidRefreshRate(value)) {
       onRefreshRateChange(value);
+      // Proactively remove focus so the select does not remain highlighted
+      selectRef.current?.blur();
     }
   };
 
@@ -325,7 +328,13 @@ export const RefreshRateInput: React.FC<RefreshRateInputProps> = ({
       <label htmlFor="refreshRate" className="text-sm text-muted-fg">
         Refresh
       </label>
-      <Select id="refreshRate" value={refreshRate} onChange={handleChange} className="text-sm text-center">
+      <Select
+        id="refreshRate"
+        ref={selectRef}
+        value={refreshRate}
+        onChange={handleChange}
+        className="text-sm text-center"
+      >
         {options.map(({ label, value }) => (
           <option key={value} value={value}>
             {label}
