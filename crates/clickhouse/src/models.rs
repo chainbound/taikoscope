@@ -175,6 +175,15 @@ pub struct OrphanedL2HashRow {
     pub l2_block_number: u64,
 }
 
+/// Orphaned L1 block hash row
+#[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq)]
+pub struct OrphanedL1HashRow {
+    /// Block hash of orphaned block
+    pub block_hash: HashBytes,
+    /// L1 block number of orphaned block
+    pub l1_block_number: u64,
+}
+
 /// Verified batch row
 #[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq)]
 pub struct VerifiedBatchRow {

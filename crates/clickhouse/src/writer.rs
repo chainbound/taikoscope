@@ -152,8 +152,8 @@ use crate::{
     L1Header,
     models::{
         BatchBlockRow, BatchRow, ForcedInclusionProcessedRow, L1DataCostInsertRow, L1HeadEvent,
-        L2HeadEvent, L2ReorgInsertRow, OrphanedL2HashRow, PreconfData, ProveCostInsertRow,
-        ProvedBatchRow, VerifiedBatchRow, VerifyCostInsertRow,
+        L2HeadEvent, L2ReorgInsertRow, OrphanedL1HashRow, OrphanedL2HashRow, PreconfData,
+        ProveCostInsertRow, ProvedBatchRow, VerifiedBatchRow, VerifyCostInsertRow,
     },
     schema::{TABLE_SCHEMAS, TABLES, TableSchema, VIEWS},
     types::{AddressBytes, HashBytes},
@@ -502,6 +502,24 @@ impl ClickhouseWriter {
 
         for (hash, block_number) in hashes {
             let row = OrphanedL2HashRow { block_hash: *hash, l2_block_number: *block_number };
+            insert.write(&row).await?;
+        }
+
+        insert.end().await?;
+        Ok(())
+    }
+
+    /// Insert orphaned L1 block hashes
+    pub async fn insert_orphaned_l1_hashes(&self, hashes: &[(HashBytes, u64)]) -> Result<()> {
+        if hashes.is_empty() {
+            return Ok(());
+        }
+
+        let client = self.base.clone();
+        let mut insert = client.insert(&format!("{}.orphaned_l1_hashes", self.db_name))?;
+
+        for (hash, block_number) in hashes {
+            let row = OrphanedL1HashRow { block_hash: *hash, l1_block_number: *block_number };
             insert.write(&row).await?;
         }
 

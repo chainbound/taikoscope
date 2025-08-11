@@ -66,6 +66,7 @@ ALTER TABLE ${DB}.orphaned_l2_hashes
     ADD INDEX IF NOT EXISTS idx_orphaned_l2_block_hash_bf block_hash TYPE bloom_filter(0.01) GRANULARITY 1;
 ALTER TABLE ${DB}.orphaned_l2_hashes MATERIALIZE INDEX idx_orphaned_l2_block_hash_bf;
 
+
 -- preconf_data: filters by operator fields
 ALTER TABLE ${DB}.preconf_data
     ADD INDEX IF NOT EXISTS idx_preconf_current_op_bf current_operator TYPE bloom_filter(0.01) GRANULARITY 1,
