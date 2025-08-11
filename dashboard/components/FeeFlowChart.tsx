@@ -367,7 +367,16 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
   const hardwareCostPerSeq = safeValue(rawHardwareCostPerSeq);
 
   // Process sequencer data using utility function
-  const seqData = processSequencerData(sequencerFees, ethPrice, hardwareCostPerSeq);
+  const seqDataRaw = processSequencerData(sequencerFees, ethPrice, hardwareCostPerSeq);
+  // Ensure summary-only addresses (present in summary but with no batches in-range)
+  // are placed after batch-backed sequencers, but still above Taiko DAO in the chart.
+  const addressesWithBatchesLower = new Set(
+    filteredBatches.map((b) => b.sequencer.toLowerCase()),
+  );
+  const seqData = [
+    ...seqDataRaw.filter((s) => addressesWithBatchesLower.has(s.address.toLowerCase())),
+    ...seqDataRaw.filter((s) => !addressesWithBatchesLower.has(s.address.toLowerCase())),
+  ];
 
   // Generate Sankey chart data
   let chartData: SankeyChartData;
