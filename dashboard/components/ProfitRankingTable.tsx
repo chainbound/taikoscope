@@ -276,7 +276,7 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
     <div className="mt-6">
       <h3 className="text-lg font-semibold mb-2">Sequencer Profit Ranking</h3>
       <div className="overflow-x-auto">
-        <table className="min-w-full border border-gray-100 dark:border-border divide-y divide-gray-100 dark:divide-gray-700 bg-card text-card-fg">
+        <table className="min-w-full border border-gray-100 dark:border-[#475569] divide-y divide-gray-100 dark:divide-[#475569] bg-card dark:bg-[rgba(30,41,59,0.85)] text-card-fg">
           <thead>
             <tr>
               <th
@@ -362,7 +362,7 @@ export const ProfitRankingTable: React.FC<ProfitRankingTableProps> = ({
             {sorted.map((row) => (
               <tr
                 key={row.address}
-                className="border-t border-gray-100 dark:border-border"
+                className="border-t border-gray-100 dark:border-[#475569]"
               >
                 <td className="px-2 py-1">
                   {addressLink(row.address, row.name)}

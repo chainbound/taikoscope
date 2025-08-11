@@ -204,7 +204,7 @@ export const DataTable: React.FC<DataTableProps> = ({
         </div>
       )}
       <div className="overflow-x-auto">
-        <table className="min-w-full border border-gray-100 dark:border-border divide-y divide-gray-100 dark:divide-gray-700 bg-card text-card-fg">
+        <table className="min-w-full border border-gray-100 dark:border-[#475569] divide-y divide-gray-100 dark:divide-[#475569] bg-card dark:bg-[rgba(30,41,59,0.85)] text-card-fg">
           <thead>
             <tr>
               {columns.map((col) => (
@@ -248,7 +248,7 @@ export const DataTable: React.FC<DataTableProps> = ({
               pageRows.map((row, idx) => (
                 <tr
                   key={idx}
-                  className={`border-t border-gray-100 dark:border-border hover:bg-muted ${onRowClick && !isNavigating ? 'cursor-pointer' : ''} ${isNavigating ? 'pointer-events-none opacity-50' : ''}`}
+                  className={`border-t border-gray-100 dark:border-[#475569] hover:bg-muted ${onRowClick && !isNavigating ? 'cursor-pointer' : ''} ${isNavigating ? 'pointer-events-none opacity-50' : ''}`}
                   onClick={
                     onRowClick && !isNavigating
                       ? () => {
@@ -329,7 +329,7 @@ export const DataTable: React.FC<DataTableProps> = ({
             {extraTable.title}
           </h3>
           <div className="overflow-x-auto">
-            <table className="min-w-full border border-gray-100 dark:border-border divide-y divide-gray-100 dark:divide-gray-700 bg-card text-card-fg">
+            <table className="min-w-full border border-gray-100 dark:border-[#475569] divide-y divide-gray-100 dark:divide-[#475569] bg-card dark:bg-[rgba(30,41,59,0.85)] text-card-fg">
               <thead>
                 <tr>
                   {extraTable.columns.map((col) => (
@@ -356,7 +356,7 @@ export const DataTable: React.FC<DataTableProps> = ({
                   extraTable.rows.map((row, idx) => (
                     <tr
                       key={idx}
-                      className={`border-t border-gray-100 dark:border-border hover:bg-muted ${extraTable.onRowClick && !isNavigating ? 'cursor-pointer' : ''} ${isNavigating ? 'pointer-events-none opacity-50' : ''}`}
+                      className={`border-t border-gray-100 dark:border-[#475569] hover:bg-muted ${extraTable.onRowClick && !isNavigating ? 'cursor-pointer' : ''} ${isNavigating ? 'pointer-events-none opacity-50' : ''}`}
                       onClick={
                         extraTable.onRowClick && !isNavigating
                           ? () => {
