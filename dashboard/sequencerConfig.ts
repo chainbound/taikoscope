@@ -1,4 +1,5 @@
 export const SEQUENCER_PAIRS: Array<[string, string]> = [
+  // Hekla
   ['0x00a00800c28f2616360dcfadee02d761d14ad94e', 'Chainbound A'],
   ['0x00b00194cdc219921784ab1eb4eaa9634fe1f1a8', 'Chainbound B'],
   ['0x0000008f5dd9a790ffbe9142e6828a11c2cf51c0', 'Chainbound'],
@@ -8,6 +9,8 @@ export const SEQUENCER_PAIRS: Array<[string, string]> = [
   ['0x3c96db4a6cef604de81e12959465ba4b918851e4', 'Gattaca'],
   ['0x75141cd01f50a17a915d59d245ae6b2c947d37d9', 'Nethermind (Taiko)'],
   ['0xdE023f59daCee4e1B4B4216E1B6DfF624555cd2E', 'Nethermind'],
+  // Mainnet
+  ['0x000cb000E880A92a8f383D69dA2142a969B93DE7', 'Chainbound'],
 ];
 
 export const SEQUENCER_NAME_BY_ADDRESS: Record<string, string> =
