@@ -4,5 +4,5 @@
 .recharts-cartesian-axis .recharts-cartesian-axis-tick-line,
 .recharts-cartesian-axis line { stroke: var(--chart-tick) !important; stroke-opacity: 0.7; }
 
-.recharts-default-tooltip { background-color: var(--chart-tooltip-bg) !important; }
+.recharts-default-tooltip { background-color: var(--chart-tooltip-bg) !important; opacity: 1 !important; }
 .recharts-tooltip-label { color: var(--chart-tooltip-label) !important; }

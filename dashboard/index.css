@@ -14,7 +14,8 @@
   /* Charts */
   --chart-tick: #666666;
   --chart-grid: #e0e0e0;
-  --chart-tooltip-bg: rgba(255, 255, 255, 0.9);
+  /* Use opaque background to avoid transparency */
+  --chart-tooltip-bg: var(--card);
   --chart-tooltip-label: #333333;
 }
 
@@ -29,7 +30,8 @@
   /* Charts */
   --chart-tick: #f8fafc;
   --chart-grid: rgba(148, 163, 184, 0.18);
-  --chart-tooltip-bg: rgba(15, 23, 42, 0.95);
+  /* Use opaque background to avoid transparency */
+  --chart-tooltip-bg: var(--card);
   --chart-tooltip-label: #ffffff;
 }
 
@@ -111,7 +113,8 @@
     --muted-fg: #94a3b8;
     --chart-tick: #f8fafc;
     --chart-grid: rgba(148, 163, 184, 0.18);
-    --chart-tooltip-bg: rgba(15, 23, 42, 0.95);
+    /* Use opaque background to avoid transparency */
+    --chart-tooltip-bg: var(--card);
     --chart-tooltip-label: #ffffff;
   }
 }
@@ -178,11 +181,25 @@ select:focus {
   fill: #ffffff !important;
 }
 
-/* Tooltip readability in dark mode */
+/* Tooltip readability and opacity override */
+.recharts-tooltip-wrapper { opacity: 1 !important; }
+.recharts-default-tooltip { background-color: var(--chart-tooltip-bg) !important; }
 :root.dark .recharts-default-tooltip {
   color: #ffffff;
-  background-color: rgba(15, 23, 42, 0.9);
+  /* Opaque background in dark mode */
+  background-color: var(--card) !important;
   border-color: #334155;
+}
+
+/* Extra hardening for FeeFlowChart tooltip */
+.fee-flow-chart .recharts-tooltip-wrapper {
+  opacity: 1 !important;
+  mix-blend-mode: normal !important;
+  filter: none !important;
+}
+.fee-flow-chart .recharts-tooltip-wrapper > div {
+  background-color: var(--card) !important;
+  opacity: 1 !important;
 }
 
 /* Tooltip label and items */
@@ -244,7 +261,8 @@ select:focus {
 
 /* Force dark tooltip even if inline styles are set */
 :root.dark .recharts-default-tooltip {
-  background-color: rgba(15, 23, 42, 0.95) !important;
+  /* Opaque background to prevent see-through */
+  background-color: var(--card) !important;
   border-color: #475569 !important;
   color: #ffffff !important;
 }

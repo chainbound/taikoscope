@@ -368,7 +368,10 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
       return itemData.addressLabel ?? itemData.address ?? itemData.name;
     })();
     return (
-      <div className="bg-card text-card-fg p-2 border border-gray-100 dark:border-border rounded shadow-sm">
+      <div
+        className="bg-card text-card-fg p-2 border border-gray-100 dark:border-border rounded shadow-sm"
+        style={{ backgroundColor: 'var(--card)', opacity: 1 }}
+      >
         <p className="text-sm font-medium dark:text-white">{nodeLabel}</p>
         <p className="text-sm text-gray-600 dark:text-white">
           {formatTooltipValue(value, itemData)}
@@ -393,11 +396,13 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
           <Tooltip
             content={tooltipContent}
             trigger="hover"
+            wrapperStyle={{ opacity: 1 }}
             contentStyle={{
-              backgroundColor: theme === 'dark' ? '#1e293b' : 'white',
-              border:
-                theme === 'dark' ? '1px solid #334155' : '1px solid #e5e7eb',
+              // Force opaque background (no translucency)
+              backgroundColor: 'var(--card)',
+              border: theme === 'dark' ? '1px solid #334155' : '1px solid #e5e7eb',
               borderRadius: '0.375rem',
+              opacity: 1,
             }}
           />
         </Sankey>
