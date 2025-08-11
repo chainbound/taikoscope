@@ -5,6 +5,19 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Taikoscope</title>
+    <script>
+      // Apply theme class before CSS loads to avoid flash of light background
+      (function () {
+        try {
+          var saved = localStorage.getItem('theme');
+          var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          var theme = saved === 'light' || saved === 'dark' ? saved : (prefersDark ? 'dark' : 'light');
+          var root = document.documentElement;
+          root.classList.remove('light', 'dark');
+          root.classList.add(theme);
+        } catch (e) { /* no-op */ }
+      })();
+    </script>
     <link rel="preload" href="/index.css" as="style" onload="this.rel='stylesheet'" />
     <link rel="stylesheet" href="/index.css" />
     <style>

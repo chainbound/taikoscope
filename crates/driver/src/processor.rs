@@ -19,6 +19,7 @@ use tracing::info;
 use url::Url;
 
 use crate::subscription::subscribe_with_retry;
+use async_nats::jetstream::{self, kv};
 
 /// An EPOCH is a series of 32 slots.
 const EPOCH_SLOTS: u64 = 32;
@@ -207,6 +208,35 @@ impl ProcessorDriver {
         // Spawn monitors before starting the event loop
         self.spawn_monitors();
 
+        // Initialize KV store for exactly-once deduplication
+        let kv_store = if self.enable_db_writes {
+            let js = jetstream::new(self.nats_client.clone());
+            // Try to fetch or create the KV bucket used for deduplication
+            // We keep only 1 historical value per key and a 30-day TTL
+            let bucket_name = "taiko-processed".to_owned();
+            match js.get_key_value(bucket_name.clone()).await {
+                Ok(s) => Some(s),
+                Err(_) => {
+                    let cfg = kv::Config {
+                        bucket: bucket_name,
+                        history: 1,
+                        max_age: std::time::Duration::from_secs(30 * 24 * 60 * 60),
+                        storage: self.nats_stream_config.get_storage_type(),
+                        ..Default::default()
+                    };
+                    match js.create_key_value(cfg).await {
+                        Ok(s) => Some(s),
+                        Err(e) => {
+                            tracing::error!(err = %e, "Failed to create KV store for deduplication; proceeding without it");
+                            None
+                        }
+                    }
+                }
+            }
+        } else {
+            None
+        };
+
         // Setup NATS infrastructure with retry
         let consumer = self.setup_nats_infrastructure().await?;
 
@@ -231,6 +261,7 @@ impl ProcessorDriver {
             &mut last_l2_header,
             enable_db_writes,
             &mut processed_l2_headers,
+            kv_store,
             shutdown_rx,
         )
         .await
@@ -334,6 +365,7 @@ impl ProcessorDriver {
         last_l2_header: &mut Option<(u64, Address)>,
         enable_db_writes: bool,
         processed_l2_headers: &mut VecDeque<BlockHash>,
+        kv_store: Option<kv::Store>,
         mut shutdown_rx: Option<broadcast::Receiver<()>>,
     ) -> Result<()> {
         info!("Starting message processing loop");
@@ -374,6 +406,7 @@ impl ProcessorDriver {
                                     last_l2_header,
                                     enable_db_writes,
                                     processed_l2_headers,
+                                    kv_store.as_ref(),
                                     &msg,
                                 ).await;
                             }
@@ -407,6 +440,7 @@ impl ProcessorDriver {
         last_l2_header: &mut Option<(u64, Address)>,
         enable_db_writes: bool,
         processed_l2_headers: &mut VecDeque<BlockHash>,
+        kv_store: Option<&kv::Store>,
         msg: &async_nats::jetstream::Message,
     ) {
         let mut retries = 0;
@@ -421,6 +455,7 @@ impl ProcessorDriver {
                 last_l2_header,
                 enable_db_writes,
                 processed_l2_headers,
+                kv_store,
                 msg,
             )
             .await
@@ -474,6 +509,7 @@ impl ProcessorDriver {
         last_l2_header: &mut Option<(u64, Address)>,
         enable_db_writes: bool,
         processed_l2_headers: &mut VecDeque<BlockHash>,
+        kv_store: Option<&kv::Store>,
         msg: &async_nats::jetstream::Message,
     ) -> Result<()> {
         let event: TaikoEvent = serde_json::from_slice(&msg.payload)?;
@@ -487,6 +523,7 @@ impl ProcessorDriver {
                     reorg_detector,
                     last_l2_header,
                     processed_l2_headers,
+                    kv_store,
                     event,
                 )
                 .await
@@ -499,6 +536,7 @@ impl ProcessorDriver {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     async fn process_event_with_db_write(
         writer: &ClickhouseWriter,
         clickhouse_reader: &Option<ClickhouseReader>,
@@ -506,8 +544,36 @@ impl ProcessorDriver {
         reorg_detector: &mut ReorgDetector,
         last_l2_header: &mut Option<(u64, Address)>,
         processed_l2_headers: &mut VecDeque<BlockHash>,
+        kv_store: Option<&kv::Store>,
         event: TaikoEvent,
     ) -> Result<()> {
+        // Exactly-once guard using JetStream KV "create-only" semantics
+        if let Some(kv) = kv_store {
+            let dedup_id = event.dedup_id();
+            // Attempt to create the key only if it does not already exist
+            match kv
+                .create(
+                    dedup_id.clone(),
+                    chrono::Utc::now().timestamp_millis().to_string().into_bytes().into(),
+                )
+                .await
+            {
+                Ok(_) => {
+                    tracing::debug!(dedup_id = %dedup_id, "Dedup gate passed - processing event");
+                }
+                Err(e) => {
+                    // If the key already exists, treat as duplicate and skip processing
+                    let err_str = e.to_string();
+                    if err_str.contains("already exists") || err_str.contains("exists") {
+                        tracing::warn!(dedup_id = %dedup_id, "Duplicate event detected by KV gate - skipping");
+                        return Ok(());
+                    }
+                    // Unknown KV error - bubble up to retry message processing
+                    return Err(eyre::eyre!("KV create failed: {}", err_str));
+                }
+            }
+        }
+
         match event {
             TaikoEvent::BatchProposed(wrapper) => {
                 Self::handle_batch_proposed_event(writer, extractor, wrapper).await

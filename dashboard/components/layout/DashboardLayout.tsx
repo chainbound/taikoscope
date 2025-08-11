@@ -40,7 +40,7 @@ export const DashboardLayout: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-bg text-fg flex flex-col">
-      <main className="flex-grow px-4 py-6 md:px-6 lg:px-8 border border-gray-100 dark:border-border rounded-lg">
+      <main className="flex-grow px-4 py-6 md:px-6 lg:px-8 border border-gray-100 dark:border-0 rounded-lg">
         <Outlet
           context={{
             timeRange,
