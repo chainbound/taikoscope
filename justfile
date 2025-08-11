@@ -15,6 +15,10 @@ dev:
 dev-api:
     ENV_FILE=hekla.env cargo run --bin api-server
 
+# start the API server for mainnet
+mainnet-api:
+    ENV_FILE=mainnet.env cargo run --bin api-server
+
 # start local NATS for development
 dev-nats:
     #!/usr/bin/env bash
@@ -117,6 +121,10 @@ install-dashboard:
 # start the dashboard dev server
 dev-dashboard:
     cd dashboard && VITE_API_BASE="http://localhost:3000" npm run dev
+
+# start the dashboard dev server for mainnet (targets local API)
+mainnet-dashboard:
+    cd dashboard && VITE_API_BASE="http://localhost:3000" VITE_NETWORK_NAME="mainnet" npm run dev
 
 # build the dashboard for production
 build-dashboard:
