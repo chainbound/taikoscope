@@ -68,6 +68,10 @@ pub struct BaseMonitor<K> {
     pub component_id: String,
     /// Monitoring interval
     pub interval: std::time::Duration,
+    /// Whether reporting to Instatus is enabled.
+    /// When disabled, monitors will still evaluate health and log warnings,
+    /// but will not call the Instatus API. Useful for dry-run mode.
+    pub reporting_enabled: bool,
     /// Map of active incidents
     pub active_incidents: std::collections::HashMap<K, String>,
 }
@@ -83,8 +87,10 @@ impl<K: Clone + Debug + Eq + std::hash::Hash> BaseMonitor<K> {
         Self {
             clickhouse,
             client,
-            component_id,
+            component_id: component_id.clone(),
             interval,
+            // If no component id is configured, treat reporting as disabled (dry-run)
+            reporting_enabled: !component_id.is_empty(),
             active_incidents: std::collections::HashMap::new(),
         }
     }
@@ -120,19 +126,34 @@ impl<K: Clone + Debug + Eq + std::hash::Hash> BaseMonitor<K> {
 
     /// Helper to create an incident
     pub async fn create_incident_with_payload(&self, payload: &NewIncident) -> Result<String> {
-        let id =
-            crate::retry::retry_op(|| async { self.client.create_incident(payload).await }).await?;
+        if self.reporting_enabled {
+            let id =
+                crate::retry::retry_op(|| async { self.client.create_incident(payload).await })
+                    .await?;
 
-        info!(
-            incident_id = %id,
-            name = %payload.name,
-            message = %payload.message,
-            status = ?payload.status,
-            components = ?payload.components,
-            "Created incident"
-        );
+            info!(
+                incident_id = %id,
+                name = %payload.name,
+                message = %payload.message,
+                status = ?payload.status,
+                components = ?payload.components,
+                "Created incident"
+            );
 
-        Ok(id)
+            Ok(id)
+        } else {
+            // Dry-run mode: only log that an incident would have been created
+            let synthetic_id = format!("dryrun:{}", chrono::Utc::now().timestamp_millis());
+            tracing::warn!(
+                incident_id = %synthetic_id,
+                name = %payload.name,
+                message = %payload.message,
+                status = ?payload.status,
+                components = ?payload.components,
+                "Instatus monitors disabled - would create incident"
+            );
+            Ok(synthetic_id)
+        }
     }
 
     /// Helper to resolve an incident
@@ -142,6 +163,12 @@ impl<K: Clone + Debug + Eq + std::hash::Hash> BaseMonitor<K> {
         payload: &ResolveIncident,
     ) -> Result<()> {
         debug!(%id, "Closing incident");
+
+        if !self.reporting_enabled {
+            // Dry-run mode: log that we would resolve
+            info!(%id, components = ?payload.components, "Instatus monitors disabled - would resolve incident");
+            return Ok(());
+        }
 
         match crate::retry::retry_op(|| async { self.client.resolve_incident(id, payload).await })
             .await
@@ -159,6 +186,14 @@ impl<K: Clone + Debug + Eq + std::hash::Hash> BaseMonitor<K> {
 
     /// Helper method to check for existing open incidents for this component
     pub async fn check_existing_incidents(&mut self, default_key: K) -> Result<()> {
+        if !self.reporting_enabled {
+            tracing::info!(
+                component_id = %self.component_id,
+                "Instatus monitors disabled - skipping check for existing incidents (dry-run)"
+            );
+            return Ok(());
+        }
+
         match crate::retry::retry_op(|| async {
             self.client.open_incident(&self.component_id).await
         })

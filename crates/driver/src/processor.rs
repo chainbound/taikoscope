@@ -1094,15 +1094,16 @@ impl ProcessorDriver {
     /// Each monitor runs in its own task and reports incidents via the
     /// [`IncidentClient`].
     fn spawn_monitors(&self) {
-        if !self.instatus_monitors_enabled {
-            return;
-        }
+        // Always spawn monitors. When `instatus_monitors_enabled` is false,
+        // monitors run in dry-run mode (no API calls), but still log warnings
+        // when an incident would have been created.
 
         if let Some(url) = &self.public_rpc_url {
             tracing::info!(url = url.as_str(), "public rpc monitor enabled");
             let incident = self.instatus_monitors_enabled.then(|| {
                 (self.incident_client.clone(), self.instatus_public_api_component_id.clone())
             });
+            // When disabled, incident will be None; monitor will still log.
             spawn_public_rpc_monitor(url.clone(), incident);
         }
 
@@ -1143,9 +1144,13 @@ impl ProcessorDriver {
                 Duration::from_secs(60),
             )
             .spawn();
-        } else {
+        } else if self.instatus_monitors_enabled {
             tracing::warn!(
                 "Instatus monitors enabled but no ClickHouse reader available (database writes disabled)"
+            );
+        } else {
+            tracing::info!(
+                "Instatus monitors disabled and no ClickHouse reader available; monitors will not run"
             );
         }
     }
@@ -1510,7 +1515,7 @@ mod tests {
             },
         };
 
-        let wrapper = ForcedInclusionProcessedWrapper::from(event);
+        let wrapper = ForcedInclusionProcessedWrapper::from((event, false));
         ProcessorDriver::handle_forced_inclusion_event(&clickhouse, wrapper).await.unwrap();
 
         let rows: Vec<ForcedInclusionProcessedRow> = ctl.collect().await;

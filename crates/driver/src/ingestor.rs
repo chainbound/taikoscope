@@ -154,7 +154,7 @@ impl IngestorDriver {
                     match maybe_batch {
                         Some((batch, l1_tx_hash)) => {
                             info!(block_number = batch.last_block_number(), "Publishing BatchProposed");
-                            let wrapper = BatchProposedWrapper::from((batch, l1_tx_hash));
+                            let wrapper = BatchProposedWrapper::from((batch, l1_tx_hash, false));
                             let event = TaikoEvent::BatchProposed(wrapper);
                             if let Err(e) = publish_event_with_retry(&self.jetstream, &event, 10).await {
                                 tracing::error!(err = %e, "Failed to publish BatchProposed");
@@ -170,7 +170,7 @@ impl IngestorDriver {
                     match maybe_fi {
                         Some(fi) => {
                             info!(blob_hash = ?fi.forcedInclusion.blobHash, "Publishing forced inclusion processed");
-                            let wrapper = ForcedInclusionProcessedWrapper::from(fi);
+                            let wrapper = ForcedInclusionProcessedWrapper::from((fi, false));
                             let event = TaikoEvent::ForcedInclusionProcessed(wrapper);
                             if let Err(e) = publish_event_with_retry(&self.jetstream, &event, 10).await {
                                 tracing::error!(err = %e, "Failed to publish ForcedInclusionProcessed");
@@ -186,7 +186,7 @@ impl IngestorDriver {
                     match maybe_proved {
                         Some((proved, l1_block_number, l1_tx_hash)) => {
                             info!(batch_ids = ?proved.batch_ids_proved(), "Publishing batches proved");
-                            let wrapper = BatchesProvedWrapper::from((proved, l1_block_number, l1_tx_hash));
+                            let wrapper = BatchesProvedWrapper::from((proved, l1_block_number, l1_tx_hash, false));
                             let event = TaikoEvent::BatchesProved(wrapper);
                             if let Err(e) = publish_event_with_retry(&self.jetstream, &event, 10).await {
                                 tracing::error!(err = %e, "Failed to publish BatchesProved");
@@ -202,7 +202,7 @@ impl IngestorDriver {
                     match maybe_verified {
                         Some((verified, l1_block_number, l1_tx_hash)) => {
                             info!(batch_ids = ?verified.batch_id(), "Publishing batches verified");
-                            let wrapper = BatchesVerifiedWrapper::from((verified, l1_block_number, l1_tx_hash));
+                            let wrapper = BatchesVerifiedWrapper::from((verified, l1_block_number, l1_tx_hash, false));
                             let event = TaikoEvent::BatchesVerified(wrapper);
                             if let Err(e) = publish_event_with_retry(&self.jetstream, &event, 10).await {
                                 tracing::error!(err = %e, "Failed to publish BatchesVerified");

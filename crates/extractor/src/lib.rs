@@ -215,6 +215,11 @@ impl Extractor {
                 };
 
                 while let Some(log) = log_stream.next().await {
+                    // Skip reverted logs from reorgs
+                    if log.removed {
+                        info!("Skipping removed BatchProposed log due to L1 reorg");
+                        continue;
+                    }
                     match log.log_decode::<BatchProposed>() {
                         Ok(decoded) => {
                             // Include the transaction hash from the log
@@ -267,6 +272,11 @@ impl Extractor {
                 };
 
                 while let Some(log) = log_stream.next().await {
+                    // Skip reverted logs from reorgs
+                    if log.removed {
+                        info!("Skipping removed BatchesProved log due to L1 reorg");
+                        continue;
+                    }
                     match log.log_decode::<BatchesProved>() {
                         Ok(decoded) => {
                             let l1_block_number = log.block_number.unwrap_or(0);
@@ -322,6 +332,11 @@ impl Extractor {
                 };
 
                 while let Some(log) = log_stream.next().await {
+                    // Skip reverted logs from reorgs
+                    if log.removed {
+                        info!("Skipping removed ForcedInclusionProcessed log due to L1 reorg");
+                        continue;
+                    }
                     match log.log_decode::<ForcedInclusionProcessed>() {
                         Ok(decoded) => {
                             if tx.send(decoded.data().clone()).is_err() {
@@ -383,6 +398,11 @@ impl Extractor {
                 };
 
                 while let Some(log) = log_stream.next().await {
+                    // Skip reverted logs from reorgs
+                    if log.removed {
+                        info!("Skipping removed BatchesVerified log due to L1 reorg");
+                        continue;
+                    }
                     match decode_batches_verified(&log) {
                         Ok(verified) => {
                             let l1_block_number = log.block_number.unwrap_or(0);
