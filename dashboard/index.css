@@ -33,7 +33,18 @@
   --chart-tooltip-label: #ffffff;
 }
 
-/* Dark mode styles for react-day-picker (date picker in header) */
+/* Ensure time range popover and calendar are opaque in all themes */
+/* Base (light + dark) */
+[data-radix-popper-content-wrapper] > div {
+  background-color: var(--card);
+  color: var(--card-fg);
+}
+.rdp {
+  background-color: var(--card);
+  color: var(--card-fg);
+}
+
+/* Dark mode additional tuning for react-day-picker */
 :root.dark .rdp,
 @media (prefers-color-scheme: dark) { :root .rdp { color-scheme: dark; } }
 :root.dark .rdp {
