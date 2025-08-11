@@ -1,6 +1,6 @@
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
-use eyre::{Context, Result, eyre};
+use eyre::{Result, eyre};
 use reqwest::{Client, Url, header::CONTENT_TYPE};
 use serde_json::json;
 use tokio::time::timeout;
@@ -36,7 +36,8 @@ async fn check_once(client: &Client, url: &Url) {
             true
         }
         Err(e) => {
-            warn!(error = %e, url = url.as_str(), "public rpc check failed");
+            // Use debug formatting to include error sources
+            warn!(error = ?e, url = url.as_str(), "public rpc check failed");
             true
         }
     };
@@ -46,7 +47,7 @@ async fn check_once(client: &Client, url: &Url) {
         match check_syncing(client, url).await {
             Ok(false) => info!(url = url.as_str(), "public rpc recovered"),
             Ok(true) => error!(url = url.as_str(), "public rpc still syncing"),
-            Err(e) => error!(error = %e, url = url.as_str(), "public rpc check failed again"),
+            Err(e) => error!(error = ?e, url = url.as_str(), "public rpc check failed again"),
         }
     }
 }
@@ -58,28 +59,42 @@ pub async fn check_syncing(client: &Client, url: &Url) -> Result<bool> {
         "method": "eth_syncing",
         "params": []
     });
+
+    let started_at = Instant::now();
     let resp = timeout(Duration::from_secs(5), client.post(url.clone()).json(&body).send())
         .await
-        .map_err(|_| eyre!("request timed out"))??
-        .error_for_status()
-        .wrap_err("http error from public rpc")?;
+        .map_err(|_| eyre!("request timed out after {}ms", started_at.elapsed().as_millis()))??;
 
     // Capture status and content-type before consuming the body
     let status = resp.status();
     let content_type =
         resp.headers().get(CONTENT_TYPE).and_then(|h| h.to_str().ok()).unwrap_or("").to_lowercase();
 
+    // Read body text once
     let text = resp.text().await.unwrap_or_default();
+
+    // If non-success status, include details and a safe body snippet
+    if !status.is_success() {
+        let snippet = text.chars().take(300).collect::<String>();
+        return Err(eyre!(
+            "http error from public rpc: status {} ({}), content-type {}, body: {}",
+            status,
+            status.canonical_reason().unwrap_or("unknown"),
+            content_type,
+            snippet
+        ));
+    }
 
     // Try to parse JSON regardless of content-type; some servers omit headers
     let value: serde_json::Value = match serde_json::from_str(&text) {
         Ok(v) => v,
         Err(e) => {
-            let snippet = text.chars().take(200).collect::<String>();
+            let snippet = text.chars().take(300).collect::<String>();
             return Err(eyre!(
-                "invalid or non-json response (status {} content-type {}): {} ({})",
+                "invalid or non-json response (status {} content-type {} after {}ms): {} ({})",
                 status,
                 content_type,
+                started_at.elapsed().as_millis(),
                 snippet,
                 e
             ));
