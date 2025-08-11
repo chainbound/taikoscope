@@ -154,18 +154,16 @@ export const calculateSequencerData = (
   const profit = safeValue(profitUsd);
   const profitGwei = safeValue(profitEth * GWEI_TO_ETH);
 
-  // Calculate actual costs after revenue allocation
-  let remaining = revenue;
+  // Use full costs for flow accounting; subsidy covers any shortfall
   const actualHardwareCost = hardwareCostPerSeq;
-  remaining -= actualHardwareCost;
-  const actualProveCost = safeValue(Math.min(proveUsd, remaining));
-  remaining -= actualProveCost;
-  const actualL1Cost = safeValue(Math.min(l1CostUsd, remaining));
-  remaining -= actualL1Cost;
+  const actualProveCost = proveUsd;
+  const actualL1Cost = l1CostUsd;
 
-  // Calculate subsidy needed
-  const deficitUsd = safeValue(Math.max(0, -profitUsd));
-  const subsidyUsd = safeValue((l1CostUsd - actualL1Cost) + deficitUsd);
+  // Calculate subsidy as total costs minus revenue when revenue is insufficient
+  const totalCostsUsd = safeValue(
+    actualHardwareCost + actualProveCost + actualL1Cost,
+  );
+  const subsidyUsd = safeValue(Math.max(0, totalCostsUsd - revenue));
   const subsidyGwei = safeValue(
     ethPrice ? (subsidyUsd / ethPrice) * GWEI_TO_ETH : 0,
   );
@@ -290,20 +288,9 @@ export const generateFallbackSankeyData = ({
   ethPrice,
 }: FallbackCalculationParams): SankeyChartData => {
   const sequencerRevenue = safeValue(priorityFeeUsd + baseFeeUsd * SEQUENCER_BASE_FEE_RATIO);
-  let remaining = sequencerRevenue - totalHardwareCost;
-
-  const actualProveCost = safeValue(
-    Math.min(l1ProveCost, Math.max(0, remaining)),
-  );
-  remaining -= actualProveCost;
-
-  const actualL1Cost = safeValue(
-    Math.min(l1DataCostTotalUsd, Math.max(0, remaining)),
-  );
-  remaining -= actualL1Cost;
-
-  const l1Subsidy = safeValue(l1DataCostTotalUsd - actualL1Cost);
-  const sequencerProfit = safeValue(Math.max(0, remaining));
+  const totalCosts = safeValue(totalHardwareCost + l1ProveCost + l1DataCostTotalUsd);
+  const l1Subsidy = safeValue(Math.max(0, totalCosts - sequencerRevenue));
+  const sequencerProfit = safeValue(Math.max(0, sequencerRevenue - totalCosts));
 
   const sequencerRevenueGwei = safeValue(
     (priorityFee ?? 0) + (baseFee ?? 0) * SEQUENCER_BASE_FEE_RATIO,
@@ -361,14 +348,11 @@ export const generateFallbackSankeyData = ({
     { source: 1, target: 3, value: priorityFeeUsd },
     { source: 2, target: 3, value: safeValue(baseFeeUsd * SEQUENCER_BASE_FEE_RATIO) },
     { source: 2, target: daoIndex, value: baseFeeDaoUsd },
-    {
-      source: 3,
-      target: hardwareIndex,
-      value: safeValue(Math.min(totalHardwareCost, sequencerRevenue)),
-    },
+    // Route all costs from Sequencers; subsidy flows into Sequencers
+    { source: 3, target: hardwareIndex, value: totalHardwareCost },
     { source: 3, target: proveIndex, value: l1ProveCost },
-    { source: 3, target: proposeIndex, value: actualL1Cost },
-    { source: 0, target: proposeIndex, value: l1Subsidy },
+    { source: 3, target: proposeIndex, value: l1DataCostTotalUsd },
+    { source: 0, target: 3, value: l1Subsidy },
     { source: 3, target: profitIndex, value: sequencerProfit },
   ].filter((l) => l.value !== 0);
 
@@ -402,26 +386,18 @@ export const generateMultiSequencerSankeyData = (
   priorityFee?: number | null,
   baseFee?: number | null,
 ): SankeyChartData => {
-  const totalActualHardwareCost = seqData.reduce(
-    (acc, s) => acc + s.actualHardwareCost,
-    0,
-  );
-  const totalActualL1Cost = seqData.reduce(
-    (acc, s) => acc + s.actualL1Cost,
-    0,
-  );
+  const totalActualHardwareCost = seqData.reduce((acc, s) => acc + s.actualHardwareCost, 0);
+  const totalActualL1Cost = seqData.reduce((acc, s) => acc + s.actualL1Cost, 0);
+  const totalActualProveCost = seqData.reduce((acc, s) => acc + s.actualProveCost, 0);
   const totalSubsidy = seqData.reduce((acc, s) => acc + s.subsidyUsd, 0);
   const totalSubsidyGwei = seqData.reduce((acc, s) => acc + s.subsidyGwei, 0);
-  const totalActualProveCost = seqData.reduce(
-    (acc, s) => acc + s.actualProveCost,
-    0,
-  );
 
-  // Aggregate profit across all sequencers
+  // Aggregate profit across all sequencers (profit may be negative per sequencer)
   const totalProfit = seqData.reduce((acc, s) => acc + s.profit, 0);
   const totalProfitGwei = seqData.reduce((acc, s) => acc + s.profitGwei, 0);
 
-  const totalL1Cost = totalActualL1Cost + totalSubsidy;
+  // Proposing cost equals full L1 cost; subsidy flows into sequencers not L1
+  const totalL1Cost = totalActualL1Cost;
 
   // Build Sankey data with Subsidy node and combined sequencer nodes
   const totalSubsidyIndex = 0;
@@ -520,11 +496,11 @@ export const generateMultiSequencerSankeyData = (
       target: proveIndex,
       value: s.actualProveCost,
     })),
-    // Sequencer nodes → Proposing Cost
+    // Sequencer nodes → Proposing Cost (full L1 cost)
     ...seqData.map((s, i) => ({
       source: sequencerStartIndex + i,
       target: l1Index,
-      value: s.l1CostUsd,
+      value: s.actualL1Cost,
     })),
     // Sequencer nodes → Profit (single aggregated node)
     ...seqData.map((s, i) => ({
