@@ -113,23 +113,21 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
         <table className="min-w-full table-fixed border border-gray-100 dark:border-[#475569] divide-y divide-gray-100 dark:divide-[#475569] bg-card dark:bg-[rgba(30,41,59,0.85)] text-card-fg">
           <colgroup>
             {/* Batch */}
+            <col className="w-[14%]" />
+            {/* Sequencer - widened to increase gap before Revenue */}
             <col className="w-[16%]" />
-            {/* Sequencer */}
+            {/* Numeric columns */}
+            <col className="w-[23%]" />
+            <col className="w-[23%]" />
             <col className="w-[24%]" />
-            {/* Revenue */}
-            <col className="w-[20%]" />
-            {/* Cost */}
-            <col className="w-[20%]" />
-            {/* Profit */}
-            <col className="w-[20%]" />
           </colgroup>
           <thead>
             <tr>
               <th className="px-2 py-1 text-left">Batch</th>
               <th className="px-2 py-1 text-left">Sequencer</th>
-              <th className="px-2 py-1 text-right tabular-nums">Revenue</th>
-              <th className="px-2 py-1 text-right tabular-nums">Cost</th>
-              <th className="px-2 py-1 text-right tabular-nums">Profit</th>
+              <th className="px-2 py-1 text-left tabular-nums">Revenue</th>
+              <th className="px-2 py-1 text-left tabular-nums">Cost</th>
+              <th className="px-2 py-1 text-left tabular-nums">Profit</th>
             </tr>
           </thead>
           <tbody>
@@ -143,19 +141,19 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
                 </td>
                 <td className="px-2 py-1 whitespace-nowrap">{addressLink(b.sequencer, getSequencerName(b.sequencer))}</td>
                 <td
-                  className="px-2 py-1 text-right tabular-nums"
+                  className="px-2 py-1 text-left tabular-nums"
                   title={`$${formatUsd(b.revenueEth * ethPrice)}`}
                 >
                   {formatEth(b.revenue, 4)}
                 </td>
                 <td
-                  className="px-2 py-1 text-right tabular-nums"
+                  className="px-2 py-1 text-left tabular-nums"
                   title={`$${formatUsd(b.costEth * ethPrice)}`}
                 >
                   {formatEth(b.cost, 4)}
                 </td>
                 <td
-                  className="px-2 py-1 text-right tabular-nums"
+                  className="px-2 py-1 text-left tabular-nums"
                   title={`$${formatUsd(b.profitEth * ethPrice)}`}
                 >
                   {formatEth(b.profit, 4)}

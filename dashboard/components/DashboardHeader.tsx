@@ -237,15 +237,22 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
         align="end"
         className="bg-card text-card-fg border border-gray-100 dark:border-border rounded-md shadow-lg p-2 space-y-1 z-10"
       >
-        {presetRanges.map((r) => (
-          <button
-            key={r}
-            onClick={() => handlePreset(r)}
-            className="block w-full text-left px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-          >
-            {r}
-          </button>
-        ))}
+        {presetRanges.map((r) => {
+          const isSelected = !isCustom && r === currentTimeRange;
+          const base = 'block w-full text-left px-2 py-1 rounded';
+          const hover = 'hover:bg-gray-100 dark:hover:bg-gray-700';
+          const selected = 'bg-gray-200 dark:bg-gray-700 font-medium';
+          return (
+            <button
+              key={r}
+              onClick={() => handlePreset(r)}
+              aria-selected={isSelected}
+              className={`${base} ${isSelected ? selected : hover}`}
+            >
+              {r}
+            </button>
+          );
+        })}
         <div className="pt-1 border-t border-gray-200 dark:border-gray-700 mt-1 space-y-1">
           <DayPicker
             mode="single"
