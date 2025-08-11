@@ -113,15 +113,15 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
         <table className="min-w-full table-fixed border border-gray-100 dark:border-[#475569] divide-y divide-gray-100 dark:divide-[#475569] bg-card dark:bg-[rgba(30,41,59,0.85)] text-card-fg">
           <colgroup>
             {/* Batch */}
-            <col className="w-[18%]" />
+            <col className="w-[16%]" />
             {/* Sequencer */}
-            <col className="w-[32%]" />
+            <col className="w-[24%]" />
             {/* Revenue */}
-            <col className="w-[16%]" />
+            <col className="w-[20%]" />
             {/* Cost */}
-            <col className="w-[16%]" />
+            <col className="w-[20%]" />
             {/* Profit */}
-            <col className="w-[18%]" />
+            <col className="w-[20%]" />
           </colgroup>
           <thead>
             <tr>
