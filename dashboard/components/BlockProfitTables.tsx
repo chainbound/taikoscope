@@ -110,14 +110,26 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
     <div>
       <h3 className="text-lg font-semibold mb-2">{title}</h3>
       <div className="overflow-x-auto">
-        <table className="min-w-full border border-gray-100 dark:border-[#475569] divide-y divide-gray-100 dark:divide-[#475569] bg-card dark:bg-[rgba(30,41,59,0.85)] text-card-fg">
+        <table className="min-w-full table-fixed border border-gray-100 dark:border-[#475569] divide-y divide-gray-100 dark:divide-[#475569] bg-card dark:bg-[rgba(30,41,59,0.85)] text-card-fg">
+          <colgroup>
+            {/* Batch */}
+            <col className="w-[18%]" />
+            {/* Sequencer */}
+            <col className="w-[32%]" />
+            {/* Revenue */}
+            <col className="w-[16%]" />
+            {/* Cost */}
+            <col className="w-[16%]" />
+            {/* Profit */}
+            <col className="w-[18%]" />
+          </colgroup>
           <thead>
             <tr>
               <th className="px-2 py-1 text-left">Batch</th>
               <th className="px-2 py-1 text-left">Sequencer</th>
-              <th className="px-2 py-1 text-left">Revenue</th>
-              <th className="px-2 py-1 text-left">Cost</th>
-              <th className="px-2 py-1 text-left">Profit</th>
+              <th className="px-2 py-1 text-right tabular-nums">Revenue</th>
+              <th className="px-2 py-1 text-right tabular-nums">Cost</th>
+              <th className="px-2 py-1 text-right tabular-nums">Profit</th>
             </tr>
           </thead>
           <tbody>
@@ -126,24 +138,24 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
                 key={b.batch}
                 className="border-t border-gray-100 dark:border-[#475569]"
               >
-                <td className="px-2 py-1">
+                <td className="px-2 py-1 whitespace-nowrap">
                   {l1TxLink(b.txHash, b.batch.toLocaleString())}
                 </td>
-                <td className="px-2 py-1">{addressLink(b.sequencer, getSequencerName(b.sequencer))}</td>
+                <td className="px-2 py-1 whitespace-nowrap">{addressLink(b.sequencer, getSequencerName(b.sequencer))}</td>
                 <td
-                  className="px-2 py-1"
+                  className="px-2 py-1 text-right tabular-nums"
                   title={`$${formatUsd(b.revenueEth * ethPrice)}`}
                 >
                   {formatEth(b.revenue, 4)}
                 </td>
                 <td
-                  className="px-2 py-1"
+                  className="px-2 py-1 text-right tabular-nums"
                   title={`$${formatUsd(b.costEth * ethPrice)}`}
                 >
                   {formatEth(b.cost, 4)}
                 </td>
                 <td
-                  className="px-2 py-1"
+                  className="px-2 py-1 text-right tabular-nums"
                   title={`$${formatUsd(b.profitEth * ethPrice)}`}
                 >
                   {formatEth(b.profit, 4)}

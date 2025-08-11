@@ -33,6 +33,61 @@
   --chart-tooltip-label: #ffffff;
 }
 
+/* Dark mode styles for react-day-picker (date picker in header) */
+:root.dark .rdp,
+@media (prefers-color-scheme: dark) { :root .rdp { color-scheme: dark; } }
+:root.dark .rdp {
+  background-color: var(--card);
+  color: var(--card-fg);
+}
+:root.dark .rdp .rdp-months,
+:root.dark .rdp .rdp-month,
+:root.dark .rdp .rdp-table,
+:root.dark .rdp .rdp-caption,
+:root.dark .rdp .rdp-head,
+:root.dark .rdp .rdp-tbody,
+:root.dark .rdp .rdp-row,
+:root.dark .rdp .rdp-cell {
+  background-color: var(--card);
+  color: var(--card-fg);
+}
+:root.dark .rdp .rdp-day {
+  color: var(--card-fg);
+}
+:root.dark .rdp .rdp-day:hover {
+  background-color: rgba(148, 163, 184, 0.15);
+}
+:root.dark .rdp .rdp-day_selected,
+:root.dark .rdp .rdp-day_selected:focus-visible,
+:root.dark .rdp .rdp-day_selected:hover {
+  background-color: var(--color-brand);
+  color: #ffffff;
+}
+:root.dark .rdp .rdp-button_reset {
+  color: var(--card-fg);
+}
+:root.dark .rdp .rdp-nav_button {
+  color: var(--color-brand);
+}
+:root.dark .rdp .rdp-caption_label {
+  color: var(--card-fg);
+}
+:root.dark .rdp .rdp-head_cell {
+  color: var(--muted-fg);
+}
+:root.dark .rdp .rdp-weeknumber, 
+:root.dark .rdp .rdp-day_outside,
+:root.dark .rdp .rdp-day_disabled {
+  color: #94a3b8;
+}
+
+/* Popover container inherits card color; improve border contrast */
+:root.dark [data-radix-popper-content-wrapper] > div {
+  background-color: var(--card) !important;
+  color: var(--card-fg) !important;
+  border-color: var(--border) !important;
+}
+
 /* Also honor system dark preference so variables match Tailwind v4 dark: media output */
 @media (prefers-color-scheme: dark) {
   :root {
