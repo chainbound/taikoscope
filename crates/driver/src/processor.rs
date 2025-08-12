@@ -1065,8 +1065,7 @@ impl ProcessorDriver {
                 (0, 0, 0)
             });
 
-        let sum_base_fee =
-            sum_gas_used.saturating_mul(header.base_fee_per_gas.unwrap_or(0) as u128);
+        let sum_base_fee = sum_gas_used.saturating_mul(header.base_fee_per_gas as u128);
 
         let event = L2HeadEvent {
             l2_block_number: header.number,

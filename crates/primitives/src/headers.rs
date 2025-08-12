@@ -34,7 +34,7 @@ pub struct L2Header {
     /// Beneficiary
     pub beneficiary: Address,
     /// Base fee per gas
-    pub base_fee_per_gas: Option<u64>,
+    pub base_fee_per_gas: u64,
 }
 
 /// Stream of L1 headers

@@ -174,7 +174,7 @@ impl Extractor {
                         timestamp: block_data.timestamp,
                         gas_used: block_data.gas_used,
                         beneficiary: block_data.beneficiary,
-                        base_fee_per_gas: block_data.base_fee_per_gas(),
+                        base_fee_per_gas: block_data.base_fee_per_gas().unwrap_or(0),
                     };
                     if tx.send(header).is_err() {
                         error!("L2 header receiver dropped. Stopping L2 header task.");
@@ -437,7 +437,7 @@ impl Extractor {
     pub async fn get_l2_block_stats(
         &self,
         block_number: u64,
-        base_fee: Option<u64>,
+        base_fee: u64,
     ) -> Result<(u128, u32, u128)> {
         use alloy_rpc_types_eth::{BlockId, BlockNumberOrTag};
 

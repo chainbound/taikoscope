@@ -2,14 +2,10 @@ use alloy_network_primitives::ReceiptResponse;
 
 /// Compute aggregated gas and priority fee statistics for a set of receipts.
 ///
-/// `base_fee` is optional and defaults to zero if not provided.
 /// Returns a tuple of `(total_gas_used, transaction_count, total_priority_fee)`.
 #[allow(clippy::module_name_repetitions)]
-pub fn compute_block_stats<R: ReceiptResponse>(
-    receipts: &[R],
-    base_fee: Option<u64>,
-) -> (u128, u32, u128) {
-    let base = base_fee.unwrap_or(0) as u128;
+pub fn compute_block_stats<R: ReceiptResponse>(receipts: &[R], base_fee: u64) -> (u128, u32, u128) {
+    let base = base_fee as u128;
     let mut sum_gas_used: u128 = 0;
     let mut sum_priority_fee: u128 = 0;
 
@@ -84,7 +80,7 @@ mod tests {
     fn compute_block_stats_basic() {
         let receipts =
             vec![TestReceipt { gas: 100, price: 10 }, TestReceipt { gas: 200, price: 20 }];
-        let (gas, count, priority) = compute_block_stats(&receipts, Some(5));
+        let (gas, count, priority) = compute_block_stats(&receipts, 5);
         assert_eq!(gas, 300);
         assert_eq!(count, 2);
         assert_eq!(priority, 3500);
@@ -93,7 +89,7 @@ mod tests {
     #[test]
     fn compute_block_stats_zero_base_fee() {
         let receipts = vec![TestReceipt { gas: 150, price: 40 }];
-        let (gas, count, priority) = compute_block_stats(&receipts, None);
+        let (gas, count, priority) = compute_block_stats(&receipts, 0);
         assert_eq!(gas, 150);
         assert_eq!(count, 1);
         assert_eq!(priority, 6000);
