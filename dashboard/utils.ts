@@ -5,13 +5,14 @@ const rawNetworkName =
   import.meta.env.VITE_NETWORK_NAME ?? import.meta.env.NETWORK_NAME;
 
 export const isMainnet = (rawNetworkName ?? '').toLowerCase() === 'mainnet';
+export const isHekla = (rawNetworkName ?? '').toLowerCase() === 'hekla';
 
 export const TAIKOSCAN_BASE =
   import.meta.env.VITE_TAIKOSCAN_BASE ??
   import.meta.env.TAIKOSCAN_BASE ??
   (isMainnet
     ? 'https://taikoscan.io'
-    : rawNetworkName?.toLowerCase() === 'hekla'
+    : isHekla
       ? 'https://hekla.taikoscan.io'
       : 'https://hekla.taikoscan.io');
 
