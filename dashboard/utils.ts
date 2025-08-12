@@ -9,7 +9,7 @@ export const isMainnet = (rawNetworkName ?? '').toLowerCase() === 'mainnet';
 export const TAIKOSCAN_BASE =
   import.meta.env.VITE_TAIKOSCAN_BASE ??
   import.meta.env.TAIKOSCAN_BASE ??
-  (rawNetworkName?.toLowerCase() === 'mainnet'
+  (isMainnet
     ? 'https://taikoscan.io'
     : rawNetworkName?.toLowerCase() === 'hekla'
       ? 'https://hekla.taikoscan.io'
@@ -18,9 +18,7 @@ export const TAIKOSCAN_BASE =
 export const ETHERSCAN_BASE =
   import.meta.env.VITE_ETHERSCAN_BASE ??
   import.meta.env.ETHERSCAN_BASE ??
-  (rawNetworkName?.toLowerCase() === 'mainnet'
-    ? 'https://etherscan.io'
-    : 'https://holesky.etherscan.io');
+  (isMainnet ? 'https://etherscan.io' : 'https://holesky.etherscan.io');
 
 export const blockLink = (
   block: number,
