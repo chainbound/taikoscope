@@ -81,12 +81,13 @@ describe('dataFetcher', () => {
 
   it('fetches economics data', async () => {
     setAll({
-      fetchL2Fees: ok({
+      fetchL2FeesComponents: ok({
         priority_fee: 1,
         base_fee: 2,
         l1_data_cost: 4,
         prove_cost: 5,
         sequencers: [],
+        batches: [],
       }),
       fetchSequencerDistribution: ok([]),
       fetchL2HeadNumber: ok(2),
@@ -107,12 +108,13 @@ describe('dataFetcher', () => {
 
   it('defaults economics costs to zero when missing', async () => {
     setAll({
-      fetchL2Fees: ok({
+      fetchL2FeesComponents: ok({
         priority_fee: null,
         base_fee: null,
-        l1_data_cost: null,
-        prove_cost: null,
+        l1_data_cost: 0,
+        prove_cost: 0,
         sequencers: [],
+        batches: [],
       }),
       fetchSequencerDistribution: ok([]),
       fetchL2HeadNumber: ok(null),

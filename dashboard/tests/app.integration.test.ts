@@ -18,7 +18,7 @@ import {
   fetchL2BlockTimes,
   fetchL2GasUsed,
   fetchSequencerDistribution,
-  fetchL2Fees,
+  fetchL2FeesComponents,
   fetchDashboardData,
 } from '../services/apiService.ts';
 import { createMetrics, hasBadRequest } from '../helpers';
@@ -139,19 +139,21 @@ const responses: Record<string, Record<string, unknown>> = {
       { l2_block_number: 2, block_time: '1970-01-01T00:00:02Z', gas_used: 150 },
     ],
   },
-  [`/v1/l2-fees?${q1h}`]: {
+  [`/v1/l2-fees-components?${q1h}`]: {
     priority_fee: 600,
     base_fee: 400,
     l1_data_cost: 0,
     prove_cost: 5,
     sequencers: [],
+    batches: [],
   },
-  [`/v1/l2-fees?${q15m}`]: {
+  [`/v1/l2-fees-components?${q15m}`]: {
     priority_fee: 600,
     base_fee: 400,
     l1_data_cost: 0,
     prove_cost: 5,
     sequencers: [],
+    batches: [],
   },
   [`/v1/sequencer-distribution?${q1h}`]: {
     sequencers: [{ address: 'addr1', blocks: 10 }],
@@ -174,12 +176,13 @@ const responses: Record<string, Record<string, unknown>> = {
     l2_head_block: 9,
     l1_head_block: 10,
   },
-  [`/v1/l2-fees?${q24h}`]: {
+  [`/v1/l2-fees-components?${q24h}`]: {
     priority_fee: 1200,
     base_fee: 800,
     l1_data_cost: 0,
     prove_cost: 10,
     sequencers: [],
+    batches: [],
   },
 };
 
@@ -222,7 +225,7 @@ let intervals: IntervalId[] = [];
 async function fetchData(range: TimeRange, state: State, economics = false) {
   if (economics) {
     const [l2FeesRes, l2BlockRes, l1BlockRes] = await Promise.all([
-      fetchL2Fees(range, undefined),
+      fetchL2FeesComponents(range),
       fetchL2HeadBlock(range),
       fetchL1HeadBlock(range),
     ]);
@@ -299,7 +302,7 @@ async function fetchData(range: TimeRange, state: State, economics = false) {
     fetchL2BlockTimes(range, undefined),
     fetchL2GasUsed(range, undefined),
     fetchSequencerDistribution(range),
-    fetchL2Fees(range, undefined),
+    fetchL2FeesComponents(range),
   ]);
 
   const l2Cadence = l2CadenceRes.data;

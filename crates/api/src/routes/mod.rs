@@ -34,7 +34,7 @@ pub fn router(state: ApiState) -> Router {
         .route("/sequencer-distribution", get(sequencer_distribution))
         .route("/sequencer-blocks", get(sequencer_blocks))
         .route("/block-transactions", get(block_transactions))
-        .route("/l2-fees", get(l2_fees))
+        // Removed legacy /l2-fees endpoint (use /l2-fees-components instead)
         .route("/l2-fee-components", get(l2_fee_components))
         .route("/l2-fees-components", get(l2_fees_components))
         .route("/dashboard-data", get(dashboard_data))

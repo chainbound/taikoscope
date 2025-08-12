@@ -906,28 +906,7 @@ export interface SequencerFee {
   prove_cost: number;
 }
 
-export interface L2FeesResponse {
-  priority_fee: number | null;
-  base_fee: number | null;
-  l1_data_cost: number;
-  prove_cost: number;
-  sequencers: SequencerFee[];
-}
-
-export const fetchL2Fees = async (
-  range: TimeRange,
-  address?: string,
-): Promise<RequestResult<L2FeesResponse>> => {
-  const url =
-    `${API_BASE}/l2-fees?${timeRangeToQuery(range)}` +
-    (address ? `&address=${address}` : '');
-  const res = await fetchJson<L2FeesResponse>(url);
-  return {
-    data: res.data ?? null,
-    badRequest: res.badRequest,
-    error: res.error,
-  };
-};
+// Removed fetchL2Fees in favor of fetchL2FeesComponents
 
 export interface FeeComponent {
   block_number: number;

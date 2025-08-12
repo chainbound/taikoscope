@@ -356,54 +356,7 @@ async fn prove_cost_integration() {
 
 
 
-#[tokio::test]
-async fn l2_fees_integration() {
-    let mock = Mock::new();
-    mock.add(handlers::provide::<clickhouse_lib::SequencerFeeRow>(vec![
-        clickhouse_lib::SequencerFeeRow {
-            sequencer: AddressBytes([1u8; 20]),
-            priority_fee: 600 * WEI_PER_GWEI,
-            base_fee: 400 * WEI_PER_GWEI,
-            l1_data_cost: 10 * WEI_PER_GWEI,
-            prove_cost: 5 * WEI_PER_GWEI,
-        },
-    ]));
-
-    let url = Url::parse(mock.url()).unwrap();
-    let client =
-        ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
-
-    let (addr, server) = spawn_server(client).await;
-    wait_for_server(addr).await;
-
-    let resp = reqwest::get(format!(
-        "http://{addr}/{API_VERSION}/l2-fees?created[gte]=0&created[lte]=3600000"
-    ))
-    .await
-    .unwrap();
-    assert_eq!(resp.status(), StatusCode::OK);
-    let body: serde_json::Value = resp.json().await.unwrap();
-    assert_eq!(
-        body,
-        serde_json::json!({
-            "priority_fee": 600,
-            "base_fee": 400,
-            "l1_data_cost": 10,
-            "prove_cost": 5,
-            "sequencers": [
-                {
-                    "address": format!("0x{}", hex::encode([1u8; 20])),
-                    "priority_fee": 600,
-                    "base_fee": 400,
-                    "l1_data_cost": 10,
-                    "prove_cost": 5
-                }
-            ]
-        })
-    );
-
-    server.abort();
-}
+// Removed: l2_fees_integration in favor of l2_fees_components coverage
 
 
 #[tokio::test]

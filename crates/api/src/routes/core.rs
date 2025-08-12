@@ -14,20 +14,20 @@ use crate::{
         validate_unified_query,
     },
 };
-use alloy_primitives::{Address, B256};
+use alloy_primitives::B256;
 use api_types::{
     BatchFeeComponentRow, BatchPostingTimesResponse, ErrorResponse, EthPriceResponse,
     FeeComponentsResponse, L1BlockTimesResponse, L1DataCostResponse, L1HeadBlockResponse,
-    L2FeesComponentsResponse, L2FeesResponse, L2HeadBlockResponse, PreconfDataResponse,
-    ProveCostResponse, ProveTimesResponse, SequencerBlocksItem, SequencerBlocksResponse,
-    SequencerDistributionItem, SequencerDistributionResponse, SequencerFeeRow, VerifyTimesResponse,
+    L2FeesComponentsResponse, L2HeadBlockResponse, PreconfDataResponse, ProveCostResponse,
+    ProveTimesResponse, SequencerBlocksItem, SequencerBlocksResponse, SequencerDistributionItem,
+    SequencerDistributionResponse, SequencerFeeRow, VerifyTimesResponse,
 };
 use axum::{
     Json,
     extract::{Query, State},
     http::StatusCode,
 };
-use clickhouse_lib::{AddressBytes, BlockFeeComponentRow, L1DataCostRow, ProveCostRow};
+use clickhouse_lib::{BlockFeeComponentRow, L1DataCostRow, ProveCostRow};
 
 // Legacy type aliases for backward compatibility
 type RangeQuery = CommonQuery;
@@ -548,88 +548,7 @@ pub async fn eth_price(
     }
 }
 
-#[utoipa::path(
-    get,
-    path = "/l2-fees",
-    params(
-        RangeQuery
-    ),
-    responses(
-        (status = 200, description = "Priority and base fees", body = L2FeesResponse),
-        (status = 500, description = "Database error", body = ErrorResponse)
-    ),
-    tag = "taikoscope"
-)]
-/// Get L2 fee summary including total priority fees, base fees, and L1 data costs
-pub async fn l2_fees(
-    Query(params): Query<RangeQuery>,
-    State(state): State<ApiState>,
-) -> Result<Json<L2FeesResponse>, ErrorResponse> {
-    validate_time_range(&params.time_range)?;
-
-    let has_time_range = has_time_range_params(&params.time_range);
-    validate_range_exclusivity(has_time_range, false)?;
-
-    let time_range = resolve_time_range_enum(&params.time_range);
-    let address = if let Some(addr) = params.address.as_ref() {
-        match addr.parse::<Address>() {
-            Ok(a) => Some(AddressBytes::from(a)),
-            Err(e) => {
-                tracing::warn!(error = %e, "Failed to parse address");
-                return Err(ErrorResponse::new(
-                    "invalid-params",
-                    "Bad Request",
-                    StatusCode::BAD_REQUEST,
-                    e.to_string(),
-                ));
-            }
-        }
-    } else {
-        None
-    };
-
-    let rows = state
-        .client
-        .get_l2_fees_by_sequencer(time_range)
-        .await
-        .map_err(|e| query_error("L2 fees", e))?;
-
-    let filtered: Vec<_> = rows
-        .into_iter()
-        .filter(|r| if let Some(target) = address { r.sequencer == target } else { true })
-        .collect();
-
-    let (priority_sum, base_sum, data_sum, prove_sum) =
-        filtered.iter().fold((0u128, 0u128, 0u128, 0u128), |(p_acc, b_acc, d_acc, pr_acc), r| {
-            (
-                p_acc + r.priority_fee,
-                b_acc + r.base_fee,
-                d_acc + r.l1_data_cost,
-                pr_acc + r.prove_cost,
-            )
-        });
-
-    let has_rows = !filtered.is_empty();
-    let priority_fee = has_rows.then_some(wei_to_gwei(priority_sum));
-    let base_fee = has_rows.then_some(wei_to_gwei(base_sum));
-    let l1_data_cost = wei_to_gwei(data_sum);
-    let prove_cost = wei_to_gwei(prove_sum);
-
-    // Per-sequencer breakdown (gwei)
-    let sequencers: Vec<SequencerFeeRow> = filtered
-        .into_iter()
-        .map(|s| SequencerFeeRow {
-            address: format_address(s.sequencer),
-            priority_fee: wei_to_gwei(s.priority_fee),
-            base_fee: wei_to_gwei(s.base_fee),
-            l1_data_cost: wei_to_gwei(s.l1_data_cost),
-            prove_cost: wei_to_gwei(s.prove_cost),
-        })
-        .collect();
-
-    tracing::info!(count = sequencers.len(), "Returning L2 fees with per-sequencer breakdown");
-    Ok(Json(L2FeesResponse { priority_fee, base_fee, l1_data_cost, prove_cost, sequencers }))
-}
+// Removed legacy l2_fees endpoint (use l2_fees_components)
 
 #[utoipa::path(
     get,
