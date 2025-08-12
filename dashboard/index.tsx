@@ -21,7 +21,7 @@ const root = ReactDOM.createRoot(rootElement);
 if (isMainnet) {
   const script = document.createElement('script');
   script.defer = true;
-  script.src = 'http://135.181.191.125:3039/script.js';
+  script.src = 'https://umami.chainbound.io/script.js';
   script.setAttribute('data-website-id', '82893695-a8ae-42bd-870d-903850eab2b9');
   document.head.appendChild(script);
 }
