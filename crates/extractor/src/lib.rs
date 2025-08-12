@@ -22,7 +22,10 @@ use chainio::TaikoInbox;
 use derive_more::Debug;
 use eyre::Result;
 use network::retries::{DEFAULT_RETRY_LAYER, RetryWsConnect};
-use primitives::headers::{L1Header, L1HeaderStream, L2Header, L2HeaderStream};
+use primitives::{
+    block_stats::compute_block_stats,
+    headers::{L1Header, L1HeaderStream, L2Header, L2HeaderStream},
+};
 use std::time::Duration;
 use tokio::{sync::mpsc, time::sleep};
 use tokio_stream::{Stream, StreamExt, wrappers::UnboundedReceiverStream};
@@ -445,7 +448,7 @@ impl Extractor {
         let receipts_opt = self.l2_provider.get_block_receipts(block).await?;
         let receipts = receipts_opt.ok_or_else(|| eyre::eyre!("missing receipts"))?;
 
-        Ok(primitives::block_stats::compute_block_stats(&receipts, base_fee))
+        Ok(compute_block_stats(&receipts, base_fee))
     }
 
     /// Get a transaction receipt by hash with retry logic
