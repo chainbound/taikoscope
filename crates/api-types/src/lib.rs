@@ -311,21 +311,7 @@ pub struct BlockTransactionsResponse {
     pub blocks: Vec<BlockTransactionsItem>,
 }
 
-/// Profit information for a block.
-#[derive(Debug, Serialize, ToSchema)]
-pub struct BlockProfitItem {
-    /// Block number.
-    pub block_number: u64,
-    /// Profit in gwei (priority + base - L1 cost).
-    pub profit: i128,
-}
-
-/// Collection of block profit entries.
-#[derive(Debug, Serialize, ToSchema)]
-pub struct BlockProfitsResponse {
-    /// Profit entries for the requested range.
-    pub blocks: Vec<BlockProfitItem>,
-}
+// removed: BlockProfitItem and BlockProfitsResponse (no longer exposed)
 
 /// Aggregated cost attributed to a proposer.
 #[derive(Debug, Serialize, ToSchema)]

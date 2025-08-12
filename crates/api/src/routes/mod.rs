@@ -41,7 +41,6 @@ pub fn router(state: ApiState) -> Router {
         .route("/l1-data-cost", get(l1_data_cost))
         .route("/prove-costs", get(prove_costs))
         .route("/prove-cost", get(prove_cost))
-        .route("/block-profits", get(block_profits))
         .route("/eth-price", get(eth_price));
 
     Router::new()

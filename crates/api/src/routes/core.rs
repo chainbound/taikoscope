@@ -8,7 +8,7 @@ use crate::{
     },
     state::{ApiState, MAX_TABLE_LIMIT},
     validation::{
-        CommonQuery, PaginatedQuery, ProfitQuery, QueryMode, UnifiedQuery, has_time_range_params,
+        CommonQuery, PaginatedQuery, QueryMode, UnifiedQuery, has_time_range_params,
         resolve_time_range_bounds, resolve_time_range_enum, resolve_time_range_since,
         validate_pagination, validate_range_exclusivity, validate_time_range,
         validate_unified_query,
@@ -16,12 +16,11 @@ use crate::{
 };
 use alloy_primitives::{Address, B256};
 use api_types::{
-    BatchFeeComponentRow, BatchPostingTimesResponse, BlockProfitItem, BlockProfitsResponse,
-    ErrorResponse, EthPriceResponse, FeeComponentsResponse, L1BlockTimesResponse,
-    L1DataCostResponse, L1HeadBlockResponse, L2FeesComponentsResponse, L2FeesResponse,
-    L2HeadBlockResponse, PreconfDataResponse, ProveCostResponse, ProveTimesResponse,
-    SequencerBlocksItem, SequencerBlocksResponse, SequencerDistributionItem,
-    SequencerDistributionResponse, SequencerFeeRow, VerifyTimesResponse,
+    BatchFeeComponentRow, BatchPostingTimesResponse, ErrorResponse, EthPriceResponse,
+    FeeComponentsResponse, L1BlockTimesResponse, L1DataCostResponse, L1HeadBlockResponse,
+    L2FeesComponentsResponse, L2FeesResponse, L2HeadBlockResponse, PreconfDataResponse,
+    ProveCostResponse, ProveTimesResponse, SequencerBlocksItem, SequencerBlocksResponse,
+    SequencerDistributionItem, SequencerDistributionResponse, SequencerFeeRow, VerifyTimesResponse,
 };
 use axum::{
     Json,
@@ -520,56 +519,7 @@ pub async fn prove_cost(
     Ok(Json(ProveCostResponse { batches: rows }))
 }
 
-#[utoipa::path(
-    get,
-    path = "/block-profits",
-    params(
-        ProfitQuery
-    ),
-    responses(
-        (status = 200, description = "Block profit ranking", body = BlockProfitsResponse),
-        (status = 500, description = "Database error", body = ErrorResponse)
-    ),
-    tag = "taikoscope"
-)]
-/// Get the most or least profitable blocks in the specified range
-pub async fn block_profits(
-    Query(params): Query<ProfitQuery>,
-    State(state): State<ApiState>,
-) -> Result<Json<BlockProfitsResponse>, ErrorResponse> {
-    validate_time_range(&params.common.time_range)?;
-    let limit = params.limit.unwrap_or(5).min(MAX_TABLE_LIMIT);
-    let order_desc =
-        params.order.as_deref().map(|o| o.eq_ignore_ascii_case("desc")).unwrap_or(true);
-    let has_time_range = has_time_range_params(&params.common.time_range);
-    validate_range_exclusivity(has_time_range, false)?;
-
-    let time_range = resolve_time_range_enum(&params.common.time_range);
-    let address = parse_optional_address(params.common.address.as_ref())?;
-
-    let rows = state
-        .client
-        .get_l2_fee_components(address, time_range, None)
-        .await
-        .map_err(|e| query_error("fee components", e))?;
-
-    let mut blocks: Vec<BlockProfitItem> = rows
-        .into_iter()
-        .map(|r| BlockProfitItem {
-            block_number: r.l2_block_number,
-            profit: r.priority_fee as i128 + (r.base_fee as i128 * 75 / 100) -
-                r.l1_data_cost.unwrap_or(0) as i128,
-        })
-        .collect();
-
-    blocks.sort_by_key(|b| b.profit);
-    if order_desc {
-        blocks.reverse();
-    }
-    blocks.truncate(limit as usize);
-    tracing::info!(count = blocks.len(), "Returning block profits");
-    Ok(Json(BlockProfitsResponse { blocks }))
-}
+// removed: block_profits endpoint (unused by dashboard)
 
 #[utoipa::path(
     get,

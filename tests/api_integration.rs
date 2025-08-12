@@ -286,41 +286,7 @@ async fn blobs_per_batch_desc_order() {
     server.abort();
 }
 
-#[tokio::test]
-async fn block_profits_integration() {
-    let mock = Mock::new();
-    mock.add(handlers::provide(vec![
-        FeeRow { l2_block_number: 1, priority_fee: 5, base_fee: 10, l1_data_cost: Some(3) },
-        FeeRow { l2_block_number: 2, priority_fee: 2, base_fee: 2, l1_data_cost: Some(10) },
-    ]));
-
-    let url = Url::parse(mock.url()).unwrap();
-    let client =
-        ClickhouseReader::new(url, "test-db".to_owned(), "user".into(), "pass".into()).unwrap();
-
-    let (addr, server) = spawn_server(client).await;
-    wait_for_server(addr).await;
-
-    let resp = reqwest::get(
-        format!("http://{addr}/{API_VERSION}/block-profits?created[gte]=0&created[lte]=3600000&limit=1&order=desc"),
-    )
-    .await
-    .unwrap();
-    assert_eq!(resp.status(), StatusCode::OK);
-    let body: serde_json::Value = resp.json().await.unwrap();
-    assert_eq!(body, serde_json::json!({ "blocks": [ { "block_number": 1, "profit": 12 } ] }));
-
-    let resp = reqwest::get(
-        format!("http://{addr}/{API_VERSION}/block-profits?created[gte]=0&created[lte]=3600000&limit=1&order=asc"),
-    )
-    .await
-    .unwrap();
-    assert_eq!(resp.status(), StatusCode::OK);
-    let body: serde_json::Value = resp.json().await.unwrap();
-    assert_eq!(body, serde_json::json!({ "blocks": [ { "block_number": 2, "profit": -6 } ] }));
-
-    server.abort();
-}
+// removed: block_profits integration test (endpoint removed)
 
 #[tokio::test]
 async fn verify_times_integration() {

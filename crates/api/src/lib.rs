@@ -45,7 +45,6 @@ use utoipa::OpenApi;
         routes::aggregated::dashboard_data,
         routes::aggregated::prove_costs,
         routes::core::prove_cost,
-        routes::core::block_profits,
         routes::core::l1_data_cost,
         routes::core::eth_price
     ),
@@ -97,7 +96,6 @@ use utoipa::OpenApi;
             EthPriceResponse,
             ProposerCostsResponse,
             ProveCostResponse,
-            BlockProfitsResponse,
             api_types::ErrorResponse,
             L1DataCostResponse
         )
