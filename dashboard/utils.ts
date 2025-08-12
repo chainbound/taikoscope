@@ -4,6 +4,8 @@ import { TAIKO_PINK } from './theme';
 const rawNetworkName =
   import.meta.env.VITE_NETWORK_NAME ?? import.meta.env.NETWORK_NAME;
 
+export const isMainnet = (rawNetworkName ?? '').toLowerCase() === 'mainnet';
+
 export const TAIKOSCAN_BASE =
   import.meta.env.VITE_TAIKOSCAN_BASE ??
   import.meta.env.TAIKOSCAN_BASE ??
