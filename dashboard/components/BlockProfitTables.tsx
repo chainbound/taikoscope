@@ -3,7 +3,7 @@ import type { L2FeesComponentsResponse } from '../services/apiService';
 import { useEthPrice } from '../services/priceService';
 import { TimeRange } from '../types';
 import { rangeToHours } from '../utils/timeRange';
-import { formatEth, l1TxLink, addressLink } from '../utils';
+import { formatEth, l1TxLink, addressLink, formatDecimal } from '../utils';
 import { getSequencerName } from '../sequencerConfig';
 import { calculateProfit } from '../utils/profit';
 
@@ -81,6 +81,7 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
       profitEth, // Store ETH value for sorting and display
       revenueEth,
       costEth,
+      ratio: costEth > 0 ? revenueEth / costEth : null,
     };
   });
 
@@ -104,6 +105,7 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
         profitEth: number;
         revenueEth: number;
         costEth: number;
+        ratio: number | null;
       }[]
       | null,
   ) => (
@@ -113,13 +115,14 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
         <table className="min-w-full table-fixed border border-gray-100 dark:border-[#475569] divide-y divide-gray-100 dark:divide-[#475569] bg-card dark:bg-[rgba(30,41,59,0.85)] text-card-fg">
           <colgroup>
             {/* Batch */}
-            <col className="w-[14%]" />
+            <col className="w-[12%]" />
             {/* Sequencer - widened to increase gap before Revenue */}
             <col className="w-[16%]" />
             {/* Numeric columns */}
-            <col className="w-[23%]" />
-            <col className="w-[23%]" />
-            <col className="w-[24%]" />
+            <col className="w-[18%]" />
+            <col className="w-[18%]" />
+            <col className="w-[18%]" />
+            <col className="w-[18%]" />
           </colgroup>
           <thead>
             <tr>
@@ -128,6 +131,7 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
               <th className="px-2 py-1 text-left tabular-nums">Revenue</th>
               <th className="px-2 py-1 text-left tabular-nums">Cost</th>
               <th className="px-2 py-1 text-left tabular-nums">Profit</th>
+              <th className="px-2 py-1 text-left tabular-nums">Revenue-to-Cost Ratio</th>
             </tr>
           </thead>
           <tbody>
@@ -157,6 +161,9 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
                   title={`$${formatUsd(b.profitEth * ethPrice)}`}
                 >
                   {formatEth(b.profit, 4)}
+                </td>
+                <td className="px-2 py-1 text-left tabular-nums">
+                  {b.ratio != null ? formatDecimal(b.ratio) : 'N/A'}
                 </td>
               </tr>
             ))}

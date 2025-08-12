@@ -39,5 +39,6 @@ describe('BlockProfitTables', () => {
     );
 
     expect(html).toContain('Top 5 Profitable Batches');
+    expect(html).toContain('Revenue-to-Cost Ratio');
   });
 });
