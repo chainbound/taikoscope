@@ -1058,7 +1058,7 @@ impl ProcessorDriver {
         header: &primitives::headers::L2Header,
     ) {
         let (sum_gas_used, sum_tx, sum_priority_fee) = extractor
-            .get_l2_block_stats(header.number, header.base_fee_per_gas)
+            .get_l2_block_stats(B256::from(*header.hash), header.base_fee_per_gas)
             .await
             .unwrap_or_else(|e| {
                 tracing::error!(header_number = header.number, err = %e, "Failed to get L2 block stats, using defaults");

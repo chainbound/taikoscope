@@ -439,12 +439,12 @@ impl Extractor {
     /// Calculate aggregated statistics for an L2 block by fetching its receipts.
     pub async fn get_l2_block_stats(
         &self,
-        block_number: u64,
+        block_hash: B256,
         base_fee: u64,
     ) -> Result<(u128, u32, u128)> {
-        use alloy_rpc_types_eth::{BlockId, BlockNumberOrTag};
+        use alloy_rpc_types_eth::BlockId;
 
-        let block = BlockId::Number(BlockNumberOrTag::Number(block_number));
+        let block = BlockId::Hash(block_hash.into());
         let receipts_opt = self.l2_provider.get_block_receipts(block).await?;
         let receipts = receipts_opt.ok_or_else(|| eyre::eyre!("missing receipts"))?;
 
