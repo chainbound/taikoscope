@@ -90,7 +90,12 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
     .slice(0, 5);
   const bottomBatches = [...profits]
     .sort((a, b) => a.profitEth - b.profitEth)
-    .slice(0, 5);
+    .slice(0, 5)
+    .map((b) => ({
+      ...b,
+      // For least profitable, show Cost-to-Revenue ratio
+      ratio: b.revenueEth > 0 ? b.costEth / b.revenueEth : null,
+    }));
 
   const renderTable = (
     title: string,
@@ -108,6 +113,7 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
         ratio: number | null;
       }[]
       | null,
+    ratioHeader: string,
   ) => (
     <div>
       <h3 className="text-lg font-semibold mb-2">{title}</h3>
@@ -131,7 +137,7 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
               <th className="px-2 py-1 text-left tabular-nums">Revenue</th>
               <th className="px-2 py-1 text-left tabular-nums">Cost</th>
               <th className="px-2 py-1 text-left tabular-nums">Profit</th>
-              <th className="px-2 py-1 text-left tabular-nums">Revenue-to-Cost Ratio</th>
+              <th className="px-2 py-1 text-left tabular-nums">{ratioHeader}</th>
             </tr>
           </thead>
           <tbody>
@@ -175,8 +181,8 @@ export const BlockProfitTables: React.FC<BlockProfitTablesProps> = ({
 
   return (
     <div className="mt-6 grid grid-cols-1 gap-4 md:gap-6">
-      {renderTable('Top 5 Profitable Batches', topBatches)}
-      {renderTable('Least 5 Profitable Batches', bottomBatches)}
+      {renderTable('Top 5 Profitable Batches', topBatches, 'Revenue-to-Cost Ratio')}
+      {renderTable('Least 5 Profitable Batches', bottomBatches, 'Cost-to-Revenue Ratio')}
     </div>
   );
 };
