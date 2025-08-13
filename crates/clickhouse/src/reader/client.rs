@@ -2996,28 +2996,30 @@ ORDER BY rb.batch_id ASC
         until: DateTime<Utc>,
     ) -> Result<Vec<SequencerDistributionRow>> {
         let query = format!(
-            "SELECT h.sequencer,\n\
-                   count(DISTINCT h.l2_block_number) AS blocks,\n\
-                   count(DISTINCT b.batch_id) AS batches,\n\
-                   toUInt64(min(h.block_ts)) AS min_ts,\n\
-                   toUInt64(max(h.block_ts)) AS max_ts,\n\
-                   sum(h.sum_tx) AS tx_sum\n\
-             FROM {db}.l2_head_events h\n\
-             LEFT JOIN {db}.batches b ON h.sequencer = b.proposer_addr\n\
-                   AND b.l1_block_number IN (\n\
-                       SELECT l1_block_number FROM {db}.l1_head_events l1\n\
-                       WHERE l1.block_ts > {since} AND l1.block_ts <= {until}\n\
-                   )\n\
-             WHERE h.block_ts > {since}\n\
-               AND h.block_ts <= {until}\n\
-               AND {filter}\n\
-             GROUP BY h.sequencer\n\
-             ORDER BY blocks DESC",
+            r#"
+SELECT
+  b.proposer_addr AS sequencer,
+  countDistinct(h.l2_block_number) AS blocks,
+  countDistinct(b.batch_id)        AS batches,
+  toUInt64(min(h.block_ts))        AS min_ts,
+  toUInt64(max(h.block_ts))        AS max_ts,
+  sum(h.sum_tx)                    AS tx_sum
+FROM {db}.l2_head_events h
+INNER JOIN {db}.batch_blocks bb ON bb.l2_block_number = h.l2_block_number
+INNER JOIN {db}.batches b       ON b.batch_id = bb.batch_id
+INNER JOIN {db}.l1_head_events l1 ON l1.l1_block_number = b.l1_block_number
+WHERE l1.block_ts > {since}
+  AND l1.block_ts <= {until}
+  AND {filter}
+GROUP BY b.proposer_addr
+ORDER BY blocks DESC
+"#,
             db = self.db_name,
             since = since.timestamp(),
             until = until.timestamp(),
             filter = self.reorg_filter("h"),
         );
+
         let rows = self
             .execute::<SequencerDistributionRow>(&query)
             .await
