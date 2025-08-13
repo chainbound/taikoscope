@@ -2,9 +2,8 @@
 
 use crate::{
     helpers::{
-        bucket_size_from_range, database_error, format_address, parse_address,
-        parse_optional_address, prove_bucket_size, query_error, verify_bucket_size, wei_to_gwei,
-        wei_to_gwei_opt,
+        database_error, format_address, parse_address, prove_bucket_size, query_error,
+        verify_bucket_size, wei_to_gwei, wei_to_gwei_opt,
     },
     state::{ApiState, MAX_TABLE_LIMIT},
     validation::{
@@ -17,9 +16,9 @@ use crate::{
 use alloy_primitives::B256;
 use api_types::{
     BatchFeeComponentRow, BatchPostingTimesResponse, ErrorResponse, EthPriceResponse,
-    FeeComponentsResponse, L1BlockTimesResponse, L1DataCostResponse, L1HeadBlockResponse,
-    L2FeesComponentsResponse, L2HeadBlockResponse, PreconfDataResponse, ProveCostResponse,
-    ProveTimesResponse, SequencerBlocksItem, SequencerBlocksResponse, SequencerDistributionItem,
+    L1BlockTimesResponse, L1DataCostResponse, L1HeadBlockResponse, L2FeesComponentsResponse,
+    L2HeadBlockResponse, PreconfDataResponse, ProveCostResponse, ProveTimesResponse,
+    SequencerBlocksItem, SequencerBlocksResponse, SequencerDistributionItem,
     SequencerDistributionResponse, SequencerFeeRow, VerifyTimesResponse,
 };
 use axum::{
@@ -27,7 +26,7 @@ use axum::{
     extract::{Query, State},
     http::StatusCode,
 };
-use clickhouse_lib::{BlockFeeComponentRow, L1DataCostRow, ProveCostRow};
+use clickhouse_lib::{L1DataCostRow, ProveCostRow};
 
 // Legacy type aliases for backward compatibility
 type RangeQuery = CommonQuery;
@@ -548,65 +547,7 @@ pub async fn eth_price(
     }
 }
 
-// Removed legacy l2_fees endpoint (use l2_fees_components)
-
-#[utoipa::path(
-    get,
-    path = "/l2-fee-components",
-    params(
-        UnifiedQuery
-    ),
-    responses(
-        (status = 200, description = "Fee components per block (regular or aggregated)", body = FeeComponentsResponse),
-        (status = 500, description = "Database error", body = ErrorResponse)
-    ),
-    tag = "taikoscope"
-)]
-/// Get detailed fee components per block showing priority fee, base fee, and L1 data cost.
-///
-/// Use ?aggregated for aggregated data with automatic bucketing based on time range.
-/// Without ?aggregated, returns detailed results without aggregation.
-pub async fn l2_fee_components(
-    Query(params): Query<UnifiedQuery>,
-    State(state): State<ApiState>,
-) -> Result<Json<FeeComponentsResponse>, ErrorResponse> {
-    let query_mode = validate_unified_query(&params, MAX_TABLE_LIMIT)?;
-
-    validate_time_range(&params.common.time_range)?;
-    let has_time_range = has_time_range_params(&params.common.time_range);
-    validate_range_exclusivity(has_time_range, false)?;
-
-    let time_range = resolve_time_range_enum(&params.common.time_range);
-    let address = parse_optional_address(params.common.address.as_ref())?;
-
-    let bucket = match query_mode {
-        QueryMode::Aggregated => Some(bucket_size_from_range(&time_range)),
-        QueryMode::Regular { .. } => None,
-    };
-
-    let blocks = state
-        .client
-        .get_l2_fee_components(address, time_range, bucket)
-        .await
-        .map_err(|e| query_error("fee components", e))?;
-
-    let blocks: Vec<BlockFeeComponentRow> = blocks
-        .into_iter()
-        .map(|r| BlockFeeComponentRow {
-            l2_block_number: r.l2_block_number,
-            priority_fee: wei_to_gwei(r.priority_fee),
-            base_fee: wei_to_gwei(r.base_fee),
-            l1_data_cost: wei_to_gwei_opt(r.l1_data_cost),
-        })
-        .collect();
-
-    let mode_desc = match query_mode {
-        QueryMode::Aggregated => "aggregated",
-        QueryMode::Regular { .. } => "regular",
-    };
-    tracing::info!(count = blocks.len(), mode = mode_desc, "Returning fee components");
-    Ok(Json(FeeComponentsResponse { blocks }))
-}
+// Removed legacy l2_fees and l2_fee_components endpoints (use l2_fees_components)
 
 #[utoipa::path(
     get,

@@ -330,7 +330,14 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
       </div>
     );
   }
-  if (priorityFee == null && baseFee == null) {
+  const hasAnyData =
+    priorityFee != null ||
+    baseFee != null ||
+    (effectiveFees?.batches?.length ?? 0) > 0 ||
+    (effectiveFees?.sequencers?.length ?? 0) > 0 ||
+    (effectiveFees?.l1_data_cost ?? 0) > 0 ||
+    (effectiveFees?.prove_cost ?? 0) > 0;
+  if (!hasAnyData) {
     return (
       <div className="flex items-center justify-center h-full text-gray-500">
         No data available
