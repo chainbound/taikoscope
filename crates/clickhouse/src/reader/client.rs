@@ -2436,74 +2436,52 @@ impl ClickhouseReader {
             prove_cost: Option<u128>,
         }
 
-        let mut query = format!(
-            "WITH recent_batches AS (
-            SELECT
-                b.batch_id,
-                b.l1_block_number,
-                b.l1_tx_hash,
-                b.proposer_addr
-            FROM
-                {db}.batches b
-            INNER JOIN
-                {db}.l1_head_events l1 ON b.l1_block_number = l1.l1_block_number
-            WHERE
-                l1.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})",
-            interval = range.interval(),
+        let query = format!(
+            r#"
+WITH recent_batches AS (
+    SELECT
+        b.batch_id,
+        b.l1_block_number,
+        b.l1_tx_hash,
+        b.proposer_addr
+    FROM {db}.batches b
+    INNER JOIN {db}.l1_head_events l1 ON b.l1_block_number = l1.l1_block_number
+    WHERE l1.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})
+    {proposer_clause}
+),
+recent_batch_blocks AS (
+    SELECT bb.batch_id, bb.l2_block_number
+    FROM {db}.batch_blocks bb
+    INNER JOIN recent_batches rb USING (batch_id)
+)
+SELECT
+    rb.batch_id,
+    rb.l1_block_number,
+    rb.l1_tx_hash,
+    rb.proposer_addr AS proposer,
+    coalesce(sum(h.sum_priority_fee), toUInt128(0)) AS priority_fee,
+    coalesce(sum(h.sum_base_fee),   toUInt128(0)) AS base_fee,
+    toNullable(max(dc.cost)) AS l1_data_cost,
+    toNullable(max(pc.cost)) AS prove_cost
+FROM recent_batches rb
+INNER JOIN recent_batch_blocks bb USING (batch_id)
+LEFT JOIN {db}.l2_head_events h
+       ON bb.l2_block_number = h.l2_block_number
+      AND {filter}                         -- keep reorg filter
+LEFT JOIN {db}.l1_data_costs dc
+       ON rb.batch_id = dc.batch_id AND rb.l1_block_number = dc.l1_block_number
+LEFT JOIN {db}.prove_costs pc
+       ON rb.batch_id = pc.batch_id
+GROUP BY rb.batch_id, rb.l1_block_number, rb.l1_tx_hash, rb.proposer_addr
+ORDER BY rb.batch_id ASC
+"#,
             db = self.db_name,
-        );
-
-        if let Some(addr) = proposer {
-            query.push_str(&format!(" AND b.proposer_addr = unhex('{}')", encode(addr)));
-        }
-
-        query.push_str(&format!(
-            "),
-            recent_batch_blocks AS (
-                SELECT
-                    batch_id,
-                    l2_block_number
-                FROM
-                    {db}.batch_blocks
-                WHERE
-                    batch_id IN (SELECT batch_id FROM recent_batches)
-            )
-            SELECT
-                rb.batch_id,
-                rb.l1_block_number,
-                rb.l1_tx_hash,
-                rb.proposer_addr AS proposer,
-                sum(h.sum_priority_fee) AS priority_fee,
-                sum(h.sum_base_fee) AS base_fee,
-                toNullable(max(dc.cost)) AS l1_data_cost,
-                toNullable(max(pc.cost)) AS prove_cost
-            FROM
-                recent_batches rb
-            INNER JOIN
-                recent_batch_blocks bb ON rb.batch_id = bb.batch_id
-            LEFT JOIN
-                {db}.l2_head_events h ON bb.l2_block_number = h.l2_block_number
-                    AND h.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})
-                    AND {filter}
-            LEFT JOIN
-                {db}.l1_data_costs dc ON rb.batch_id = dc.batch_id AND rb.l1_block_number = dc.l1_block_number
-            LEFT JOIN
-                {db}.prove_costs pc ON rb.batch_id = pc.batch_id
-            WHERE
-                bb.batch_id IN (
-                    SELECT DISTINCT b2.batch_id
-                    FROM {db}.batches b2
-                    INNER JOIN {db}.l1_head_events l1 ON b2.l1_block_number = l1.l1_block_number
-                    WHERE l1.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})
-                )
-            GROUP BY
-                rb.batch_id, rb.l1_block_number, rb.l1_tx_hash, rb.proposer_addr
-            ORDER BY
-                rb.batch_id ASC",
             interval = range.interval(),
             filter = self.reorg_filter("h"),
-            db = self.db_name,
-        ));
+            proposer_clause = proposer
+                .map(|addr| format!("AND b.proposer_addr = unhex('{}')", encode(addr)))
+                .unwrap_or_default(),
+        );
 
         let rows = self.execute::<RawRow>(&query).await?;
         Ok(rows
