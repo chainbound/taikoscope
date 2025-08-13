@@ -554,20 +554,35 @@ impl ClickhouseReader {
         }
 
         let query = format!(
-            "SELECT h.l2_block_number, h.sequencer AS original_sequencer, \
-                    b.proposer_addr AS proposer, b.l1_block_number, \
-                    toUInt64(toUnixTimestamp64Milli(l1.inserted_at)) AS ts \
-             FROM {db}.l2_head_events h \
-             INNER JOIN {db}.batch_blocks bb ON h.l2_block_number = bb.l2_block_number \
+            "SELECT \
+                 h.l2_block_number, \
+                 any(h.sequencer) AS original_sequencer, \
+                 any(b.proposer_addr) AS proposer, \
+                 any(b.l1_block_number) AS l1_block_number, \
+                 toUInt64(max(l1.block_ts) * 1000) AS ts \
+             FROM ( \
+                 SELECT \
+                     l2_block_number, \
+                     argMax(sequencer, inserted_at) AS sequencer, \
+                     argMax(block_hash, inserted_at) AS block_hash \
+                 FROM {db}.l2_head_events \
+                 GROUP BY l2_block_number \
+             ) h \
+             INNER JOIN ( \
+                 SELECT l2_block_number, anyLast(batch_id) AS batch_id \
+                 FROM {db}.batch_blocks \
+                 GROUP BY l2_block_number \
+             ) bb ON h.l2_block_number = bb.l2_block_number \
              INNER JOIN {db}.batches b ON bb.batch_id = b.batch_id \
              INNER JOIN {db}.l1_head_events l1 ON b.l1_block_number = l1.l1_block_number \
-             LEFT JOIN {db}.l2_reorgs r ON h.l2_block_number = r.l2_block_number \
-             WHERE l1.inserted_at > toDateTime64({since}, 3) \
-               AND r.l2_block_number IS NULL \
+             WHERE l1.block_ts > {since} \
+               AND {filter} \
                AND h.sequencer != b.proposer_addr \
-             ORDER BY l1.inserted_at ASC",
+             GROUP BY h.l2_block_number \
+             ORDER BY ts ASC",
             db = self.db_name,
-            since = since.timestamp_millis() as f64 / 1000.0,
+            since = since.timestamp(),
+            filter = self.reorg_filter("h"),
         );
         let rows =
             self.execute::<RawRow>(&query).await.context("fetching failed proposals failed")?;
@@ -602,22 +617,37 @@ impl ClickhouseReader {
         }
 
         let query = format!(
-            "SELECT h.l2_block_number, h.sequencer AS original_sequencer, \
-                    b.proposer_addr AS proposer, b.l1_block_number, \
-                    toUInt64(toUnixTimestamp64Milli(l1.inserted_at)) AS ts \
-             FROM {db}.l2_head_events h \
-             INNER JOIN {db}.batch_blocks bb ON h.l2_block_number = bb.l2_block_number \
-             INNER JOIN {db}.batches b ON bb.batch_id = b.batch_id \
-             INNER JOIN {db}.l1_head_events l1 ON b.l1_block_number = l1.l1_block_number \
-             LEFT JOIN {db}.l2_reorgs r ON h.l2_block_number = r.l2_block_number \
-             WHERE l1.inserted_at > toDateTime64({since}, 3) \
-               AND l1.inserted_at <= toDateTime64({until}, 3) \
-               AND r.l2_block_number IS NULL \
-               AND h.sequencer != b.proposer_addr \
-             ORDER BY l1.inserted_at ASC",
+            "SELECT \
+                h.l2_block_number, \
+                any(h.sequencer) AS original_sequencer, \
+                any(b.proposer_addr) AS proposer, \
+                any(b.l1_block_number) AS l1_block_number, \
+                toUInt64(max(l1.block_ts) * 1000) AS ts \
+         FROM ( \
+             SELECT \
+                 l2_block_number, \
+                 argMax(sequencer, inserted_at) AS sequencer, \
+                 argMax(block_hash, inserted_at) AS block_hash \
+             FROM {db}.l2_head_events \
+             GROUP BY l2_block_number \
+         ) h \
+         INNER JOIN ( \
+             SELECT l2_block_number, anyLast(batch_id) AS batch_id \
+             FROM {db}.batch_blocks \
+             GROUP BY l2_block_number \
+         ) bb ON h.l2_block_number = bb.l2_block_number \
+         INNER JOIN {db}.batches b ON bb.batch_id = b.batch_id \
+         INNER JOIN {db}.l1_head_events l1 ON b.l1_block_number = l1.l1_block_number \
+         WHERE l1.block_ts > {since} \
+           AND l1.block_ts <= {until} \
+           AND {filter} \
+           AND h.sequencer != b.proposer_addr \
+         GROUP BY h.l2_block_number \
+         ORDER BY ts ASC",
             db = self.db_name,
-            since = since.timestamp_millis() as f64 / 1000.0,
-            until = until.timestamp_millis() as f64 / 1000.0,
+            since = since.timestamp(),
+            until = until.timestamp(),
+            filter = self.reorg_filter("h"),
         );
         let rows =
             self.execute::<RawRow>(&query).await.context("fetching failed proposals failed")?;
