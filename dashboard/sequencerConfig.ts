@@ -10,6 +10,7 @@ export const SEQUENCER_PAIRS: Array<[string, string]> = [
   // Mainnet
   ['0x000cb000E880A92a8f383D69dA2142a969B93DE7', 'Chainbound'],
   ['0xe2dA8aC2E550cd141198a117520D4EDc8692AB74', 'Gattaca'],
+  ['0x2C89DC1b6ECA603AdaCe60A76d3074F3835f6cBE', 'Gattaca'],
   ['0x5F62d006C10C009ff50C878Cd6157aC861C99990', 'Taiko'],
   ['0x7A853a6480F4D7dB79AE91c16c960dBbB6710d25', 'Taiko Fallback'],
   // Test addresses used in unit tests
