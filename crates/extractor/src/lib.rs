@@ -571,14 +571,6 @@ impl ReorgDetector {
 
         None
     }
-
-    /// Backward compatibility method - only checks block numbers.
-    /// This is used by deprecated driver code.
-    pub fn on_new_block(&mut self, new_block_number: BlockNumber) -> Option<u16> {
-        // For backward compatibility, we use a dummy hash when only block number is provided
-        let dummy_hash = B256::ZERO;
-        self.on_new_block_with_hash(new_block_number, dummy_hash).map(|(depth, _)| depth)
-    }
 }
 
 #[cfg(test)]
