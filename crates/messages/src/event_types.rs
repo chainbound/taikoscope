@@ -76,7 +76,7 @@ pub enum TaikoEvent {
 
 impl TaikoEvent {
     pub fn dedup_id(&self) -> String {
-        let raw = match self {
+        match self {
             Self::L1Header(h) => format!("{}_{}-l1_header", h.number, h.hash),
             Self::L2Header(h) => format!("{}_{}-l2_header", h.number, h.hash),
             Self::BatchProposed(b) => {
@@ -98,7 +98,6 @@ impl TaikoEvent {
                 let suffix = if f.removed { "-removed" } else { "" };
                 format!("{}-forced_inclusion_processed{}", f.event.forcedInclusion.blobHash, suffix)
             }
-        };
-        raw
+        }
     }
 }
