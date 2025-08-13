@@ -548,8 +548,6 @@ pub async fn eth_price(
     }
 }
 
-// Removed legacy l2_fees endpoint (use l2_fees_components)
-
 #[utoipa::path(
     get,
     path = "/l2-fee-components",
