@@ -13,6 +13,7 @@ export const SEQUENCER_PAIRS: Array<[string, string]> = [
   ['0x2C89DC1b6ECA603AdaCe60A76d3074F3835f6cBE', 'Gattaca'],
   ['0x5F62d006C10C009ff50C878Cd6157aC861C99990', 'Taiko'],
   ['0x7A853a6480F4D7dB79AE91c16c960dBbB6710d25', 'Taiko Fallback'],
+  ['0xCbeB5d484b54498d3893A0c3Eb790331962e9e9d', 'Nethermind'],
   // Test addresses used in unit tests
   ['0x00a00800c28f2616360dcfadee02d761d14ad94e', 'Chainbound A'],
   ['0x00b00194cdc219921784ab1eb4eaa9634fe1f1a8', 'Chainbound B'],
