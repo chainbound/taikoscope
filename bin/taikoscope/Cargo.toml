@@ -1,0 +1,27 @@
+[package]
+name = "taikoscope"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+config = { path = "../../crates/config" }
+extractor = { path = "../../crates/extractor" }
+messages = { path = "../../crates/messages" }
+nats-utils = { path = "../../crates/nats-utils" }
+primitives = { path = "../../crates/primitives" }
+runtime = { path = "../../crates/runtime" }
+driver = { path = "../../crates/driver" }
+
+async-nats.workspace = true
+clap.workspace = true
+dotenvy.workspace = true
+eyre.workspace = true
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+tokio-stream.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+[lints]
+workspace = true

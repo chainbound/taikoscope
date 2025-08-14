@@ -5,6 +5,23 @@ use alloy_primitives::Address;
 use clap::Parser;
 use url::Url;
 
+/// Operation mode for the taikoscope binary
+#[derive(Debug, Clone, clap::ValueEnum)]
+pub enum OperationMode {
+    /// Run only the ingestor
+    Ingestor,
+    /// Run only the processor
+    Processor,
+    /// Run both ingestor and processor in unified mode (default)
+    Unified,
+}
+
+impl Default for OperationMode {
+    fn default() -> Self {
+        Self::Unified
+    }
+}
+
 /// Default origins allowed to access the API.
 pub const DEFAULT_ALLOWED_ORIGINS: &str = "https://taikoscope.xyz,https://www.taikoscope.xyz,https://hekla.taikoscope.xyz,https://www.hekla.taikoscope.xyz";
 /// Clickhouse database configuration options
@@ -198,6 +215,10 @@ pub struct ApiOpts {
 /// CLI options for taikoscope
 #[derive(Debug, Clone, Parser)]
 pub struct Opts {
+    /// Operation mode
+    #[clap(long, default_value = "unified")]
+    pub mode: OperationMode,
+
     /// Clickhouse database configuration
     #[clap(flatten)]
     pub clickhouse: ClickhouseOpts,
@@ -261,6 +282,8 @@ mod tests {
     fn base_args() -> Vec<&'static str> {
         vec![
             "prog",
+            "--mode",
+            "unified",
             "--url",
             "http://localhost:8123",
             "--db",
@@ -297,6 +320,8 @@ mod tests {
             "verify",
             "--transaction-sequencing-component-id",
             "l2",
+            "--public-api-component-id",
+            "api",
             "--api-host",
             "127.0.0.1",
             "--api-port",

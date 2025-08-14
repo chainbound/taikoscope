@@ -5,3 +5,4 @@
 pub mod ingestor;
 pub mod processor;
 mod subscription;
+pub mod unified;

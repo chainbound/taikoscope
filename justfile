@@ -7,8 +7,12 @@ set dotenv-load := true
 default:
     @just --list --unsorted
 
-# start the Taikoscope binary for local development
+# start the Taikoscope binary for local development (unified mode - no NATS needed)
 dev:
+    ENV_FILE=dev.env cargo run --bin taikoscope -- --mode unified
+
+# start the legacy processor binary for local development
+dev-legacy:
     ENV_FILE=dev.env cargo run --bin processor
 
 # start the API server for local development
@@ -44,6 +48,18 @@ dev-ingestor:
 # start the processor for local development
 dev-processor:
     ENV_FILE=hekla.env SKIP_MIGRATIONS=true ENABLE_DB_WRITES=false cargo run --bin processor
+
+# start the unified binary in ingestor-only mode
+dev-unified-ingestor:
+    ENV_FILE=hekla.env cargo run --bin taikoscope -- --mode ingestor
+
+# start the unified binary in processor-only mode (legacy replacement)
+dev-unified-processor:
+    ENV_FILE=hekla.env SKIP_MIGRATIONS=true ENABLE_DB_WRITES=false cargo run --bin taikoscope -- --mode processor
+
+# start the unified binary in full unified mode (no NATS needed)
+dev-unified:
+    ENV_FILE=hekla.env cargo run --bin taikoscope -- --mode unified
 
 # run complete local NATS pipeline (starts NATS, ingestor, and processor)
 dev-pipeline:
@@ -170,6 +186,15 @@ build-api tag='latest' platform='linux/arm64':
         --tag ghcr.io/chainbound/taikoscope-api:{{tag}} \
         --push .
 
+# build and push the unified taikoscope docker image (defaults to arm64/Graviton)
+build-taikoscope tag='latest' platform='linux/arm64':
+    docker buildx build \
+        --label "org.opencontainers.image.commit=$(git rev-parse --short HEAD)" \
+        --platform {{platform}} \
+        --file Dockerfile.taikoscope \
+        --tag ghcr.io/chainbound/taikoscope:{{tag}} \
+        --push .
+
 
 # build and push all docker images
 build-all tag='latest' platform='linux/arm64':
@@ -192,4 +217,11 @@ build-all tag='latest' platform='linux/arm64':
         --platform {{platform}} \
         --file Dockerfile.api \
         --tag ghcr.io/chainbound/taikoscope-api:{{tag}} \
+        --push .
+    @echo "Building unified taikoscope image..."
+    docker buildx build \
+        --label "org.opencontainers.image.commit=$(git rev-parse --short HEAD)" \
+        --platform {{platform}} \
+        --file Dockerfile.taikoscope \
+        --tag ghcr.io/chainbound/taikoscope:{{tag}} \
         --push .

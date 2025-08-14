@@ -4,6 +4,7 @@ members = [
     "bin/generate-openapi-spec",
     "bin/ingestor",
     "bin/processor",
+    "bin/taikoscope",
     "crates/*",
 ]
 resolver = "2"

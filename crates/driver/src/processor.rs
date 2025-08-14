@@ -1305,6 +1305,7 @@ mod tests {
 
     fn make_opts(url: Url, nats_url: Url, l1_url: Url, l2_url: Url) -> Opts {
         Opts {
+            mode: config::OperationMode::Processor,
             clickhouse: ClickhouseOpts {
                 url,
                 db: "test".into(),

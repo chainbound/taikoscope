@@ -4509,6 +4509,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "taikoscope"
+version = "0.1.0"
+dependencies = [
+ "async-nats",
+ "clap",
+ "config",
+ "dotenvy",
+ "driver",
+ "extractor",
+ "eyre",
+ "messages",
+ "nats-utils",
+ "primitives",
+ "runtime",
+ "tokio",
+ "tokio-stream",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "tap"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
