@@ -2450,7 +2450,7 @@ WITH recent_batches AS (
     {proposer_clause}
 ),
 recent_batch_blocks AS (
-    SELECT bb.batch_id, bb.l2_block_number
+    SELECT DISTINCT bb.batch_id, bb.l2_block_number
     FROM {db}.batch_blocks bb
     INNER JOIN recent_batches rb USING (batch_id)
 )
@@ -2830,16 +2830,19 @@ ORDER BY rb.batch_id ASC
         WHERE l1.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval})
     ),
     revenues AS (
-        SELECT
-            h.sequencer AS seq_addr,
-            sum(h.sum_priority_fee) AS priority_fee,
-            sum(h.sum_base_fee)   AS base_fee
-        FROM {db}.l2_head_events h
-        INNER JOIN {db}.batch_blocks bb ON bb.l2_block_number = h.l2_block_number
-        INNER JOIN valid_batches vb      ON vb.batch_id = bb.batch_id
-        WHERE {filter}
-        GROUP BY h.sequencer
-    ),
+    SELECT
+        h.sequencer AS seq_addr,
+        sum(h.sum_priority_fee) AS priority_fee,
+        sum(h.sum_base_fee)   AS base_fee
+    FROM {db}.l2_head_events h
+    INNER JOIN (
+        SELECT DISTINCT batch_id, l2_block_number
+        FROM {db}.batch_blocks
+    ) bb ON bb.l2_block_number = h.l2_block_number
+    INNER JOIN valid_batches vb ON vb.batch_id = bb.batch_id
+    WHERE {filter}
+    GROUP BY h.sequencer
+),
     costs AS (
         SELECT
             vb.seq_addr AS seq_addr,
