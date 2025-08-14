@@ -123,7 +123,7 @@ impl IngestorDriver {
                 maybe_l1 = l1_stream.next() => {
                     match maybe_l1 {
                         Some(header) => {
-                            info!(block_number = header.number, "Publishing L1 header");
+                            info!(block_number = header.number, hash = %header.hash, "Publishing L1 header");
                             let event = TaikoEvent::L1Header(header);
                             if let Err(e) = publish_event_with_retry(&self.jetstream, &event, 10).await {
                                 tracing::error!(err = %e, "Failed to publish L1Header");
@@ -138,7 +138,7 @@ impl IngestorDriver {
                 maybe_l2 = l2_stream.next() => {
                     match maybe_l2 {
                         Some(header) => {
-                            info!(block_number = header.number, "Publishing L2 header");
+                            info!(block_number = header.number, hash = %header.hash, "Publishing L2 header");
                             let event = TaikoEvent::L2Header(header);
                             if let Err(e) = publish_event_with_retry(&self.jetstream, &event, 10).await {
                                 tracing::error!(err = %e, "Failed to publish L2Header");

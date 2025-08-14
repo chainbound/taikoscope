@@ -860,7 +860,7 @@ impl ProcessorDriver {
         )
         .await?;
 
-        info!(header_number = header.number, "Inserted L1 header");
+        info!(header_number = header.number, hash = %header.hash, "Inserted L1 header");
 
         // Process preconfirmation data (same as original driver)
         Self::process_preconf_data(writer, extractor, &header).await;
@@ -1079,10 +1079,10 @@ impl ProcessorDriver {
         };
 
         if let Err(e) = writer.insert_l2_header(&event).await {
-            tracing::error!(header_number = header.number, err = %e, "Failed to insert L2 header");
+            tracing::error!(header_number = header.number, hash = %header.hash, err = %e, "Failed to insert L2 header");
         } else {
             info!(
-                header_number = header.number,
+                header_number = header.number, hash = %header.hash,
                 sum_gas_used, sum_tx, "Inserted L2 header with stats"
             );
         }
