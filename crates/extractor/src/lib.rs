@@ -33,7 +33,7 @@ use tracing::{error, info, warn};
 use url::Url;
 
 /// Extractor client
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Extractor {
     #[debug(skip)]
     l1_provider: DefaultProvider,
@@ -449,6 +449,38 @@ impl Extractor {
         let receipts = receipts_opt.ok_or_else(|| eyre::eyre!("missing receipts"))?;
 
         Ok(compute_block_stats(&receipts, base_fee))
+    }
+
+    /// Get the latest L1 block number
+    pub async fn get_l1_latest_block_number(&self) -> Result<u64> {
+        self.l1_provider.get_block_number().await.map_err(Into::into)
+    }
+
+    /// Get the latest L2 block number
+    pub async fn get_l2_latest_block_number(&self) -> Result<u64> {
+        self.l2_provider.get_block_number().await.map_err(Into::into)
+    }
+
+    /// Get L1 block by number
+    pub async fn get_l1_block_by_number(
+        &self,
+        block_number: u64,
+    ) -> Result<alloy_rpc_types_eth::Block> {
+        self.l1_provider
+            .get_block(block_number.into())
+            .await?
+            .ok_or_else(|| eyre::eyre!("L1 block {} not found", block_number))
+    }
+
+    /// Get L2 block by number
+    pub async fn get_l2_block_by_number(
+        &self,
+        block_number: u64,
+    ) -> Result<alloy_rpc_types_eth::Block> {
+        self.l2_provider
+            .get_block(block_number.into())
+            .await?
+            .ok_or_else(|| eyre::eyre!("L2 block {} not found", block_number))
     }
 
     /// Get a transaction receipt by hash with retry logic

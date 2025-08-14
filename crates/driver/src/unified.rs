@@ -1,9 +1,11 @@
 //! Taikoscope Unified Driver - combines ingestor and processor without NATS
 
-use std::collections::VecDeque;
+use std::{collections::VecDeque, time::Duration};
 
 use alloy_primitives::{Address, BlockHash};
-use clickhouse::{ClickhouseReader, ClickhouseWriter};
+#[allow(unused_imports)]
+use chainio::BatchesVerified;
+use clickhouse::{AddressBytes, ClickhouseReader, ClickhouseWriter, HashBytes, L2HeadEvent};
 use config::Opts;
 use extractor::{
     BatchProposedStream, BatchesProvedStream, BatchesVerifiedStream, Extractor,
@@ -47,6 +49,9 @@ pub struct UnifiedDriver {
     batch_proof_timeout_secs: u64,
     public_rpc_url: Option<Url>,
     processed_l2_headers: VecDeque<BlockHash>,
+    // Contract addresses for event filtering
+    inbox_address: Address,
+    taiko_wrapper_address: Address,
 }
 
 /// An EPOCH is a series of 32 slots.
@@ -169,6 +174,8 @@ impl UnifiedDriver {
             batch_proof_timeout_secs: opts.instatus.batch_proof_timeout_secs,
             public_rpc_url: opts.rpc.public_url,
             processed_l2_headers: VecDeque::new(),
+            inbox_address: opts.taiko_addresses.inbox_address,
+            taiko_wrapper_address: opts.taiko_addresses.taiko_wrapper_address,
         })
     }
 
@@ -214,6 +221,9 @@ impl UnifiedDriver {
         let monitor_handles =
             if self.instatus_monitors_enabled { self.start_monitors().await } else { Vec::new() };
 
+        // Start gap detection task
+        let gap_detection_handle = self.start_gap_detection_task().await;
+
         let l1_stream = self.get_l1_headers().await;
         let l2_stream = self.get_l2_headers().await;
         let batch_stream = self.get_batch_proposed().await;
@@ -233,8 +243,11 @@ impl UnifiedDriver {
             )
             .await;
 
-        // Clean up monitors
+        // Clean up monitors and gap detection
         for handle in monitor_handles {
+            handle.abort();
+        }
+        if let Some(handle) = gap_detection_handle {
             handle.abort();
         }
 
@@ -622,5 +635,476 @@ impl UnifiedDriver {
         info!("Monitors not yet implemented in unified mode");
 
         handles
+    }
+
+    /// Start the gap detection and backfill task
+    async fn start_gap_detection_task(&self) -> Option<tokio::task::JoinHandle<()>> {
+        // Only start gap detection if we have a reader
+        let reader = self.clickhouse_reader.as_ref()?.clone();
+        let writer = self.clickhouse_writer.as_ref()?.clone();
+        let extractor = self.extractor.clone();
+        let inbox_address = self.inbox_address;
+        let taiko_wrapper_address = self.taiko_wrapper_address;
+
+        info!("Starting gap detection task");
+
+        let handle = tokio::spawn(async move {
+            let mut interval = tokio::time::interval(Duration::from_secs(30));
+            interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+
+            loop {
+                interval.tick().await;
+
+                if let Err(e) = Self::run_gap_detection(
+                    &reader,
+                    &writer,
+                    &extractor,
+                    inbox_address,
+                    taiko_wrapper_address,
+                )
+                .await
+                {
+                    error!(err = %e, "Gap detection failed");
+                } else {
+                    info!("Gap detection cycle completed");
+                }
+            }
+        });
+
+        Some(handle)
+    }
+
+    /// Run a single cycle of gap detection and backfill
+    async fn run_gap_detection(
+        reader: &ClickhouseReader,
+        writer: &ClickhouseWriter,
+        extractor: &Extractor,
+        inbox_address: Address,
+        taiko_wrapper_address: Address,
+    ) -> Result<()> {
+        // Get current blockchain state
+        let latest_l1_rpc = extractor
+            .get_l1_latest_block_number()
+            .await
+            .map_err(|e| eyre::eyre!("Failed to get latest L1 block: {}", e))?;
+        let latest_l2_rpc = extractor
+            .get_l2_latest_block_number()
+            .await
+            .map_err(|e| eyre::eyre!("Failed to get latest L2 block: {}", e))?;
+
+        // Get database state
+        let latest_l1_db = reader.get_latest_l1_block().await?.unwrap_or(0);
+        let latest_l2_db = reader.get_latest_l2_block().await?.unwrap_or(0);
+
+        info!(
+            latest_l1_rpc = latest_l1_rpc,
+            latest_l1_db = latest_l1_db,
+            latest_l2_rpc = latest_l2_rpc,
+            latest_l2_db = latest_l2_db,
+            "Gap detection: blockchain vs database state"
+        );
+
+        // Only backfill finalized data (5+ blocks old)
+        const FINALIZATION_BUFFER: u64 = 5;
+        let l1_backfill_end = latest_l1_rpc.saturating_sub(FINALIZATION_BUFFER);
+        let l2_backfill_end = latest_l2_rpc.saturating_sub(FINALIZATION_BUFFER);
+
+        // Find and backfill L1 gaps
+        if latest_l1_db < l1_backfill_end {
+            let l1_gaps = reader.find_missing_l1_blocks(latest_l1_db + 1, l1_backfill_end).await?;
+            if !l1_gaps.is_empty() {
+                info!(gaps = l1_gaps.len(), "Found L1 gaps to backfill: {:?}", l1_gaps);
+                Self::backfill_l1_blocks(
+                    writer,
+                    extractor,
+                    l1_gaps,
+                    inbox_address,
+                    taiko_wrapper_address,
+                )
+                .await?;
+            }
+        }
+
+        // Find and backfill L2 gaps
+        if latest_l2_db < l2_backfill_end {
+            let l2_gaps = reader.find_missing_l2_blocks(latest_l2_db + 1, l2_backfill_end).await?;
+            if !l2_gaps.is_empty() {
+                info!(gaps = l2_gaps.len(), "Found L2 gaps to backfill: {:?}", l2_gaps);
+                Self::backfill_l2_blocks(writer, extractor, l2_gaps).await?;
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Backfill missing L1 blocks and extract all Taiko events from those blocks
+    #[allow(unused_variables)]
+    async fn backfill_l1_blocks(
+        writer: &ClickhouseWriter,
+        extractor: &Extractor,
+        block_numbers: Vec<u64>,
+        inbox_address: Address,
+        taiko_wrapper_address: Address,
+    ) -> Result<()> {
+        for block_number in block_numbers {
+            match extractor.get_l1_block_by_number(block_number).await {
+                Ok(block) => {
+                    // Insert L1 header
+                    let header = primitives::headers::L1Header {
+                        number: block.header.number,
+                        hash: block.header.hash,
+                        slot: block.header.timestamp, // Using timestamp as slot for now
+                        timestamp: block.header.timestamp,
+                    };
+
+                    if let Err(e) = writer.insert_l1_header(&header).await {
+                        error!(block_number = block_number, err = %e, "Failed to backfill L1 header");
+                        continue;
+                    }
+
+                    // Process preconf data - skip for backfill since we don't have the driver
+                    // instance
+                    info!(
+                        block_number = header.number,
+                        "Preconf data processing skipped during backfill"
+                    );
+
+                    // Process all Taiko events from this L1 block
+                    Self::process_l1_block_taiko_events_stub(
+                        writer,
+                        extractor,
+                        &block,
+                        inbox_address,
+                        taiko_wrapper_address,
+                    )
+                    .await?;
+
+                    info!(
+                        block_number = block_number,
+                        "Successfully backfilled L1 block with events"
+                    );
+                }
+                Err(e) => {
+                    warn!(block_number = block_number, err = %e, "Could not fetch L1 block for backfill");
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Process all Taiko events found in an L1 block during backfill
+    async fn process_l1_block_taiko_events_stub(
+        writer: &ClickhouseWriter,
+        extractor: &Extractor,
+        block: &alloy_rpc_types_eth::Block,
+        inbox_address: Address,
+        taiko_wrapper_address: Address,
+    ) -> Result<()> {
+        #[allow(unused_imports)]
+        use alloy_sol_types::SolEvent;
+        use chainio::{
+            BatchesVerified,
+            ITaikoInbox::{BatchProposed, BatchesProved, BatchesVerified as InboxBatchesVerified},
+            taiko::wrapper::ITaikoWrapper::ForcedInclusionProcessed,
+        };
+        use messages::{
+            BatchProposedWrapper, BatchesProvedWrapper, BatchesVerifiedWrapper,
+            ForcedInclusionProcessedWrapper,
+        };
+
+        let block_number = block.header.number;
+        let mut events_found = 0;
+
+        info!(
+            block_number = block_number,
+            tx_count = block.transactions.len(),
+            "Processing L1 block for Taiko events during backfill"
+        );
+
+        // Process all transactions in the block to find Taiko events
+        for tx_hash in block.transactions.hashes() {
+            // Get transaction receipt to access logs
+            match extractor.get_receipt(tx_hash).await {
+                Ok(receipt) => {
+                    for log in receipt.logs() {
+                        // Skip removed logs (shouldn't happen in backfill but be safe)
+                        if log.removed {
+                            continue;
+                        }
+
+                        // Process events based on contract address
+                        if log.address() == inbox_address {
+                            // Try to decode BatchProposed
+                            if let Ok(decoded) = log.log_decode::<BatchProposed>() {
+                                info!(
+                                    block_number = block_number,
+                                    tx_hash = %tx_hash,
+                                    "Found BatchProposed event in backfill"
+                                );
+                                let wrapper = BatchProposedWrapper::from((
+                                    decoded.data().clone(),
+                                    tx_hash,
+                                    false, // not reorged
+                                ));
+                                Self::handle_batch_proposed_event_during_backfill(
+                                    writer, extractor, wrapper,
+                                )
+                                .await?;
+                                events_found += 1;
+                                continue;
+                            }
+
+                            // Try to decode BatchesProved
+                            if let Ok(decoded) = log.log_decode::<BatchesProved>() {
+                                info!(
+                                    block_number = block_number,
+                                    tx_hash = %tx_hash,
+                                    "Found BatchesProved event in backfill"
+                                );
+                                let wrapper = BatchesProvedWrapper::from((
+                                    decoded.data().clone(),
+                                    block_number,
+                                    tx_hash,
+                                    false, // not reorged
+                                ));
+                                Self::handle_batches_proved_event_during_backfill(
+                                    writer, extractor, wrapper,
+                                )
+                                .await?;
+                                events_found += 1;
+                                continue;
+                            }
+
+                            // Try to decode BatchesVerified
+                            if let Ok(decoded) = log.log_decode::<InboxBatchesVerified>() {
+                                info!(
+                                    block_number = block_number,
+                                    tx_hash = %tx_hash,
+                                    "Found BatchesVerified event in backfill"
+                                );
+                                let data = decoded.data();
+                                let mut block_hash = [0u8; 32];
+                                block_hash.copy_from_slice(data.blockHash.as_slice());
+                                let verified =
+                                    BatchesVerified { batch_id: data.batchId, block_hash };
+                                let wrapper = BatchesVerifiedWrapper::from((
+                                    verified,
+                                    block_number,
+                                    tx_hash,
+                                    false, // not reorged
+                                ));
+                                Self::handle_batches_verified_event_during_backfill(
+                                    writer, extractor, wrapper,
+                                )
+                                .await?;
+                                events_found += 1;
+                            }
+                        } else if log.address() == taiko_wrapper_address {
+                            // Try to decode ForcedInclusionProcessed
+                            if let Ok(decoded) = log.log_decode::<ForcedInclusionProcessed>() {
+                                info!(
+                                    block_number = block_number,
+                                    tx_hash = %tx_hash,
+                                    "Found ForcedInclusionProcessed event in backfill"
+                                );
+                                let wrapper = ForcedInclusionProcessedWrapper::from((
+                                    decoded.data().clone(),
+                                    false, // not reorged
+                                ));
+                                Self::handle_forced_inclusion_event_during_backfill(
+                                    writer, wrapper,
+                                )
+                                .await?;
+                                events_found += 1;
+                            }
+                        }
+                    }
+                }
+                Err(e) => {
+                    warn!(
+                        block_number = block_number,
+                        tx_hash = %tx_hash,
+                        err = %e,
+                        "Failed to get receipt for transaction during L1 backfill"
+                    );
+                }
+            }
+        }
+
+        info!(
+            block_number = block_number,
+            events_found = events_found,
+            "Completed L1 block Taiko event extraction during backfill"
+        );
+        Ok(())
+    }
+
+    // Event handlers for backfill - reuse exact same logic as live processing
+    async fn handle_batch_proposed_event_during_backfill(
+        writer: &ClickhouseWriter,
+        extractor: &Extractor,
+        wrapper: BatchProposedWrapper,
+    ) -> Result<()> {
+        let batch = &wrapper.batch;
+        let l1_tx_hash = wrapper.l1_tx_hash;
+
+        // Insert batch with error handling
+        Self::with_db_error_context(
+            writer.insert_batch(batch, l1_tx_hash),
+            "insert batch",
+            format!("batch_last_block={:?}", batch.last_block_number()),
+        )
+        .await?;
+
+        // Calculate and insert L1 data cost
+        if let Some(cost) = Self::fetch_transaction_cost(extractor, l1_tx_hash).await {
+            Self::with_db_error_context(
+                writer.insert_l1_data_cost(batch.info.proposedIn, batch.meta.batchId, cost),
+                "insert L1 data cost",
+                format!("l1_block_number={}, tx_hash={:?}", batch.info.proposedIn, l1_tx_hash),
+            )
+            .await?;
+        }
+        Ok(())
+    }
+
+    async fn handle_batches_proved_event_during_backfill(
+        writer: &ClickhouseWriter,
+        extractor: &Extractor,
+        wrapper: BatchesProvedWrapper,
+    ) -> Result<()> {
+        let proved = &wrapper.proved;
+        let l1_block_number = wrapper.l1_block_number;
+        let l1_tx_hash = wrapper.l1_tx_hash;
+
+        // Insert proved batch
+        Self::with_db_error_context(
+            writer.insert_proved_batch(proved, l1_block_number),
+            "insert proved batch",
+            format!("batch_ids={:?}", proved.batch_ids_proved()),
+        )
+        .await?;
+
+        // Calculate and insert prove costs for each batch
+        if let Some(cost) = Self::fetch_transaction_cost(extractor, l1_tx_hash).await {
+            let cost_per_batch =
+                Self::average_cost_per_batch(cost, proved.batch_ids_proved().len());
+
+            for batch_id in proved.batch_ids_proved() {
+                Self::with_db_error_context(
+                    writer.insert_prove_cost(l1_block_number, *batch_id, cost_per_batch),
+                    "insert prove cost",
+                    format!(
+                        "l1_block_number={}, batch_id={}, tx_hash={:?}",
+                        l1_block_number, batch_id, l1_tx_hash
+                    ),
+                )
+                .await?;
+            }
+        }
+        Ok(())
+    }
+
+    async fn handle_batches_verified_event_during_backfill(
+        writer: &ClickhouseWriter,
+        extractor: &Extractor,
+        wrapper: BatchesVerifiedWrapper,
+    ) -> Result<()> {
+        let verified = &wrapper.verified;
+        let l1_block_number = wrapper.l1_block_number;
+        let l1_tx_hash = wrapper.l1_tx_hash;
+
+        // Insert verified batch
+        Self::with_db_error_context(
+            writer.insert_verified_batch(verified, l1_block_number),
+            "insert verified batch",
+            format!("batch_id={}", verified.batch_id),
+        )
+        .await?;
+
+        // Calculate and insert verify cost
+        if let Some(cost) = Self::fetch_transaction_cost(extractor, l1_tx_hash).await {
+            Self::with_db_error_context(
+                writer.insert_verify_cost(l1_block_number, verified.batch_id, cost),
+                "insert verify cost",
+                format!(
+                    "l1_block_number={}, batch_id={}, tx_hash={:?}",
+                    l1_block_number, verified.batch_id, l1_tx_hash
+                ),
+            )
+            .await?;
+        }
+        Ok(())
+    }
+
+    async fn handle_forced_inclusion_event_during_backfill(
+        writer: &ClickhouseWriter,
+        wrapper: ForcedInclusionProcessedWrapper,
+    ) -> Result<()> {
+        let event = &wrapper.event;
+
+        Self::with_db_error_context(
+            writer.insert_forced_inclusion(event),
+            "insert forced inclusion",
+            format!("blob_hash={:?}", event.forcedInclusion.blobHash),
+        )
+        .await?;
+
+        Ok(())
+    }
+
+    /// Backfill missing L2 blocks using exact same logic as live processing
+    async fn backfill_l2_blocks(
+        writer: &ClickhouseWriter,
+        extractor: &Extractor,
+        block_numbers: Vec<u64>,
+    ) -> Result<()> {
+        for block_number in block_numbers {
+            match extractor.get_l2_block_by_number(block_number).await {
+                Ok(block) => {
+                    let header = primitives::headers::L2Header {
+                        number: block.header.number,
+                        hash: block.header.hash,
+                        parent_hash: block.header.parent_hash,
+                        timestamp: block.header.timestamp,
+                        gas_used: block.header.gas_used,
+                        beneficiary: block.header.beneficiary,
+                        base_fee_per_gas: block.header.base_fee_per_gas.unwrap_or(0),
+                    };
+
+                    // Use same stats calculation as processor
+                    let (sum_gas_used, sum_tx, sum_priority_fee) = extractor
+                        .get_l2_block_stats(alloy_primitives::B256::from(*header.hash), header.base_fee_per_gas)
+                        .await
+                        .unwrap_or_else(|e| {
+                            error!(header_number = header.number, err = %e, "Failed to get L2 block stats for backfill, using defaults");
+                            (0, 0, 0)
+                        });
+
+                    let sum_base_fee = sum_gas_used.saturating_mul(header.base_fee_per_gas as u128);
+
+                    let event = L2HeadEvent {
+                        l2_block_number: header.number,
+                        block_hash: HashBytes(*header.hash),
+                        block_ts: header.timestamp,
+                        sum_gas_used,
+                        sum_tx,
+                        sum_priority_fee,
+                        sum_base_fee,
+                        sequencer: AddressBytes(header.beneficiary.into_array()),
+                    };
+
+                    if let Err(e) = writer.insert_l2_header(&event).await {
+                        error!(block_number = block_number, err = %e, "Failed to backfill L2 block");
+                    } else {
+                        info!(block_number = block_number, "Successfully backfilled L2 block");
+                    }
+                }
+                Err(e) => {
+                    warn!(block_number = block_number, err = %e, "Could not fetch L2 block for backfill");
+                }
+            }
+        }
+        Ok(())
     }
 }

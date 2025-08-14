@@ -19,6 +19,8 @@ nats-utils = { path = "../nats-utils" }
 
 chrono = { workspace = true, features = ["serde"] }
 alloy-primitives.workspace = true
+alloy-rpc-types-eth.workspace = true
+alloy-sol-types.workspace = true
 clap.workspace = true
 dotenvy.workspace = true
 eyre.workspace = true
