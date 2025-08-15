@@ -12,15 +12,22 @@ use tracing::info;
 /// State for gap detection operations
 #[derive(Debug)]
 pub struct GapDetectionState {
+    /// Latest L1 block number from RPC
     pub latest_l1_rpc: u64,
+    /// Latest L2 block number from RPC
     pub latest_l2_rpc: u64,
+    /// Latest L1 block number stored in database
     pub latest_l1_db: u64,
+    /// Latest L2 block number stored in database
     pub latest_l2_db: u64,
+    /// End block number for L1 backfill process
     pub l1_backfill_end: u64,
+    /// End block number for L2 backfill process
     pub l2_backfill_end: u64,
 }
 
 /// Common event handler for both live processing and backfill operations
+#[derive(Debug)]
 pub struct EventHandler<'a> {
     writer: &'a ClickhouseWriter,
     extractor: &'a Extractor,
@@ -28,6 +35,7 @@ pub struct EventHandler<'a> {
 }
 
 impl<'a> EventHandler<'a> {
+    /// Creates a new event handler instance
     pub const fn new(
         writer: &'a ClickhouseWriter,
         extractor: &'a Extractor,
@@ -36,6 +44,7 @@ impl<'a> EventHandler<'a> {
         Self { writer, extractor, enable_db_writes }
     }
 
+    /// Handles a batch proposed event, inserting the batch and calculating L1 data costs
     pub async fn handle_batch_proposed(&self, wrapper: BatchProposedWrapper) -> Result<()> {
         let batch = &wrapper.batch;
         let l1_tx_hash = wrapper.l1_tx_hash;
@@ -84,6 +93,7 @@ impl<'a> EventHandler<'a> {
         Ok(())
     }
 
+    /// Handles batches proved event, inserting proved batch data and calculating prove costs
     pub async fn handle_batches_proved(&self, wrapper: BatchesProvedWrapper) -> Result<()> {
         let proved = &wrapper.proved;
         let l1_block_number = wrapper.l1_block_number;
@@ -139,6 +149,7 @@ impl<'a> EventHandler<'a> {
         Ok(())
     }
 
+    /// Handles batches verified event, inserting verified batch data and calculating verify costs
     pub async fn handle_batches_verified(&self, wrapper: BatchesVerifiedWrapper) -> Result<()> {
         let verified = &wrapper.verified;
         let l1_block_number = wrapper.l1_block_number;
@@ -186,6 +197,7 @@ impl<'a> EventHandler<'a> {
         Ok(())
     }
 
+    /// Handles forced inclusion processed event, inserting forced inclusion data
     pub async fn handle_forced_inclusion(
         &self,
         wrapper: ForcedInclusionProcessedWrapper,
