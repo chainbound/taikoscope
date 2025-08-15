@@ -1,6 +1,9 @@
 //! Taikoscope Driver - combines ingestor and processor
 
-use std::{collections::VecDeque, time::Duration};
+use std::{
+    collections::{HashSet, VecDeque},
+    time::Duration,
+};
 
 use alloy_primitives::{Address, BlockHash};
 #[allow(unused_imports)]
@@ -28,6 +31,199 @@ use tracing::{error, info, warn};
 use url::Url;
 
 use crate::subscription::subscribe_with_retry;
+
+/// State for gap detection operations
+#[derive(Debug)]
+struct GapDetectionState {
+    latest_l1_rpc: u64,
+    latest_l2_rpc: u64,
+    latest_l1_db: u64,
+    latest_l2_db: u64,
+    l1_backfill_end: u64,
+    l2_backfill_end: u64,
+}
+
+/// Common event handler for both live processing and backfill operations
+struct EventHandler<'a> {
+    writer: &'a ClickhouseWriter,
+    extractor: &'a Extractor,
+    enable_db_writes: bool,
+}
+
+impl<'a> EventHandler<'a> {
+    const fn new(
+        writer: &'a ClickhouseWriter,
+        extractor: &'a Extractor,
+        enable_db_writes: bool,
+    ) -> Self {
+        Self { writer, extractor, enable_db_writes }
+    }
+
+    async fn handle_batch_proposed(&self, wrapper: BatchProposedWrapper) -> Result<()> {
+        let batch = &wrapper.batch;
+        let l1_tx_hash = wrapper.l1_tx_hash;
+
+        // Insert batch with error handling
+        if self.enable_db_writes {
+            Driver::with_db_error_context(
+                self.writer.insert_batch(batch, l1_tx_hash),
+                "insert batch",
+                format!("batch_last_block={:?}", batch.last_block_number()),
+            )
+            .await?;
+        } else {
+            info!(
+                batch_id = batch.meta.batchId,
+                last_block = batch.last_block_number(),
+                l1_tx_hash = %l1_tx_hash,
+                "🧪 DRY-RUN: Would insert batch"
+            );
+        }
+
+        // Calculate and insert L1 data cost
+        if let Some(cost) = Driver::fetch_transaction_cost(self.extractor, l1_tx_hash).await {
+            if self.enable_db_writes {
+                Driver::with_db_error_context(
+                    self.writer.insert_l1_data_cost(
+                        batch.info.proposedIn,
+                        batch.meta.batchId,
+                        cost,
+                    ),
+                    "insert L1 data cost",
+                    format!("l1_block_number={}, tx_hash={:?}", batch.info.proposedIn, l1_tx_hash),
+                )
+                .await?;
+            } else {
+                info!(
+                    l1_block_number = batch.info.proposedIn,
+                    batch_id = batch.meta.batchId,
+                    cost = cost,
+                    "🧪 DRY-RUN: Would insert L1 data cost"
+                );
+            }
+        }
+        Ok(())
+    }
+
+    async fn handle_batches_proved(&self, wrapper: BatchesProvedWrapper) -> Result<()> {
+        let proved = &wrapper.proved;
+        let l1_block_number = wrapper.l1_block_number;
+        let l1_tx_hash = wrapper.l1_tx_hash;
+
+        // Insert proved batch
+        if self.enable_db_writes {
+            Driver::with_db_error_context(
+                self.writer.insert_proved_batch(proved, l1_block_number),
+                "insert proved batch",
+                format!("batch_ids={:?}", proved.batch_ids_proved()),
+            )
+            .await?;
+        } else {
+            info!(
+                batch_ids = ?proved.batch_ids_proved(),
+                l1_block_number = l1_block_number,
+                "🧪 DRY-RUN: Would insert proved batch"
+            );
+        }
+
+        // Calculate and insert prove costs for each batch
+        if let Some(cost) = Driver::fetch_transaction_cost(self.extractor, l1_tx_hash).await {
+            let cost_per_batch =
+                Driver::average_cost_per_batch(cost, proved.batch_ids_proved().len());
+
+            if self.enable_db_writes {
+                for batch_id in proved.batch_ids_proved() {
+                    Driver::with_db_error_context(
+                        self.writer.insert_prove_cost(l1_block_number, *batch_id, cost_per_batch),
+                        "insert prove cost",
+                        format!(
+                            "l1_block_number={}, batch_id={}, tx_hash={:?}",
+                            l1_block_number, batch_id, l1_tx_hash
+                        ),
+                    )
+                    .await?;
+                }
+            } else {
+                info!(
+                    l1_block_number = l1_block_number,
+                    batch_ids = ?proved.batch_ids_proved(),
+                    cost_per_batch = cost_per_batch,
+                    "🧪 DRY-RUN: Would insert prove costs for {} batches",
+                    proved.batch_ids_proved().len()
+                );
+            }
+        }
+        Ok(())
+    }
+
+    async fn handle_batches_verified(&self, wrapper: BatchesVerifiedWrapper) -> Result<()> {
+        let verified = &wrapper.verified;
+        let l1_block_number = wrapper.l1_block_number;
+        let l1_tx_hash = wrapper.l1_tx_hash;
+
+        // Insert verified batch
+        if self.enable_db_writes {
+            Driver::with_db_error_context(
+                self.writer.insert_verified_batch(verified, l1_block_number),
+                "insert verified batch",
+                format!("batch_id={}", verified.batch_id),
+            )
+            .await?;
+        } else {
+            info!(
+                batch_id = verified.batch_id,
+                l1_block_number = l1_block_number,
+                "🧪 DRY-RUN: Would insert verified batch"
+            );
+        }
+
+        // Calculate and insert verify cost
+        if let Some(cost) = Driver::fetch_transaction_cost(self.extractor, l1_tx_hash).await {
+            if self.enable_db_writes {
+                Driver::with_db_error_context(
+                    self.writer.insert_verify_cost(l1_block_number, verified.batch_id, cost),
+                    "insert verify cost",
+                    format!(
+                        "l1_block_number={}, batch_id={}, tx_hash={:?}",
+                        l1_block_number, verified.batch_id, l1_tx_hash
+                    ),
+                )
+                .await?;
+            } else {
+                info!(
+                    l1_block_number = l1_block_number,
+                    batch_id = verified.batch_id,
+                    cost = cost,
+                    "🧪 DRY-RUN: Would insert verify cost"
+                );
+            }
+        }
+        Ok(())
+    }
+
+    async fn handle_forced_inclusion(
+        &self,
+        wrapper: ForcedInclusionProcessedWrapper,
+    ) -> Result<()> {
+        let event = &wrapper.event;
+
+        if self.enable_db_writes {
+            Driver::with_db_error_context(
+                self.writer.insert_forced_inclusion(event),
+                "insert forced inclusion",
+                format!("blob_hash={:?}", event.forcedInclusion.blobHash),
+            )
+            .await?;
+        } else {
+            info!(
+                blob_hash = ?event.forcedInclusion.blobHash,
+                "🧪 DRY-RUN: Would insert forced inclusion"
+            );
+        }
+
+        Ok(())
+    }
+}
 
 /// Driver that combines ingestor and processor functionality
 #[derive(Debug)]
@@ -68,6 +264,26 @@ impl Driver {
             return Err(eyre::eyre!(
                 "Instatus configuration missing; set the INSTATUS_* environment variables"
             ));
+        }
+
+        // Validate ClickHouse configuration when database writes are enabled
+        if opts.enable_db_writes {
+            if opts.clickhouse.url.as_str().is_empty() {
+                return Err(eyre::eyre!(
+                    "ClickHouse URL is required when database writes are enabled"
+                ));
+            }
+            if opts.clickhouse.db.is_empty() {
+                return Err(eyre::eyre!(
+                    "ClickHouse database name is required when database writes are enabled"
+                ));
+            }
+            if opts.clickhouse.username.is_empty() {
+                return Err(eyre::eyre!(
+                    "ClickHouse username is required when database writes are enabled"
+                ));
+            }
+            // Note: password can be empty for some configurations, so we don't validate it
         }
 
         if !opts.instatus.monitors_enabled {
@@ -408,10 +624,11 @@ impl Driver {
             return self.process_event_dry_run(event).await;
         }
 
-        // Check writer exists early
+        // Check writer exists early - this should never happen if configuration is correct
         if self.clickhouse_writer.is_none() {
-            warn!("No ClickHouse writer available");
-            return Ok(());
+            return Err(eyre::eyre!(
+                "ClickHouse writer not available but database writes are enabled. This indicates a configuration error."
+            ));
         }
 
         // Process each event type with proper error handling
@@ -649,27 +866,9 @@ impl Driver {
         let writer = self.clickhouse_writer.as_ref().ok_or_else(|| {
             eyre::eyre!("ClickHouse writer not available for batch proposed processing")
         })?;
-        let batch = &wrapper.batch;
-        let l1_tx_hash = wrapper.l1_tx_hash;
 
-        // Insert batch with error handling
-        Self::with_db_error_context(
-            writer.insert_batch(batch, l1_tx_hash),
-            "insert batch",
-            format!("batch_last_block={:?}", batch.last_block_number()),
-        )
-        .await?;
-
-        // Calculate and insert L1 data cost
-        if let Some(cost) = Self::fetch_transaction_cost(&self.extractor, l1_tx_hash).await {
-            Self::with_db_error_context(
-                writer.insert_l1_data_cost(batch.info.proposedIn, batch.meta.batchId, cost),
-                "insert L1 data cost",
-                format!("l1_block_number={}, tx_hash={:?}", batch.info.proposedIn, l1_tx_hash),
-            )
-            .await?;
-        }
-        Ok(())
+        let handler = EventHandler::new(writer, &self.extractor, self.enable_db_writes);
+        handler.handle_batch_proposed(wrapper).await
     }
 
     async fn handle_forced_inclusion_event(
@@ -679,83 +878,27 @@ impl Driver {
         let writer = self.clickhouse_writer.as_ref().ok_or_else(|| {
             eyre::eyre!("ClickHouse writer not available for forced inclusion processing")
         })?;
-        let event = &wrapper.event;
 
-        Self::with_db_error_context(
-            writer.insert_forced_inclusion(event),
-            "insert forced inclusion",
-            format!("blob_hash={:?}", event.forcedInclusion.blobHash),
-        )
-        .await?;
-
-        Ok(())
+        let handler = EventHandler::new(writer, &self.extractor, self.enable_db_writes);
+        handler.handle_forced_inclusion(wrapper).await
     }
 
     async fn handle_batches_proved_event(&self, wrapper: BatchesProvedWrapper) -> Result<()> {
         let writer = self.clickhouse_writer.as_ref().ok_or_else(|| {
             eyre::eyre!("ClickHouse writer not available for batches proved processing")
         })?;
-        let proved = &wrapper.proved;
-        let l1_block_number = wrapper.l1_block_number;
-        let l1_tx_hash = wrapper.l1_tx_hash;
 
-        // Insert proved batch
-        Self::with_db_error_context(
-            writer.insert_proved_batch(proved, l1_block_number),
-            "insert proved batch",
-            format!("batch_ids={:?}", proved.batch_ids_proved()),
-        )
-        .await?;
-
-        // Calculate and insert prove costs for each batch
-        if let Some(cost) = Self::fetch_transaction_cost(&self.extractor, l1_tx_hash).await {
-            let cost_per_batch =
-                Self::average_cost_per_batch(cost, proved.batch_ids_proved().len());
-
-            for batch_id in proved.batch_ids_proved() {
-                Self::with_db_error_context(
-                    writer.insert_prove_cost(l1_block_number, *batch_id, cost_per_batch),
-                    "insert prove cost",
-                    format!(
-                        "l1_block_number={}, batch_id={}, tx_hash={:?}",
-                        l1_block_number, batch_id, l1_tx_hash
-                    ),
-                )
-                .await?;
-            }
-        }
-        Ok(())
+        let handler = EventHandler::new(writer, &self.extractor, self.enable_db_writes);
+        handler.handle_batches_proved(wrapper).await
     }
 
     async fn handle_batches_verified_event(&self, wrapper: BatchesVerifiedWrapper) -> Result<()> {
         let writer = self.clickhouse_writer.as_ref().ok_or_else(|| {
             eyre::eyre!("ClickHouse writer not available for batches verified processing")
         })?;
-        let verified = &wrapper.verified;
-        let l1_block_number = wrapper.l1_block_number;
-        let l1_tx_hash = wrapper.l1_tx_hash;
 
-        // Insert verified batch
-        Self::with_db_error_context(
-            writer.insert_verified_batch(verified, l1_block_number),
-            "insert verified batch",
-            format!("batch_id={}", verified.batch_id),
-        )
-        .await?;
-
-        // Calculate and insert verify cost
-        if let Some(cost) = Self::fetch_transaction_cost(&self.extractor, l1_tx_hash).await {
-            Self::with_db_error_context(
-                writer.insert_verify_cost(l1_block_number, verified.batch_id, cost),
-                "insert verify cost",
-                format!(
-                    "l1_block_number={}, batch_id={}, tx_hash={:?}",
-                    l1_block_number, verified.batch_id, l1_tx_hash
-                ),
-            )
-            .await?;
-        }
-        Ok(())
+        let handler = EventHandler::new(writer, &self.extractor, self.enable_db_writes);
+        handler.handle_batches_verified(wrapper).await
     }
 
     // Helper methods
@@ -1271,6 +1414,29 @@ impl Driver {
         taiko_wrapper_address: Address,
         enable_db_writes: bool,
     ) -> Result<()> {
+        let gap_state = Self::get_gap_detection_state(reader, extractor).await?;
+
+        Self::process_l1_gaps(
+            reader,
+            writer,
+            extractor,
+            &gap_state,
+            inbox_address,
+            taiko_wrapper_address,
+            enable_db_writes,
+        )
+        .await?;
+
+        Self::process_l2_gaps(reader, writer, extractor, &gap_state, enable_db_writes).await?;
+
+        Ok(())
+    }
+
+    /// Get the current state for gap detection (blockchain vs database)
+    async fn get_gap_detection_state(
+        reader: &ClickhouseReader,
+        extractor: &Extractor,
+    ) -> Result<GapDetectionState> {
         // Get current blockchain state
         let latest_l1_rpc = extractor
             .get_l1_latest_block_number()
@@ -1285,102 +1451,151 @@ impl Driver {
         let latest_l1_db = reader.get_latest_l1_block().await?.unwrap_or(0);
         let latest_l2_db = reader.get_latest_l2_block().await?.unwrap_or(0);
 
-        info!(
-            latest_l1_rpc = latest_l1_rpc,
-            latest_l1_db = latest_l1_db,
-            latest_l2_rpc = latest_l2_rpc,
-            latest_l2_db = latest_l2_db,
-            "Gap detection: blockchain vs database state"
-        );
-
         // Only backfill finalized data (5+ blocks old)
         const FINALIZATION_BUFFER: u64 = 5;
         let l1_backfill_end = latest_l1_rpc.saturating_sub(FINALIZATION_BUFFER);
         let l2_backfill_end = latest_l2_rpc.saturating_sub(FINALIZATION_BUFFER);
 
-        // Find and backfill L1 gaps with synchronization
-        if latest_l1_db < l1_backfill_end {
-            let l1_gaps = reader.find_missing_l1_blocks(latest_l1_db + 1, l1_backfill_end).await?;
-            if !l1_gaps.is_empty() {
-                if enable_db_writes {
-                    info!(gaps = l1_gaps.len(), "Found L1 gaps to backfill: {:?}", l1_gaps);
+        let state = GapDetectionState {
+            latest_l1_rpc,
+            latest_l2_rpc,
+            latest_l1_db,
+            latest_l2_db,
+            l1_backfill_end,
+            l2_backfill_end,
+        };
 
-                    // Re-check gaps after fetching to avoid race conditions with live processing
-                    let current_gaps =
-                        reader.find_missing_l1_blocks(latest_l1_db + 1, l1_backfill_end).await?;
-                    let still_missing: Vec<u64> = l1_gaps
-                        .into_iter()
-                        .filter(|&block| current_gaps.contains(&block))
-                        .collect();
+        info!(
+            latest_l1_rpc = state.latest_l1_rpc,
+            latest_l1_db = state.latest_l1_db,
+            latest_l2_rpc = state.latest_l2_rpc,
+            latest_l2_db = state.latest_l2_db,
+            "Gap detection: blockchain vs database state"
+        );
 
-                    if still_missing.is_empty() {
-                        info!("All L1 gaps were filled by live processing, skipping backfill");
-                    } else {
-                        info!(
-                            gaps = still_missing.len(),
-                            "Confirmed L1 gaps still missing after double-check: {:?}",
-                            still_missing
-                        );
-                        Self::backfill_l1_blocks(
-                            writer,
-                            extractor,
-                            still_missing,
-                            inbox_address,
-                            taiko_wrapper_address,
-                            enable_db_writes,
-                        )
-                        .await?;
-                    }
-                } else {
-                    info!(
-                        gaps = l1_gaps.len(),
-                        "🧪 DRY-RUN: Would backfill L1 gaps: {:?}", l1_gaps
-                    );
-                }
-            }
+        Ok(state)
+    }
+
+    /// Process L1 gaps and perform backfill if needed
+    async fn process_l1_gaps(
+        reader: &ClickhouseReader,
+        writer: &ClickhouseWriter,
+        extractor: &Extractor,
+        state: &GapDetectionState,
+        inbox_address: Address,
+        taiko_wrapper_address: Address,
+        enable_db_writes: bool,
+    ) -> Result<()> {
+        if state.latest_l1_db >= state.l1_backfill_end {
+            return Ok(());
         }
 
-        // Find and backfill L2 gaps with synchronization
-        if latest_l2_db < l2_backfill_end {
-            let l2_gaps = reader.find_missing_l2_blocks(latest_l2_db + 1, l2_backfill_end).await?;
-            if !l2_gaps.is_empty() {
-                if enable_db_writes {
-                    info!(gaps = l2_gaps.len(), "Found L2 gaps to backfill: {:?}", l2_gaps);
+        let l1_gaps =
+            reader.find_missing_l1_blocks(state.latest_l1_db + 1, state.l1_backfill_end).await?;
+        if l1_gaps.is_empty() {
+            return Ok(());
+        }
 
-                    // Re-check gaps after fetching to avoid race conditions with live processing
-                    let current_gaps =
-                        reader.find_missing_l2_blocks(latest_l2_db + 1, l2_backfill_end).await?;
-                    let still_missing: Vec<u64> = l2_gaps
-                        .into_iter()
-                        .filter(|&block| current_gaps.contains(&block))
-                        .collect();
+        if enable_db_writes {
+            info!(gaps = l1_gaps.len(), "Found L1 gaps to backfill: {:?}", l1_gaps);
+            let still_missing = Self::recheck_gaps_for_race_conditions(
+                reader,
+                l1_gaps,
+                state.latest_l1_db + 1,
+                state.l1_backfill_end,
+                true,
+            )
+            .await?;
 
-                    if still_missing.is_empty() {
-                        info!("All L2 gaps were filled by live processing, skipping backfill");
-                    } else {
-                        info!(
-                            gaps = still_missing.len(),
-                            "Confirmed L2 gaps still missing after double-check: {:?}",
-                            still_missing
-                        );
-                        Self::backfill_l2_blocks(
-                            writer,
-                            extractor,
-                            still_missing,
-                            enable_db_writes,
-                        )
-                        .await?;
-                    }
-                } else {
-                    info!(
-                        gaps = l2_gaps.len(),
-                        "🧪 DRY-RUN: Would backfill L2 gaps: {:?}", l2_gaps
-                    );
-                }
+            if still_missing.is_empty() {
+                info!("All L1 gaps were filled by live processing, skipping backfill");
+            } else {
+                info!(
+                    gaps = still_missing.len(),
+                    "Confirmed L1 gaps still missing after double-check: {:?}", still_missing
+                );
+                Self::backfill_l1_blocks(
+                    writer,
+                    extractor,
+                    still_missing,
+                    inbox_address,
+                    taiko_wrapper_address,
+                    enable_db_writes,
+                )
+                .await?;
             }
+        } else {
+            info!(gaps = l1_gaps.len(), "🧪 DRY-RUN: Would backfill L1 gaps: {:?}", l1_gaps);
         }
 
         Ok(())
+    }
+
+    /// Process L2 gaps and perform backfill if needed
+    async fn process_l2_gaps(
+        reader: &ClickhouseReader,
+        writer: &ClickhouseWriter,
+        extractor: &Extractor,
+        state: &GapDetectionState,
+        enable_db_writes: bool,
+    ) -> Result<()> {
+        if state.latest_l2_db >= state.l2_backfill_end {
+            return Ok(());
+        }
+
+        let l2_gaps =
+            reader.find_missing_l2_blocks(state.latest_l2_db + 1, state.l2_backfill_end).await?;
+        if l2_gaps.is_empty() {
+            return Ok(());
+        }
+
+        if enable_db_writes {
+            info!(gaps = l2_gaps.len(), "Found L2 gaps to backfill: {:?}", l2_gaps);
+            let still_missing = Self::recheck_gaps_for_race_conditions(
+                reader,
+                l2_gaps,
+                state.latest_l2_db + 1,
+                state.l2_backfill_end,
+                false,
+            )
+            .await?;
+
+            if still_missing.is_empty() {
+                info!("All L2 gaps were filled by live processing, skipping backfill");
+            } else {
+                info!(
+                    gaps = still_missing.len(),
+                    "Confirmed L2 gaps still missing after double-check: {:?}", still_missing
+                );
+                Self::backfill_l2_blocks(writer, extractor, still_missing, enable_db_writes)
+                    .await?;
+            }
+        } else {
+            info!(gaps = l2_gaps.len(), "🧪 DRY-RUN: Would backfill L2 gaps: {:?}", l2_gaps);
+        }
+
+        Ok(())
+    }
+
+    /// Re-check gaps to avoid race conditions with live processing
+    async fn recheck_gaps_for_race_conditions(
+        reader: &ClickhouseReader,
+        original_gaps: Vec<u64>,
+        start_block: u64,
+        end_block: u64,
+        is_l1: bool,
+    ) -> Result<Vec<u64>> {
+        let current_gaps = if is_l1 {
+            reader.find_missing_l1_blocks(start_block, end_block).await?
+        } else {
+            reader.find_missing_l2_blocks(start_block, end_block).await?
+        };
+
+        let current_gaps_set: HashSet<u64> = current_gaps.into_iter().collect();
+        let still_missing: Vec<u64> =
+            original_gaps.into_iter().filter(|&block| current_gaps_set.contains(&block)).collect();
+
+        Ok(still_missing)
     }
 
     /// Backfill missing L1 blocks and extract all Taiko events from those blocks
@@ -1603,6 +1818,7 @@ impl Driver {
                                 ));
                                 Self::handle_forced_inclusion_event_during_backfill(
                                     writer,
+                                    extractor,
                                     wrapper,
                                     enable_db_writes,
                                 )
@@ -1638,45 +1854,8 @@ impl Driver {
         wrapper: BatchProposedWrapper,
         enable_db_writes: bool,
     ) -> Result<()> {
-        let batch = &wrapper.batch;
-        let l1_tx_hash = wrapper.l1_tx_hash;
-
-        // Insert batch with error handling
-        if enable_db_writes {
-            Self::with_db_error_context(
-                writer.insert_batch(batch, l1_tx_hash),
-                "insert batch",
-                format!("batch_last_block={:?}", batch.last_block_number()),
-            )
-            .await?;
-        } else {
-            info!(
-                batch_id = batch.meta.batchId,
-                last_block = batch.last_block_number(),
-                l1_tx_hash = %l1_tx_hash,
-                "🧪 DRY-RUN: Would insert batch"
-            );
-        }
-
-        // Calculate and insert L1 data cost
-        if let Some(cost) = Self::fetch_transaction_cost(extractor, l1_tx_hash).await {
-            if enable_db_writes {
-                Self::with_db_error_context(
-                    writer.insert_l1_data_cost(batch.info.proposedIn, batch.meta.batchId, cost),
-                    "insert L1 data cost",
-                    format!("l1_block_number={}, tx_hash={:?}", batch.info.proposedIn, l1_tx_hash),
-                )
-                .await?;
-            } else {
-                info!(
-                    l1_block_number = batch.info.proposedIn,
-                    batch_id = batch.meta.batchId,
-                    cost = cost,
-                    "🧪 DRY-RUN: Would insert L1 data cost"
-                );
-            }
-        }
-        Ok(())
+        let handler = EventHandler::new(writer, extractor, enable_db_writes);
+        handler.handle_batch_proposed(wrapper).await
     }
 
     async fn handle_batches_proved_event_during_backfill(
@@ -1685,54 +1864,8 @@ impl Driver {
         wrapper: BatchesProvedWrapper,
         enable_db_writes: bool,
     ) -> Result<()> {
-        let proved = &wrapper.proved;
-        let l1_block_number = wrapper.l1_block_number;
-        let l1_tx_hash = wrapper.l1_tx_hash;
-
-        // Insert proved batch
-        if enable_db_writes {
-            Self::with_db_error_context(
-                writer.insert_proved_batch(proved, l1_block_number),
-                "insert proved batch",
-                format!("batch_ids={:?}", proved.batch_ids_proved()),
-            )
-            .await?;
-        } else {
-            info!(
-                batch_ids = ?proved.batch_ids_proved(),
-                l1_block_number = l1_block_number,
-                "🧪 DRY-RUN: Would insert proved batch"
-            );
-        }
-
-        // Calculate and insert prove costs for each batch
-        if let Some(cost) = Self::fetch_transaction_cost(extractor, l1_tx_hash).await {
-            let cost_per_batch =
-                Self::average_cost_per_batch(cost, proved.batch_ids_proved().len());
-
-            if enable_db_writes {
-                for batch_id in proved.batch_ids_proved() {
-                    Self::with_db_error_context(
-                        writer.insert_prove_cost(l1_block_number, *batch_id, cost_per_batch),
-                        "insert prove cost",
-                        format!(
-                            "l1_block_number={}, batch_id={}, tx_hash={:?}",
-                            l1_block_number, batch_id, l1_tx_hash
-                        ),
-                    )
-                    .await?;
-                }
-            } else {
-                info!(
-                    l1_block_number = l1_block_number,
-                    batch_ids = ?proved.batch_ids_proved(),
-                    cost_per_batch = cost_per_batch,
-                    "🧪 DRY-RUN: Would insert prove costs for {} batches",
-                    proved.batch_ids_proved().len()
-                );
-            }
-        }
-        Ok(())
+        let handler = EventHandler::new(writer, extractor, enable_db_writes);
+        handler.handle_batches_proved(wrapper).await
     }
 
     async fn handle_batches_verified_event_during_backfill(
@@ -1741,72 +1874,18 @@ impl Driver {
         wrapper: BatchesVerifiedWrapper,
         enable_db_writes: bool,
     ) -> Result<()> {
-        let verified = &wrapper.verified;
-        let l1_block_number = wrapper.l1_block_number;
-        let l1_tx_hash = wrapper.l1_tx_hash;
-
-        // Insert verified batch
-        if enable_db_writes {
-            Self::with_db_error_context(
-                writer.insert_verified_batch(verified, l1_block_number),
-                "insert verified batch",
-                format!("batch_id={}", verified.batch_id),
-            )
-            .await?;
-        } else {
-            info!(
-                batch_id = verified.batch_id,
-                l1_block_number = l1_block_number,
-                "🧪 DRY-RUN: Would insert verified batch"
-            );
-        }
-
-        // Calculate and insert verify cost
-        if let Some(cost) = Self::fetch_transaction_cost(extractor, l1_tx_hash).await {
-            if enable_db_writes {
-                Self::with_db_error_context(
-                    writer.insert_verify_cost(l1_block_number, verified.batch_id, cost),
-                    "insert verify cost",
-                    format!(
-                        "l1_block_number={}, batch_id={}, tx_hash={:?}",
-                        l1_block_number, verified.batch_id, l1_tx_hash
-                    ),
-                )
-                .await?;
-            } else {
-                info!(
-                    l1_block_number = l1_block_number,
-                    batch_id = verified.batch_id,
-                    cost = cost,
-                    "🧪 DRY-RUN: Would insert verify cost"
-                );
-            }
-        }
-        Ok(())
+        let handler = EventHandler::new(writer, extractor, enable_db_writes);
+        handler.handle_batches_verified(wrapper).await
     }
 
     async fn handle_forced_inclusion_event_during_backfill(
         writer: &ClickhouseWriter,
+        extractor: &Extractor,
         wrapper: ForcedInclusionProcessedWrapper,
         enable_db_writes: bool,
     ) -> Result<()> {
-        let event = &wrapper.event;
-
-        if enable_db_writes {
-            Self::with_db_error_context(
-                writer.insert_forced_inclusion(event),
-                "insert forced inclusion",
-                format!("blob_hash={:?}", event.forcedInclusion.blobHash),
-            )
-            .await?;
-        } else {
-            info!(
-                blob_hash = ?event.forcedInclusion.blobHash,
-                "🧪 DRY-RUN: Would insert forced inclusion"
-            );
-        }
-
-        Ok(())
+        let handler = EventHandler::new(writer, extractor, enable_db_writes);
+        handler.handle_forced_inclusion(wrapper).await
     }
 
     /// Backfill missing L2 blocks using exact same logic as live processing

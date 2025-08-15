@@ -592,7 +592,13 @@ impl ReorgDetector {
         // Check for traditional reorg (block number goes backwards)
         if new_block_number < self.head_number {
             let depth_val = self.head_number.saturating_sub(new_block_number);
-            let depth = (depth_val > 0).then(|| (depth_val.min(u16::MAX as u64) as u16, None));
+            let depth = if depth_val > 0 && u16::try_from(depth_val).is_ok() {
+                Some((depth_val as u16, None))
+            } else if depth_val > u16::MAX as u64 {
+                Some((u16::MAX, None)) // Cap at max u16 value
+            } else {
+                None
+            };
 
             // Update head to new block
             self.head_number = new_block_number;

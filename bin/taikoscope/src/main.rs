@@ -30,14 +30,14 @@ async fn main() -> eyre::Result<()> {
         )
         .init();
 
-    info!("Starting Taikoscope Binary");
+    info!("Starting Taikoscope");
 
     let driver = Driver::new(opts).await?;
 
     // Create broadcast channel for graceful shutdown communication
     let (shutdown_tx, shutdown_rx) = broadcast::channel(1);
     let shutdown_signal = ShutdownSignal::new();
-    let shutdown_timeout = Duration::from_secs(10); // 10 second graceful shutdown timeout
+    let shutdown_timeout = Duration::from_secs(10);
 
     let on_shutdown = move || {
         info!("Driver shutting down gracefully...");
