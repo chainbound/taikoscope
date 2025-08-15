@@ -1,4 +1,4 @@
-//! Taikoscope Driver - combines ingestor and processor without NATS
+//! Taikoscope Driver - combines ingestor and processor
 
 use std::{collections::VecDeque, time::Duration};
 
@@ -29,7 +29,7 @@ use url::Url;
 
 use crate::subscription::subscribe_with_retry;
 
-/// Driver that combines ingestor and processor functionality without NATS
+/// Driver that combines ingestor and processor functionality
 #[derive(Debug)]
 #[allow(dead_code)]
 pub struct Driver {
@@ -401,7 +401,7 @@ impl Driver {
         Ok(())
     }
 
-    /// Process an event directly to the database (replacing NATS processing)
+    /// Process an event and insert it into the database
     async fn process_event(&mut self, event: TaikoEvent) -> Result<()> {
         // Handle dry-run mode with detailed logging
         if !self.enable_db_writes {

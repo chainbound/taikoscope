@@ -131,7 +131,7 @@ impl Extractor {
                     // Slot time: 12 seconds
                     const GENESIS_TIMESTAMP: u64 = 1606824023;
                     const SLOT_DURATION: u64 = 12;
-                    
+
                     let slot = if block_data.timestamp >= GENESIS_TIMESTAMP {
                         (block_data.timestamp - GENESIS_TIMESTAMP) / SLOT_DURATION
                     } else {
@@ -143,7 +143,7 @@ impl Extractor {
                         );
                         block_data.number
                     };
-                    
+
                     let header = L1Header {
                         number: block_data.number,
                         hash: block_data.hash,
