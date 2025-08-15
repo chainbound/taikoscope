@@ -158,23 +158,14 @@ test-dashboard:
 lint-dashboard:
     cd dashboard && npm run lint:whitespace && npm run lint:dashboard
 
-# build and push the ingestor docker image with the given tag for the given platforms
-build-ingestor tag='latest' platform='linux/arm64':
+
+# build and push the unified taikoscope docker image (defaults to arm64/Graviton)
+build-taikoscope tag='latest' platform='linux/arm64':
     docker buildx build \
         --label "org.opencontainers.image.commit=$(git rev-parse --short HEAD)" \
         --platform {{platform}} \
-        --file Dockerfile.ingestor \
-        --tag ghcr.io/chainbound/taikoscope-ingestor:{{tag}} \
-        --push .
-
-
-# build and push the docker image with the given tag for the given platforms
-build-processor tag='latest' platform='linux/arm64':
-    docker buildx build \
-        --label "org.opencontainers.image.commit=$(git rev-parse --short HEAD)" \
-        --platform {{platform}} \
-        --file Dockerfile.processor \
-        --tag ghcr.io/chainbound/taikoscope-processor:{{tag}} \
+        --file Dockerfile.taikoscope \
+        --tag ghcr.io/chainbound/taikoscope:{{tag}} \
         --push .
 
 # build and push the api docker image (defaults to arm64/Graviton)
@@ -186,30 +177,14 @@ build-api tag='latest' platform='linux/arm64':
         --tag ghcr.io/chainbound/taikoscope-api:{{tag}} \
         --push .
 
-# build and push the unified taikoscope docker image (defaults to arm64/Graviton)
-build-taikoscope tag='latest' platform='linux/arm64':
+# build and push all docker images
+build-all tag='latest' platform='linux/arm64':
+    @echo "Building taikoscope image..."
     docker buildx build \
         --label "org.opencontainers.image.commit=$(git rev-parse --short HEAD)" \
         --platform {{platform}} \
         --file Dockerfile.taikoscope \
         --tag ghcr.io/chainbound/taikoscope:{{tag}} \
-        --push .
-
-
-# build and push all docker images
-build-all tag='latest' platform='linux/arm64':
-    @echo "Building taikoscope images..."
-    docker buildx build \
-        --label "org.opencontainers.image.commit=$(git rev-parse --short HEAD)" \
-        --platform {{platform}} \
-        --file Dockerfile.ingestor \
-        --tag ghcr.io/chainbound/taikoscope-ingestor:{{tag}} \
-        --push .
-    docker buildx build \
-        --label "org.opencontainers.image.commit=$(git rev-parse --short HEAD)" \
-        --platform {{platform}} \
-        --file Dockerfile.processor \
-        --tag ghcr.io/chainbound/taikoscope-processor:{{tag}} \
         --push .
     @echo "Building taikoscope-api image..."
     docker buildx build \
@@ -217,11 +192,4 @@ build-all tag='latest' platform='linux/arm64':
         --platform {{platform}} \
         --file Dockerfile.api \
         --tag ghcr.io/chainbound/taikoscope-api:{{tag}} \
-        --push .
-    @echo "Building unified taikoscope image..."
-    docker buildx build \
-        --label "org.opencontainers.image.commit=$(git rev-parse --short HEAD)" \
-        --platform {{platform}} \
-        --file Dockerfile.taikoscope \
-        --tag ghcr.io/chainbound/taikoscope:{{tag}} \
         --push .
