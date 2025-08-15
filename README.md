@@ -102,7 +102,7 @@ presentation concerns separate:
 5. **Monitoring** – background monitors trigger incidents via Instatus when
    thresholds are exceeded.
 
-Events flow through the system continuously. The unified binary subscribes to
+Events flow through the system continuously. The taikoscope binary subscribes to
 L1/L2 events, processes them in real-time, and inserts rows into ClickHouse.
 The API aggregates this data for the dashboard, which polls periodically to
 update metrics.
@@ -125,7 +125,7 @@ Deployment scripts use `ssh` and `docker` to build the images remotely.
 Create an entry in your `~/.ssh/config` (for example named `taiko`) and then run:
 
 ```bash
-just deploy-remote-hekla        # deploy the unified binary
+just deploy-remote-hekla        # deploy the taikoscope binary
 just deploy-api-remote-hekla    # deploy the API server
 ```
 
@@ -143,11 +143,11 @@ Vercel automatically builds and deploys the dashboard after the push.
 
 ```mermaid
 flowchart TD
-  L1[L1 RPC] --> Unified[Unified Binary]
-  L2[L2 RPC] --> Unified
+  L1[L1 RPC] --> Taikoscope
+  L2[L2 RPC] --> Taikoscope
 
-  Unified --> Instatus["Status Page"]
-  Unified --> CH[(ClickHouse DB)]
+  Taikoscope --> Instatus["Status Page"]
+  Taikoscope --> CH[(ClickHouse DB)]
   CH --> API
   API --> Dashboard
 ```
