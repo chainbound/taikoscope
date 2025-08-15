@@ -179,6 +179,10 @@ pub struct Opts {
     /// Skip database migrations on startup (useful for development)
     #[clap(long, env = "SKIP_MIGRATIONS", default_value = "false")]
     pub skip_migrations: bool,
+
+    /// Enable gap detection and backfill (default: true)
+    #[clap(long, env = "ENABLE_GAP_DETECTION", default_value = "true")]
+    pub enable_gap_detection: bool,
 }
 
 #[cfg(test)]

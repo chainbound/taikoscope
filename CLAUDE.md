@@ -48,6 +48,7 @@
 - Single binary that combines ingestor and processor functionality
 - Real-time event processing without message queue intermediary
 - Gap detection and backfill for finalized data (5+ blocks old)
+- Gap detection can be disabled with `--enable-gap-detection=false` 
 - Dry-run mode available with `--enable-db-writes=false` for testing
 
 ## Git

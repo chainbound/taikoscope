@@ -39,6 +39,7 @@ pub struct Driver {
     reorg_detector: ReorgDetector,
     last_l2_header: Option<(u64, Address)>,
     enable_db_writes: bool,
+    enable_gap_detection: bool,
     incident_client: IncidentClient,
     instatus_batch_submission_component_id: String,
     instatus_proof_submission_component_id: String,
@@ -171,6 +172,7 @@ impl Driver {
             reorg_detector,
             last_l2_header: None,
             enable_db_writes: opts.enable_db_writes,
+            enable_gap_detection: opts.enable_gap_detection,
             incident_client,
             instatus_batch_submission_component_id,
             instatus_proof_submission_component_id,
@@ -231,8 +233,13 @@ impl Driver {
         let monitor_handles =
             if self.instatus_monitors_enabled { self.start_monitors().await } else { Vec::new() };
 
-        // Start gap detection task
-        let gap_detection_handle = self.start_gap_detection_task().await;
+        // Start gap detection task if enabled
+        let gap_detection_handle = if self.enable_gap_detection {
+            self.start_gap_detection_task().await
+        } else {
+            info!("Gap detection disabled via configuration");
+            None
+        };
 
         let l1_stream = self.get_l1_headers().await;
         let l2_stream = self.get_l2_headers().await;
