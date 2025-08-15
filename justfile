@@ -9,7 +9,7 @@ default:
 
 # start the Taikoscope binary for local development
 dev:
-    ENV_FILE=dev.env cargo run --bin processor
+    ENV_FILE=hekla.env ENABLE_DB_WRITES=false ENABLE_GAP_DETECTION=false INSTATUS_MONITORS_ENABLED=false cargo run --bin taikoscope
 
 # start the API server for local development
 dev-api:
@@ -18,42 +18,6 @@ dev-api:
 # start the API server for mainnet
 mainnet-api:
     ENV_FILE=mainnet.env cargo run --bin api-server
-
-# start local NATS for development
-dev-nats:
-    #!/usr/bin/env bash
-    if docker ps -q -f name=local-nats | grep -q .; then
-        echo "NATS container is already running"
-    elif docker ps -a -q -f name=local-nats | grep -q .; then
-        echo "Starting existing NATS container"
-        docker start local-nats
-    else
-        echo "Creating new NATS container"
-        docker run -d --name local-nats -p 4222:4222 -p 8222:8222 nats:latest -js -m 8222
-    fi
-
-# stop local NATS
-stop-dev-nats:
-    docker stop local-nats || true
-    docker rm local-nats || true
-
-# start the ingestor for local development
-dev-ingestor:
-    ENV_FILE=hekla.env cargo run --bin ingestor
-
-# start the processor for local development
-dev-processor:
-    ENV_FILE=hekla.env SKIP_MIGRATIONS=true ENABLE_DB_WRITES=false cargo run --bin processor
-
-# run complete local NATS pipeline (starts NATS, ingestor, and processor)
-dev-pipeline:
-    @echo "Starting complete local NATS pipeline..."
-    @just dev-nats
-    @echo "Waiting for NATS to be ready..."
-    @sleep 3
-    @echo "NATS ready. Start ingestor and processor manually with:"
-    @echo "  just dev-ingestor    # (in terminal 1)"
-    @echo "  just dev-processor   # (in terminal 2)"
 
 
 # run all recipes required to pass CI workflows
@@ -142,23 +106,14 @@ test-dashboard:
 lint-dashboard:
     cd dashboard && npm run lint:whitespace && npm run lint:dashboard
 
-# build and push the ingestor docker image with the given tag for the given platforms
-build-ingestor tag='latest' platform='linux/arm64':
+
+# build and push the unified taikoscope docker image (defaults to arm64/Graviton)
+build-taikoscope tag='latest' platform='linux/arm64':
     docker buildx build \
         --label "org.opencontainers.image.commit=$(git rev-parse --short HEAD)" \
         --platform {{platform}} \
-        --file Dockerfile.ingestor \
-        --tag ghcr.io/chainbound/taikoscope-ingestor:{{tag}} \
-        --push .
-
-
-# build and push the docker image with the given tag for the given platforms
-build-processor tag='latest' platform='linux/arm64':
-    docker buildx build \
-        --label "org.opencontainers.image.commit=$(git rev-parse --short HEAD)" \
-        --platform {{platform}} \
-        --file Dockerfile.processor \
-        --tag ghcr.io/chainbound/taikoscope-processor:{{tag}} \
+        --file Dockerfile.taikoscope \
+        --tag ghcr.io/chainbound/taikoscope:{{tag}} \
         --push .
 
 # build and push the api docker image (defaults to arm64/Graviton)
@@ -170,21 +125,14 @@ build-api tag='latest' platform='linux/arm64':
         --tag ghcr.io/chainbound/taikoscope-api:{{tag}} \
         --push .
 
-
 # build and push all docker images
 build-all tag='latest' platform='linux/arm64':
-    @echo "Building taikoscope images..."
+    @echo "Building taikoscope image..."
     docker buildx build \
         --label "org.opencontainers.image.commit=$(git rev-parse --short HEAD)" \
         --platform {{platform}} \
-        --file Dockerfile.ingestor \
-        --tag ghcr.io/chainbound/taikoscope-ingestor:{{tag}} \
-        --push .
-    docker buildx build \
-        --label "org.opencontainers.image.commit=$(git rev-parse --short HEAD)" \
-        --platform {{platform}} \
-        --file Dockerfile.processor \
-        --tag ghcr.io/chainbound/taikoscope-processor:{{tag}} \
+        --file Dockerfile.taikoscope \
+        --tag ghcr.io/chainbound/taikoscope:{{tag}} \
         --push .
     @echo "Building taikoscope-api image..."
     docker buildx build \
