@@ -5,7 +5,7 @@ use std::time::Duration;
 use clap::Parser;
 use config::Opts;
 use dotenvy::dotenv;
-use driver::unified::UnifiedDriver;
+use driver::unified::Driver;
 use runtime::shutdown::{ShutdownSignal, run_until_shutdown_graceful};
 use tokio::sync::broadcast;
 use tracing::info;
@@ -30,9 +30,9 @@ async fn main() -> eyre::Result<()> {
         )
         .init();
 
-    info!("Starting Taikoscope Unified Binary");
+    info!("Starting Taikoscope Binary");
 
-    let driver = UnifiedDriver::new(opts).await?;
+    let driver = Driver::new(opts).await?;
 
     // Create broadcast channel for graceful shutdown communication
     let (shutdown_tx, shutdown_rx) = broadcast::channel(1);
@@ -40,7 +40,7 @@ async fn main() -> eyre::Result<()> {
     let shutdown_timeout = Duration::from_secs(10); // 10 second graceful shutdown timeout
 
     let on_shutdown = move || {
-        info!("Unified driver shutting down gracefully...");
+        info!("Driver shutting down gracefully...");
         // Send shutdown signal to processor
         let _ = shutdown_tx.send(());
     };

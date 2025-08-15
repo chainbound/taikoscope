@@ -36,10 +36,10 @@ React dashboard.
    docker compose up
    ```
 
-5. Start the unified binary and API server:
+5. Start the taikoscope binary and API server:
 
    ```bash
-   just dev         # runs the unified Taikoscope binary
+   just dev         # runs the Taikoscope binary
    just dev-api     # runs the HTTP API
    ```
 
@@ -88,7 +88,7 @@ These variables map to the configuration structs defined in
 Taikoscope follows a layered architecture that keeps data ingestion and
 presentation concerns separate:
 
-1. **Unified Binary** – a single binary that subscribes to L1 and L2 chains,
+1. **Taikoscope Binary** – a single binary that subscribes to L1 and L2 chains,
    processes events in real-time, and writes them directly to ClickHouse via the
    `ClickhouseWriter`. Includes gap detection and backfill for finalized data.
 2. **Storage** – a ClickHouse database holds tables like

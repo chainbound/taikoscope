@@ -44,7 +44,7 @@
 - All dashboard changes must look great in both light and dark modes
 - Test UI components and styling in both themes before finalizing changes
 
-## Unified Binary Architecture
+## Single Binary Architecture
 - Single binary that combines ingestor and processor functionality
 - Real-time event processing without message queue intermediary
 - Gap detection and backfill for finalized data (5+ blocks old)

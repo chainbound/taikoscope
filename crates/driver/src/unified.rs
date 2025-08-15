@@ -1,4 +1,4 @@
-//! Taikoscope Unified Driver - combines ingestor and processor without NATS
+//! Taikoscope Driver - combines ingestor and processor without NATS
 
 use std::{collections::VecDeque, time::Duration};
 
@@ -25,10 +25,10 @@ use url::Url;
 
 use crate::subscription::subscribe_with_retry;
 
-/// Unified driver that combines ingestor and processor functionality without NATS
+/// Driver that combines ingestor and processor functionality without NATS
 #[derive(Debug)]
 #[allow(dead_code)]
-pub struct UnifiedDriver {
+pub struct Driver {
     extractor: Extractor,
     clickhouse_writer: Option<ClickhouseWriter>,
     clickhouse_reader: Option<ClickhouseReader>,
@@ -53,7 +53,7 @@ pub struct UnifiedDriver {
     taiko_wrapper_address: Address,
 }
 
-impl UnifiedDriver {
+impl Driver {
     /// Create a new unified driver with the given configuration
     pub async fn new(opts: Opts) -> Result<Self> {
         info!("Initializing unified driver");

@@ -7,7 +7,7 @@ set dotenv-load := true
 default:
     @just --list --unsorted
 
-# start the Taikoscope unified binary for local development
+# start the Taikoscope binary for local development
 dev:
     ENV_FILE=dev.env cargo run --bin taikoscope
 
@@ -19,7 +19,7 @@ dev-api:
 mainnet-api:
     ENV_FILE=mainnet.env cargo run --bin api-server
 
-# start the unified binary in dry-run mode (no database writes)
+# start the taikoscope binary in dry-run mode (no database writes)
 dev-dry-run:
     ENV_FILE=hekla.env SKIP_MIGRATIONS=true ENABLE_DB_WRITES=false cargo run --bin taikoscope
 
