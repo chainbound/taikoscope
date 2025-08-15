@@ -126,11 +126,28 @@ impl Extractor {
                 };
 
                 while let Some(block_data) = block_stream.next().await {
+                    // Calculate slot from timestamp using Ethereum mainnet genesis and slot time
+                    // Mainnet genesis timestamp: 1606824023 (December 1, 2020)
+                    // Slot time: 12 seconds
+                    const GENESIS_TIMESTAMP: u64 = 1606824023;
+                    const SLOT_DURATION: u64 = 12;
+                    
+                    let slot = if block_data.timestamp >= GENESIS_TIMESTAMP {
+                        (block_data.timestamp - GENESIS_TIMESTAMP) / SLOT_DURATION
+                    } else {
+                        // Fallback to block number for pre-merge blocks or edge cases
+                        warn!(
+                            block_number = block_data.number,
+                            timestamp = block_data.timestamp,
+                            "Block timestamp is before Ethereum 2.0 genesis, using block number as slot"
+                        );
+                        block_data.number
+                    };
+                    
                     let header = L1Header {
                         number: block_data.number,
                         hash: block_data.hash,
-                        // TODO: Get slot instead. For now, using block number as a placeholder.
-                        slot: block_data.number,
+                        slot,
                         timestamp: block_data.timestamp,
                     };
                     if tx.send(header).is_err() {

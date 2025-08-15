@@ -408,11 +408,6 @@ impl Driver {
             return self.process_event_dry_run(event).await;
         }
 
-        if !self.enable_db_writes {
-            info!("Database writes disabled, would process event");
-            return Ok(());
-        }
-
         // Check writer exists early
         if self.clickhouse_writer.is_none() {
             warn!("No ClickHouse writer available");
@@ -607,7 +602,9 @@ impl Driver {
 
     // Event handler methods
     async fn handle_l1_header_event(&self, header: primitives::headers::L1Header) -> Result<()> {
-        let writer = self.clickhouse_writer.as_ref().unwrap();
+        let writer = self.clickhouse_writer.as_ref().ok_or_else(|| {
+            eyre::eyre!("ClickHouse writer not available for L1 header processing")
+        })?;
 
         // Insert L1 header
         Self::with_db_error_context(
@@ -649,7 +646,9 @@ impl Driver {
     }
 
     async fn handle_batch_proposed_event(&self, wrapper: BatchProposedWrapper) -> Result<()> {
-        let writer = self.clickhouse_writer.as_ref().unwrap();
+        let writer = self.clickhouse_writer.as_ref().ok_or_else(|| {
+            eyre::eyre!("ClickHouse writer not available for batch proposed processing")
+        })?;
         let batch = &wrapper.batch;
         let l1_tx_hash = wrapper.l1_tx_hash;
 
@@ -677,7 +676,9 @@ impl Driver {
         &self,
         wrapper: ForcedInclusionProcessedWrapper,
     ) -> Result<()> {
-        let writer = self.clickhouse_writer.as_ref().unwrap();
+        let writer = self.clickhouse_writer.as_ref().ok_or_else(|| {
+            eyre::eyre!("ClickHouse writer not available for forced inclusion processing")
+        })?;
         let event = &wrapper.event;
 
         Self::with_db_error_context(
@@ -691,7 +692,9 @@ impl Driver {
     }
 
     async fn handle_batches_proved_event(&self, wrapper: BatchesProvedWrapper) -> Result<()> {
-        let writer = self.clickhouse_writer.as_ref().unwrap();
+        let writer = self.clickhouse_writer.as_ref().ok_or_else(|| {
+            eyre::eyre!("ClickHouse writer not available for batches proved processing")
+        })?;
         let proved = &wrapper.proved;
         let l1_block_number = wrapper.l1_block_number;
         let l1_tx_hash = wrapper.l1_tx_hash;
@@ -725,7 +728,9 @@ impl Driver {
     }
 
     async fn handle_batches_verified_event(&self, wrapper: BatchesVerifiedWrapper) -> Result<()> {
-        let writer = self.clickhouse_writer.as_ref().unwrap();
+        let writer = self.clickhouse_writer.as_ref().ok_or_else(|| {
+            eyre::eyre!("ClickHouse writer not available for batches verified processing")
+        })?;
         let verified = &wrapper.verified;
         let l1_block_number = wrapper.l1_block_number;
         let l1_tx_hash = wrapper.l1_tx_hash;
@@ -1077,15 +1082,43 @@ impl Driver {
         }
     }
 
-    fn calculate_orphaned_blocks(old_head: u64, new_head: u64, _depth: u32) -> Vec<u64> {
-        // Orphaned blocks are from new_head+1 to old_head (inclusive)
-        if new_head >= old_head {
-            // No orphaned blocks if new_head is >= old_head
+    fn calculate_orphaned_blocks(old_head: u64, new_head: u64, depth: u32) -> Vec<u64> {
+        // In a reorg, orphaned blocks are the blocks that were previously canonical
+        // but are no longer on the main chain. These are the blocks from the fork point
+        // back to the old head.
+
+        if depth == 0 || old_head <= new_head {
+            // No reorg or forward progression - no orphaned blocks
             return Vec::new();
         }
-        let orphaned_start = new_head + 1;
+
+        // Calculate the fork point: old_head - depth + 1
+        // Orphaned blocks are from fork_point to old_head (inclusive)
+        let depth_u64 = depth as u64;
+        if depth_u64 > old_head {
+            // Edge case: depth is larger than old_head, return empty
+            warn!(
+                old_head = old_head,
+                new_head = new_head,
+                depth = depth,
+                "Reorg depth exceeds old head block number"
+            );
+            return Vec::new();
+        }
+
+        let fork_point = old_head.saturating_sub(depth_u64) + 1;
         let orphaned_end = old_head + 1; // +1 because range is exclusive at end
-        (orphaned_start..orphaned_end).collect()
+
+        info!(
+            old_head = old_head,
+            new_head = new_head,
+            depth = depth,
+            fork_point = fork_point,
+            orphaned_range = format!("{}..{}", fork_point, orphaned_end),
+            "Calculating orphaned blocks for reorg"
+        );
+
+        (fork_point..orphaned_end).collect()
     }
 
     async fn insert_l2_header_with_stats(&self, header: &primitives::headers::L2Header) {
@@ -1265,21 +1298,39 @@ impl Driver {
         let l1_backfill_end = latest_l1_rpc.saturating_sub(FINALIZATION_BUFFER);
         let l2_backfill_end = latest_l2_rpc.saturating_sub(FINALIZATION_BUFFER);
 
-        // Find and backfill L1 gaps
+        // Find and backfill L1 gaps with synchronization
         if latest_l1_db < l1_backfill_end {
             let l1_gaps = reader.find_missing_l1_blocks(latest_l1_db + 1, l1_backfill_end).await?;
             if !l1_gaps.is_empty() {
                 if enable_db_writes {
                     info!(gaps = l1_gaps.len(), "Found L1 gaps to backfill: {:?}", l1_gaps);
-                    Self::backfill_l1_blocks(
-                        writer,
-                        extractor,
-                        l1_gaps,
-                        inbox_address,
-                        taiko_wrapper_address,
-                        enable_db_writes,
-                    )
-                    .await?;
+
+                    // Re-check gaps after fetching to avoid race conditions with live processing
+                    let current_gaps =
+                        reader.find_missing_l1_blocks(latest_l1_db + 1, l1_backfill_end).await?;
+                    let still_missing: Vec<u64> = l1_gaps
+                        .into_iter()
+                        .filter(|&block| current_gaps.contains(&block))
+                        .collect();
+
+                    if still_missing.is_empty() {
+                        info!("All L1 gaps were filled by live processing, skipping backfill");
+                    } else {
+                        info!(
+                            gaps = still_missing.len(),
+                            "Confirmed L1 gaps still missing after double-check: {:?}",
+                            still_missing
+                        );
+                        Self::backfill_l1_blocks(
+                            writer,
+                            extractor,
+                            still_missing,
+                            inbox_address,
+                            taiko_wrapper_address,
+                            enable_db_writes,
+                        )
+                        .await?;
+                    }
                 } else {
                     info!(
                         gaps = l1_gaps.len(),
@@ -1289,13 +1340,37 @@ impl Driver {
             }
         }
 
-        // Find and backfill L2 gaps
+        // Find and backfill L2 gaps with synchronization
         if latest_l2_db < l2_backfill_end {
             let l2_gaps = reader.find_missing_l2_blocks(latest_l2_db + 1, l2_backfill_end).await?;
             if !l2_gaps.is_empty() {
                 if enable_db_writes {
                     info!(gaps = l2_gaps.len(), "Found L2 gaps to backfill: {:?}", l2_gaps);
-                    Self::backfill_l2_blocks(writer, extractor, l2_gaps, enable_db_writes).await?;
+
+                    // Re-check gaps after fetching to avoid race conditions with live processing
+                    let current_gaps =
+                        reader.find_missing_l2_blocks(latest_l2_db + 1, l2_backfill_end).await?;
+                    let still_missing: Vec<u64> = l2_gaps
+                        .into_iter()
+                        .filter(|&block| current_gaps.contains(&block))
+                        .collect();
+
+                    if still_missing.is_empty() {
+                        info!("All L2 gaps were filled by live processing, skipping backfill");
+                    } else {
+                        info!(
+                            gaps = still_missing.len(),
+                            "Confirmed L2 gaps still missing after double-check: {:?}",
+                            still_missing
+                        );
+                        Self::backfill_l2_blocks(
+                            writer,
+                            extractor,
+                            still_missing,
+                            enable_db_writes,
+                        )
+                        .await?;
+                    }
                 } else {
                     info!(
                         gaps = l2_gaps.len(),
@@ -1320,11 +1395,26 @@ impl Driver {
         for block_number in block_numbers {
             match extractor.get_l1_block_by_number(block_number).await {
                 Ok(block) => {
-                    // Insert L1 header
+                    // Insert L1 header with proper slot calculation
+                    // Calculate slot from timestamp using Ethereum mainnet genesis and slot time
+                    const GENESIS_TIMESTAMP: u64 = 1606824023;
+                    const SLOT_DURATION: u64 = 12;
+
+                    let slot = if block.header.timestamp >= GENESIS_TIMESTAMP {
+                        (block.header.timestamp - GENESIS_TIMESTAMP) / SLOT_DURATION
+                    } else {
+                        warn!(
+                            block_number = block.header.number,
+                            timestamp = block.header.timestamp,
+                            "Block timestamp is before Ethereum 2.0 genesis, using block number as slot"
+                        );
+                        block.header.number
+                    };
+
                     let header = primitives::headers::L1Header {
                         number: block.header.number,
                         hash: block.header.hash,
-                        slot: block.header.timestamp, // Using timestamp as slot for now
+                        slot,
                         timestamp: block.header.timestamp,
                     };
 
@@ -1341,12 +1431,15 @@ impl Driver {
                         );
                     }
 
-                    // Process preconf data - skip for backfill since we don't have the driver
-                    // instance
-                    info!(
-                        block_number = header.number,
-                        "Preconf data processing skipped during backfill"
-                    );
+                    // Process preconf data for backfill
+                    if enable_db_writes {
+                        Self::process_preconf_data_for_backfill(writer, extractor, &header).await;
+                    } else {
+                        info!(
+                            block_number = header.number,
+                            "🧪 DRY-RUN: Would process preconf data for backfill"
+                        );
+                    }
 
                     // Process all Taiko events from this L1 block
                     Self::process_l1_block_taiko_events(
@@ -1779,5 +1872,98 @@ impl Driver {
             }
         }
         Ok(())
+    }
+
+    /// Process preconf data for backfill operations (static method)
+    async fn process_preconf_data_for_backfill(
+        writer: &ClickhouseWriter,
+        extractor: &Extractor,
+        header: &primitives::headers::L1Header,
+    ) {
+        // Get operator candidates for current epoch
+        let opt_candidates = match extractor.get_operator_candidates_for_current_epoch().await {
+            Ok(c) => {
+                info!(
+                    slot = header.slot,
+                    block = header.number,
+                    candidates = ?c,
+                    candidates_count = c.len(),
+                    "Successfully retrieved operator candidates for backfill"
+                );
+                Some(c)
+            }
+            Err(e) => {
+                error!(
+                    slot = header.slot,
+                    block = header.number,
+                    err = %e,
+                    "Failed picking operator candidates during backfill"
+                );
+                None
+            }
+        };
+        let candidates = opt_candidates.unwrap_or_else(Vec::new);
+
+        // Get current operator for epoch
+        let opt_current_operator = match extractor.get_operator_for_current_epoch().await {
+            Ok(op) => {
+                info!(
+                    block = header.number,
+                    operator = ?op,
+                    "Current operator for epoch during backfill"
+                );
+                Some(op)
+            }
+            Err(e) => {
+                error!(
+                    block = header.number,
+                    err = %e,
+                    "get_operator_for_current_epoch failed during backfill"
+                );
+                None
+            }
+        };
+
+        // Get next operator for epoch
+        let opt_next_operator = match extractor.get_operator_for_next_epoch().await {
+            Ok(op) => {
+                info!(
+                    block = header.number,
+                    operator = ?op,
+                    "Next operator for epoch during backfill"
+                );
+                Some(op)
+            }
+            Err(e) => {
+                error!(
+                    block = header.number,
+                    err = %e,
+                    "get_operator_for_next_epoch failed during backfill"
+                );
+                None
+            }
+        };
+
+        // Insert preconf data if we have at least one operator
+        if opt_current_operator.is_some() || opt_next_operator.is_some() {
+            if let Err(e) = writer
+                .insert_preconf_data(
+                    header.slot,
+                    candidates,
+                    opt_current_operator,
+                    opt_next_operator,
+                )
+                .await
+            {
+                error!(slot = header.slot, err = %e, "Failed to insert preconf data during backfill");
+            } else {
+                info!(slot = header.slot, "Inserted preconf data for slot during backfill");
+            }
+        } else {
+            info!(
+                slot = header.slot,
+                "Skipping preconf data insertion during backfill due to errors fetching operator data"
+            );
+        }
     }
 }
