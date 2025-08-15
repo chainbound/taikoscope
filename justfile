@@ -9,7 +9,7 @@ default:
 
 # start the Taikoscope binary for local development
 dev:
-    ENV_FILE=dev.env ENABLE_DB_WRITES=true cargo run --bin taikoscope
+    ENV_FILE=hekla.env ENABLE_DB_WRITES=false ENABLE_GAP_DETECTION=false INSTATUS_MONITORS_ENABLED=false cargo run --bin taikoscope
 
 # start the API server for local development
 dev-api:
