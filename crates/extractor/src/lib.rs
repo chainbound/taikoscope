@@ -775,6 +775,23 @@ mod tests {
     }
 
     #[test]
+    fn depth_one_reorg() {
+        let mut det = ReorgDetector::new();
+        let hash11 = B256::repeat_byte(11);
+        let hash10 = B256::repeat_byte(10);
+
+        // Block 11
+        assert_eq!(det.on_new_block_with_hash(11, hash11), None);
+        assert_eq!(det.head_number(), 11);
+        assert_eq!(det.head_hash(), Some(hash11));
+
+        // Block 10 - traditional reorg with depth 1 (11 - 10 = 1)
+        assert_eq!(det.on_new_block_with_hash(10, hash10), Some((1, None)));
+        assert_eq!(det.head_number(), 10);
+        assert_eq!(det.head_hash(), Some(hash10));
+    }
+
+    #[test]
     fn decode_verified_event() {
         let event = InboxBatchesVerified { batchId: 7, blockHash: B256::repeat_byte(2) };
         let primitive = PrimitiveLog { address: Address::ZERO, data: event };
