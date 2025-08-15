@@ -592,13 +592,7 @@ impl ReorgDetector {
         // Check for traditional reorg (block number goes backwards)
         if new_block_number < self.head_number {
             let depth_val = self.head_number.saturating_sub(new_block_number);
-            let depth = if depth_val > 0 && u16::try_from(depth_val).is_ok() {
-                Some((depth_val as u16, None))
-            } else if depth_val > u16::MAX as u64 {
-                Some((u16::MAX, None)) // Cap at max u16 value
-            } else {
-                None
-            };
+            let depth = (depth_val > 0).then(|| (depth_val.min(u16::MAX as u64) as u16, None));
 
             // Update head to new block
             self.head_number = new_block_number;
@@ -613,7 +607,7 @@ impl ReorgDetector {
                 if current_hash != new_hash {
                     // One-block reorg detected
                     self.head_hash = Some(new_hash);
-                    return Some((1, Some(current_hash)));
+                    return Some((0, Some(current_hash)));
                 }
                 // Same block number and same hash - no reorg, no update needed
                 return None;
@@ -741,8 +735,8 @@ mod tests {
         assert_eq!(det.head_number(), 10);
         assert_eq!(det.head_hash(), Some(hash1));
 
-        // Same block 10 but with different hash2 - should detect one-block reorg
-        assert_eq!(det.on_new_block_with_hash(10, hash2), Some((1, Some(hash1))));
+        // Same block 10 but with different hash2 - should detect one-block reorg with depth 0
+        assert_eq!(det.on_new_block_with_hash(10, hash2), Some((0, Some(hash1))));
         assert_eq!(det.head_number(), 10);
         assert_eq!(det.head_hash(), Some(hash2));
     }
