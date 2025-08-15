@@ -102,6 +102,7 @@ impl crate::driver::Driver {
 }
 
 /// Run a single cycle of gap detection and backfill
+#[allow(clippy::too_many_arguments)]
 pub async fn run_gap_detection(
     reader: &ClickhouseReader,
     writer: Option<&ClickhouseWriter>,
@@ -115,16 +116,10 @@ pub async fn run_gap_detection(
     let gap_state = get_gap_detection_state(reader, extractor, finalization_buffer).await?;
 
     // Calculate start overrides for lookback
-    let l1_start_override = if lookback_blocks > 0 {
-        Some(std::cmp::max(1, gap_state.latest_l1_db.saturating_sub(lookback_blocks) + 1))
-    } else {
-        None
-    };
-    let l2_start_override = if lookback_blocks > 0 {
-        Some(std::cmp::max(1, gap_state.latest_l2_db.saturating_sub(lookback_blocks) + 1))
-    } else {
-        None
-    };
+    let l1_start_override = (lookback_blocks > 0)
+        .then(|| std::cmp::max(1, gap_state.latest_l1_db.saturating_sub(lookback_blocks) + 1));
+    let l2_start_override = (lookback_blocks > 0)
+        .then(|| std::cmp::max(1, gap_state.latest_l2_db.saturating_sub(lookback_blocks) + 1));
 
     process_l1_gaps(
         reader,
@@ -167,10 +162,23 @@ pub async fn get_gap_detection_state(
     ) {
         (Ok(l1), Ok(l2)) => (l1.unwrap_or(0), l2.unwrap_or(0)),
         (Err(e), _) | (_, Err(e)) => {
-            warn!(
-                err = %e,
-                "Failed to get database state for gap detection - tables may not exist. Skipping gap detection."
-            );
+            let error_msg = e.to_string();
+            if error_msg.contains("doesn't exist") || error_msg.contains("Unknown table") {
+                warn!(
+                    err = %e,
+                    "Database tables do not exist yet. Skipping gap detection - tables will be created when data is first ingested."
+                );
+            } else if error_msg.contains("tag for enum is not valid") {
+                warn!(
+                    err = %e,
+                    "Database schema mismatch detected. This may be due to recent migrations. Gap detection will be skipped this cycle."
+                );
+            } else {
+                warn!(
+                    err = %e,
+                    "Failed to get database state for gap detection due to unexpected error. Skipping gap detection."
+                );
+            }
             return Err(eyre::eyre!("Database tables not available for gap detection: {}", e));
         }
     };
@@ -201,6 +209,7 @@ pub async fn get_gap_detection_state(
 }
 
 /// Process L1 gaps and perform backfill if needed
+#[allow(clippy::too_many_arguments)]
 pub async fn process_l1_gaps(
     reader: &ClickhouseReader,
     writer: Option<&ClickhouseWriter>,
@@ -795,7 +804,7 @@ pub async fn process_preconf_data_for_backfill(
 }
 
 /// Pure helper function to select blocks that are still missing after a recheck
-/// This is extracted from recheck_gaps_for_race_conditions to enable unit testing
+/// This is extracted from `recheck_gaps_for_race_conditions` to enable unit testing
 pub fn select_still_missing(original_gaps: Vec<u64>, current_gaps: Vec<u64>) -> Vec<u64> {
     let current_gaps_set: HashSet<u64> = current_gaps.into_iter().collect();
     original_gaps.into_iter().filter(|&block| current_gaps_set.contains(&block)).collect()
@@ -808,6 +817,7 @@ pub fn calculate_lookback_start(latest_db: u64, lookback_blocks: u64) -> u64 {
 
 /// Decoded Taiko event from a log
 #[derive(Debug, Clone)]
+#[allow(clippy::large_enum_variant)]
 pub enum DecodedEvent {
     BatchProposed(messages::BatchProposedWrapper),
     BatchesProved(messages::BatchesProvedWrapper),

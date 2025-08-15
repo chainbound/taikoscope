@@ -133,16 +133,17 @@ impl Driver {
 
         // Create ClickhouseReader for gap detection and reorg detection (always create if gap
         // detection is enabled)
-        let clickhouse_reader = if opts.enable_gap_detection {
-            Some(ClickhouseReader::new(
-                opts.clickhouse.url.clone(),
-                opts.clickhouse.db.clone(),
-                opts.clickhouse.username.clone(),
-                opts.clickhouse.password.clone(),
-            )?)
-        } else {
-            None
-        };
+        let clickhouse_reader = opts
+            .enable_gap_detection
+            .then(|| {
+                ClickhouseReader::new(
+                    opts.clickhouse.url.clone(),
+                    opts.clickhouse.db.clone(),
+                    opts.clickhouse.username.clone(),
+                    opts.clickhouse.password.clone(),
+                )
+            })
+            .transpose()?;
 
         // Initialize reorg detector
         let reorg_detector = ReorgDetector::new();
