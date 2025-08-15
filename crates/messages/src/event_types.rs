@@ -73,31 +73,3 @@ pub enum TaikoEvent {
     BatchesVerified(BatchesVerifiedWrapper),
     ForcedInclusionProcessed(ForcedInclusionProcessedWrapper),
 }
-
-impl TaikoEvent {
-    pub fn dedup_id(&self) -> String {
-        match self {
-            Self::L1Header(h) => format!("{}_{}-l1_header", h.number, h.hash),
-            Self::L2Header(h) => format!("{}_{}-l2_header", h.number, h.hash),
-            Self::BatchProposed(b) => {
-                let inner = &b.batch;
-                let suffix = if b.removed { "-removed" } else { "" };
-                format!("{}_{}-batch_proposed{}", inner.info.lastBlockId, b.l1_tx_hash, suffix)
-            }
-            Self::BatchesProved(p) => {
-                let inner = &p.proved;
-                let batch_id = inner.batchIds.first().copied().unwrap_or_default();
-                let suffix = if p.removed { "-removed" } else { "" };
-                format!("{}_{}-batches_proved{}", batch_id, p.l1_tx_hash, suffix)
-            }
-            Self::BatchesVerified(v) => {
-                let suffix = if v.removed { "-removed" } else { "" };
-                format!("{}_{}-batches_verified{}", v.verified.batch_id, v.l1_tx_hash, suffix)
-            }
-            Self::ForcedInclusionProcessed(f) => {
-                let suffix = if f.removed { "-removed" } else { "" };
-                format!("{}-forced_inclusion_processed{}", f.event.forcedInclusion.blobHash, suffix)
-            }
-        }
-    }
-}
