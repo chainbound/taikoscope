@@ -5,23 +5,6 @@ use alloy_primitives::Address;
 use clap::Parser;
 use url::Url;
 
-/// Operation mode for the taikoscope binary
-#[derive(Debug, Clone, clap::ValueEnum)]
-pub enum OperationMode {
-    /// Run only the ingestor
-    Ingestor,
-    /// Run only the processor
-    Processor,
-    /// Run both ingestor and processor in unified mode (default)
-    Unified,
-}
-
-impl Default for OperationMode {
-    fn default() -> Self {
-        Self::Unified
-    }
-}
-
 /// Default origins allowed to access the API.
 pub const DEFAULT_ALLOWED_ORIGINS: &str = "https://taikoscope.xyz,https://www.taikoscope.xyz,https://hekla.taikoscope.xyz,https://www.hekla.taikoscope.xyz";
 /// Clickhouse database configuration options
@@ -39,56 +22,6 @@ pub struct ClickhouseOpts {
     /// Clickhouse password
     #[clap(long, env = "CLICKHOUSE_PASSWORD")]
     pub password: String,
-}
-
-/// Nats client configuration options
-#[derive(Debug, Clone, Parser)]
-pub struct NatsOpts {
-    /// Nats username
-    #[clap(id = "nats_username", long = "nats-username", env = "NATS_USERNAME")]
-    pub username: Option<String>,
-    /// Nats password
-    #[clap(id = "nats_password", long = "nats-password", env = "NATS_PASSWORD")]
-    pub password: Option<String>,
-}
-
-/// NATS `JetStream` stream configuration options
-#[derive(Debug, Clone, Parser)]
-pub struct NatsStreamOpts {
-    /// NATS stream duplicate window in seconds (for exactly-once delivery)
-    #[clap(long, env = "NATS_DUPLICATE_WINDOW_SECS", default_value = "120")]
-    pub duplicate_window_secs: u64,
-    /// NATS stream storage type (memory or file)
-    #[clap(long, env = "NATS_STORAGE_TYPE", default_value = "file")]
-    pub storage_type: String,
-    /// NATS stream retention policy
-    #[clap(long, env = "NATS_RETENTION_POLICY", default_value = "workqueue")]
-    pub retention_policy: String,
-}
-
-impl NatsStreamOpts {
-    /// Get the storage type as an `async_nats` `StorageType` enum
-    pub fn get_storage_type(&self) -> async_nats::jetstream::stream::StorageType {
-        match self.storage_type.to_lowercase().as_str() {
-            "memory" => async_nats::jetstream::stream::StorageType::Memory,
-            _ => async_nats::jetstream::stream::StorageType::File, /* default to file for any
-                                                                    * other value */
-        }
-    }
-
-    /// Get the retention policy as an `async_nats` `RetentionPolicy` enum
-    pub fn get_retention_policy(&self) -> async_nats::jetstream::stream::RetentionPolicy {
-        match self.retention_policy.to_lowercase().as_str() {
-            "limits" => async_nats::jetstream::stream::RetentionPolicy::Limits,
-            "interest" => async_nats::jetstream::stream::RetentionPolicy::Interest,
-            _ => async_nats::jetstream::stream::RetentionPolicy::WorkQueue, // default to workqueue
-        }
-    }
-
-    /// Get the duplicate window as a Duration
-    pub const fn get_duplicate_window(&self) -> std::time::Duration {
-        std::time::Duration::from_secs(self.duplicate_window_secs)
-    }
 }
 
 /// RPC endpoint configuration options
@@ -215,21 +148,9 @@ pub struct ApiOpts {
 /// CLI options for taikoscope
 #[derive(Debug, Clone, Parser)]
 pub struct Opts {
-    /// Operation mode
-    #[clap(long, default_value = "unified")]
-    pub mode: OperationMode,
-
     /// Clickhouse database configuration
     #[clap(flatten)]
     pub clickhouse: ClickhouseOpts,
-
-    /// Nats client configuration
-    #[clap(flatten)]
-    pub nats: NatsOpts,
-
-    /// NATS `JetStream` stream configuration
-    #[clap(flatten)]
-    pub nats_stream: NatsStreamOpts,
 
     /// RPC endpoint configuration
     #[clap(flatten)]
@@ -246,10 +167,6 @@ pub struct Opts {
     /// API server configuration
     #[clap(flatten)]
     pub api: ApiOpts,
-
-    /// NATS server URL
-    #[clap(long, env = "NATS_URL", default_value = "nats://localhost:4222")]
-    pub nats_url: String,
 
     /// Enable database writes in processor (default: false, processor will log and drop events)
     #[clap(long, env = "ENABLE_DB_WRITES", default_value = "true")]
@@ -282,8 +199,6 @@ mod tests {
     fn base_args() -> Vec<&'static str> {
         vec![
             "prog",
-            "--mode",
-            "unified",
             "--url",
             "http://localhost:8123",
             "--db",
@@ -292,12 +207,6 @@ mod tests {
             "user",
             "--password",
             "pass",
-            "--nats-url",
-            "nats://localhost:4222",
-            "--nats-username",
-            "natsuser",
-            "--nats-password",
-            "natspass",
             "--l1-url",
             "http://l1",
             "--l2-url",

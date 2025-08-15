@@ -7,13 +7,9 @@ set dotenv-load := true
 default:
     @just --list --unsorted
 
-# start the Taikoscope binary for local development (unified mode - no NATS needed)
+# start the Taikoscope unified binary for local development
 dev:
-    ENV_FILE=dev.env cargo run --bin taikoscope -- --mode unified
-
-# start the legacy processor binary for local development
-dev-legacy:
-    ENV_FILE=dev.env cargo run --bin processor
+    ENV_FILE=dev.env cargo run --bin taikoscope
 
 # start the API server for local development
 dev-api:
@@ -23,53 +19,9 @@ dev-api:
 mainnet-api:
     ENV_FILE=mainnet.env cargo run --bin api-server
 
-# start local NATS for development
-dev-nats:
-    #!/usr/bin/env bash
-    if docker ps -q -f name=local-nats | grep -q .; then
-        echo "NATS container is already running"
-    elif docker ps -a -q -f name=local-nats | grep -q .; then
-        echo "Starting existing NATS container"
-        docker start local-nats
-    else
-        echo "Creating new NATS container"
-        docker run -d --name local-nats -p 4222:4222 -p 8222:8222 nats:latest -js -m 8222
-    fi
-
-# stop local NATS
-stop-dev-nats:
-    docker stop local-nats || true
-    docker rm local-nats || true
-
-# start the ingestor for local development
-dev-ingestor:
-    ENV_FILE=hekla.env cargo run --bin ingestor
-
-# start the processor for local development
-dev-processor:
-    ENV_FILE=hekla.env SKIP_MIGRATIONS=true ENABLE_DB_WRITES=false cargo run --bin processor
-
-# start the unified binary in ingestor-only mode
-dev-unified-ingestor:
-    ENV_FILE=hekla.env cargo run --bin taikoscope -- --mode ingestor
-
-# start the unified binary in processor-only mode (legacy replacement)
-dev-unified-processor:
-    ENV_FILE=hekla.env SKIP_MIGRATIONS=true ENABLE_DB_WRITES=false cargo run --bin taikoscope -- --mode processor
-
-# start the unified binary in full unified mode (no NATS needed)
-dev-unified:
-    ENV_FILE=hekla.env cargo run --bin taikoscope -- --mode unified
-
-# run complete local NATS pipeline (starts NATS, ingestor, and processor)
-dev-pipeline:
-    @echo "Starting complete local NATS pipeline..."
-    @just dev-nats
-    @echo "Waiting for NATS to be ready..."
-    @sleep 3
-    @echo "NATS ready. Start ingestor and processor manually with:"
-    @echo "  just dev-ingestor    # (in terminal 1)"
-    @echo "  just dev-processor   # (in terminal 2)"
+# start the unified binary in dry-run mode (no database writes)
+dev-dry-run:
+    ENV_FILE=hekla.env SKIP_MIGRATIONS=true ENABLE_DB_WRITES=false cargo run --bin taikoscope
 
 
 # run all recipes required to pass CI workflows

@@ -15,9 +15,8 @@ use eyre::{Context, Result};
 use incident::client::Client as IncidentClient;
 use messages::{
     BatchProposedWrapper, BatchesProvedWrapper, BatchesVerifiedWrapper,
-    ForcedInclusionProcessedWrapper,
+    ForcedInclusionProcessedWrapper, TaikoEvent,
 };
-use nats_utils::TaikoEvent;
 use primitives::headers::{L1HeaderStream, L2HeaderStream};
 use tokio::sync::broadcast;
 use tokio_stream::StreamExt;

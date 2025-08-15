@@ -9,12 +9,9 @@ repository.workspace = true
 config = { path = "../../crates/config" }
 extractor = { path = "../../crates/extractor" }
 messages = { path = "../../crates/messages" }
-nats-utils = { path = "../../crates/nats-utils" }
 primitives = { path = "../../crates/primitives" }
 runtime = { path = "../../crates/runtime" }
 driver = { path = "../../crates/driver" }
-
-async-nats.workspace = true
 clap.workspace = true
 dotenvy.workspace = true
 eyre.workspace = true
