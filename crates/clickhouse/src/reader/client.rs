@@ -2731,10 +2731,10 @@ ORDER BY rb.batch_id ASC
             max_block: Option<u64>,
         }
 
-        let query = "SELECT max(l1_block_number) FROM l1_head_events";
+        let query = format!("SELECT max(l1_block_number) FROM {}.l1_head_events", self.db_name);
 
         let row =
-            self.base.query(query).fetch_one::<MaxBlock>().await.map_err(eyre::Error::from)?;
+            self.base.query(&query).fetch_one::<MaxBlock>().await.map_err(eyre::Error::from)?;
 
         Ok(row.max_block)
     }
@@ -2747,10 +2747,10 @@ ORDER BY rb.batch_id ASC
             max_block: Option<u64>,
         }
 
-        let query = "SELECT max(l2_block_number) FROM l2_head_events";
+        let query = format!("SELECT max(l2_block_number) FROM {}.l2_head_events", self.db_name);
 
         let row =
-            self.base.query(query).fetch_one::<MaxBlock>().await.map_err(eyre::Error::from)?;
+            self.base.query(&query).fetch_one::<MaxBlock>().await.map_err(eyre::Error::from)?;
 
         Ok(row.max_block)
     }
@@ -2763,10 +2763,10 @@ ORDER BY rb.batch_id ASC
             min_block: Option<u64>,
         }
 
-        let query = "SELECT min(l1_block_number) FROM l1_head_events";
+        let query = format!("SELECT min(l1_block_number) FROM {}.l1_head_events", self.db_name);
 
         let row =
-            self.base.query(query).fetch_one::<MinBlock>().await.map_err(eyre::Error::from)?;
+            self.base.query(&query).fetch_one::<MinBlock>().await.map_err(eyre::Error::from)?;
 
         Ok(row.min_block)
     }
@@ -2779,10 +2779,10 @@ ORDER BY rb.batch_id ASC
             min_block: Option<u64>,
         }
 
-        let query = "SELECT min(l2_block_number) FROM l2_head_events";
+        let query = format!("SELECT min(l2_block_number) FROM {}.l2_head_events", self.db_name);
 
         let row =
-            self.base.query(query).fetch_one::<MinBlock>().await.map_err(eyre::Error::from)?;
+            self.base.query(&query).fetch_one::<MinBlock>().await.map_err(eyre::Error::from)?;
 
         Ok(row.min_block)
     }

@@ -39,9 +39,9 @@ impl crate::driver::Driver {
             loop {
                 interval.tick().await;
 
-                if let Err(e) = run_gap_detection(
+                match run_gap_detection(
                     &reader,
-                    &writer,
+                    Some(&writer),
                     &extractor,
                     inbox_address,
                     taiko_wrapper_address,
@@ -51,9 +51,15 @@ impl crate::driver::Driver {
                 )
                 .await
                 {
-                    error!(err = %e, "Gap detection failed");
-                } else {
-                    info!("Gap detection cycle completed");
+                    Ok(()) => {
+                        info!("Gap detection cycle completed");
+                    }
+                    Err(e) if e.to_string().contains("Database tables not available") => {
+                        warn!("Skipping gap detection cycle - database tables not available");
+                    }
+                    Err(e) => {
+                        error!(err = %e, "Gap detection failed");
+                    }
                 }
             }
         });
@@ -63,17 +69,17 @@ impl crate::driver::Driver {
 
     /// Perform initial gap catch-up on startup
     pub async fn initial_gap_catchup(&self) -> Result<()> {
-        // Only perform catch-up if we have a reader and writer
+        // Only perform catch-up if we have a reader
         let reader = self.clickhouse_reader.as_ref().ok_or_else(|| {
             eyre::eyre!("ClickHouse reader not available for initial gap catch-up")
         })?;
-        let writer = self.clickhouse_writer.as_ref().ok_or_else(|| {
-            eyre::eyre!("ClickHouse writer not available for initial gap catch-up")
-        })?;
+
+        // For dry-run mode, pass None for writer
+        let writer = if self.enable_db_writes { self.clickhouse_writer.as_ref() } else { None };
 
         info!("Starting initial gap catch-up with startup lookback");
 
-        run_gap_detection(
+        match run_gap_detection(
             reader,
             writer,
             &self.extractor,
@@ -84,13 +90,21 @@ impl crate::driver::Driver {
             self.gap_startup_lookback_blocks,
         )
         .await
+        {
+            Ok(()) => Ok(()),
+            Err(e) if e.to_string().contains("Database tables not available") => {
+                warn!("Skipping initial gap catch-up - database tables not available");
+                Ok(())
+            }
+            Err(e) => Err(e),
+        }
     }
 }
 
 /// Run a single cycle of gap detection and backfill
 pub async fn run_gap_detection(
     reader: &ClickhouseReader,
-    writer: &ClickhouseWriter,
+    writer: Option<&ClickhouseWriter>,
     extractor: &Extractor,
     inbox_address: Address,
     taiko_wrapper_address: Address,
@@ -146,9 +160,20 @@ pub async fn get_gap_detection_state(
         .await
         .map_err(|e| eyre::eyre!("Failed to get latest L2 block: {}", e))?;
 
-    // Get database state
-    let latest_l1_db = reader.get_latest_l1_block().await?.unwrap_or(0);
-    let latest_l2_db = reader.get_latest_l2_block().await?.unwrap_or(0);
+    // Get database state - handle case where tables don't exist
+    let (latest_l1_db, latest_l2_db) = match (
+        reader.get_latest_l1_block().await,
+        reader.get_latest_l2_block().await,
+    ) {
+        (Ok(l1), Ok(l2)) => (l1.unwrap_or(0), l2.unwrap_or(0)),
+        (Err(e), _) | (_, Err(e)) => {
+            warn!(
+                err = %e,
+                "Failed to get database state for gap detection - tables may not exist. Skipping gap detection."
+            );
+            return Err(eyre::eyre!("Database tables not available for gap detection: {}", e));
+        }
+    };
 
     // Only backfill finalized data (using configurable buffer)
     let l1_backfill_end = latest_l1_rpc.saturating_sub(finalization_buffer);
@@ -178,7 +203,7 @@ pub async fn get_gap_detection_state(
 /// Process L1 gaps and perform backfill if needed
 pub async fn process_l1_gaps(
     reader: &ClickhouseReader,
-    writer: &ClickhouseWriter,
+    writer: Option<&ClickhouseWriter>,
     extractor: &Extractor,
     state: &GapDetectionState,
     inbox_address: Address,
@@ -234,7 +259,7 @@ pub async fn process_l1_gaps(
 /// Process L2 gaps and perform backfill if needed
 pub async fn process_l2_gaps(
     reader: &ClickhouseReader,
-    writer: &ClickhouseWriter,
+    writer: Option<&ClickhouseWriter>,
     extractor: &Extractor,
     state: &GapDetectionState,
     enable_db_writes: bool,
@@ -300,7 +325,7 @@ pub async fn recheck_gaps_for_race_conditions(
 
 /// Backfill missing L1 blocks and extract all Taiko events from those blocks
 pub async fn backfill_l1_blocks(
-    writer: &ClickhouseWriter,
+    writer: Option<&ClickhouseWriter>,
     extractor: &Extractor,
     block_numbers: Vec<u64>,
     inbox_address: Address,
@@ -334,7 +359,7 @@ pub async fn backfill_l1_blocks(
                 };
 
                 if enable_db_writes {
-                    if let Err(e) = writer.insert_l1_header(&header).await {
+                    if let Err(e) = writer.as_ref().unwrap().insert_l1_header(&header).await {
                         error!(block_number = block_number, err = %e, "Failed to backfill L1 header");
                         continue;
                     }
@@ -389,7 +414,7 @@ pub async fn backfill_l1_blocks(
 
 /// Process all Taiko events found in an L1 block during backfill
 pub async fn process_l1_block_taiko_events(
-    writer: &ClickhouseWriter,
+    writer: Option<&ClickhouseWriter>,
     extractor: &Extractor,
     block: &alloy_rpc_types_eth::Block,
     inbox_address: Address,
@@ -548,48 +573,68 @@ pub async fn process_l1_block_taiko_events(
 
 // Event handlers for backfill - reuse exact same logic as live processing
 pub async fn handle_batch_proposed_event_during_backfill(
-    writer: &ClickhouseWriter,
+    writer: Option<&ClickhouseWriter>,
     extractor: &Extractor,
     wrapper: BatchProposedWrapper,
     enable_db_writes: bool,
 ) -> Result<()> {
-    let handler = EventHandler::new(writer, extractor, enable_db_writes);
-    handler.handle_batch_proposed(wrapper).await
+    if let Some(writer) = writer {
+        let handler = EventHandler::new(writer, extractor, enable_db_writes);
+        handler.handle_batch_proposed(wrapper).await
+    } else {
+        info!("🧪 DRY-RUN: Would handle batch proposed event during backfill");
+        Ok(())
+    }
 }
 
 pub async fn handle_batches_proved_event_during_backfill(
-    writer: &ClickhouseWriter,
+    writer: Option<&ClickhouseWriter>,
     extractor: &Extractor,
     wrapper: BatchesProvedWrapper,
     enable_db_writes: bool,
 ) -> Result<()> {
-    let handler = EventHandler::new(writer, extractor, enable_db_writes);
-    handler.handle_batches_proved(wrapper).await
+    if let Some(writer) = writer {
+        let handler = EventHandler::new(writer, extractor, enable_db_writes);
+        handler.handle_batches_proved(wrapper).await
+    } else {
+        info!("🧪 DRY-RUN: Would handle batches proved event during backfill");
+        Ok(())
+    }
 }
 
 pub async fn handle_batches_verified_event_during_backfill(
-    writer: &ClickhouseWriter,
+    writer: Option<&ClickhouseWriter>,
     extractor: &Extractor,
     wrapper: BatchesVerifiedWrapper,
     enable_db_writes: bool,
 ) -> Result<()> {
-    let handler = EventHandler::new(writer, extractor, enable_db_writes);
-    handler.handle_batches_verified(wrapper).await
+    if let Some(writer) = writer {
+        let handler = EventHandler::new(writer, extractor, enable_db_writes);
+        handler.handle_batches_verified(wrapper).await
+    } else {
+        info!("🧪 DRY-RUN: Would handle batches verified event during backfill");
+        Ok(())
+    }
 }
 
 pub async fn handle_forced_inclusion_event_during_backfill(
-    writer: &ClickhouseWriter,
+    writer: Option<&ClickhouseWriter>,
     extractor: &Extractor,
     wrapper: ForcedInclusionProcessedWrapper,
     enable_db_writes: bool,
 ) -> Result<()> {
-    let handler = EventHandler::new(writer, extractor, enable_db_writes);
-    handler.handle_forced_inclusion(wrapper).await
+    if let Some(writer) = writer {
+        let handler = EventHandler::new(writer, extractor, enable_db_writes);
+        handler.handle_forced_inclusion(wrapper).await
+    } else {
+        info!("🧪 DRY-RUN: Would handle forced inclusion event during backfill");
+        Ok(())
+    }
 }
 
 /// Backfill missing L2 blocks using exact same logic as live processing
 pub async fn backfill_l2_blocks(
-    writer: &ClickhouseWriter,
+    writer: Option<&ClickhouseWriter>,
     extractor: &Extractor,
     block_numbers: Vec<u64>,
     enable_db_writes: bool,
@@ -630,7 +675,7 @@ pub async fn backfill_l2_blocks(
                 };
 
                 if enable_db_writes {
-                    if let Err(e) = writer.insert_l2_header(&event).await {
+                    if let Err(e) = writer.as_ref().unwrap().insert_l2_header(&event).await {
                         error!(block_number = block_number, err = %e, "Failed to backfill L2 block");
                     } else {
                         info!(block_number = block_number, "Successfully backfilled L2 block");
@@ -654,7 +699,7 @@ pub async fn backfill_l2_blocks(
 
 /// Process preconf data for backfill operations (static method)
 pub async fn process_preconf_data_for_backfill(
-    writer: &ClickhouseWriter,
+    writer: Option<&ClickhouseWriter>,
     extractor: &Extractor,
     header: &primitives::headers::L1Header,
 ) {
@@ -722,21 +767,30 @@ pub async fn process_preconf_data_for_backfill(
         }
     };
 
-    // Insert preconf data if we have at least one operator
-    if opt_current_operator.is_some() || opt_next_operator.is_some() {
-        if let Err(e) = writer
-            .insert_preconf_data(header.slot, candidates, opt_current_operator, opt_next_operator)
-            .await
-        {
-            error!(slot = header.slot, err = %e, "Failed to insert preconf data during backfill");
+    // Insert preconf data if we have at least one operator and a writer
+    if let Some(writer) = writer {
+        if opt_current_operator.is_some() || opt_next_operator.is_some() {
+            if let Err(e) = writer
+                .insert_preconf_data(
+                    header.slot,
+                    candidates,
+                    opt_current_operator,
+                    opt_next_operator,
+                )
+                .await
+            {
+                error!(slot = header.slot, err = %e, "Failed to insert preconf data during backfill");
+            } else {
+                info!(slot = header.slot, "Inserted preconf data for slot during backfill");
+            }
         } else {
-            info!(slot = header.slot, "Inserted preconf data for slot during backfill");
+            info!(
+                slot = header.slot,
+                "Skipping preconf data insertion during backfill due to errors fetching operator data"
+            );
         }
     } else {
-        info!(
-            slot = header.slot,
-            "Skipping preconf data insertion during backfill due to errors fetching operator data"
-        );
+        info!(slot = header.slot, "🧪 DRY-RUN: Would insert preconf data for slot during backfill");
     }
 }
 

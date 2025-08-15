@@ -131,18 +131,18 @@ impl Driver {
             )
         });
 
-        // Create ClickhouseReader for reorg detection (only if database writes are enabled)
-        let clickhouse_reader = opts
-            .enable_db_writes
-            .then(|| {
-                ClickhouseReader::new(
-                    opts.clickhouse.url,
-                    opts.clickhouse.db,
-                    opts.clickhouse.username,
-                    opts.clickhouse.password,
-                )
-            })
-            .transpose()?;
+        // Create ClickhouseReader for gap detection and reorg detection (always create if gap
+        // detection is enabled)
+        let clickhouse_reader = if opts.enable_gap_detection {
+            Some(ClickhouseReader::new(
+                opts.clickhouse.url.clone(),
+                opts.clickhouse.db.clone(),
+                opts.clickhouse.username.clone(),
+                opts.clickhouse.password.clone(),
+            )?)
+        } else {
+            None
+        };
 
         // Initialize reorg detector
         let reorg_detector = ReorgDetector::new();
