@@ -88,7 +88,18 @@ impl UnifiedDriver {
             opts.clickhouse.password.clone(),
         );
 
-        if opts.skip_migrations {
+        // Handle dry-run mode (when database writes are disabled)
+        if !opts.enable_db_writes {
+            info!("🧪 DRY-RUN MODE: Database writes disabled");
+            info!("   - Events will be processed and logged but not written to database");
+            info!("   - Gap detection will run but not perform backfill operations");
+            info!("   - All database writes will be simulated with detailed logging");
+        }
+
+        // Skip migrations when database writes are disabled
+        if !opts.enable_db_writes {
+            info!("⚠️  Skipping database migrations (database writes disabled)");
+        } else if opts.skip_migrations {
             info!("⚠️  Skipping database migrations");
         } else {
             info!("🚀 Running database migrations...");
@@ -382,6 +393,11 @@ impl UnifiedDriver {
 
     /// Process an event directly to the database (replacing NATS processing)
     async fn process_event(&mut self, event: TaikoEvent) -> Result<()> {
+        // Handle dry-run mode with detailed logging
+        if !self.enable_db_writes {
+            return self.process_event_dry_run(event).await;
+        }
+
         if !self.enable_db_writes {
             info!("Database writes disabled, would process event");
             return Ok(());
@@ -418,6 +434,163 @@ impl UnifiedDriver {
             TaikoEvent::BatchesVerified(wrapper) => {
                 info!(batch_id = wrapper.verified.batch_id, "Processing batches verified");
                 self.handle_batches_verified_event(wrapper).await
+            }
+        }
+    }
+
+    /// Process an event in dry-run mode with detailed logging but no database writes
+    async fn process_event_dry_run(&mut self, event: TaikoEvent) -> Result<()> {
+        match event {
+            TaikoEvent::L1Header(header) => {
+                info!(
+                    block_number = header.number,
+                    hash = %header.hash,
+                    slot = header.slot,
+                    timestamp = header.timestamp,
+                    "🧪 DRY-RUN: Would process L1 header"
+                );
+
+                // Simulate preconf data processing
+                info!(
+                    block_number = header.number,
+                    "🧪 DRY-RUN: Would insert L1 header and process preconf data"
+                );
+
+                // Still run preconf data logic for validation (but won't write to DB)
+                self.process_preconf_data(&header).await;
+
+                Ok(())
+            }
+            TaikoEvent::L2Header(header) => {
+                info!(
+                    block_number = header.number,
+                    hash = %header.hash,
+                    beneficiary = %header.beneficiary,
+                    gas_used = header.gas_used,
+                    base_fee = header.base_fee_per_gas,
+                    timestamp = header.timestamp,
+                    "🧪 DRY-RUN: Would process L2 header"
+                );
+
+                // Still run reorg detection for validation (but won't write to DB)
+                self.process_reorg_detection(&header).await;
+
+                // Simulate stats calculation
+                let (sum_gas_used, sum_tx, sum_priority_fee) = self.extractor
+                    .get_l2_block_stats(alloy_primitives::B256::from(*header.hash), header.base_fee_per_gas)
+                    .await
+                    .unwrap_or_else(|e| {
+                        warn!(header_number = header.number, err = %e, "🧪 DRY-RUN: Failed to get L2 block stats");
+                        (0, 0, 0)
+                    });
+
+                let sum_base_fee = sum_gas_used.saturating_mul(header.base_fee_per_gas as u128);
+
+                info!(
+                    block_number = header.number,
+                    sum_gas_used = sum_gas_used,
+                    sum_tx = sum_tx,
+                    sum_priority_fee = sum_priority_fee,
+                    sum_base_fee = sum_base_fee,
+                    "🧪 DRY-RUN: Would insert L2 header with calculated stats"
+                );
+
+                Ok(())
+            }
+            TaikoEvent::BatchProposed(wrapper) => {
+                let batch = &wrapper.batch;
+                info!(
+                    batch_id = batch.meta.batchId,
+                    last_block = batch.last_block_number(),
+                    l1_tx_hash = %wrapper.l1_tx_hash,
+                    tx_list_len = batch.txList.len(),
+                    "🧪 DRY-RUN: Would process BatchProposed"
+                );
+
+                // Simulate cost calculation
+                if let Some(cost) =
+                    Self::fetch_transaction_cost(&self.extractor, wrapper.l1_tx_hash).await
+                {
+                    info!(
+                        batch_id = batch.meta.batchId,
+                        l1_data_cost = cost,
+                        "🧪 DRY-RUN: Would insert L1 data cost"
+                    );
+                }
+
+                info!(batch_id = batch.meta.batchId, "🧪 DRY-RUN: Would insert batch row");
+
+                Ok(())
+            }
+            TaikoEvent::ForcedInclusionProcessed(wrapper) => {
+                info!(
+                    blob_hash = ?wrapper.event.forcedInclusion.blobHash,
+                    "🧪 DRY-RUN: Would process ForcedInclusionProcessed"
+                );
+
+                info!(
+                    blob_hash = ?wrapper.event.forcedInclusion.blobHash,
+                    "🧪 DRY-RUN: Would insert forced inclusion record"
+                );
+
+                Ok(())
+            }
+            TaikoEvent::BatchesProved(wrapper) => {
+                let proved = &wrapper.proved;
+                info!(
+                    batch_ids = ?proved.batch_ids_proved(),
+                    l1_block_number = wrapper.l1_block_number,
+                    l1_tx_hash = %wrapper.l1_tx_hash,
+                    "🧪 DRY-RUN: Would process BatchesProved"
+                );
+
+                // Simulate cost calculation
+                if let Some(cost) =
+                    Self::fetch_transaction_cost(&self.extractor, wrapper.l1_tx_hash).await
+                {
+                    let cost_per_batch =
+                        Self::average_cost_per_batch(cost, proved.batch_ids_proved().len());
+                    info!(
+                        batch_count = proved.batch_ids_proved().len(),
+                        total_cost = cost,
+                        cost_per_batch = cost_per_batch,
+                        "🧪 DRY-RUN: Would insert prove costs"
+                    );
+                }
+
+                info!(
+                    batch_ids = ?proved.batch_ids_proved(),
+                    "🧪 DRY-RUN: Would insert proved batch records"
+                );
+
+                Ok(())
+            }
+            TaikoEvent::BatchesVerified(wrapper) => {
+                let verified = &wrapper.verified;
+                info!(
+                    batch_id = verified.batch_id,
+                    l1_block_number = wrapper.l1_block_number,
+                    l1_tx_hash = %wrapper.l1_tx_hash,
+                    "🧪 DRY-RUN: Would process BatchesVerified"
+                );
+
+                // Simulate cost calculation
+                if let Some(cost) =
+                    Self::fetch_transaction_cost(&self.extractor, wrapper.l1_tx_hash).await
+                {
+                    info!(
+                        batch_id = verified.batch_id,
+                        verify_cost = cost,
+                        "🧪 DRY-RUN: Would insert verify cost"
+                    );
+                }
+
+                info!(
+                    batch_id = verified.batch_id,
+                    "🧪 DRY-RUN: Would insert verified batch record"
+                );
+
+                Ok(())
             }
         }
     }
@@ -610,7 +783,18 @@ impl UnifiedDriver {
     async fn process_preconf_data(&self, header: &primitives::headers::L1Header) {
         let writer = match &self.clickhouse_writer {
             Some(w) => w,
-            None => return,
+            None => {
+                // When database writes disabled, we still want to validate the preconf data logic
+                if self.enable_db_writes {
+                    return;
+                }
+                info!(
+                    block_number = header.number,
+                    "🧪 DRY-RUN: Validating preconf data processing without database writes"
+                );
+                // Continue validation but skip database writes
+                return self.process_preconf_data_dry_run(header).await;
+            }
         };
 
         // Get operator candidates for current epoch
@@ -689,6 +873,81 @@ impl UnifiedDriver {
             info!(
                 slot = header.slot,
                 "Skipping preconf data insertion due to errors fetching operator data"
+            );
+        }
+    }
+
+    async fn process_preconf_data_dry_run(&self, header: &primitives::headers::L1Header) {
+        // Get operator candidates for current epoch (for validation)
+        let opt_candidates = match self.extractor.get_operator_candidates_for_current_epoch().await
+        {
+            Ok(c) => {
+                info!(
+                    slot = header.slot,
+                    block = header.number,
+                    candidates = ?c,
+                    candidates_count = c.len(),
+                    "🧪 DRY-RUN: Retrieved operator candidates"
+                );
+                Some(c)
+            }
+            Err(e) => {
+                warn!(
+                    slot = header.slot,
+                    block = header.number,
+                    err = %e,
+                    "🧪 DRY-RUN: Failed picking operator candidates"
+                );
+                None
+            }
+        };
+        let candidates = opt_candidates.unwrap_or_else(Vec::new);
+
+        // Get current operator for epoch (for validation)
+        let opt_current_operator = match self.extractor.get_operator_for_current_epoch().await {
+            Ok(op) => {
+                info!(
+                    block = header.number,
+                    operator = ?op,
+                    "🧪 DRY-RUN: Current operator for epoch"
+                );
+                Some(op)
+            }
+            Err(e) => {
+                warn!(block = header.number, err = %e, "🧪 DRY-RUN: get_operator_for_current_epoch failed");
+                None
+            }
+        };
+
+        // Get next operator for epoch (for validation)
+        let opt_next_operator = match self.extractor.get_operator_for_next_epoch().await {
+            Ok(op) => {
+                info!(
+                    block = header.number,
+                    operator = ?op,
+                    "🧪 DRY-RUN: Next operator for epoch"
+                );
+                Some(op)
+            }
+            Err(e) => {
+                warn!(block = header.number, err = %e, "🧪 DRY-RUN: get_operator_for_next_epoch failed");
+                None
+            }
+        };
+
+        // Simulate database insertion
+        if opt_current_operator.is_some() || opt_next_operator.is_some() {
+            info!(
+                slot = header.slot,
+                candidate_count = candidates.len(),
+                has_current_op = opt_current_operator.is_some(),
+                has_next_op = opt_next_operator.is_some(),
+                "🧪 DRY-RUN: Would insert preconf data"
+            );
+        } else {
+            info!(
+                slot = header.slot,
+                "🧪 DRY-RUN: Would skip preconf data insertion due to missing operators"
             );
         }
     }
@@ -870,6 +1129,7 @@ impl UnifiedDriver {
         let extractor = self.extractor.clone();
         let inbox_address = self.inbox_address;
         let taiko_wrapper_address = self.taiko_wrapper_address;
+        let enable_db_writes = self.enable_db_writes;
 
         info!("Starting gap detection task");
 
@@ -886,6 +1146,7 @@ impl UnifiedDriver {
                     &extractor,
                     inbox_address,
                     taiko_wrapper_address,
+                    enable_db_writes,
                 )
                 .await
                 {
@@ -906,6 +1167,7 @@ impl UnifiedDriver {
         extractor: &Extractor,
         inbox_address: Address,
         taiko_wrapper_address: Address,
+        enable_db_writes: bool,
     ) -> Result<()> {
         // Get current blockchain state
         let latest_l1_rpc = extractor
@@ -938,15 +1200,23 @@ impl UnifiedDriver {
         if latest_l1_db < l1_backfill_end {
             let l1_gaps = reader.find_missing_l1_blocks(latest_l1_db + 1, l1_backfill_end).await?;
             if !l1_gaps.is_empty() {
-                info!(gaps = l1_gaps.len(), "Found L1 gaps to backfill: {:?}", l1_gaps);
-                Self::backfill_l1_blocks(
-                    writer,
-                    extractor,
-                    l1_gaps,
-                    inbox_address,
-                    taiko_wrapper_address,
-                )
-                .await?;
+                if enable_db_writes {
+                    info!(gaps = l1_gaps.len(), "Found L1 gaps to backfill: {:?}", l1_gaps);
+                    Self::backfill_l1_blocks(
+                        writer,
+                        extractor,
+                        l1_gaps,
+                        inbox_address,
+                        taiko_wrapper_address,
+                        enable_db_writes,
+                    )
+                    .await?;
+                } else {
+                    info!(
+                        gaps = l1_gaps.len(),
+                        "🧪 DRY-RUN: Would backfill L1 gaps: {:?}", l1_gaps
+                    );
+                }
             }
         }
 
@@ -954,8 +1224,15 @@ impl UnifiedDriver {
         if latest_l2_db < l2_backfill_end {
             let l2_gaps = reader.find_missing_l2_blocks(latest_l2_db + 1, l2_backfill_end).await?;
             if !l2_gaps.is_empty() {
-                info!(gaps = l2_gaps.len(), "Found L2 gaps to backfill: {:?}", l2_gaps);
-                Self::backfill_l2_blocks(writer, extractor, l2_gaps).await?;
+                if enable_db_writes {
+                    info!(gaps = l2_gaps.len(), "Found L2 gaps to backfill: {:?}", l2_gaps);
+                    Self::backfill_l2_blocks(writer, extractor, l2_gaps, enable_db_writes).await?;
+                } else {
+                    info!(
+                        gaps = l2_gaps.len(),
+                        "🧪 DRY-RUN: Would backfill L2 gaps: {:?}", l2_gaps
+                    );
+                }
             }
         }
 
@@ -969,6 +1246,7 @@ impl UnifiedDriver {
         block_numbers: Vec<u64>,
         inbox_address: Address,
         taiko_wrapper_address: Address,
+        enable_db_writes: bool,
     ) -> Result<()> {
         for block_number in block_numbers {
             match extractor.get_l1_block_by_number(block_number).await {
@@ -981,9 +1259,17 @@ impl UnifiedDriver {
                         timestamp: block.header.timestamp,
                     };
 
-                    if let Err(e) = writer.insert_l1_header(&header).await {
-                        error!(block_number = block_number, err = %e, "Failed to backfill L1 header");
-                        continue;
+                    if enable_db_writes {
+                        if let Err(e) = writer.insert_l1_header(&header).await {
+                            error!(block_number = block_number, err = %e, "Failed to backfill L1 header");
+                            continue;
+                        }
+                    } else {
+                        info!(
+                            block_number = block_number,
+                            hash = %header.hash,
+                            "🧪 DRY-RUN: Would insert L1 header"
+                        );
                     }
 
                     // Process preconf data - skip for backfill since we don't have the driver
@@ -1000,13 +1286,21 @@ impl UnifiedDriver {
                         &block,
                         inbox_address,
                         taiko_wrapper_address,
+                        enable_db_writes,
                     )
                     .await?;
 
-                    info!(
-                        block_number = block_number,
-                        "Successfully backfilled L1 block with events"
-                    );
+                    if enable_db_writes {
+                        info!(
+                            block_number = block_number,
+                            "Successfully backfilled L1 block with events"
+                        );
+                    } else {
+                        info!(
+                            block_number = block_number,
+                            "🧪 DRY-RUN: Would complete L1 block backfill with events"
+                        );
+                    }
                 }
                 Err(e) => {
                     warn!(block_number = block_number, err = %e, "Could not fetch L1 block for backfill");
@@ -1023,6 +1317,7 @@ impl UnifiedDriver {
         block: &alloy_rpc_types_eth::Block,
         inbox_address: Address,
         taiko_wrapper_address: Address,
+        enable_db_writes: bool,
     ) -> Result<()> {
         #[allow(unused_imports)]
         use alloy_sol_types::SolEvent;
@@ -1071,7 +1366,10 @@ impl UnifiedDriver {
                                     false, // not reorged
                                 ));
                                 Self::handle_batch_proposed_event_during_backfill(
-                                    writer, extractor, wrapper,
+                                    writer,
+                                    extractor,
+                                    wrapper,
+                                    enable_db_writes,
                                 )
                                 .await?;
                                 events_found += 1;
@@ -1092,7 +1390,10 @@ impl UnifiedDriver {
                                     false, // not reorged
                                 ));
                                 Self::handle_batches_proved_event_during_backfill(
-                                    writer, extractor, wrapper,
+                                    writer,
+                                    extractor,
+                                    wrapper,
+                                    enable_db_writes,
                                 )
                                 .await?;
                                 events_found += 1;
@@ -1118,7 +1419,10 @@ impl UnifiedDriver {
                                     false, // not reorged
                                 ));
                                 Self::handle_batches_verified_event_during_backfill(
-                                    writer, extractor, wrapper,
+                                    writer,
+                                    extractor,
+                                    wrapper,
+                                    enable_db_writes,
                                 )
                                 .await?;
                                 events_found += 1;
@@ -1136,7 +1440,9 @@ impl UnifiedDriver {
                                     false, // not reorged
                                 ));
                                 Self::handle_forced_inclusion_event_during_backfill(
-                                    writer, wrapper,
+                                    writer,
+                                    wrapper,
+                                    enable_db_writes,
                                 )
                                 .await?;
                                 events_found += 1;
@@ -1168,26 +1474,45 @@ impl UnifiedDriver {
         writer: &ClickhouseWriter,
         extractor: &Extractor,
         wrapper: BatchProposedWrapper,
+        enable_db_writes: bool,
     ) -> Result<()> {
         let batch = &wrapper.batch;
         let l1_tx_hash = wrapper.l1_tx_hash;
 
         // Insert batch with error handling
-        Self::with_db_error_context(
-            writer.insert_batch(batch, l1_tx_hash),
-            "insert batch",
-            format!("batch_last_block={:?}", batch.last_block_number()),
-        )
-        .await?;
+        if enable_db_writes {
+            Self::with_db_error_context(
+                writer.insert_batch(batch, l1_tx_hash),
+                "insert batch",
+                format!("batch_last_block={:?}", batch.last_block_number()),
+            )
+            .await?;
+        } else {
+            info!(
+                batch_id = batch.meta.batchId,
+                last_block = batch.last_block_number(),
+                l1_tx_hash = %l1_tx_hash,
+                "🧪 DRY-RUN: Would insert batch"
+            );
+        }
 
         // Calculate and insert L1 data cost
         if let Some(cost) = Self::fetch_transaction_cost(extractor, l1_tx_hash).await {
-            Self::with_db_error_context(
-                writer.insert_l1_data_cost(batch.info.proposedIn, batch.meta.batchId, cost),
-                "insert L1 data cost",
-                format!("l1_block_number={}, tx_hash={:?}", batch.info.proposedIn, l1_tx_hash),
-            )
-            .await?;
+            if enable_db_writes {
+                Self::with_db_error_context(
+                    writer.insert_l1_data_cost(batch.info.proposedIn, batch.meta.batchId, cost),
+                    "insert L1 data cost",
+                    format!("l1_block_number={}, tx_hash={:?}", batch.info.proposedIn, l1_tx_hash),
+                )
+                .await?;
+            } else {
+                info!(
+                    l1_block_number = batch.info.proposedIn,
+                    batch_id = batch.meta.batchId,
+                    cost = cost,
+                    "🧪 DRY-RUN: Would insert L1 data cost"
+                );
+            }
         }
         Ok(())
     }
@@ -1196,34 +1521,53 @@ impl UnifiedDriver {
         writer: &ClickhouseWriter,
         extractor: &Extractor,
         wrapper: BatchesProvedWrapper,
+        enable_db_writes: bool,
     ) -> Result<()> {
         let proved = &wrapper.proved;
         let l1_block_number = wrapper.l1_block_number;
         let l1_tx_hash = wrapper.l1_tx_hash;
 
         // Insert proved batch
-        Self::with_db_error_context(
-            writer.insert_proved_batch(proved, l1_block_number),
-            "insert proved batch",
-            format!("batch_ids={:?}", proved.batch_ids_proved()),
-        )
-        .await?;
+        if enable_db_writes {
+            Self::with_db_error_context(
+                writer.insert_proved_batch(proved, l1_block_number),
+                "insert proved batch",
+                format!("batch_ids={:?}", proved.batch_ids_proved()),
+            )
+            .await?;
+        } else {
+            info!(
+                batch_ids = ?proved.batch_ids_proved(),
+                l1_block_number = l1_block_number,
+                "🧪 DRY-RUN: Would insert proved batch"
+            );
+        }
 
         // Calculate and insert prove costs for each batch
         if let Some(cost) = Self::fetch_transaction_cost(extractor, l1_tx_hash).await {
             let cost_per_batch =
                 Self::average_cost_per_batch(cost, proved.batch_ids_proved().len());
 
-            for batch_id in proved.batch_ids_proved() {
-                Self::with_db_error_context(
-                    writer.insert_prove_cost(l1_block_number, *batch_id, cost_per_batch),
-                    "insert prove cost",
-                    format!(
-                        "l1_block_number={}, batch_id={}, tx_hash={:?}",
-                        l1_block_number, batch_id, l1_tx_hash
-                    ),
-                )
-                .await?;
+            if enable_db_writes {
+                for batch_id in proved.batch_ids_proved() {
+                    Self::with_db_error_context(
+                        writer.insert_prove_cost(l1_block_number, *batch_id, cost_per_batch),
+                        "insert prove cost",
+                        format!(
+                            "l1_block_number={}, batch_id={}, tx_hash={:?}",
+                            l1_block_number, batch_id, l1_tx_hash
+                        ),
+                    )
+                    .await?;
+                }
+            } else {
+                info!(
+                    l1_block_number = l1_block_number,
+                    batch_ids = ?proved.batch_ids_proved(),
+                    cost_per_batch = cost_per_batch,
+                    "🧪 DRY-RUN: Would insert prove costs for {} batches",
+                    proved.batch_ids_proved().len()
+                );
             }
         }
         Ok(())
@@ -1233,30 +1577,48 @@ impl UnifiedDriver {
         writer: &ClickhouseWriter,
         extractor: &Extractor,
         wrapper: BatchesVerifiedWrapper,
+        enable_db_writes: bool,
     ) -> Result<()> {
         let verified = &wrapper.verified;
         let l1_block_number = wrapper.l1_block_number;
         let l1_tx_hash = wrapper.l1_tx_hash;
 
         // Insert verified batch
-        Self::with_db_error_context(
-            writer.insert_verified_batch(verified, l1_block_number),
-            "insert verified batch",
-            format!("batch_id={}", verified.batch_id),
-        )
-        .await?;
+        if enable_db_writes {
+            Self::with_db_error_context(
+                writer.insert_verified_batch(verified, l1_block_number),
+                "insert verified batch",
+                format!("batch_id={}", verified.batch_id),
+            )
+            .await?;
+        } else {
+            info!(
+                batch_id = verified.batch_id,
+                l1_block_number = l1_block_number,
+                "🧪 DRY-RUN: Would insert verified batch"
+            );
+        }
 
         // Calculate and insert verify cost
         if let Some(cost) = Self::fetch_transaction_cost(extractor, l1_tx_hash).await {
-            Self::with_db_error_context(
-                writer.insert_verify_cost(l1_block_number, verified.batch_id, cost),
-                "insert verify cost",
-                format!(
-                    "l1_block_number={}, batch_id={}, tx_hash={:?}",
-                    l1_block_number, verified.batch_id, l1_tx_hash
-                ),
-            )
-            .await?;
+            if enable_db_writes {
+                Self::with_db_error_context(
+                    writer.insert_verify_cost(l1_block_number, verified.batch_id, cost),
+                    "insert verify cost",
+                    format!(
+                        "l1_block_number={}, batch_id={}, tx_hash={:?}",
+                        l1_block_number, verified.batch_id, l1_tx_hash
+                    ),
+                )
+                .await?;
+            } else {
+                info!(
+                    l1_block_number = l1_block_number,
+                    batch_id = verified.batch_id,
+                    cost = cost,
+                    "🧪 DRY-RUN: Would insert verify cost"
+                );
+            }
         }
         Ok(())
     }
@@ -1264,15 +1626,23 @@ impl UnifiedDriver {
     async fn handle_forced_inclusion_event_during_backfill(
         writer: &ClickhouseWriter,
         wrapper: ForcedInclusionProcessedWrapper,
+        enable_db_writes: bool,
     ) -> Result<()> {
         let event = &wrapper.event;
 
-        Self::with_db_error_context(
-            writer.insert_forced_inclusion(event),
-            "insert forced inclusion",
-            format!("blob_hash={:?}", event.forcedInclusion.blobHash),
-        )
-        .await?;
+        if enable_db_writes {
+            Self::with_db_error_context(
+                writer.insert_forced_inclusion(event),
+                "insert forced inclusion",
+                format!("blob_hash={:?}", event.forcedInclusion.blobHash),
+            )
+            .await?;
+        } else {
+            info!(
+                blob_hash = ?event.forcedInclusion.blobHash,
+                "🧪 DRY-RUN: Would insert forced inclusion"
+            );
+        }
 
         Ok(())
     }
@@ -1282,6 +1652,7 @@ impl UnifiedDriver {
         writer: &ClickhouseWriter,
         extractor: &Extractor,
         block_numbers: Vec<u64>,
+        enable_db_writes: bool,
     ) -> Result<()> {
         for block_number in block_numbers {
             match extractor.get_l2_block_by_number(block_number).await {
@@ -1318,10 +1689,19 @@ impl UnifiedDriver {
                         sequencer: AddressBytes(header.beneficiary.into_array()),
                     };
 
-                    if let Err(e) = writer.insert_l2_header(&event).await {
-                        error!(block_number = block_number, err = %e, "Failed to backfill L2 block");
+                    if enable_db_writes {
+                        if let Err(e) = writer.insert_l2_header(&event).await {
+                            error!(block_number = block_number, err = %e, "Failed to backfill L2 block");
+                        } else {
+                            info!(block_number = block_number, "Successfully backfilled L2 block");
+                        }
                     } else {
-                        info!(block_number = block_number, "Successfully backfilled L2 block");
+                        info!(
+                            block_number = block_number,
+                            gas_used = event.sum_gas_used,
+                            tx_count = event.sum_tx,
+                            "🧪 DRY-RUN: Would insert L2 header with stats"
+                        );
                     }
                 }
                 Err(e) => {
