@@ -54,10 +54,6 @@ pub struct UnifiedDriver {
     taiko_wrapper_address: Address,
 }
 
-/// An EPOCH is a series of 32 slots.
-#[allow(dead_code)]
-const EPOCH_SLOTS: u64 = 32;
-
 impl UnifiedDriver {
     /// Create a new unified driver with the given configuration
     pub async fn new(opts: Opts) -> Result<Self> {
@@ -612,29 +608,258 @@ impl UnifiedDriver {
     }
 
     async fn process_preconf_data(&self, header: &primitives::headers::L1Header) {
-        // TODO: Implement preconf data processing - placeholder for now
-        info!(block_number = header.number, "Preconf data processing not yet implemented");
+        let writer = match &self.clickhouse_writer {
+            Some(w) => w,
+            None => return,
+        };
+
+        // Get operator candidates for current epoch
+        let opt_candidates = match self.extractor.get_operator_candidates_for_current_epoch().await
+        {
+            Ok(c) => {
+                info!(
+                    slot = header.slot,
+                    block = header.number,
+                    candidates = ?c,
+                    candidates_count = c.len(),
+                    "Successfully retrieved operator candidates"
+                );
+                Some(c)
+            }
+            Err(e) => {
+                error!(
+                    slot = header.slot,
+                    block = header.number,
+                    err = %e,
+                    "Failed picking operator candidates"
+                );
+                None
+            }
+        };
+        let candidates = opt_candidates.unwrap_or_else(Vec::new);
+
+        // Get current operator for epoch
+        let opt_current_operator = match self.extractor.get_operator_for_current_epoch().await {
+            Ok(op) => {
+                info!(
+                    block = header.number,
+                    operator = ?op,
+                    "Current operator for epoch"
+                );
+                Some(op)
+            }
+            Err(e) => {
+                error!(block = header.number, err = %e, "get_operator_for_current_epoch failed");
+                None
+            }
+        };
+
+        // Get next operator for epoch
+        let opt_next_operator = match self.extractor.get_operator_for_next_epoch().await {
+            Ok(op) => {
+                info!(
+                    block = header.number,
+                    operator = ?op,
+                    "Next operator for epoch"
+                );
+                Some(op)
+            }
+            Err(e) => {
+                error!(block = header.number, err = %e, "get_operator_for_next_epoch failed");
+                None
+            }
+        };
+
+        // Insert preconf data if we have at least one operator
+        if opt_current_operator.is_some() || opt_next_operator.is_some() {
+            if let Err(e) = writer
+                .insert_preconf_data(
+                    header.slot,
+                    candidates,
+                    opt_current_operator,
+                    opt_next_operator,
+                )
+                .await
+            {
+                error!(slot = header.slot, err = %e, "Failed to insert preconf data");
+            } else {
+                info!(slot = header.slot, "Inserted preconf data for slot");
+            }
+        } else {
+            info!(
+                slot = header.slot,
+                "Skipping preconf data insertion due to errors fetching operator data"
+            );
+        }
     }
 
-    async fn process_reorg_detection(&self, header: &primitives::headers::L2Header) {
-        // TODO: Implement reorg detection - placeholder for now
-        info!(block_number = header.number, "Reorg detection not yet implemented");
+    async fn process_reorg_detection(&mut self, header: &primitives::headers::L2Header) {
+        let writer = match &self.clickhouse_writer {
+            Some(w) => w,
+            None => return,
+        };
+
+        let old_head = self.reorg_detector.head_number();
+        let reorg_result = self.reorg_detector.on_new_block_with_hash(header.number, header.hash);
+
+        // Update last L2 header tracking
+        self.last_l2_header = Some((header.number, header.beneficiary));
+
+        if let Some((depth, orphaned_hash)) = reorg_result {
+            warn!(
+                old_head = old_head,
+                new_head = header.number,
+                depth = depth,
+                orphaned_hash = ?orphaned_hash,
+                "L2 reorg detected"
+            );
+
+            // Handle orphaned hash from one-block reorg
+            if let Some(hash) = orphaned_hash {
+                Self::insert_orphaned_hash(writer, hash, header.number).await;
+            }
+
+            // Handle orphaned blocks from traditional reorg
+            if depth > 0 {
+                Self::handle_traditional_reorg_orphans(
+                    writer,
+                    &self.clickhouse_reader,
+                    old_head,
+                    header.number,
+                    depth,
+                )
+                .await;
+            }
+
+            // Check if we need to process L2 reorg with previous sequencer
+            if let Some((prev_block_number, prev_sequencer)) = self.last_l2_header {
+                if prev_sequencer != header.beneficiary {
+                    info!(
+                        prev_block = prev_block_number,
+                        new_block = header.number,
+                        prev_sequencer = ?prev_sequencer,
+                        new_sequencer = ?header.beneficiary,
+                        "L2 reorg with sequencer change detected"
+                    );
+
+                    // Insert L2 reorg record
+                    if let Err(e) = writer
+                        .insert_l2_reorg(header.number, depth, prev_sequencer, header.beneficiary)
+                        .await
+                    {
+                        error!(
+                            block_number = header.number,
+                            err = %e,
+                            "Failed to insert L2 reorg record"
+                        );
+                    } else {
+                        info!(
+                            block_number = header.number,
+                            depth = depth,
+                            "Inserted L2 reorg record"
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    async fn insert_orphaned_hash(
+        writer: &ClickhouseWriter,
+        hash: alloy_primitives::B256,
+        block_number: u64,
+    ) {
+        if let Err(e) =
+            writer.insert_orphaned_hashes(&[(HashBytes::from(hash), block_number)]).await
+        {
+            error!(block_number, orphaned_hash = ?hash, err = %e, "Failed to insert orphaned hash");
+        } else {
+            info!(block_number, orphaned_hash = ?hash, "Inserted orphaned hash");
+        }
+    }
+
+    async fn handle_traditional_reorg_orphans(
+        writer: &ClickhouseWriter,
+        clickhouse_reader: &Option<ClickhouseReader>,
+        old_head: u64,
+        new_head: u64,
+        depth: u16,
+    ) {
+        let orphaned_block_numbers =
+            Self::calculate_orphaned_blocks(old_head, new_head, depth.into());
+        if orphaned_block_numbers.is_empty() {
+            return;
+        }
+
+        let Some(reader) = clickhouse_reader else {
+            return;
+        };
+
+        match reader.get_latest_hashes_for_blocks(&orphaned_block_numbers).await {
+            Ok(orphaned_hashes) if !orphaned_hashes.is_empty() => {
+                if let Err(e) = writer.insert_orphaned_hashes(&orphaned_hashes).await {
+                    error!(count = orphaned_hashes.len(), err = %e, "Failed to insert orphaned hashes");
+                } else {
+                    info!(count = orphaned_hashes.len(), "Inserted orphaned hashes for reorg");
+                }
+            }
+            Ok(_) => {} // No orphaned hashes found
+            Err(e) => error!(err = %e, "Failed to fetch orphaned hashes"),
+        }
+    }
+
+    fn calculate_orphaned_blocks(old_head: u64, new_head: u64, _depth: u32) -> Vec<u64> {
+        // Orphaned blocks are from new_head+1 to old_head (inclusive)
+        if new_head >= old_head {
+            // No orphaned blocks if new_head is >= old_head
+            return Vec::new();
+        }
+        let orphaned_start = new_head + 1;
+        let orphaned_end = old_head + 1; // +1 because range is exclusive at end
+        (orphaned_start..orphaned_end).collect()
     }
 
     async fn insert_l2_header_with_stats(&self, header: &primitives::headers::L2Header) {
-        // TODO: Implement L2 header insertion with stats - placeholder for now
-        info!(block_number = header.number, "L2 header with stats insertion not yet implemented");
+        let writer = match &self.clickhouse_writer {
+            Some(w) => w,
+            None => return,
+        };
+
+        let (sum_gas_used, sum_tx, sum_priority_fee) = self.extractor
+            .get_l2_block_stats(alloy_primitives::B256::from(*header.hash), header.base_fee_per_gas)
+            .await
+            .unwrap_or_else(|e| {
+                error!(header_number = header.number, err = %e, "Failed to get L2 block stats, using defaults");
+                (0, 0, 0)
+            });
+
+        let sum_base_fee = sum_gas_used.saturating_mul(header.base_fee_per_gas as u128);
+
+        let event = L2HeadEvent {
+            l2_block_number: header.number,
+            block_hash: HashBytes(*header.hash),
+            block_ts: header.timestamp,
+            sum_gas_used,
+            sum_tx,
+            sum_priority_fee,
+            sum_base_fee,
+            sequencer: AddressBytes(header.beneficiary.into_array()),
+        };
+
+        if let Err(e) = writer.insert_l2_header(&event).await {
+            error!(header_number = header.number, err = %e, "Failed to insert L2 header");
+        } else {
+            info!(header_number = header.number, "Inserted L2 header with stats");
+        }
     }
 
     /// Start monitoring tasks if enabled
+    /// Note: Monitor implementation is deferred to future development
     async fn start_monitors(&self) -> Vec<tokio::task::JoinHandle<()>> {
-        let handles = Vec::new();
-
-        // TODO: Implement monitors properly
-        // For now, just return empty handles to avoid compilation errors
-        info!("Monitors not yet implemented in unified mode");
-
-        handles
+        info!(
+            "Monitors disabled in unified mode - monitoring functionality to be implemented in future versions"
+        );
+        Vec::new()
     }
 
     /// Start the gap detection and backfill task
@@ -738,7 +963,6 @@ impl UnifiedDriver {
     }
 
     /// Backfill missing L1 blocks and extract all Taiko events from those blocks
-    #[allow(unused_variables)]
     async fn backfill_l1_blocks(
         writer: &ClickhouseWriter,
         extractor: &Extractor,
@@ -770,7 +994,7 @@ impl UnifiedDriver {
                     );
 
                     // Process all Taiko events from this L1 block
-                    Self::process_l1_block_taiko_events_stub(
+                    Self::process_l1_block_taiko_events(
                         writer,
                         extractor,
                         &block,
@@ -793,7 +1017,7 @@ impl UnifiedDriver {
     }
 
     /// Process all Taiko events found in an L1 block during backfill
-    async fn process_l1_block_taiko_events_stub(
+    async fn process_l1_block_taiko_events(
         writer: &ClickhouseWriter,
         extractor: &Extractor,
         block: &alloy_rpc_types_eth::Block,
