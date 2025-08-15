@@ -1,8 +1,6 @@
 //! Taikoscope Driver - combines ingestor and processor
 
-use std::collections::VecDeque;
-
-use alloy_primitives::{Address, BlockHash};
+use alloy_primitives::Address;
 #[allow(unused_imports)]
 use chainio::BatchesVerified;
 use clickhouse::{ClickhouseReader, ClickhouseWriter};
@@ -46,8 +44,6 @@ pub struct Driver {
     pub instatus_l2_monitor_threshold_secs: u64,
     pub batch_proof_timeout_secs: u64,
     pub public_rpc_url: Option<Url>,
-    pub processed_l2_headers: VecDeque<BlockHash>,
-    // Contract addresses for event filtering
     pub inbox_address: Address,
     pub taiko_wrapper_address: Address,
 }
@@ -199,7 +195,6 @@ impl Driver {
             instatus_l2_monitor_threshold_secs: opts.instatus.l2_monitor_threshold_secs,
             batch_proof_timeout_secs: opts.instatus.batch_proof_timeout_secs,
             public_rpc_url: opts.rpc.public_url,
-            processed_l2_headers: VecDeque::new(),
             inbox_address: opts.taiko_addresses.inbox_address,
             taiko_wrapper_address: opts.taiko_addresses.taiko_wrapper_address,
         })

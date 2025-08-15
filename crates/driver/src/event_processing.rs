@@ -262,18 +262,6 @@ impl crate::driver::Driver {
         &mut self,
         header: primitives::headers::L2Header,
     ) -> Result<()> {
-        // Duplicate filtering using FIFO set
-        if self.processed_l2_headers.contains(&header.hash) {
-            warn!("Duplicate L2Header detected, skipping processing");
-            return Ok(());
-        }
-
-        // Add to FIFO set (max 1000 items)
-        self.processed_l2_headers.push_back(header.hash);
-        if self.processed_l2_headers.len() > 1000 {
-            self.processed_l2_headers.pop_front();
-        }
-
         // Process reorg detection
         crate::reorg_detection::process_reorg_detection(
             &mut self.reorg_detector,
