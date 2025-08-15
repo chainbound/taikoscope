@@ -108,10 +108,6 @@ impl Driver {
             info!("   - Events will be processed and logged but not written to database");
             info!("   - Gap detection will run but not perform backfill operations");
             info!("   - All database writes will be simulated with detailed logging");
-        }
-
-        // Skip migrations when database writes are disabled
-        if !opts.enable_db_writes {
             info!("⚠️  Skipping database migrations (database writes disabled)");
         } else if opts.skip_migrations {
             info!("⚠️  Skipping database migrations");
