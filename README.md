@@ -49,11 +49,6 @@ React dashboard.
    just dev-dashboard
    ```
 
-   To test without database writes (dry-run mode):
-
-   ```bash
-   just dev-dry-run  # runs with ENABLE_DB_WRITES=false
-   ```
 
 The API is now available on `http://localhost:3000` and the dashboard on
 `http://localhost:5173` by default.
@@ -121,12 +116,11 @@ just ci       # runs fmt, lint, lint-dashboard and test
 
 ## Deployment
 
-Deployment scripts use `ssh` and `docker` to build the images remotely.
-Create an entry in your `~/.ssh/config` (for example named `taiko`) and then run:
+Build and push Docker images for deployment:
 
 ```bash
-just deploy-remote-hekla        # deploy the taikoscope binary
-just deploy-api-remote-hekla    # deploy the API server
+just build-taikoscope   # build and push taikoscope docker image
+just build-api          # build and push API docker image
 ```
 
 To deploy the Hekla dashboard:

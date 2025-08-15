@@ -9,7 +9,7 @@ default:
 
 # start the Taikoscope binary for local development
 dev:
-    ENV_FILE=dev.env cargo run --bin taikoscope
+    ENV_FILE=dev.env ENABLE_DB_WRITES=true cargo run --bin taikoscope
 
 # start the API server for local development
 dev-api:
@@ -18,10 +18,6 @@ dev-api:
 # start the API server for mainnet
 mainnet-api:
     ENV_FILE=mainnet.env cargo run --bin api-server
-
-# start the taikoscope binary in dry-run mode (no database writes)
-dev-dry-run:
-    ENV_FILE=hekla.env SKIP_MIGRATIONS=true ENABLE_DB_WRITES=false cargo run --bin taikoscope
 
 
 # run all recipes required to pass CI workflows
