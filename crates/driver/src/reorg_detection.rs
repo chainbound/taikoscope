@@ -161,3 +161,44 @@ pub fn calculate_orphaned_blocks(old_head: u64, new_head: u64, depth: u32) -> Ve
 
     (fork_point..orphaned_end).collect()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_calculate_orphaned_blocks_no_reorg() {
+        let result = calculate_orphaned_blocks(100, 100, 0);
+        assert_eq!(result, vec![0u64; 0]);
+    }
+
+    #[test]
+    fn test_calculate_orphaned_blocks_forward_progression() {
+        let result = calculate_orphaned_blocks(100, 101, 1);
+        assert_eq!(result, vec![0u64; 0]);
+    }
+
+    #[test]
+    fn test_calculate_orphaned_blocks_simple_reorg() {
+        let result = calculate_orphaned_blocks(100, 98, 2);
+        assert_eq!(result, vec![99u64, 100]);
+    }
+
+    #[test]
+    fn test_calculate_orphaned_blocks_deep_reorg() {
+        let result = calculate_orphaned_blocks(100, 95, 5);
+        assert_eq!(result, vec![96u64, 97, 98, 99, 100]);
+    }
+
+    #[test]
+    fn test_calculate_orphaned_blocks_depth_exceeds_old_head() {
+        let result = calculate_orphaned_blocks(10, 5, 15);
+        assert_eq!(result, vec![0u64; 0]);
+    }
+
+    #[test]
+    fn test_calculate_orphaned_blocks_edge_case_depth_equals_old_head() {
+        let result = calculate_orphaned_blocks(10, 1, 10);
+        assert_eq!(result, vec![1u64, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    }
+}

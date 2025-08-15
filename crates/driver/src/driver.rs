@@ -32,6 +32,10 @@ pub struct Driver {
     pub last_l2_header: Option<(u64, Address)>,
     pub enable_db_writes: bool,
     pub enable_gap_detection: bool,
+    pub gap_finalization_buffer_blocks: u64,
+    pub gap_startup_lookback_blocks: u64,
+    pub gap_continuous_lookback_blocks: u64,
+    pub gap_poll_interval_secs: u64,
     pub incident_client: IncidentClient,
     pub instatus_batch_submission_component_id: String,
     pub instatus_proof_submission_component_id: String,
@@ -179,6 +183,10 @@ impl Driver {
             last_l2_header: None,
             enable_db_writes: opts.enable_db_writes,
             enable_gap_detection: opts.enable_gap_detection,
+            gap_finalization_buffer_blocks: opts.gap_finalization_buffer_blocks,
+            gap_startup_lookback_blocks: opts.gap_startup_lookback_blocks,
+            gap_continuous_lookback_blocks: opts.gap_continuous_lookback_blocks,
+            gap_poll_interval_secs: opts.gap_poll_interval_secs,
             incident_client,
             instatus_batch_submission_component_id,
             instatus_proof_submission_component_id,
@@ -233,6 +241,16 @@ impl Driver {
         shutdown_rx: Option<broadcast::Receiver<()>>,
     ) -> Result<()> {
         info!("Starting driver event loop");
+
+        // Perform initial gap catch-up before starting live streams
+        if self.enable_gap_detection {
+            info!("Performing initial gap catch-up...");
+            if let Err(e) = self.initial_gap_catchup().await {
+                error!(err = %e, "Initial gap catch-up failed");
+            } else {
+                info!("Initial gap catch-up completed");
+            }
+        }
 
         // Start monitors if enabled
         let monitor_handles =

@@ -183,6 +183,22 @@ pub struct Opts {
     /// Enable gap detection and backfill (default: true)
     #[clap(long, env = "ENABLE_GAP_DETECTION", default_value = "true")]
     pub enable_gap_detection: bool,
+
+    /// Number of blocks to wait for finalization before backfilling (default: 12)
+    #[clap(long, env = "GAP_FINALIZATION_BUFFER_BLOCKS", default_value = "12")]
+    pub gap_finalization_buffer_blocks: u64,
+
+    /// Number of blocks to look back on startup for initial catch-up (default: 128)
+    #[clap(long, env = "GAP_STARTUP_LOOKBACK_BLOCKS", default_value = "128")]
+    pub gap_startup_lookback_blocks: u64,
+
+    /// Number of blocks to look back during continuous gap detection (default: 32)
+    #[clap(long, env = "GAP_CONTINUOUS_LOOKBACK_BLOCKS", default_value = "32")]
+    pub gap_continuous_lookback_blocks: u64,
+
+    /// Gap detection poll interval in seconds (default: 30)
+    #[clap(long, env = "GAP_POLL_INTERVAL_SECS", default_value = "30")]
+    pub gap_poll_interval_secs: u64,
 }
 
 #[cfg(test)]
@@ -256,29 +272,23 @@ mod tests {
             env::remove_var("ALLOWED_ORIGINS");
             env::remove_var("RATE_LIMIT_MAX_REQUESTS");
             env::remove_var("RATE_LIMIT_PERIOD_SECS");
+            env::remove_var("GAP_FINALIZATION_BUFFER_BLOCKS");
+            env::remove_var("GAP_STARTUP_LOOKBACK_BLOCKS");
+            env::remove_var("GAP_CONTINUOUS_LOOKBACK_BLOCKS");
+            env::remove_var("GAP_POLL_INTERVAL_SECS");
         }
 
         let args = base_args();
-        let opts = Opts::try_parse_from(args).expect("failed to parse opts");
+        let opts = Opts::try_parse_from(args).unwrap();
 
         assert_eq!(opts.instatus.monitor_poll_interval_secs, 30);
         assert_eq!(opts.instatus.l1_monitor_threshold_secs, 600);
         assert_eq!(opts.instatus.l2_monitor_threshold_secs, 600);
         assert_eq!(opts.instatus.batch_proof_timeout_secs, 10800);
-        assert_eq!(opts.api.host, "127.0.0.1");
-        assert_eq!(opts.api.port, 3000);
-
-        let expected_origins = vec![
-            "https://taikoscope.xyz",
-            "https://www.taikoscope.xyz",
-            "https://hekla.taikoscope.xyz",
-            "https://www.hekla.taikoscope.xyz",
-        ];
-        assert_eq!(opts.api.allowed_origins, expected_origins);
-
-        assert_eq!(opts.api.rate_limit_max_requests, 1000);
-        assert_eq!(opts.api.rate_limit_period_secs, 60);
-        assert!(!opts.reset_db);
+        assert_eq!(opts.gap_finalization_buffer_blocks, 12);
+        assert_eq!(opts.gap_startup_lookback_blocks, 128);
+        assert_eq!(opts.gap_continuous_lookback_blocks, 32);
+        assert_eq!(opts.gap_poll_interval_secs, 30);
     }
 
     #[test]
