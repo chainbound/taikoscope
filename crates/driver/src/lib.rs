@@ -2,5 +2,5 @@
 #![allow(clippy::uninlined_format_args)]
 #![allow(clippy::cognitive_complexity)]
 
+pub mod driver;
 mod subscription;
-pub mod unified;

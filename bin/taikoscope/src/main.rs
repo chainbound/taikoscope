@@ -5,7 +5,7 @@ use std::time::Duration;
 use clap::Parser;
 use config::Opts;
 use dotenvy::dotenv;
-use driver::unified::Driver;
+use driver::driver::Driver;
 use runtime::shutdown::{ShutdownSignal, run_until_shutdown_graceful};
 use tokio::sync::broadcast;
 use tracing::info;

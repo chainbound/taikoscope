@@ -12,7 +12,11 @@ use extractor::{
     ForcedInclusionStream, ReorgDetector,
 };
 use eyre::{Context, Result};
-use incident::client::Client as IncidentClient;
+use incident::{
+    BatchProofTimeoutMonitor, InstatusL1Monitor, InstatusMonitor, Monitor,
+    client::Client as IncidentClient,
+    monitor::{BatchVerifyTimeoutMonitor, spawn_public_rpc_monitor},
+};
 use messages::{
     BatchProposedWrapper, BatchesProvedWrapper, BatchesVerifiedWrapper,
     ForcedInclusionProcessedWrapper, TaikoEvent,
@@ -1111,12 +1115,71 @@ impl Driver {
         }
     }
 
-    /// Start monitoring tasks if enabled
-    /// Note: Monitor implementation is deferred to future development
+    /// Spawn all background monitors used by the driver.
+    ///
+    /// Each monitor runs in its own task and reports incidents via the
+    /// [`IncidentClient`].
     async fn start_monitors(&self) -> Vec<tokio::task::JoinHandle<()>> {
-        info!(
-            "Monitors disabled in unified mode - monitoring functionality to be implemented in future versions"
-        );
+        // Always spawn monitors. When `instatus_monitors_enabled` is false,
+        // monitors run in dry-run mode (no API calls), but still log warnings
+        // when an incident would have been created.
+
+        if let Some(url) = &self.public_rpc_url {
+            info!(url = url.as_str(), "public rpc monitor enabled");
+            let incident = self.instatus_monitors_enabled.then(|| {
+                (self.incident_client.clone(), self.instatus_public_api_component_id.clone())
+            });
+            // When disabled, incident will be None; monitor will still log.
+            spawn_public_rpc_monitor(url.clone(), incident);
+        }
+
+        // Only spawn monitors if we have a clickhouse reader (database writes enabled)
+        if let Some(reader) = &self.clickhouse_reader {
+            InstatusL1Monitor::new(
+                reader.clone(),
+                self.incident_client.clone(),
+                self.instatus_batch_submission_component_id.clone(),
+                Duration::from_secs(self.instatus_l1_monitor_threshold_secs),
+                Duration::from_secs(self.instatus_monitor_poll_interval_secs),
+            )
+            .spawn();
+
+            InstatusMonitor::new(
+                reader.clone(),
+                self.incident_client.clone(),
+                self.instatus_transaction_sequencing_component_id.clone(),
+                Duration::from_secs(self.instatus_l2_monitor_threshold_secs),
+                Duration::from_secs(self.instatus_monitor_poll_interval_secs),
+            )
+            .spawn();
+
+            BatchProofTimeoutMonitor::new(
+                reader.clone(),
+                self.incident_client.clone(),
+                self.instatus_proof_submission_component_id.clone(),
+                Duration::from_secs(self.batch_proof_timeout_secs),
+                Duration::from_secs(60),
+            )
+            .spawn();
+
+            BatchVerifyTimeoutMonitor::new(
+                reader.clone(),
+                self.incident_client.clone(),
+                self.instatus_proof_verification_component_id.clone(),
+                Duration::from_secs(self.batch_proof_timeout_secs),
+                Duration::from_secs(60),
+            )
+            .spawn();
+        } else if self.instatus_monitors_enabled {
+            warn!(
+                "Instatus monitors enabled but no ClickHouse reader available (database writes disabled)"
+            );
+        } else {
+            info!(
+                "Instatus monitors disabled and no ClickHouse reader available; monitors will not run"
+            );
+        }
+
         Vec::new()
     }
 
