@@ -54,9 +54,9 @@ pub struct Driver {
 }
 
 impl Driver {
-    /// Create a new unified driver with the given configuration
+    /// Create a new driver with the given configuration
     pub async fn new(opts: Opts) -> Result<Self> {
-        info!("Initializing unified driver");
+        info!("Initializing driver");
 
         // verify monitoring configuration before doing any heavy work
         if opts.instatus.monitors_enabled && !opts.instatus.enabled() {
@@ -211,17 +211,17 @@ impl Driver {
             .await
     }
 
-    /// Start the unified driver event loop
+    /// Start the driver event loop
     pub async fn start(self) -> Result<()> {
         self.start_with_shutdown(None).await
     }
 
-    /// Start the unified driver event loop with graceful shutdown support
+    /// Start the driver event loop with graceful shutdown support
     pub async fn start_with_shutdown(
         mut self,
         shutdown_rx: Option<broadcast::Receiver<()>>,
     ) -> Result<()> {
-        info!("Starting unified driver event loop");
+        info!("Starting driver event loop");
 
         // Start monitors if enabled
         let monitor_handles =
@@ -271,7 +271,7 @@ impl Driver {
         mut verified_stream: BatchesVerifiedStream,
         mut shutdown_rx: Option<broadcast::Receiver<()>>,
     ) -> Result<()> {
-        info!("Starting unified event loop - processing events directly to database");
+        info!("Starting event loop - processing events directly to database");
 
         loop {
             tokio::select! {
@@ -382,7 +382,7 @@ impl Driver {
                     }
                 }
                 else => {
-                    error!("All event streams ended and failed to re-subscribe. Shutting down unified driver loop");
+                    error!("All event streams ended and failed to re-subscribe. Shutting down driver loop");
                     break;
                 }
             }
