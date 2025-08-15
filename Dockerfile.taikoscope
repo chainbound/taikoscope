@@ -1,47 +1,82 @@
-# Dockerfile for unified Taikoscope binary
+# Reference guide: https://depot.dev/blog/rust-dockerfile-best-practices
 
-FROM rust:1.82.0 AS builder
+# Run with Debian, libclang has issues with Alpine.
+# Make sure to update rust-toolchain.toml when updating the base image,
+# and vice versa.
+FROM rust:1.89-bookworm AS base
 
-# Install dependencies
-RUN apt-get update && apt-get install -y \
-    pkg-config \
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    git \
     libssl-dev \
+    pkg-config \
+    clang \
+    llvm-19 \
+    libclang-19-dev \
+    cmake \
     && rm -rf /var/lib/apt/lists/*
 
-# Set work directory
-WORKDIR /usr/src/app
+RUN cargo install --locked sccache cargo-chef && \
+    rm -rf /usr/local/cargo/registry /usr/local/cargo/git
 
-# Copy the entire workspace
+ENV RUSTC_WRAPPER=sccache SCCACHE_DIR=/sccache
+
+FROM base AS planner
+
+WORKDIR /app
+
 COPY . .
 
-# Build the unified binary in release mode
-RUN cargo build --release --bin taikoscope
+RUN --mount=type=cache,target=$SCCACHE_DIR,sharing=locked \
+    cargo chef prepare --recipe-path recipe.json
 
-# Runtime stage
-FROM debian:bookworm-slim
+FROM base AS builder
+
+WORKDIR /app
+COPY --from=planner /app/recipe.json recipe.json
+
+# Add architecture as a build arg
+ARG TARGETARCH
+
+RUN --mount=type=cache,target=$SCCACHE_DIR,sharing=locked \
+    --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
+    --mount=type=cache,target=/usr/local/cargo/git,sharing=locked \
+    cargo chef cook --release --recipe-path recipe.json
+
+COPY . .
+RUN --mount=type=cache,target=$SCCACHE_DIR,sharing=locked \
+    --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
+    --mount=type=cache,target=/usr/local/cargo/git,sharing=locked \
+    if [ "$TARGETARCH" = "arm64" ]; then \
+    echo "Building for arm64 with JEMALLOC_SYS_WITH_LG_PAGE=16"; \
+    # Force jemalloc to use 64 KiB pages on ARM
+    # https://github.com/paradigmxyz/reth/pull/7123
+    JEMALLOC_SYS_WITH_LG_PAGE=16 cargo build --bin taikoscope --release; \
+    else \
+    echo "Building for $TARGETARCH"; \
+    cargo build --bin taikoscope --release; \
+    fi
+
+FROM debian:bookworm-slim AS runtime
 
 # Install runtime dependencies
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
+    libssl3 \
     && rm -rf /var/lib/apt/lists/*
 
-# Create a non-root user
-RUN useradd -r -s /bin/false taikoscope
+WORKDIR /app
 
-# Copy the binary from builder stage
-COPY --from=builder /usr/src/app/target/release/taikoscope /usr/local/bin/taikoscope
+# Copy application binary
+COPY --from=builder /app/target/release/taikoscope taikoscope
 
-# Set ownership
-RUN chown taikoscope:taikoscope /usr/local/bin/taikoscope
+# Add taikoscope user
+RUN chmod +x taikoscope && \
+    groupadd -r taikoscope && \
+    useradd -r -g taikoscope taikoscope
 
-# Switch to non-root user
+# Run as taikoscope user
 USER taikoscope
 
-# Set default operation mode to unified
-ENV MODE=unified
-
-# Expose default ports (if needed for future extensions)
-EXPOSE 3000
-
-# Default command runs in unified mode
-CMD ["sh", "-c", "/usr/local/bin/taikoscope --mode ${MODE}"]
+ENTRYPOINT ["/app/taikoscope"]
