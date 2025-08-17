@@ -78,6 +78,18 @@ impl ClickhouseReader {
         )
     }
 
+    /// Anti-subquery for L1: hides L1 blocks later rolled back by a reorg.
+    /// Use with `NOT IN (SELECT block_hash FROM ...)` against `l1_head_events` aliases.
+    fn reorg_filter_l1(&self, table_alias: &str) -> String {
+        format!(
+            "{table_alias}.block_hash NOT IN ( \
+                SELECT block_hash \
+                FROM {db}.orphaned_l1_hashes\
+            )",
+            db = self.db_name,
+        )
+    }
+
     /// Get last L2 head time
     pub async fn get_last_l2_head_time(&self) -> Result<Option<DateTime<Utc>>> {
         let client = self.base.clone();
@@ -220,7 +232,8 @@ impl ClickhouseReader {
         let sql = "SELECT max(l1_events.block_ts) AS block_ts \
              FROM ?.batches b \
              INNER JOIN ?.l1_head_events l1_events \
-               ON b.l1_block_number = l1_events.l1_block_number";
+               ON b.l1_block_number = l1_events.l1_block_number \
+             WHERE l1_events.block_hash NOT IN (SELECT block_hash FROM ?.orphaned_l1_hashes)";
 
         let start = Instant::now();
         let result = client
@@ -2884,9 +2897,11 @@ ORDER BY rb.batch_id ASC
              INNER JOIN {db}.l1_head_events l1_events \
                ON b.l1_block_number = l1_events.l1_block_number \
              WHERE l1_events.block_ts >= toUnixTimestamp(now64() - INTERVAL {interval}) \
+               AND {l1_filter} \
              ORDER BY b.l1_block_number ASC",
             interval = range.interval(),
             db = self.db_name,
+            l1_filter = self.reorg_filter_l1("l1_events"),
         );
 
         let rows = self.execute::<BatchBlobCountRow>(&query).await?;
@@ -2917,6 +2932,8 @@ ORDER BY rb.batch_id ASC
         if let Some(end) = ending_before {
             query.push_str(&format!(" AND b.batch_id > {}", end));
         }
+        // Exclude L1 orphaned hashes
+        query.push_str(&format!(" AND {}", self.reorg_filter_l1("l1_events")));
         query.push_str(" ORDER BY b.batch_id DESC");
         query.push_str(&format!(" LIMIT {}", limit));
 
@@ -3086,6 +3103,40 @@ ORDER BY blocks DESC
 
         let rows = self.execute::<HashRow>(&query).await?;
         Ok(rows.into_iter().map(|r| (r.block_hash, r.l2_block_number)).collect())
+    }
+
+    /// Get the most recent L1 block hashes for the specified L1 block numbers
+    /// This is used to identify orphaned L1 blocks during reorgs
+    pub async fn get_latest_l1_hashes_for_blocks(
+        &self,
+        block_numbers: &[u64],
+    ) -> Result<Vec<(HashBytes, u64)>> {
+        if block_numbers.is_empty() {
+            return Ok(vec![]);
+        }
+
+        #[derive(Row, Deserialize)]
+        struct HashRow {
+            block_hash: HashBytes,
+            l1_block_number: u64,
+        }
+
+        let block_list = block_numbers.iter().map(|n| n.to_string()).collect::<Vec<_>>().join(",");
+        let query = format!(
+            "SELECT block_hash, l1_block_number \
+             FROM (\
+                 SELECT block_hash, l1_block_number, \
+                        ROW_NUMBER() OVER (PARTITION BY l1_block_number ORDER BY inserted_at DESC) as rn \
+                 FROM {db}.l1_head_events \
+                 WHERE l1_block_number IN ({block_list})\
+             ) ranked \
+             WHERE rn = 1 \
+             ORDER BY l1_block_number",
+            db = self.db_name,
+        );
+
+        let rows = self.execute::<HashRow>(&query).await?;
+        Ok(rows.into_iter().map(|r| (r.block_hash, r.l1_block_number)).collect())
     }
 
     /// Get combined L2 fees and batch components data for a unified endpoint
