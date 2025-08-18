@@ -341,7 +341,27 @@ pub async fn backfill_l1_blocks(
     taiko_wrapper_address: Address,
     enable_db_writes: bool,
 ) -> Result<()> {
-    for block_number in block_numbers {
+    const MIN_L1_BLOCK_NUMBER: u64 = 23117550;
+
+    // Filter out blocks before the minimum L1 block number
+    let original_count = block_numbers.len();
+    let filtered_blocks: Vec<u64> = block_numbers
+        .into_iter()
+        .filter(|&block_number| block_number >= MIN_L1_BLOCK_NUMBER)
+        .collect();
+
+    if filtered_blocks.len() != original_count {
+        let skipped_count = original_count - filtered_blocks.len();
+        info!(
+            skipped_count = skipped_count,
+            min_l1_block = MIN_L1_BLOCK_NUMBER,
+            "Skipped {} L1 blocks below minimum block number {}",
+            skipped_count,
+            MIN_L1_BLOCK_NUMBER
+        );
+    }
+
+    for block_number in filtered_blocks {
         match extractor.get_l1_block_by_number(block_number).await {
             Ok(block) => {
                 // Insert L1 header with proper slot calculation
@@ -648,7 +668,27 @@ pub async fn backfill_l2_blocks(
     block_numbers: Vec<u64>,
     enable_db_writes: bool,
 ) -> Result<()> {
-    for block_number in block_numbers {
+    const MIN_L2_BLOCK_NUMBER: u64 = 1320745;
+
+    // Filter out blocks before the minimum L2 block number
+    let original_count = block_numbers.len();
+    let filtered_blocks: Vec<u64> = block_numbers
+        .into_iter()
+        .filter(|&block_number| block_number >= MIN_L2_BLOCK_NUMBER)
+        .collect();
+
+    if filtered_blocks.len() != original_count {
+        let skipped_count = original_count - filtered_blocks.len();
+        info!(
+            skipped_count = skipped_count,
+            min_l2_block = MIN_L2_BLOCK_NUMBER,
+            "Skipped {} L2 blocks below minimum block number {}",
+            skipped_count,
+            MIN_L2_BLOCK_NUMBER
+        );
+    }
+
+    for block_number in filtered_blocks {
         match extractor.get_l2_block_by_number(block_number).await {
             Ok(block) => {
                 let header = primitives::headers::L2Header {

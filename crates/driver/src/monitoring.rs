@@ -19,18 +19,21 @@ impl crate::driver::Driver {
         // monitors run in dry-run mode (no API calls), but still log warnings
         // when an incident would have been created.
 
+        let mut handles = Vec::new();
+
         if let Some(url) = &self.public_rpc_url {
             info!(url = url.as_str(), "public rpc monitor enabled");
             let incident = self.instatus_monitors_enabled.then(|| {
                 (self.incident_client.clone(), self.instatus_public_api_component_id.clone())
             });
             // When disabled, incident will be None; monitor will still log.
-            spawn_public_rpc_monitor(url.clone(), incident);
+            let handle = spawn_public_rpc_monitor(url.clone(), incident);
+            handles.push(handle);
         }
 
         // Only spawn monitors if we have a clickhouse reader (database writes enabled)
         if let Some(reader) = &self.clickhouse_reader {
-            InstatusL1Monitor::new(
+            let handle = InstatusL1Monitor::new(
                 reader.clone(),
                 self.incident_client.clone(),
                 self.instatus_batch_submission_component_id.clone(),
@@ -38,8 +41,9 @@ impl crate::driver::Driver {
                 Duration::from_secs(self.instatus_monitor_poll_interval_secs),
             )
             .spawn();
+            handles.push(handle);
 
-            InstatusMonitor::new(
+            let handle = InstatusMonitor::new(
                 reader.clone(),
                 self.incident_client.clone(),
                 self.instatus_transaction_sequencing_component_id.clone(),
@@ -47,8 +51,9 @@ impl crate::driver::Driver {
                 Duration::from_secs(self.instatus_monitor_poll_interval_secs),
             )
             .spawn();
+            handles.push(handle);
 
-            BatchProofTimeoutMonitor::new(
+            let handle = BatchProofTimeoutMonitor::new(
                 reader.clone(),
                 self.incident_client.clone(),
                 self.instatus_proof_submission_component_id.clone(),
@@ -56,8 +61,9 @@ impl crate::driver::Driver {
                 Duration::from_secs(60),
             )
             .spawn();
+            handles.push(handle);
 
-            BatchVerifyTimeoutMonitor::new(
+            let handle = BatchVerifyTimeoutMonitor::new(
                 reader.clone(),
                 self.incident_client.clone(),
                 self.instatus_proof_verification_component_id.clone(),
@@ -65,6 +71,7 @@ impl crate::driver::Driver {
                 Duration::from_secs(60),
             )
             .spawn();
+            handles.push(handle);
         } else if self.instatus_monitors_enabled {
             warn!(
                 "Instatus monitors enabled but no ClickHouse reader available (database writes disabled)"
@@ -75,6 +82,6 @@ impl crate::driver::Driver {
             );
         }
 
-        Vec::new()
+        handles
     }
 }
