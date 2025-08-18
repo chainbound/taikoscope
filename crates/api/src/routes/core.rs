@@ -408,10 +408,10 @@ pub async fn sequencer_blocks(
     let sequencers: Vec<SequencerBlocksItem> = rows
         .into_iter()
         .filter_map(|r| {
-            if let Some(addr) = filter {
-                if r.sequencer != addr {
-                    return None;
-                }
+            if let Some(addr) = filter &&
+                r.sequencer != addr
+            {
+                return None;
             }
             Some(SequencerBlocksItem { address: format_address(r.sequencer), blocks: r.blocks })
         })

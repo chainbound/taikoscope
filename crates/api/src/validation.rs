@@ -353,10 +353,10 @@ pub fn resolve_time_range_since(time_params: &TimeRangeParams) -> chrono::DateTi
     // If explicit time range parameters are provided, use them
     let lower_bound = time_params.created_gt.map(|v| v + 1).or(time_params.created_gte);
 
-    if let Some(timestamp_ms) = lower_bound {
-        if let Some(dt) = chrono::Utc.timestamp_millis_opt(timestamp_ms as i64).single() {
-            return dt;
-        }
+    if let Some(timestamp_ms) = lower_bound &&
+        let Some(dt) = chrono::Utc.timestamp_millis_opt(timestamp_ms as i64).single()
+    {
+        return dt;
     }
 
     // Default to 1 hour ago when no time range parameters are provided

@@ -88,10 +88,11 @@ impl ApiState {
         // Fast path: within TTL or within backoff
         {
             let cache = self.price_cache.read().await;
-            if let Some(until) = cache.backoff_until {
-                if now < until && cache.value > 0.0 {
-                    return Ok(cache.value);
-                }
+            if let Some(until) = cache.backoff_until &&
+                now < until &&
+                cache.value > 0.0
+            {
+                return Ok(cache.value);
             }
             if now.duration_since(cache.updated_at) < ttl {
                 return Ok(cache.value);
@@ -182,12 +183,12 @@ enum FetchOutcome {
 
 fn parse_retry_after(headers: &reqwest::header::HeaderMap) -> Option<StdDuration> {
     use reqwest::header::RETRY_AFTER;
-    if let Some(v) = headers.get(RETRY_AFTER) {
-        if let Ok(s) = v.to_str() {
-            // Retry-After can be seconds or an HTTP date; support seconds variant
-            if let Ok(secs) = s.trim().parse::<u64>() {
-                return Some(StdDuration::from_secs(secs.saturating_add(1)));
-            }
+    if let Some(v) = headers.get(RETRY_AFTER) &&
+        let Ok(s) = v.to_str()
+    {
+        // Retry-After can be seconds or an HTTP date; support seconds variant
+        if let Ok(secs) = s.trim().parse::<u64>() {
+            return Some(StdDuration::from_secs(secs.saturating_add(1)));
         }
     }
     None
