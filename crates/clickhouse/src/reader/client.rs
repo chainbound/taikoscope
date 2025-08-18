@@ -558,7 +558,8 @@ impl ClickhouseReader {
                     b.proposer_addr AS proposer, b.l1_block_number, \
                     toUInt64(toUnixTimestamp64Milli(l1.inserted_at)) AS ts \
              FROM {db}.l2_head_events h \
-             INNER JOIN {db}.batch_blocks bb ON h.l2_block_number = bb.l2_block_number \
+             INNER JOIN (SELECT DISTINCT batch_id, l2_block_number FROM {db}.batch_blocks) bb \
+               ON h.l2_block_number = bb.l2_block_number \
              INNER JOIN {db}.batches b ON bb.batch_id = b.batch_id \
              INNER JOIN {db}.l1_head_events l1 ON b.l1_block_number = l1.l1_block_number \
              LEFT JOIN {db}.l2_reorgs r ON h.l2_block_number = r.l2_block_number \
@@ -606,7 +607,8 @@ impl ClickhouseReader {
                     b.proposer_addr AS proposer, b.l1_block_number, \
                     toUInt64(toUnixTimestamp64Milli(l1.inserted_at)) AS ts \
              FROM {db}.l2_head_events h \
-             INNER JOIN {db}.batch_blocks bb ON h.l2_block_number = bb.l2_block_number \
+             INNER JOIN (SELECT DISTINCT batch_id, l2_block_number FROM {db}.batch_blocks) bb \
+               ON h.l2_block_number = bb.l2_block_number \
              INNER JOIN {db}.batches b ON bb.batch_id = b.batch_id \
              INNER JOIN {db}.l1_head_events l1 ON b.l1_block_number = l1.l1_block_number \
              LEFT JOIN {db}.l2_reorgs r ON h.l2_block_number = r.l2_block_number \
@@ -2328,7 +2330,7 @@ impl ClickhouseReader {
                         sum_base_fee AS base_fee, \
                         toNullable(if(b.batch_size > 0, intDiv(dc.cost, b.batch_size), NULL)) AS l1_data_cost \
                  FROM {db}.l2_head_events h \
-                 LEFT JOIN {db}.batch_blocks bb \
+                 LEFT JOIN (SELECT DISTINCT batch_id, l2_block_number FROM {db}.batch_blocks) bb \
                    ON h.l2_block_number = bb.l2_block_number \
                  LEFT JOIN {db}.batches b \
                    ON bb.batch_id = b.batch_id \
@@ -2372,7 +2374,7 @@ impl ClickhouseReader {
                     sum_base_fee AS base_fee, \
                     toNullable(if(b.batch_size > 0, intDiv(dc.cost, b.batch_size), NULL)) AS l1_data_cost \
              FROM {db}.l2_head_events h \
-             LEFT JOIN {db}.batch_blocks bb \
+             LEFT JOIN (SELECT DISTINCT batch_id, l2_block_number FROM {db}.batch_blocks) bb \
                ON h.l2_block_number = bb.l2_block_number \
              LEFT JOIN {db}.batches b \
                ON bb.batch_id = b.batch_id \
@@ -2571,7 +2573,7 @@ ORDER BY rb.batch_id ASC
                     sum(h.sum_base_fee) AS base_fee, \
                     coalesce(sum(if(b.batch_size > 0, intDiv(dc.cost, b.batch_size), NULL)), toUInt128(0)) AS l1_data_cost, \
                     coalesce(sum(if(b.batch_size > 0, intDiv(pc.cost, b.batch_size), NULL)), toUInt128(0)) AS prove_cost \
-             FROM {db}.batch_blocks bb \
+             FROM (SELECT DISTINCT batch_id, l2_block_number FROM {db}.batch_blocks) bb \
              INNER JOIN {db}.batches b \
                ON bb.batch_id = b.batch_id \
              INNER JOIN {db}.l1_head_events l1 \
@@ -3125,7 +3127,7 @@ SELECT
   toUInt64(max(h.block_ts))        AS max_ts,
   sum(h.sum_tx)                    AS tx_sum
 FROM {db}.l2_head_events h
-INNER JOIN {db}.batch_blocks bb ON bb.l2_block_number = h.l2_block_number
+INNER JOIN (SELECT DISTINCT batch_id, l2_block_number FROM {db}.batch_blocks) bb ON bb.l2_block_number = h.l2_block_number
 INNER JOIN {db}.batches b       ON b.batch_id = bb.batch_id
 INNER JOIN {db}.l1_head_events l1 ON l1.l1_block_number = b.l1_block_number
 WHERE l1.block_ts > {since}
