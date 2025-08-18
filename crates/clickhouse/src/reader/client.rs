@@ -1213,10 +1213,10 @@ impl ClickhouseReader {
         );
 
         let rows = self.execute::<AvgRow>(&mv_query).await?;
-        if let Some(row) = rows.into_iter().next() {
-            if !row.avg_ms.is_nan() {
-                return Ok(Some(row.avg_ms.round() as u64));
-            }
+        if let Some(row) = rows.into_iter().next() &&
+            !row.avg_ms.is_nan()
+        {
+            return Ok(Some(row.avg_ms.round() as u64));
         }
 
         // Fallback to raw data if materialized view is empty
@@ -1262,10 +1262,10 @@ impl ClickhouseReader {
         );
 
         let rows = self.execute::<AvgRow>(&mv_query).await?;
-        if let Some(row) = rows.into_iter().next() {
-            if !row.avg_ms.is_nan() {
-                return Ok(Some(row.avg_ms.round() as u64));
-            }
+        if let Some(row) = rows.into_iter().next() &&
+            !row.avg_ms.is_nan()
+        {
+            return Ok(Some(row.avg_ms.round() as u64));
         }
 
         // Fallback to raw data if materialized view is empty
@@ -2657,6 +2657,190 @@ ORDER BY rb.batch_id ASC
             None => return Ok(None),
         };
         Ok(Some(row.total))
+    }
+
+    /// Find missing L1 block numbers within a range (for gap detection)
+    pub async fn find_missing_l1_blocks(
+        &self,
+        start_block: u64,
+        end_block: u64,
+    ) -> Result<Vec<u64>> {
+        #[derive(Row, Deserialize)]
+        struct BlockNumber {
+            number: u64,
+        }
+
+        let query = format!(
+            "SELECT number
+             FROM numbers({}, {})
+             WHERE number NOT IN (
+                 SELECT l1_block_number
+                 FROM {db}.l1_head_events
+                 WHERE l1_block_number >= {} AND l1_block_number <= {}
+             )
+             ORDER BY number",
+            start_block,
+            end_block - start_block + 1,
+            start_block,
+            end_block,
+            db = self.db_name,
+        );
+
+        let rows =
+            self.base.query(&query).fetch_all::<BlockNumber>().await.map_err(eyre::Error::from)?;
+
+        Ok(rows.into_iter().map(|row| row.number).collect())
+    }
+
+    /// Find missing L2 block numbers within a range (for gap detection)
+    pub async fn find_missing_l2_blocks(
+        &self,
+        start_block: u64,
+        end_block: u64,
+    ) -> Result<Vec<u64>> {
+        #[derive(Row, Deserialize)]
+        struct BlockNumber {
+            number: u64,
+        }
+
+        let query = format!(
+            "SELECT number
+             FROM numbers({}, {})
+             WHERE number NOT IN (
+                 SELECT l2_block_number
+                 FROM {db}.l2_head_events
+                 WHERE l2_block_number >= {} AND l2_block_number <= {}
+             )
+             ORDER BY number",
+            start_block,
+            end_block - start_block + 1,
+            start_block,
+            end_block,
+            db = self.db_name,
+        );
+
+        let rows =
+            self.base.query(&query).fetch_all::<BlockNumber>().await.map_err(eyre::Error::from)?;
+
+        Ok(rows.into_iter().map(|row| row.number).collect())
+    }
+
+    /// Get the latest L1 block number in the database
+    pub async fn get_latest_l1_block(&self) -> Result<Option<u64>> {
+        #[derive(Row, Deserialize)]
+        struct MaxBlock {
+            max_block: Option<u64>,
+        }
+
+        let query = format!(
+            "SELECT if(count() = 0, NULL, max(l1_block_number)) as max_block FROM {db}.l1_head_events",
+            db = self.db_name
+        );
+
+        // Use the execute method which handles errors more gracefully
+        match self.execute::<MaxBlock>(&query).await {
+            Ok(rows) => {
+                if let Some(row) = rows.into_iter().next() {
+                    Ok(row.max_block)
+                } else {
+                    Ok(None)
+                }
+            }
+            Err(e) => {
+                let error_msg = e.to_string();
+                if error_msg.contains("doesn't exist") || error_msg.contains("Unknown table") {
+                    // Table doesn't exist, return None to indicate no data
+                    Ok(None)
+                } else if error_msg.contains("tag for enum is not valid") ||
+                    error_msg.contains("deserialization")
+                {
+                    // Deserialization issue, likely due to schema mismatch - return None for now
+                    tracing::warn!(
+                        query = %query,
+                        error = %error_msg,
+                        "ClickHouse deserialization error in get_latest_l1_block - likely schema mismatch, returning None"
+                    );
+                    Ok(None)
+                } else {
+                    Err(e.wrap_err("Failed to query latest L1 block"))
+                }
+            }
+        }
+    }
+
+    /// Get the latest L2 block number in the database
+    pub async fn get_latest_l2_block(&self) -> Result<Option<u64>> {
+        #[derive(Row, Deserialize)]
+        struct MaxBlock {
+            max_block: Option<u64>,
+        }
+
+        let query = format!(
+            "SELECT if(count() = 0, NULL, max(l2_block_number)) as max_block FROM {db}.l2_head_events",
+            db = self.db_name
+        );
+
+        // Use the execute method which handles errors more gracefully
+        match self.execute::<MaxBlock>(&query).await {
+            Ok(rows) => {
+                if let Some(row) = rows.into_iter().next() {
+                    Ok(row.max_block)
+                } else {
+                    Ok(None)
+                }
+            }
+            Err(e) => {
+                let error_msg = e.to_string();
+                if error_msg.contains("doesn't exist") || error_msg.contains("Unknown table") {
+                    // Table doesn't exist, return None to indicate no data
+                    Ok(None)
+                } else if error_msg.contains("tag for enum is not valid") ||
+                    error_msg.contains("deserialization")
+                {
+                    // Deserialization issue, likely due to schema mismatch - return None for now
+                    tracing::warn!(
+                        query = %query,
+                        error = %error_msg,
+                        "ClickHouse deserialization error in get_latest_l2_block - likely schema mismatch, returning None"
+                    );
+                    Ok(None)
+                } else {
+                    Err(e.wrap_err("Failed to query latest L2 block"))
+                }
+            }
+        }
+    }
+
+    /// Get the earliest L1 block number in the database
+    pub async fn get_earliest_l1_block(&self) -> Result<Option<u64>> {
+        #[derive(Row, Deserialize)]
+        struct MinBlock {
+            #[serde(rename = "min(l1_block_number)")]
+            min_block: Option<u64>,
+        }
+
+        let query = format!("SELECT min(l1_block_number) FROM {}.l1_head_events", self.db_name);
+
+        let row =
+            self.base.query(&query).fetch_one::<MinBlock>().await.map_err(eyre::Error::from)?;
+
+        Ok(row.min_block)
+    }
+
+    /// Get the earliest L2 block number in the database
+    pub async fn get_earliest_l2_block(&self) -> Result<Option<u64>> {
+        #[derive(Row, Deserialize)]
+        struct MinBlock {
+            #[serde(rename = "min(l2_block_number)")]
+            min_block: Option<u64>,
+        }
+
+        let query = format!("SELECT min(l2_block_number) FROM {}.l2_head_events", self.db_name);
+
+        let row =
+            self.base.query(&query).fetch_one::<MinBlock>().await.map_err(eyre::Error::from)?;
+
+        Ok(row.min_block)
     }
 
     /// Get the transactions per second for each L2 block within the given range

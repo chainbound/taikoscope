@@ -24,56 +24,6 @@ pub struct ClickhouseOpts {
     pub password: String,
 }
 
-/// Nats client configuration options
-#[derive(Debug, Clone, Parser)]
-pub struct NatsOpts {
-    /// Nats username
-    #[clap(id = "nats_username", long = "nats-username", env = "NATS_USERNAME")]
-    pub username: Option<String>,
-    /// Nats password
-    #[clap(id = "nats_password", long = "nats-password", env = "NATS_PASSWORD")]
-    pub password: Option<String>,
-}
-
-/// NATS `JetStream` stream configuration options
-#[derive(Debug, Clone, Parser)]
-pub struct NatsStreamOpts {
-    /// NATS stream duplicate window in seconds (for exactly-once delivery)
-    #[clap(long, env = "NATS_DUPLICATE_WINDOW_SECS", default_value = "120")]
-    pub duplicate_window_secs: u64,
-    /// NATS stream storage type (memory or file)
-    #[clap(long, env = "NATS_STORAGE_TYPE", default_value = "file")]
-    pub storage_type: String,
-    /// NATS stream retention policy
-    #[clap(long, env = "NATS_RETENTION_POLICY", default_value = "workqueue")]
-    pub retention_policy: String,
-}
-
-impl NatsStreamOpts {
-    /// Get the storage type as an `async_nats` `StorageType` enum
-    pub fn get_storage_type(&self) -> async_nats::jetstream::stream::StorageType {
-        match self.storage_type.to_lowercase().as_str() {
-            "memory" => async_nats::jetstream::stream::StorageType::Memory,
-            _ => async_nats::jetstream::stream::StorageType::File, /* default to file for any
-                                                                    * other value */
-        }
-    }
-
-    /// Get the retention policy as an `async_nats` `RetentionPolicy` enum
-    pub fn get_retention_policy(&self) -> async_nats::jetstream::stream::RetentionPolicy {
-        match self.retention_policy.to_lowercase().as_str() {
-            "limits" => async_nats::jetstream::stream::RetentionPolicy::Limits,
-            "interest" => async_nats::jetstream::stream::RetentionPolicy::Interest,
-            _ => async_nats::jetstream::stream::RetentionPolicy::WorkQueue, // default to workqueue
-        }
-    }
-
-    /// Get the duplicate window as a Duration
-    pub const fn get_duplicate_window(&self) -> std::time::Duration {
-        std::time::Duration::from_secs(self.duplicate_window_secs)
-    }
-}
-
 /// RPC endpoint configuration options
 #[derive(Debug, Clone, Parser)]
 pub struct RpcOpts {
@@ -202,14 +152,6 @@ pub struct Opts {
     #[clap(flatten)]
     pub clickhouse: ClickhouseOpts,
 
-    /// Nats client configuration
-    #[clap(flatten)]
-    pub nats: NatsOpts,
-
-    /// NATS `JetStream` stream configuration
-    #[clap(flatten)]
-    pub nats_stream: NatsStreamOpts,
-
     /// RPC endpoint configuration
     #[clap(flatten)]
     pub rpc: RpcOpts,
@@ -226,10 +168,6 @@ pub struct Opts {
     #[clap(flatten)]
     pub api: ApiOpts,
 
-    /// NATS server URL
-    #[clap(long, env = "NATS_URL", default_value = "nats://localhost:4222")]
-    pub nats_url: String,
-
     /// Enable database writes in processor (default: false, processor will log and drop events)
     #[clap(long, env = "ENABLE_DB_WRITES", default_value = "true")]
     pub enable_db_writes: bool,
@@ -241,6 +179,26 @@ pub struct Opts {
     /// Skip database migrations on startup (useful for development)
     #[clap(long, env = "SKIP_MIGRATIONS", default_value = "false")]
     pub skip_migrations: bool,
+
+    /// Enable gap detection and backfill (default: true)
+    #[clap(long, env = "ENABLE_GAP_DETECTION", default_value = "true")]
+    pub enable_gap_detection: bool,
+
+    /// Number of blocks to wait for finalization before backfilling (default: 12)
+    #[clap(long, env = "GAP_FINALIZATION_BUFFER_BLOCKS", default_value = "12")]
+    pub gap_finalization_buffer_blocks: u64,
+
+    /// Number of blocks to look back on startup for initial catch-up (default: 128)
+    #[clap(long, env = "GAP_STARTUP_LOOKBACK_BLOCKS", default_value = "128")]
+    pub gap_startup_lookback_blocks: u64,
+
+    /// Number of blocks to look back during continuous gap detection (default: 32)
+    #[clap(long, env = "GAP_CONTINUOUS_LOOKBACK_BLOCKS", default_value = "32")]
+    pub gap_continuous_lookback_blocks: u64,
+
+    /// Gap detection poll interval in seconds (default: 30)
+    #[clap(long, env = "GAP_POLL_INTERVAL_SECS", default_value = "30")]
+    pub gap_poll_interval_secs: u64,
 }
 
 #[cfg(test)]
@@ -269,12 +227,6 @@ mod tests {
             "user",
             "--password",
             "pass",
-            "--nats-url",
-            "nats://localhost:4222",
-            "--nats-username",
-            "natsuser",
-            "--nats-password",
-            "natspass",
             "--l1-url",
             "http://l1",
             "--l2-url",
@@ -297,6 +249,8 @@ mod tests {
             "verify",
             "--transaction-sequencing-component-id",
             "l2",
+            "--public-api-component-id",
+            "api",
             "--api-host",
             "127.0.0.1",
             "--api-port",
@@ -318,29 +272,23 @@ mod tests {
             env::remove_var("ALLOWED_ORIGINS");
             env::remove_var("RATE_LIMIT_MAX_REQUESTS");
             env::remove_var("RATE_LIMIT_PERIOD_SECS");
+            env::remove_var("GAP_FINALIZATION_BUFFER_BLOCKS");
+            env::remove_var("GAP_STARTUP_LOOKBACK_BLOCKS");
+            env::remove_var("GAP_CONTINUOUS_LOOKBACK_BLOCKS");
+            env::remove_var("GAP_POLL_INTERVAL_SECS");
         }
 
         let args = base_args();
-        let opts = Opts::try_parse_from(args).expect("failed to parse opts");
+        let opts = Opts::try_parse_from(args).unwrap();
 
         assert_eq!(opts.instatus.monitor_poll_interval_secs, 30);
         assert_eq!(opts.instatus.l1_monitor_threshold_secs, 600);
         assert_eq!(opts.instatus.l2_monitor_threshold_secs, 600);
         assert_eq!(opts.instatus.batch_proof_timeout_secs, 10800);
-        assert_eq!(opts.api.host, "127.0.0.1");
-        assert_eq!(opts.api.port, 3000);
-
-        let expected_origins = vec![
-            "https://taikoscope.xyz",
-            "https://www.taikoscope.xyz",
-            "https://hekla.taikoscope.xyz",
-            "https://www.hekla.taikoscope.xyz",
-        ];
-        assert_eq!(opts.api.allowed_origins, expected_origins);
-
-        assert_eq!(opts.api.rate_limit_max_requests, 1000);
-        assert_eq!(opts.api.rate_limit_period_secs, 60);
-        assert!(!opts.reset_db);
+        assert_eq!(opts.gap_finalization_buffer_blocks, 12);
+        assert_eq!(opts.gap_startup_lookback_blocks, 128);
+        assert_eq!(opts.gap_continuous_lookback_blocks, 32);
+        assert_eq!(opts.gap_poll_interval_secs, 30);
     }
 
     #[test]

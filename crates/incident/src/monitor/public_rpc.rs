@@ -41,10 +41,10 @@ async fn check_once(
     let negative = match first {
         Ok(false) => {
             info!(url = url.as_str(), "public rpc healthy");
-            if let Some((ic, cid)) = incident {
-                if let Some(id) = incident_id.take() {
-                    resolve(ic, cid, &id).await;
-                }
+            if let Some((ic, cid)) = incident &&
+                let Some(id) = incident_id.take()
+            {
+                resolve(ic, cid, &id).await;
             }
             false
         }
@@ -64,10 +64,10 @@ async fn check_once(
         match check_syncing(client, url).await {
             Ok(false) => {
                 info!(url = url.as_str(), "public rpc recovered");
-                if let Some((ic, cid)) = incident {
-                    if let Some(id) = incident_id.take() {
-                        resolve(ic, cid, &id).await;
-                    }
+                if let Some((ic, cid)) = incident &&
+                    let Some(id) = incident_id.take()
+                {
+                    resolve(ic, cid, &id).await;
                 }
             }
             Ok(true) => {

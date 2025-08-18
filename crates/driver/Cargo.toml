@@ -15,10 +15,11 @@ primitives = { path = "../primitives" }
 incident = { path = "../incident" }
 network = { path = "../network" }
 messages = { path = "../messages" }
-nats-utils = { path = "../nats-utils" }
 
 chrono = { workspace = true, features = ["serde"] }
 alloy-primitives.workspace = true
+alloy-rpc-types-eth.workspace = true
+alloy-sol-types.workspace = true
 clap.workspace = true
 dotenvy.workspace = true
 eyre.workspace = true
@@ -26,7 +27,6 @@ tokio.workspace = true
 tokio-stream.workspace = true
 tracing.workspace = true
 url.workspace = true
-async-nats.workspace = true
 serde_json.workspace = true
 
 [dev-dependencies]

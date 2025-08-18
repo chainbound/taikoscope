@@ -142,12 +142,12 @@ impl BatchProofTimeoutMonitor {
 
         // Special case for the catch-all incident (batch_id = 0)
         let catch_all_key = (0, 0);
-        if self.catch_all_only() {
-            if let Some(incident_id) = self.base.active_incidents.get(&catch_all_key) {
-                let payload = self.base.create_resolve_payload();
-                self.base.resolve_incident_with_payload(incident_id, &payload).await?;
-                self.base.active_incidents.remove(&catch_all_key);
-            }
+        if self.catch_all_only() &&
+            let Some(incident_id) = self.base.active_incidents.get(&catch_all_key)
+        {
+            let payload = self.base.create_resolve_payload();
+            self.base.resolve_incident_with_payload(incident_id, &payload).await?;
+            self.base.active_incidents.remove(&catch_all_key);
         }
         Ok(())
     }

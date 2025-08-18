@@ -137,15 +137,14 @@ impl InstatusL1Monitor {
 
     /// Check for existing incidents and initial health
     async fn check_initial_health(&mut self) -> Result<()> {
-        if let Some(_id) = self.base.active_incidents.values().next() {
-            if let (Ok(Some(batch_ts)), Ok(Some(l2_ts))) = (
+        if let Some(_id) = self.base.active_incidents.values().next() &&
+            let (Ok(Some(batch_ts)), Ok(Some(l2_ts))) = (
                 self.base.clickhouse.get_last_batch_time().await,
                 self.base.clickhouse.get_last_l2_head_time().await,
-            ) {
-                if let Err(e) = self.handle(batch_ts, l2_ts).await {
-                    error!(%e, "Failed initial health check for existing batch incident");
-                }
-            }
+            ) &&
+            let Err(e) = self.handle(batch_ts, l2_ts).await
+        {
+            error!(%e, "Failed initial health check for existing batch incident");
         }
 
         Ok(())

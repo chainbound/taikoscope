@@ -36,12 +36,11 @@ React dashboard.
    docker compose up
    ```
 
-5. Start the ingestor, processor and API server:
+5. Start the taikoscope binary and API server:
 
    ```bash
-   just dev-ingestor    # runs the ingestor
-   just dev-processor   # runs the processor
-   just dev-api         # runs the HTTP API
+   just dev         # runs the Taikoscope binary
+   just dev-api     # runs the HTTP API
    ```
 
 6. Start the dashboard (optional if not using Docker Compose):
@@ -49,6 +48,7 @@ React dashboard.
    ```bash
    just dev-dashboard
    ```
+
 
 The API is now available on `http://localhost:3000` and the dashboard on
 `http://localhost:5173` by default.
@@ -83,9 +83,9 @@ These variables map to the configuration structs defined in
 Taikoscope follows a layered architecture that keeps data ingestion and
 presentation concerns separate:
 
-1. **Ingestor and Processor** – the ingestor subscribes to L1 and L2 chains and
-   publishes events to NATS. The processor consumes these events and writes them
-   to ClickHouse via the `ClickhouseWriter`.
+1. **Taikoscope Binary** – a single binary that subscribes to L1 and L2 chains,
+   processes events in real-time, and writes them directly to ClickHouse via the
+   `ClickhouseWriter`. Includes gap detection and backfill for finalized data.
 2. **Storage** – a ClickHouse database holds tables like
    `l1_head_events`, `l2_head_events`, `batches` and `proved_batches`. Reads and
    writes use dedicated reader and writer clients.
@@ -97,9 +97,9 @@ presentation concerns separate:
 5. **Monitoring** – background monitors trigger incidents via Instatus when
    thresholds are exceeded.
 
-Events flow through the system continuously. The ingestor publishes header and
-batch streams to NATS, the processor inserts rows into ClickHouse and the API
-aggregates this data for the dashboard. The UI now polls the API periodically to
+Events flow through the system continuously. The taikoscope binary subscribes to
+L1/L2 events, processes them in real-time, and inserts rows into ClickHouse.
+The API aggregates this data for the dashboard, which polls periodically to
 update metrics.
 
 ## Development
@@ -116,12 +116,11 @@ just ci       # runs fmt, lint, lint-dashboard and test
 
 ## Deployment
 
-Deployment scripts use `ssh` and `docker` to build the images remotely.
-Create an entry in your `~/.ssh/config` (for example named `taiko`) and then run:
+Build and push Docker images for deployment:
 
 ```bash
-just deploy-remote-hekla        # deploy the ingestor and processor
-just deploy-api-remote-hekla    # deploy the API server
+just build-taikoscope   # build and push taikoscope docker image
+just build-api          # build and push API docker image
 ```
 
 To deploy the Hekla dashboard:
@@ -138,18 +137,11 @@ Vercel automatically builds and deploys the dashboard after the push.
 
 ```mermaid
 flowchart TD
-  L1[L1 RPC] --> Ingestor
-  L2[L2 RPC] --> Ingestor
+  L1[L1 RPC] --> Taikoscope
+  L2[L2 RPC] --> Taikoscope
 
-  subgraph NATS
-    Event1@{ shape: rounded, label: "L1 Head Event" }
-    Event2@{ shape: rounded, label: "L2 Head Event" }
-  end
-
-  Ingestor --> NATS
-  NATS --> Processor
-  Processor --> Instatus["Status Page"]
-  Processor --> CH[(ClickHouse DB)]
+  Taikoscope --> Instatus["Status Page"]
+  Taikoscope --> CH[(ClickHouse DB)]
   CH --> API
   API --> Dashboard
 ```

@@ -135,17 +135,16 @@ impl BatchVerifyTimeoutMonitor {
         let catch_all_key = 0;
         if self.base.active_incidents.len() == 1 &&
             self.base.active_incidents.contains_key(&catch_all_key) &&
-            none_left
+            none_left &&
+            let Some(incident_id) = self.base.active_incidents.get(&catch_all_key)
         {
-            if let Some(incident_id) = self.base.active_incidents.get(&catch_all_key) {
-                info!(
-                    incident_id = %incident_id,
-                    "Resolving general batch verification timeout incident as all specific batches are clear or verified."
-                );
-                let payload = self.base.create_resolve_payload();
-                self.base.resolve_incident_with_payload(incident_id, &payload).await?;
-                self.base.active_incidents.remove(&catch_all_key);
-            }
+            info!(
+                incident_id = %incident_id,
+                "Resolving general batch verification timeout incident as all specific batches are clear or verified."
+            );
+            let payload = self.base.create_resolve_payload();
+            self.base.resolve_incident_with_payload(incident_id, &payload).await?;
+            self.base.active_incidents.remove(&catch_all_key);
         }
         Ok(())
     }

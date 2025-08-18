@@ -33,7 +33,7 @@ use tracing::{error, info, warn};
 use url::Url;
 
 /// Extractor client
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Extractor {
     #[debug(skip)]
     l1_provider: DefaultProvider,
@@ -126,11 +126,28 @@ impl Extractor {
                 };
 
                 while let Some(block_data) = block_stream.next().await {
+                    // Calculate slot from timestamp using Ethereum mainnet genesis and slot time
+                    // Mainnet genesis timestamp: 1606824023 (December 1, 2020)
+                    // Slot time: 12 seconds
+                    const GENESIS_TIMESTAMP: u64 = 1606824023;
+                    const SLOT_DURATION: u64 = 12;
+
+                    let slot = if block_data.timestamp >= GENESIS_TIMESTAMP {
+                        (block_data.timestamp - GENESIS_TIMESTAMP) / SLOT_DURATION
+                    } else {
+                        // Fallback to block number for pre-merge blocks or edge cases
+                        warn!(
+                            block_number = block_data.number,
+                            timestamp = block_data.timestamp,
+                            "Block timestamp is before Ethereum 2.0 genesis, using block number as slot"
+                        );
+                        block_data.number
+                    };
+
                     let header = L1Header {
                         number: block_data.number,
                         hash: block_data.hash,
-                        // TODO: Get slot instead. For now, using block number as a placeholder.
-                        slot: block_data.number,
+                        slot,
                         timestamp: block_data.timestamp,
                     };
                     if tx.send(header).is_err() {
@@ -451,6 +468,38 @@ impl Extractor {
         Ok(compute_block_stats(&receipts, base_fee))
     }
 
+    /// Get the latest L1 block number
+    pub async fn get_l1_latest_block_number(&self) -> Result<u64> {
+        self.l1_provider.get_block_number().await.map_err(Into::into)
+    }
+
+    /// Get the latest L2 block number
+    pub async fn get_l2_latest_block_number(&self) -> Result<u64> {
+        self.l2_provider.get_block_number().await.map_err(Into::into)
+    }
+
+    /// Get L1 block by number
+    pub async fn get_l1_block_by_number(
+        &self,
+        block_number: u64,
+    ) -> Result<alloy_rpc_types_eth::Block> {
+        self.l1_provider
+            .get_block(block_number.into())
+            .await?
+            .ok_or_else(|| eyre::eyre!("L1 block {} not found", block_number))
+    }
+
+    /// Get L2 block by number
+    pub async fn get_l2_block_by_number(
+        &self,
+        block_number: u64,
+    ) -> Result<alloy_rpc_types_eth::Block> {
+        self.l2_provider
+            .get_block(block_number.into())
+            .await?
+            .ok_or_else(|| eyre::eyre!("L2 block {} not found", block_number))
+    }
+
     /// Get a transaction receipt by hash with retry logic
     pub async fn get_receipt(
         &self,
@@ -553,16 +602,16 @@ impl ReorgDetector {
         }
 
         // Check for one-block reorg (same block number, different hash)
-        if new_block_number == self.head_number {
-            if let Some(current_hash) = self.head_hash {
-                if current_hash != new_hash {
-                    // One-block reorg detected
-                    self.head_hash = Some(new_hash);
-                    return Some((1, Some(current_hash)));
-                }
-                // Same block number and same hash - no reorg, no update needed
-                return None;
+        if new_block_number == self.head_number &&
+            let Some(current_hash) = self.head_hash
+        {
+            if current_hash != new_hash {
+                // One-block reorg detected
+                self.head_hash = Some(new_hash);
+                return Some((0, Some(current_hash)));
             }
+            // Same block number and same hash - no reorg, no update needed
+            return None;
         }
 
         // No reorg - update head to new block
@@ -686,8 +735,8 @@ mod tests {
         assert_eq!(det.head_number(), 10);
         assert_eq!(det.head_hash(), Some(hash1));
 
-        // Same block 10 but with different hash2 - should detect one-block reorg
-        assert_eq!(det.on_new_block_with_hash(10, hash2), Some((1, Some(hash1))));
+        // Same block 10 but with different hash2 - should detect one-block reorg with depth 0
+        assert_eq!(det.on_new_block_with_hash(10, hash2), Some((0, Some(hash1))));
         assert_eq!(det.head_number(), 10);
         assert_eq!(det.head_hash(), Some(hash2));
     }
@@ -723,6 +772,23 @@ mod tests {
         assert_eq!(det.on_new_block_with_hash(8, hash8), Some((2, None)));
         assert_eq!(det.head_number(), 8);
         assert_eq!(det.head_hash(), Some(hash8));
+    }
+
+    #[test]
+    fn depth_one_reorg() {
+        let mut det = ReorgDetector::new();
+        let hash11 = B256::repeat_byte(11);
+        let hash10 = B256::repeat_byte(10);
+
+        // Block 11
+        assert_eq!(det.on_new_block_with_hash(11, hash11), None);
+        assert_eq!(det.head_number(), 11);
+        assert_eq!(det.head_hash(), Some(hash11));
+
+        // Block 10 - traditional reorg with depth 1 (11 - 10 = 1)
+        assert_eq!(det.on_new_block_with_hash(10, hash10), Some((1, None)));
+        assert_eq!(det.head_number(), 10);
+        assert_eq!(det.head_hash(), Some(hash10));
     }
 
     #[test]
