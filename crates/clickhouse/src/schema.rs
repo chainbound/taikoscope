@@ -27,6 +27,7 @@ pub const TABLES: &[&str] = &[
     "prove_costs",
     "verify_costs",
     "orphaned_l2_hashes",
+    "schema_migrations",
 ];
 
 /// Names of all materialized views
@@ -200,5 +201,13 @@ pub const TABLE_SCHEMAS: &[TableSchema] = &[
                  l2_block_number UInt64,
                  inserted_at DateTime64(3) DEFAULT now64()",
         order_by: "l2_block_number, block_hash",
+    },
+    TableSchema {
+        name: "schema_migrations",
+        columns: "version UInt32,
+                 name String,
+                 applied_at DateTime64(3) DEFAULT now64(),
+                 checksum String",
+        order_by: "version",
     },
 ];

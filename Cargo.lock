@@ -1338,6 +1338,7 @@ dependencies = [
  "primitives",
  "regex",
  "serde",
+ "sha2",
  "sqlparser",
  "tokio",
  "tracing",

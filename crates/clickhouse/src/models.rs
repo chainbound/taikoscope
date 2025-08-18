@@ -451,6 +451,19 @@ pub struct BatchPostingTimeRow {
     pub ms_since_prev_batch: u64,
 }
 
+/// Schema migration row
+#[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq)]
+pub struct SchemaVersion {
+    /// Migration version number
+    pub version: u32,
+    /// Migration filename
+    pub name: String,
+    /// Timestamp when the migration was applied
+    pub applied_at: DateTime<Utc>,
+    /// Checksum of the migration content
+    pub checksum: String,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

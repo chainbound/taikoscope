@@ -1,12 +1,15 @@
 //! `ClickHouse` writer functionality for taikoscope
 //! Handles database initialization, migrations, and data insertion
 
+use std::collections::HashSet;
+
 use alloy::primitives::{Address, B256, BlockNumber};
 use clickhouse::Client;
 use derive_more::Debug;
 use eyre::{Context, Result};
 use include_dir::{Dir, include_dir};
 use regex::Regex;
+use sha2::{Digest, Sha256};
 use sqlparser::{dialect::GenericDialect, parser::Parser};
 use tracing::info;
 use url::Url;
@@ -143,6 +146,12 @@ fn split_statements_manually(sql: &str) -> Vec<String> {
     statements
 }
 
+/// Simple struct for version query results
+#[derive(Debug, clickhouse::Row, serde::Deserialize)]
+struct VersionRow {
+    version: u32,
+}
+
 /// Validate migration file name (e.g. `001_description.sql`)
 fn validate_migration_name(name: &str) -> bool {
     Regex::new(r"^\d{3}_[a-z0-9_]+\.sql$").map(|re| re.is_match(name)).unwrap_or(false)
@@ -153,7 +162,7 @@ use crate::{
     models::{
         BatchBlockRow, BatchRow, ForcedInclusionProcessedRow, L1DataCostInsertRow, L1HeadEvent,
         L2HeadEvent, L2ReorgInsertRow, OrphanedL2HashRow, PreconfData, ProveCostInsertRow,
-        ProvedBatchRow, VerifiedBatchRow, VerifyCostInsertRow,
+        ProvedBatchRow, SchemaVersion, VerifiedBatchRow, VerifyCostInsertRow,
     },
     schema::{TABLE_SCHEMAS, TABLES, TableSchema, VIEWS},
     types::{AddressBytes, HashBytes},
@@ -221,6 +230,27 @@ impl ClickhouseWriter {
 
     /// Initialize database with option to skip migrations (useful for tests)
     pub async fn init_db_with_migrations(&self, reset: bool, run_migrations: bool) -> Result<()> {
+        self.init_db_internal(reset, run_migrations, true).await
+    }
+
+    /// Initialize database with full options
+    #[cfg(test)]
+    pub async fn init_db_with_options(
+        &self,
+        reset: bool,
+        run_migrations: bool,
+        enable_tracking: bool,
+    ) -> Result<()> {
+        self.init_db_internal(reset, run_migrations, enable_tracking).await
+    }
+
+    /// Initialize database with full options (internal implementation)
+    async fn init_db_internal(
+        &self,
+        reset: bool,
+        run_migrations: bool,
+        enable_tracking: bool,
+    ) -> Result<()> {
         // Create database
         self.base
             .query(&format!("CREATE DATABASE IF NOT EXISTS {}", self.db_name))
@@ -239,16 +269,34 @@ impl ClickhouseWriter {
         }
 
         if run_migrations {
-            self.init_schema().await?;
+            self.init_schema_with_tracking(enable_tracking).await?;
         }
         Ok(())
     }
 
-    /// Initialize schema
+    /// Initialize schema (with migration tracking enabled)
     pub async fn init_schema(&self) -> Result<()> {
+        self.init_schema_with_tracking(true).await
+    }
+
+    /// Initialize schema with option to enable/disable migration tracking
+    #[allow(clippy::cognitive_complexity)]
+    pub async fn init_schema_with_tracking(&self, enable_tracking: bool) -> Result<()> {
+        // First create all tables (including schema_migrations)
         for schema in TABLE_SCHEMAS {
             self.create_table(schema).await?;
         }
+
+        let applied_migrations = if enable_tracking {
+            // Ensure migrations table exists before checking applied migrations
+            self.ensure_migrations_table().await?;
+
+            // Get list of already applied migrations
+            (self.get_applied_migrations().await).unwrap_or_default()
+        } else {
+            // For tests or when tracking is disabled, apply all migrations
+            HashSet::new()
+        };
 
         let mut migrations: Vec<_> = MIGRATIONS_DIR
             .files()
@@ -262,12 +310,27 @@ impl ClickhouseWriter {
                 eyre::bail!("Invalid migration name: {name}");
             }
 
+            let version = self.extract_migration_version(name)?;
+
+            // Skip if migration already applied
+            if applied_migrations.contains(&version) {
+                info!(migration = name, version = version, "Skipping already applied migration");
+                continue;
+            }
+
             let sql = file
                 .contents_utf8()
                 .ok_or_else(|| eyre::eyre!("Invalid UTF-8 in migration {name}"))?;
+            let checksum = self.calculate_migration_checksum(sql);
             let statements = parse_sql_statements(sql);
-            info!(migration = name, statement_count = statements.len(), "Applying migration");
+            info!(
+                migration = name,
+                version = version,
+                statement_count = statements.len(),
+                "Applying migration"
+            );
 
+            // Apply migration statements
             for (i, stmt) in statements.iter().enumerate() {
                 let stmt = stmt.replace("${DB}", &self.db_name);
                 info!(
@@ -279,9 +342,71 @@ impl ClickhouseWriter {
                     format!("Failed to execute migration {name} statement {i}: {stmt}")
                 })?;
             }
+
+            // Record migration as applied (only if tracking is enabled)
+            if enable_tracking {
+                self.record_migration(version, name, &checksum)
+                    .await
+                    .wrap_err_with(|| format!("Failed to record migration {name} as applied"))?;
+            }
+
+            info!(migration = name, version = version, "Migration applied successfully");
         }
 
         Ok(())
+    }
+
+    /// Ensure the schema migrations table exists
+    async fn ensure_migrations_table(&self) -> Result<()> {
+        let schema = crate::schema::TABLE_SCHEMAS
+            .iter()
+            .find(|s| s.name == "schema_migrations")
+            .ok_or_else(|| eyre::eyre!("schema_migrations table schema not found"))?;
+
+        self.create_table(schema).await
+    }
+
+    /// Get list of applied migrations from database
+    async fn get_applied_migrations(&self) -> Result<HashSet<u32>> {
+        let query = format!("SELECT version FROM {}.schema_migrations", self.db_name);
+        let rows = self.base.query(&query).fetch_all::<VersionRow>().await?;
+
+        let applied = rows.into_iter().map(|row| row.version).collect();
+        Ok(applied)
+    }
+
+    /// Record a migration as applied
+    async fn record_migration(&self, version: u32, name: &str, checksum: &str) -> Result<()> {
+        let migration = SchemaVersion {
+            version,
+            name: name.to_owned(),
+            applied_at: chrono::Utc::now(),
+            checksum: checksum.to_owned(),
+        };
+
+        let mut insert = self.base.insert(&format!("{}.schema_migrations", self.db_name))?;
+        insert.write(&migration).await?;
+        insert.end().await?;
+
+        Ok(())
+    }
+
+    /// Calculate checksum of migration content
+    fn calculate_migration_checksum(&self, content: &str) -> String {
+        let mut hasher = Sha256::new();
+        hasher.update(content.as_bytes());
+        format!("{:x}", hasher.finalize())
+    }
+
+    /// Extract version number from migration filename
+    fn extract_migration_version(&self, name: &str) -> Result<u32> {
+        if let Some(captures) = Regex::new(r"^(\d{3})_").unwrap().captures(name) {
+            captures[1]
+                .parse::<u32>()
+                .map_err(|e| eyre::eyre!("Invalid version number in {}: {}", name, e))
+        } else {
+            eyre::bail!("Invalid migration filename format: {}", name)
+        }
     }
 
     /// Insert L1 header
@@ -857,7 +982,7 @@ mod tests {
         let url = Url::parse(mock.url()).unwrap();
         let writer = ClickhouseWriter::new(url, "db".to_owned(), "user".into(), "pass".into());
 
-        writer.init_schema().await.unwrap();
+        writer.init_schema_with_tracking(false).await.unwrap();
 
         let mut queries = Vec::new();
         for c in ctrls {
@@ -886,7 +1011,7 @@ mod tests {
         let url = Url::parse(mock.url()).unwrap();
         let writer = ClickhouseWriter::new(url, "db".to_owned(), "user".into(), "pass".into());
 
-        writer.init_db(true).await.unwrap();
+        writer.init_db_with_options(true, true, false).await.unwrap();
 
         let mut queries = Vec::new();
         for c in ctrls {
