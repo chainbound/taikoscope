@@ -51,29 +51,29 @@ pub async fn process_reorg_detection(
         }
 
         // Check if we need to process L2 reorg with previous sequencer
-        if let Some((prev_block_number, prev_sequencer)) = *last_l2_header {
-            if prev_sequencer != header.beneficiary {
-                info!(
-                    prev_block = prev_block_number,
-                    new_block = header.number,
-                    prev_sequencer = ?prev_sequencer,
-                    new_sequencer = ?header.beneficiary,
-                    "L2 reorg with sequencer change detected"
-                );
+        if let Some((prev_block_number, prev_sequencer)) = *last_l2_header &&
+            prev_sequencer != header.beneficiary
+        {
+            info!(
+                prev_block = prev_block_number,
+                new_block = header.number,
+                prev_sequencer = ?prev_sequencer,
+                new_sequencer = ?header.beneficiary,
+                "L2 reorg with sequencer change detected"
+            );
 
-                // Insert L2 reorg record
-                if let Err(e) = writer
-                    .insert_l2_reorg(header.number, depth, prev_sequencer, header.beneficiary)
-                    .await
-                {
-                    error!(
-                        block_number = header.number,
-                        err = %e,
-                        "Failed to insert L2 reorg record"
-                    );
-                } else {
-                    info!(block_number = header.number, depth = depth, "Inserted L2 reorg record");
-                }
+            // Insert L2 reorg record
+            if let Err(e) = writer
+                .insert_l2_reorg(header.number, depth, prev_sequencer, header.beneficiary)
+                .await
+            {
+                error!(
+                    block_number = header.number,
+                    err = %e,
+                    "Failed to insert L2 reorg record"
+                );
+            } else {
+                info!(block_number = header.number, depth = depth, "Inserted L2 reorg record");
             }
         }
     }
