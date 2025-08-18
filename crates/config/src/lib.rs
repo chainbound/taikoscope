@@ -294,7 +294,7 @@ mod tests {
         assert_eq!(opts.gap_startup_lookback_blocks, 128);
         assert_eq!(opts.gap_continuous_lookback_blocks, 32);
         assert_eq!(opts.gap_poll_interval_secs, 30);
-        assert_eq!(opts.gap_dry_run, false);
+        assert!(!opts.gap_dry_run);
     }
 
     #[test]
@@ -357,7 +357,7 @@ mod tests {
         assert_eq!(opts.gap_startup_lookback_blocks, 256);
         assert_eq!(opts.gap_continuous_lookback_blocks, 64);
         assert_eq!(opts.gap_poll_interval_secs, 60);
-        assert_eq!(opts.gap_dry_run, true);
+        assert!(opts.gap_dry_run);
 
         // Clean up after test
         unsafe {
