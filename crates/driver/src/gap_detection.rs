@@ -15,6 +15,61 @@ use tracing::{error, info, warn};
 
 use crate::event_handler::{EventHandler, GapDetectionState};
 
+/// Retry an async operation with exponential backoff
+async fn retry_with_backoff<T, E, F, Fut>(operation: F, operation_name: &str) -> Result<T, E>
+where
+    F: Fn() -> Fut,
+    Fut: std::future::Future<Output = Result<T, E>>,
+{
+    const MAX_RETRIES: u32 = 3;
+    let mut last_error = None;
+
+    for attempt in 0..MAX_RETRIES {
+        match operation().await {
+            Ok(result) => return Ok(result),
+            Err(error) => {
+                if attempt < MAX_RETRIES - 1 {
+                    let delay_ms = 1000 * 2_u64.pow(attempt);
+                    warn!(
+                        operation = operation_name,
+                        attempt = attempt + 1,
+                        delay_ms = delay_ms,
+                        "Operation failed, retrying..."
+                    );
+                    tokio::time::sleep(Duration::from_millis(delay_ms)).await;
+                }
+                last_error = Some(error);
+            }
+        }
+    }
+
+    Err(last_error.unwrap())
+}
+
+/// Verify RPC connectivity before starting backfill operations
+async fn verify_rpc_health(extractor: &Extractor) -> bool {
+    let health_check = async {
+        let _l1_block = extractor.get_l1_latest_block_number().await?;
+        let _l2_block = extractor.get_l2_latest_block_number().await?;
+        Ok::<(), eyre::Report>(())
+    };
+
+    match tokio::time::timeout(Duration::from_secs(5), health_check).await {
+        Ok(Ok(())) => {
+            info!("RPC health check passed");
+            true
+        }
+        Ok(Err(e)) => {
+            warn!(err = %e, "RPC health check failed - RPC error");
+            false
+        }
+        Err(_) => {
+            warn!("RPC health check failed - timeout");
+            false
+        }
+    }
+}
+
 /// Gap detection and backfill methods for the Driver
 impl crate::driver::Driver {
     /// Start the gap detection and backfill task
@@ -113,6 +168,12 @@ pub async fn run_gap_detection(
     finalization_buffer: u64,
     lookback_blocks: u64,
 ) -> Result<()> {
+    // Verify RPC health before starting gap detection
+    if !verify_rpc_health(extractor).await {
+        warn!("Skipping gap detection cycle due to RPC health check failure");
+        return Ok(());
+    }
+
     let gap_state = get_gap_detection_state(reader, extractor, finalization_buffer).await?;
 
     // Calculate start overrides for lookback
@@ -361,9 +422,20 @@ pub async fn backfill_l1_blocks(
         );
     }
 
+    let mut consecutive_failures = 0;
+    const MAX_CONSECUTIVE_FAILURES: u32 = 5;
+
     for block_number in filtered_blocks {
-        match extractor.get_l1_block_by_number(block_number).await {
+        // Use retry logic for block fetching
+        let block_result = retry_with_backoff(
+            || extractor.get_l1_block_by_number(block_number),
+            &format!("fetch L1 block {}", block_number),
+        )
+        .await;
+
+        match block_result {
             Ok(block) => {
+                consecutive_failures = 0; // Reset on successful fetch
                 // Insert L1 header with proper slot calculation
                 // Calculate slot from timestamp using Ethereum mainnet genesis and slot time
                 const GENESIS_TIMESTAMP: u64 = 1606824023;
@@ -434,7 +506,23 @@ pub async fn backfill_l1_blocks(
                 }
             }
             Err(e) => {
-                warn!(block_number = block_number, err = %e, "Could not fetch L1 block for backfill");
+                consecutive_failures += 1;
+                error!(
+                    block_number = block_number,
+                    consecutive_failures = consecutive_failures,
+                    err = %e,
+                    "Could not fetch L1 block for backfill after retries"
+                );
+
+                // Circuit breaker: stop processing if too many consecutive failures
+                if consecutive_failures >= MAX_CONSECUTIVE_FAILURES {
+                    error!(
+                        consecutive_failures = consecutive_failures,
+                        max_failures = MAX_CONSECUTIVE_FAILURES,
+                        "Too many consecutive L1 block fetch failures, stopping backfill for this cycle"
+                    );
+                    break;
+                }
             }
         }
     }
@@ -688,9 +776,20 @@ pub async fn backfill_l2_blocks(
         );
     }
 
+    let mut consecutive_failures = 0;
+    const MAX_CONSECUTIVE_FAILURES: u32 = 5;
+
     for block_number in filtered_blocks {
-        match extractor.get_l2_block_by_number(block_number).await {
+        // Use retry logic for block fetching
+        let block_result = retry_with_backoff(
+            || extractor.get_l2_block_by_number(block_number),
+            &format!("fetch L2 block {}", block_number),
+        )
+        .await;
+
+        match block_result {
             Ok(block) => {
+                consecutive_failures = 0; // Reset on successful fetch
                 let header = primitives::headers::L2Header {
                     number: block.header.number,
                     hash: block.header.hash,
@@ -739,7 +838,23 @@ pub async fn backfill_l2_blocks(
                 }
             }
             Err(e) => {
-                warn!(block_number = block_number, err = %e, "Could not fetch L2 block for backfill");
+                consecutive_failures += 1;
+                error!(
+                    block_number = block_number,
+                    consecutive_failures = consecutive_failures,
+                    err = %e,
+                    "Could not fetch L2 block for backfill after retries"
+                );
+
+                // Circuit breaker: stop processing if too many consecutive failures
+                if consecutive_failures >= MAX_CONSECUTIVE_FAILURES {
+                    error!(
+                        consecutive_failures = consecutive_failures,
+                        max_failures = MAX_CONSECUTIVE_FAILURES,
+                        "Too many consecutive L2 block fetch failures, stopping backfill for this cycle"
+                    );
+                    break;
+                }
             }
         }
     }
