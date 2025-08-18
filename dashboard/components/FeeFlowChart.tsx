@@ -22,6 +22,7 @@ import { useEthPrice } from '../services/priceService';
 import { TimeRange } from '../types';
 import { rangeToHours } from '../utils/timeRange';
 import { calculateHardwareCost } from '../utils/hardwareCost';
+import { getSequencerName } from '../sequencerConfig';
 
 interface FeeFlowChartProps {
   timeRange: TimeRange;
@@ -243,9 +244,18 @@ export const FeeFlowChart: React.FC<FeeFlowChartProps> = ({
         byAddress.set(b.sequencer, cur);
       }
       // Merge in any sequencers that have summary rows but no batches in-range (e.g., fallback proposer)
+      // First, collect which operator names already have batch data to avoid double-counting
+      const operatorsWithBatchData = new Set<string>();
+      for (const b of filteredBatches) {
+        const operatorName = getSequencerName(b.sequencer);
+        operatorsWithBatchData.add(operatorName);
+      }
+
       for (const f of allSequencerFees) {
         const key = f.address;
-        if (!byAddress.has(key)) {
+        const operatorName = getSequencerName(f.address);
+        // Only add addresses that don't exist yet AND whose operator doesn't have batch data
+        if (!byAddress.has(key) && !operatorsWithBatchData.has(operatorName)) {
           const sum = (f.priority_fee ?? 0) + (f.base_fee ?? 0) + (f.l1_data_cost ?? 0) + (f.prove_cost ?? 0);
           if (sum > 0) {
             byAddress.set(key, {

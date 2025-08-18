@@ -207,6 +207,39 @@ describe('feeFlowCalculations', () => {
       const result = processSequencerData([], 2000, 100);
       expect(result).toHaveLength(0);
     });
+
+    it('should aggregate multiple addresses for the same operator', () => {
+      // Mock addresses that map to the same operator name (Gattaca in sequencerConfig.ts)
+      const multiAddressFees: SequencerFeeData[] = [
+        {
+          address: '0xe2dA8aC2E550cd141198a117520D4EDc8692AB74', // Gattaca address 1
+          priority_fee: 1e9,
+          base_fee: 2e9,
+          l1_data_cost: 5e8,
+          prove_cost: 0,
+        },
+        {
+          address: '0x2C89DC1b6ECA603AdaCe60A76d3074F3835f6cBE', // Gattaca address 2
+          priority_fee: 1e9,
+          base_fee: 2e9,
+          l1_data_cost: 0,
+          prove_cost: 0,
+        },
+      ];
+
+      const result = processSequencerData(multiAddressFees, 2000, 100);
+
+      // Should only have one result for Gattaca (aggregated)
+      expect(result).toHaveLength(1);
+      expect(result[0].shortAddress).toBe('Gattaca');
+
+      // Fees should be aggregated: 1e9 + 1e9 = 2e9 priority_fee, 2e9 + 2e9 = 4e9 base_fee
+      const expectedRevenueGwei = 2e9 + 4e9 * 0.75; // priority + base * 0.75
+      expect(result[0].revenueGwei).toBe(expectedRevenueGwei);
+
+      // Hardware cost should be doubled (100 * 2 addresses)
+      expect(result[0].actualHardwareCost).toBe(200);
+    });
   });
 
   describe('generateFallbackSankeyData', () => {
