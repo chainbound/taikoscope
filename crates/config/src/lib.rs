@@ -199,6 +199,10 @@ pub struct Opts {
     /// Gap detection poll interval in seconds (default: 30)
     #[clap(long, env = "GAP_POLL_INTERVAL_SECS", default_value = "30")]
     pub gap_poll_interval_secs: u64,
+
+    /// Enable gap detection dry-run mode (default: false)
+    #[clap(long, env = "GAP_DRY_RUN", default_value = "false")]
+    pub gap_dry_run: bool,
 }
 
 #[cfg(test)]
@@ -276,6 +280,7 @@ mod tests {
             env::remove_var("GAP_STARTUP_LOOKBACK_BLOCKS");
             env::remove_var("GAP_CONTINUOUS_LOOKBACK_BLOCKS");
             env::remove_var("GAP_POLL_INTERVAL_SECS");
+            env::remove_var("GAP_DRY_RUN");
         }
 
         let args = base_args();
@@ -289,6 +294,7 @@ mod tests {
         assert_eq!(opts.gap_startup_lookback_blocks, 128);
         assert_eq!(opts.gap_continuous_lookback_blocks, 32);
         assert_eq!(opts.gap_poll_interval_secs, 30);
+        assert_eq!(opts.gap_dry_run, false);
     }
 
     #[test]
@@ -306,6 +312,11 @@ mod tests {
             env::remove_var("ALLOWED_ORIGINS");
             env::remove_var("RATE_LIMIT_MAX_REQUESTS");
             env::remove_var("RATE_LIMIT_PERIOD_SECS");
+            env::remove_var("GAP_FINALIZATION_BUFFER_BLOCKS");
+            env::remove_var("GAP_STARTUP_LOOKBACK_BLOCKS");
+            env::remove_var("GAP_CONTINUOUS_LOOKBACK_BLOCKS");
+            env::remove_var("GAP_POLL_INTERVAL_SECS");
+            env::remove_var("GAP_DRY_RUN");
         }
 
         unsafe {
@@ -317,6 +328,11 @@ mod tests {
             env::set_var("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:5173");
             env::set_var("RATE_LIMIT_MAX_REQUESTS", "500");
             env::set_var("RATE_LIMIT_PERIOD_SECS", "120");
+            env::set_var("GAP_FINALIZATION_BUFFER_BLOCKS", "20");
+            env::set_var("GAP_STARTUP_LOOKBACK_BLOCKS", "256");
+            env::set_var("GAP_CONTINUOUS_LOOKBACK_BLOCKS", "64");
+            env::set_var("GAP_POLL_INTERVAL_SECS", "60");
+            env::set_var("GAP_DRY_RUN", "true");
         }
 
         let mut args = base_args();
@@ -337,6 +353,11 @@ mod tests {
         assert_eq!(opts.api.rate_limit_max_requests, 500);
         assert_eq!(opts.api.rate_limit_period_secs, 120);
         assert!(opts.reset_db);
+        assert_eq!(opts.gap_finalization_buffer_blocks, 20);
+        assert_eq!(opts.gap_startup_lookback_blocks, 256);
+        assert_eq!(opts.gap_continuous_lookback_blocks, 64);
+        assert_eq!(opts.gap_poll_interval_secs, 60);
+        assert_eq!(opts.gap_dry_run, true);
 
         // Clean up after test
         unsafe {
@@ -348,6 +369,11 @@ mod tests {
             env::remove_var("ALLOWED_ORIGINS");
             env::remove_var("RATE_LIMIT_MAX_REQUESTS");
             env::remove_var("RATE_LIMIT_PERIOD_SECS");
+            env::remove_var("GAP_FINALIZATION_BUFFER_BLOCKS");
+            env::remove_var("GAP_STARTUP_LOOKBACK_BLOCKS");
+            env::remove_var("GAP_CONTINUOUS_LOOKBACK_BLOCKS");
+            env::remove_var("GAP_POLL_INTERVAL_SECS");
+            env::remove_var("GAP_DRY_RUN");
         }
     }
 
