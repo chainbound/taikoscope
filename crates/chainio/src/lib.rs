@@ -208,8 +208,8 @@ sol! {
             uint64 pacaya;
         }
 
-        /// @notice Struct holding Taiko configuration parameters. See {TaikoConfig}.
-        /// NOTE: this was renamed from "Config" to "ProtocolConfig" for clarity.
+        /// @notice Struct holding Taiko configuration parameters. See {`TaikoConfig`}.
+        /// NOTE: this was renamed from "Config" to "`ProtocolConfig`" for clarity.
         #[derive(Default)]
         struct ProtocolConfig {
             /// @notice The chain ID of the network where Taiko contracts are deployed.
@@ -236,7 +236,7 @@ sol! {
             uint16 provingWindow;
             /// @notice The time required for a transition to be used for verifying a batch.
             uint24 cooldownWindow;
-            /// @notice The maximum number of signals to be received by TaikoL2.
+            /// @notice The maximum number of signals to be received by `TaikoL2`.
             uint8 maxSignalsToReceive;
             /// @notice The maximum number of blocks per batch.
             uint16 maxBlocksPerBatch;
@@ -269,7 +269,7 @@ sol! {
         }
 
         /// @notice Proposes a batch of blocks.
-        /// @param _params ABI-encoded BlockParams.
+        /// @param _params ABI-encoded `BlockParams`.
         /// @param _txList The transaction list in calldata. If the txList is empty, blob will be used
         /// for data availability.
         /// @return info_ The info of the proposed batch.
