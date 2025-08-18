@@ -1213,10 +1213,10 @@ impl ClickhouseReader {
         );
 
         let rows = self.execute::<AvgRow>(&mv_query).await?;
-        if let Some(row) = rows.into_iter().next() {
-            if !row.avg_ms.is_nan() {
-                return Ok(Some(row.avg_ms.round() as u64));
-            }
+        if let Some(row) = rows.into_iter().next() &&
+            !row.avg_ms.is_nan()
+        {
+            return Ok(Some(row.avg_ms.round() as u64));
         }
 
         // Fallback to raw data if materialized view is empty
@@ -1262,10 +1262,10 @@ impl ClickhouseReader {
         );
 
         let rows = self.execute::<AvgRow>(&mv_query).await?;
-        if let Some(row) = rows.into_iter().next() {
-            if !row.avg_ms.is_nan() {
-                return Ok(Some(row.avg_ms.round() as u64));
-            }
+        if let Some(row) = rows.into_iter().next() &&
+            !row.avg_ms.is_nan()
+        {
+            return Ok(Some(row.avg_ms.round() as u64));
         }
 
         // Fallback to raw data if materialized view is empty

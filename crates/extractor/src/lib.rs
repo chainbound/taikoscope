@@ -602,16 +602,16 @@ impl ReorgDetector {
         }
 
         // Check for one-block reorg (same block number, different hash)
-        if new_block_number == self.head_number {
-            if let Some(current_hash) = self.head_hash {
-                if current_hash != new_hash {
-                    // One-block reorg detected
-                    self.head_hash = Some(new_hash);
-                    return Some((0, Some(current_hash)));
-                }
-                // Same block number and same hash - no reorg, no update needed
-                return None;
+        if new_block_number == self.head_number &&
+            let Some(current_hash) = self.head_hash
+        {
+            if current_hash != new_hash {
+                // One-block reorg detected
+                self.head_hash = Some(new_hash);
+                return Some((0, Some(current_hash)));
             }
+            // Same block number and same hash - no reorg, no update needed
+            return None;
         }
 
         // No reorg - update head to new block
