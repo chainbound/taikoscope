@@ -87,7 +87,7 @@ pub const TABLE_SCHEMAS: &[TableSchema] = &[
                  blob_count UInt8,
                  blob_total_bytes UInt32,
                  inserted_at DateTime64(3) DEFAULT now64()",
-        order_by: "toStartOfDay(inserted_at), l1_block_number, batch_id",
+        order_by: "batch_id",
     },
     TableSchema {
         name: "batch_blocks",

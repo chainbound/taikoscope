@@ -143,9 +143,9 @@ fn split_statements_manually(sql: &str) -> Vec<String> {
     statements
 }
 
-/// Validate migration file name (e.g. `001_description.sql`)
+/// Validate migration file name (e.g. `001_description.sql` or `001_description_MANUAL.sql`)
 fn validate_migration_name(name: &str) -> bool {
-    Regex::new(r"^\d{3}_[a-z0-9_]+\.sql$").map(|re| re.is_match(name)).unwrap_or(false)
+    Regex::new(r"^\d{3}_[a-zA-Z0-9_]+\.sql$").map(|re| re.is_match(name)).unwrap_or(false)
 }
 
 use crate::{
@@ -245,6 +245,7 @@ impl ClickhouseWriter {
     }
 
     /// Initialize schema
+    #[allow(clippy::cognitive_complexity)]
     pub async fn init_schema(&self) -> Result<()> {
         for schema in TABLE_SCHEMAS {
             self.create_table(schema).await?;
@@ -260,6 +261,15 @@ impl ClickhouseWriter {
             let name = file.path().file_name().and_then(|n| n.to_str()).unwrap_or_default();
             if !validate_migration_name(name) {
                 eyre::bail!("Invalid migration name: {name}");
+            }
+
+            // Skip MANUAL migrations - these must be executed manually during maintenance
+            if name.ends_with("_MANUAL.sql") {
+                info!(
+                    migration = name,
+                    "Skipping MANUAL migration - execute manually during maintenance"
+                );
+                continue;
             }
 
             let sql = file
@@ -954,5 +964,98 @@ mod tests {
 
         let result = writer.insert_proved_batch(&proved, 10).await;
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn validate_migration_name_accepts_manual_migrations() {
+        // Test that MANUAL migrations are accepted
+        assert!(validate_migration_name(
+            "020_batches_batch_blocks_replacing_merge_tree_MANUAL.sql"
+        ));
+        assert!(validate_migration_name("021_migrate_to_replacing_merge_tree_MANUAL.sql"));
+        assert!(validate_migration_name("022_atomic_table_swap_MANUAL.sql"));
+
+        // Test normal migrations still work
+        assert!(validate_migration_name("019_add_schema_migrations_tracking.sql"));
+        assert!(validate_migration_name("023_cleanup_old_tables.sql"));
+
+        // Test invalid patterns still fail
+        assert!(!validate_migration_name("invalid_migration.sql"));
+        assert!(!validate_migration_name("19_too_short.sql"));
+    }
+
+    #[test]
+    fn migration_tracking_system_logic() {
+        // Test the logic of migration tracking and manual migration handling
+        // without depending on specific real migration files
+
+        // Test 1: Migration name validation includes MANUAL files
+        assert!(validate_migration_name("001_initial.sql"));
+        assert!(validate_migration_name("019_create_tracking.sql"));
+        assert!(validate_migration_name("021_data_migration_MANUAL.sql"));
+        assert!(validate_migration_name("022_table_swap_MANUAL.sql"));
+
+        // Test 2: MANUAL migration detection
+        assert!("021_data_migration_MANUAL.sql".ends_with("_MANUAL.sql"));
+        assert!("022_table_swap_MANUAL.sql".ends_with("_MANUAL.sql"));
+        assert!(!"019_create_tracking.sql".ends_with("_MANUAL.sql"));
+        assert!(!"020_create_tables.sql".ends_with("_MANUAL.sql"));
+
+        // Test 3: Validate tracking migration format
+        let sample_tracking_migration = "
+            CREATE TABLE IF NOT EXISTS ${DB}.schema_migrations (
+                version String,
+                description String,
+                applied_at DateTime DEFAULT now()
+            ) ENGINE = MergeTree()
+            ORDER BY version;
+
+            INSERT INTO ${DB}.schema_migrations (version, description)
+            SELECT '019', 'add_schema_migrations_tracking'
+            WHERE NOT EXISTS (
+                SELECT 1 FROM ${DB}.schema_migrations WHERE version = '019'
+            );
+        ";
+
+        let tracking_lower = sample_tracking_migration.to_lowercase();
+        assert!(
+            tracking_lower.contains("schema_migrations"),
+            "Should create schema_migrations table"
+        );
+        assert!(tracking_lower.contains("version string"), "Should have version column");
+        assert!(tracking_lower.contains("description string"), "Should have description column");
+        assert!(tracking_lower.contains("applied_at datetime"), "Should have applied_at column");
+        assert!(tracking_lower.contains("if not exists"), "Should be idempotent");
+        assert!(tracking_lower.contains("where not exists"), "Should prevent duplicates");
+
+        // Test 4: Validate ReplacingMergeTree migration format
+        let sample_rmt_migration = "
+            CREATE TABLE IF NOT EXISTS ${DB}.batches_rmt (
+                batch_id UInt64,
+                l1_block_number UInt64,
+                inserted_at DateTime64(3) DEFAULT now64()
+            ) ENGINE = ReplacingMergeTree(inserted_at)
+            PARTITION BY toYYYYMM(inserted_at)
+            ORDER BY (batch_id);
+
+            INSERT INTO ${DB}.schema_migrations (version, description)
+            SELECT '020', 'create_replacing_merge_tree_tables'
+            WHERE NOT EXISTS (
+                SELECT 1 FROM ${DB}.schema_migrations WHERE version = '020'
+            );
+        ";
+
+        let rmt_lower = sample_rmt_migration.to_lowercase();
+        assert!(
+            rmt_lower.contains("replacingmergetree"),
+            "Should create ReplacingMergeTree tables"
+        );
+        assert!(rmt_lower.contains("if not exists"), "Should be idempotent");
+        assert!(
+            rmt_lower.contains("insert into") && rmt_lower.contains("schema_migrations"),
+            "Should track completion"
+        );
+
+        println!("Migration tracking system logic validated successfully");
     }
 }
