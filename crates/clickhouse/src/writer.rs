@@ -157,6 +157,7 @@ fn validate_migration_name(name: &str) -> bool {
     Regex::new(r"^\d{3}_[a-z0-9_]+\.sql$").map(|re| re.is_match(name)).unwrap_or(false)
 }
 
+#[allow(unused_imports)]
 use crate::{
     L1Header,
     models::{
@@ -282,11 +283,6 @@ impl ClickhouseWriter {
     /// Initialize schema with option to enable/disable migration tracking
     #[allow(clippy::cognitive_complexity)]
     pub async fn init_schema_with_tracking(&self, enable_tracking: bool) -> Result<()> {
-        // First create all tables (including schema_migrations)
-        for schema in TABLE_SCHEMAS {
-            self.create_table(schema).await?;
-        }
-
         let applied_migrations = if enable_tracking {
             // Ensure migrations table exists before checking applied migrations
             self.ensure_migrations_table().await?;
