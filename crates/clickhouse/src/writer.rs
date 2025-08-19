@@ -163,7 +163,7 @@ use crate::{
     models::{
         BatchBlockRow, BatchRow, ForcedInclusionProcessedRow, L1DataCostInsertRow, L1HeadEvent,
         L2HeadEvent, L2ReorgInsertRow, OrphanedL2HashRow, PreconfData, ProveCostInsertRow,
-        ProvedBatchRow, SchemaVersion, VerifiedBatchRow, VerifyCostInsertRow,
+        ProvedBatchRow, SchemaVersion, SchemaVersionInsert, VerifiedBatchRow, VerifyCostInsertRow,
     },
     schema::{TABLE_SCHEMAS, TABLES, TableSchema, VIEWS},
     types::{AddressBytes, HashBytes},
@@ -373,12 +373,8 @@ impl ClickhouseWriter {
 
     /// Record a migration as applied
     async fn record_migration(&self, version: u32, name: &str, checksum: &str) -> Result<()> {
-        let migration = SchemaVersion {
-            version,
-            name: name.to_owned(),
-            applied_at: chrono::Utc::now(),
-            checksum: checksum.to_owned(),
-        };
+        let migration =
+            SchemaVersionInsert { version, name: name.to_owned(), checksum: checksum.to_owned() };
 
         let mut insert = self.base.insert(&format!("{}.schema_migrations", self.db_name))?;
         insert.write(&migration).await?;

@@ -464,6 +464,17 @@ pub struct SchemaVersion {
     pub checksum: String,
 }
 
+/// Schema migration row for insertion (without applied_at, relies on DEFAULT)
+#[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq)]
+pub struct SchemaVersionInsert {
+    /// Migration version number
+    pub version: u32,
+    /// Migration filename
+    pub name: String,
+    /// Checksum of the migration content
+    pub checksum: String,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
