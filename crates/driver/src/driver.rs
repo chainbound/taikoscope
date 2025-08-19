@@ -1,8 +1,6 @@
 //! Taikoscope Driver - combines ingestor and processor
 
 use alloy_primitives::Address;
-#[allow(unused_imports)]
-use chainio::BatchesVerified;
 use clickhouse::{ClickhouseReader, ClickhouseWriter};
 use config::Opts;
 use extractor::{

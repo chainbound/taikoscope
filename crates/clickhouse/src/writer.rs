@@ -1,8 +1,6 @@
 //! `ClickHouse` writer functionality for taikoscope
 //! Handles database initialization, migrations, and data insertion
 
-use std::collections::HashSet;
-
 use alloy::primitives::{Address, B256, BlockNumber};
 use clickhouse::Client;
 use derive_more::Debug;
@@ -11,8 +9,20 @@ use include_dir::{Dir, include_dir};
 use regex::Regex;
 use sha2::{Digest, Sha256};
 use sqlparser::{dialect::GenericDialect, parser::Parser};
+use std::collections::HashSet;
 use tracing::info;
 use url::Url;
+
+use crate::{
+    L1Header,
+    models::{
+        BatchBlockRow, BatchRow, ForcedInclusionProcessedRow, L1DataCostInsertRow, L1HeadEvent,
+        L2HeadEvent, L2ReorgInsertRow, OrphanedL2HashRow, PreconfData, ProveCostInsertRow,
+        ProvedBatchRow, SchemaVersionInsert, VerifiedBatchRow, VerifyCostInsertRow,
+    },
+    schema::{TABLE_SCHEMAS, TABLES, TableSchema, VIEWS},
+    types::{AddressBytes, HashBytes},
+};
 
 /// Embedded migrations directory
 static MIGRATIONS_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/migrations");
@@ -156,18 +166,6 @@ struct VersionRow {
 fn validate_migration_name(name: &str) -> bool {
     Regex::new(r"^\d{3}_[a-z0-9_]+\.sql$").map(|re| re.is_match(name)).unwrap_or(false)
 }
-
-#[allow(unused_imports)]
-use crate::{
-    L1Header,
-    models::{
-        BatchBlockRow, BatchRow, ForcedInclusionProcessedRow, L1DataCostInsertRow, L1HeadEvent,
-        L2HeadEvent, L2ReorgInsertRow, OrphanedL2HashRow, PreconfData, ProveCostInsertRow,
-        ProvedBatchRow, SchemaVersion, SchemaVersionInsert, VerifiedBatchRow, VerifyCostInsertRow,
-    },
-    schema::{TABLE_SCHEMAS, TABLES, TableSchema, VIEWS},
-    types::{AddressBytes, HashBytes},
-};
 
 /// `ClickHouse` writer client for taikoscope (data insertion and migrations)
 #[derive(Clone, Debug)]
@@ -354,7 +352,7 @@ impl ClickhouseWriter {
 
     /// Ensure the schema migrations table exists
     async fn ensure_migrations_table(&self) -> Result<()> {
-        let schema = crate::schema::TABLE_SCHEMAS
+        let schema = TABLE_SCHEMAS
             .iter()
             .find(|s| s.name == "schema_migrations")
             .ok_or_else(|| eyre::eyre!("schema_migrations table schema not found"))?;

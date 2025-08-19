@@ -1,8 +1,6 @@
 //! Event processing methods for the Driver
 #![allow(missing_docs)]
 
-#[allow(unused_imports)]
-use alloy_primitives::Address;
 use clickhouse::{AddressBytes, HashBytes, L2HeadEvent};
 use extractor::Extractor;
 use eyre::Result;

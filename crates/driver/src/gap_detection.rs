@@ -644,8 +644,6 @@ pub async fn process_l1_block_taiko_events(
     taiko_wrapper_address: Address,
     enable_db_writes: bool,
 ) -> Result<()> {
-    #[allow(unused_imports)]
-    use alloy_sol_types::SolEvent;
     use chainio::{
         BatchesVerified,
         ITaikoInbox::{BatchProposed, BatchesProved, BatchesVerified as InboxBatchesVerified},
