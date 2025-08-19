@@ -196,6 +196,73 @@ impl crate::driver::Driver {
     }
 }
 
+/// Run initial gap catch-up - standalone version for background task
+#[allow(clippy::too_many_arguments)]
+pub async fn run_initial_gap_catchup(
+    reader: &ClickhouseReader,
+    writer: Option<&ClickhouseWriter>,
+    extractor: &Extractor,
+    inbox_address: Address,
+    taiko_wrapper_address: Address,
+    enable_db_writes: bool,
+    gap_finalization_buffer_blocks: u64,
+    gap_startup_lookback_blocks: u64,
+    gap_min_l1_block: u64,
+    gap_min_l2_block: u64,
+) -> Result<()> {
+    info!("Starting initial gap catch-up with startup lookback");
+
+    // Get gap detection state for preview
+    let gap_state =
+        get_gap_detection_state(reader, extractor, gap_finalization_buffer_blocks).await?;
+
+    // Calculate startup lookback ranges
+    let l1_start =
+        std::cmp::max(1, gap_state.latest_l1_db.saturating_sub(gap_startup_lookback_blocks) + 1);
+    let l1_end = gap_state.l1_backfill_end;
+    let l2_start =
+        std::cmp::max(1, gap_state.latest_l2_db.saturating_sub(gap_startup_lookback_blocks) + 1);
+    let l2_end = gap_state.l2_backfill_end;
+
+    // Get missing block counts for preview
+    let l1_missing = reader.find_missing_l1_blocks(l1_start, l1_end).await?.len();
+    let l2_missing = reader.find_missing_l2_blocks(l2_start, l2_end).await?.len();
+
+    info!(
+        l1_missing = l1_missing,
+        l1_range = format!("{}..{}", l1_start, l1_end),
+        l2_missing = l2_missing,
+        l2_range = format!("{}..{}", l2_start, l2_end),
+        "Initial gap catch-up preview: L1 missing={} ({}), L2 missing={} ({})",
+        l1_missing,
+        format!("{}..{}", l1_start, l1_end),
+        l2_missing,
+        format!("{}..{}", l2_start, l2_end)
+    );
+
+    match run_gap_detection(
+        reader,
+        writer,
+        extractor,
+        inbox_address,
+        taiko_wrapper_address,
+        enable_db_writes,
+        gap_finalization_buffer_blocks,
+        gap_startup_lookback_blocks,
+        gap_min_l1_block,
+        gap_min_l2_block,
+    )
+    .await
+    {
+        Ok(()) => Ok(()),
+        Err(e) if e.to_string().contains("Database tables not available") => {
+            warn!("Skipping initial gap catch-up - database tables not available");
+            Ok(())
+        }
+        Err(e) => Err(e),
+    }
+}
+
 /// Run a single cycle of gap detection and backfill
 #[allow(clippy::too_many_arguments)]
 pub async fn run_gap_detection(

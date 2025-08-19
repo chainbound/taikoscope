@@ -200,6 +200,10 @@ pub struct Opts {
     #[clap(long, env = "GAP_POLL_INTERVAL_SECS", default_value = "30")]
     pub gap_poll_interval_secs: u64,
 
+    /// Initial delay before starting gap detection in seconds (default: 30)
+    #[clap(long, env = "GAP_INITIAL_DELAY_SECS", default_value = "30")]
+    pub gap_initial_delay_secs: u64,
+
     /// Enable gap detection dry-run mode (default: false)
     #[clap(long, env = "GAP_DRY_RUN", default_value = "false")]
     pub gap_dry_run: bool,
@@ -306,6 +310,7 @@ mod tests {
         assert_eq!(opts.gap_startup_lookback_blocks, 128);
         assert_eq!(opts.gap_continuous_lookback_blocks, 32);
         assert_eq!(opts.gap_poll_interval_secs, 30);
+        assert_eq!(opts.gap_initial_delay_secs, 30);
         assert!(!opts.gap_dry_run);
         assert_eq!(opts.gap_min_l1_block, 1);
         assert_eq!(opts.gap_min_l2_block, 1);
@@ -371,6 +376,7 @@ mod tests {
         assert_eq!(opts.gap_startup_lookback_blocks, 256);
         assert_eq!(opts.gap_continuous_lookback_blocks, 64);
         assert_eq!(opts.gap_poll_interval_secs, 60);
+        assert_eq!(opts.gap_initial_delay_secs, 30);
         assert!(opts.gap_dry_run);
         assert_eq!(opts.gap_min_l1_block, 1);
         assert_eq!(opts.gap_min_l2_block, 1);

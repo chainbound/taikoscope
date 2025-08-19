@@ -18,7 +18,7 @@ use tokio_stream::StreamExt;
 use tracing::{error, info, warn};
 use url::Url;
 
-use crate::subscription::subscribe_with_retry;
+use crate::{gap_detection::run_initial_gap_catchup, subscription::subscribe_with_retry};
 
 /// Driver that combines ingestor and processor functionality
 #[derive(Debug)]
@@ -36,6 +36,7 @@ pub struct Driver {
     pub gap_startup_lookback_blocks: u64,
     pub gap_continuous_lookback_blocks: u64,
     pub gap_poll_interval_secs: u64,
+    pub gap_initial_delay_secs: u64,
     pub gap_dry_run: bool,
     pub gap_min_l1_block: u64,
     pub gap_min_l2_block: u64,
@@ -191,6 +192,7 @@ impl Driver {
             gap_startup_lookback_blocks: opts.gap_startup_lookback_blocks,
             gap_continuous_lookback_blocks: opts.gap_continuous_lookback_blocks,
             gap_poll_interval_secs: opts.gap_poll_interval_secs,
+            gap_initial_delay_secs: opts.gap_initial_delay_secs,
             gap_dry_run: opts.gap_dry_run,
             gap_min_l1_block: opts.gap_min_l1_block,
             gap_min_l2_block: opts.gap_min_l2_block,
@@ -249,15 +251,61 @@ impl Driver {
     ) -> Result<()> {
         info!("Starting driver event loop");
 
-        // Perform initial gap catch-up before starting live streams
-        if self.enable_gap_detection {
-            info!("Performing initial gap catch-up...");
-            if let Err(e) = self.initial_gap_catchup().await {
-                error!(err = %e, "Initial gap catch-up failed");
-            } else {
-                info!("Initial gap catch-up completed");
-            }
-        }
+        // Start initial gap catch-up in background with delay
+        #[allow(clippy::if_then_some_else_none)]
+        let initial_catchup_handle = if self.enable_gap_detection {
+            let reader = self.clickhouse_reader.clone();
+            let writer = self.clickhouse_writer.clone();
+            let extractor = self.extractor.clone();
+            let enable_db_writes = self.enable_db_writes;
+            let gap_dry_run = self.gap_dry_run;
+            let gap_finalization_buffer_blocks = self.gap_finalization_buffer_blocks;
+            let gap_startup_lookback_blocks = self.gap_startup_lookback_blocks;
+            let gap_min_l1_block = self.gap_min_l1_block;
+            let gap_min_l2_block = self.gap_min_l2_block;
+            let gap_initial_delay_secs = self.gap_initial_delay_secs;
+            let inbox_address = self.inbox_address;
+            let taiko_wrapper_address = self.taiko_wrapper_address;
+
+            info!(
+                "Will start initial gap catch-up after {} second delay...",
+                gap_initial_delay_secs
+            );
+
+            Some(tokio::spawn(async move {
+                use std::time::Duration;
+
+                // Wait before starting to let live processing catch up first
+                tokio::time::sleep(Duration::from_secs(gap_initial_delay_secs)).await;
+
+                info!("Starting initial gap catch-up after delay...");
+
+                if let (Some(reader), writer) = (reader, writer) {
+                    let result = run_initial_gap_catchup(
+                        &reader,
+                        writer.as_ref(),
+                        &extractor,
+                        inbox_address,
+                        taiko_wrapper_address,
+                        enable_db_writes && !gap_dry_run,
+                        gap_finalization_buffer_blocks,
+                        gap_startup_lookback_blocks,
+                        gap_min_l1_block,
+                        gap_min_l2_block,
+                    )
+                    .await;
+
+                    match result {
+                        Ok(()) => info!("Initial gap catch-up completed"),
+                        Err(e) => error!(err = %e, "Initial gap catch-up failed"),
+                    }
+                } else {
+                    warn!("Skipping initial gap catch-up - reader or writer not available");
+                }
+            }))
+        } else {
+            None
+        };
 
         // Start monitors if enabled
         let monitor_handles =
@@ -290,11 +338,14 @@ impl Driver {
             )
             .await;
 
-        // Clean up monitors and gap detection
+        // Clean up monitors, gap detection, and initial catchup
         for handle in monitor_handles {
             handle.abort();
         }
         if let Some(handle) = gap_detection_handle {
+            handle.abort();
+        }
+        if let Some(handle) = initial_catchup_handle {
             handle.abort();
         }
 
