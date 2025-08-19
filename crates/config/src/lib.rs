@@ -267,6 +267,10 @@ mod tests {
             "127.0.0.1",
             "--api-port",
             "3000",
+            "--gap-min-l1-block",
+            "1",
+            "--gap-min-l2-block",
+            "1",
         ]
     }
 
