@@ -85,6 +85,8 @@ impl crate::driver::Driver {
         let finalization_buffer = self.gap_finalization_buffer_blocks;
         let continuous_lookback = self.gap_continuous_lookback_blocks;
         let poll_interval = self.gap_poll_interval_secs;
+        let min_l1_block = self.gap_min_l1_block;
+        let min_l2_block = self.gap_min_l2_block;
 
         info!("Starting gap detection task");
 
@@ -104,6 +106,8 @@ impl crate::driver::Driver {
                     enable_db_writes && !gap_dry_run,
                     finalization_buffer,
                     continuous_lookback,
+                    min_l1_block,
+                    min_l2_block,
                 )
                 .await
                 {
@@ -177,6 +181,8 @@ impl crate::driver::Driver {
             self.enable_db_writes && !self.gap_dry_run,
             self.gap_finalization_buffer_blocks,
             self.gap_startup_lookback_blocks,
+            self.gap_min_l1_block,
+            self.gap_min_l2_block,
         )
         .await
         {
@@ -201,6 +207,8 @@ pub async fn run_gap_detection(
     enable_db_writes: bool,
     finalization_buffer: u64,
     lookback_blocks: u64,
+    min_l1_block: u64,
+    min_l2_block: u64,
 ) -> Result<()> {
     // Verify RPC health before starting gap detection
     if !verify_rpc_health(extractor).await {
@@ -225,11 +233,20 @@ pub async fn run_gap_detection(
         taiko_wrapper_address,
         enable_db_writes,
         l1_start_override,
+        min_l1_block,
     )
     .await?;
 
-    process_l2_gaps(reader, writer, extractor, &gap_state, enable_db_writes, l2_start_override)
-        .await?;
+    process_l2_gaps(
+        reader,
+        writer,
+        extractor,
+        &gap_state,
+        enable_db_writes,
+        l2_start_override,
+        min_l2_block,
+    )
+    .await?;
 
     Ok(())
 }
@@ -314,6 +331,7 @@ pub async fn process_l1_gaps(
     taiko_wrapper_address: Address,
     enable_db_writes: bool,
     start_block_override: Option<u64>,
+    min_l1_block: u64,
 ) -> Result<()> {
     let start_block = start_block_override.unwrap_or(state.latest_l1_db + 1);
     if start_block > state.l1_backfill_end {
@@ -350,6 +368,7 @@ pub async fn process_l1_gaps(
                 inbox_address,
                 taiko_wrapper_address,
                 enable_db_writes,
+                min_l1_block,
             )
             .await?;
         }
@@ -368,6 +387,7 @@ pub async fn process_l2_gaps(
     state: &GapDetectionState,
     enable_db_writes: bool,
     start_block_override: Option<u64>,
+    min_l2_block: u64,
 ) -> Result<()> {
     let start_block = start_block_override.unwrap_or(state.latest_l2_db + 1);
     if start_block > state.l2_backfill_end {
@@ -397,7 +417,8 @@ pub async fn process_l2_gaps(
                 gaps = still_missing.len(),
                 "Confirmed L2 gaps still missing after double-check: {:?}", still_missing
             );
-            backfill_l2_blocks(writer, extractor, still_missing, enable_db_writes).await?;
+            backfill_l2_blocks(writer, extractor, still_missing, enable_db_writes, min_l2_block)
+                .await?;
         }
     } else {
         info!(gaps = l2_gaps.len(), "🧪 DRY-RUN: Would backfill L2 gaps: {:?}", l2_gaps);
@@ -435,24 +456,21 @@ pub async fn backfill_l1_blocks(
     inbox_address: Address,
     taiko_wrapper_address: Address,
     enable_db_writes: bool,
+    min_l1_block: u64,
 ) -> Result<()> {
-    const MIN_L1_BLOCK_NUMBER: u64 = 23117550;
-
     // Filter out blocks before the minimum L1 block number
     let original_count = block_numbers.len();
-    let filtered_blocks: Vec<u64> = block_numbers
-        .into_iter()
-        .filter(|&block_number| block_number >= MIN_L1_BLOCK_NUMBER)
-        .collect();
+    let filtered_blocks: Vec<u64> =
+        block_numbers.into_iter().filter(|&block_number| block_number >= min_l1_block).collect();
 
     if filtered_blocks.len() != original_count {
         let skipped_count = original_count - filtered_blocks.len();
         info!(
             skipped_count = skipped_count,
-            min_l1_block = MIN_L1_BLOCK_NUMBER,
+            min_l1_block = min_l1_block,
             "Skipped {} L1 blocks below minimum block number {}",
             skipped_count,
-            MIN_L1_BLOCK_NUMBER
+            min_l1_block
         );
     }
 
@@ -776,24 +794,21 @@ pub async fn backfill_l2_blocks(
     extractor: &Extractor,
     block_numbers: Vec<u64>,
     enable_db_writes: bool,
+    min_l2_block: u64,
 ) -> Result<()> {
-    const MIN_L2_BLOCK_NUMBER: u64 = 1320745;
-
     // Filter out blocks before the minimum L2 block number
     let original_count = block_numbers.len();
-    let filtered_blocks: Vec<u64> = block_numbers
-        .into_iter()
-        .filter(|&block_number| block_number >= MIN_L2_BLOCK_NUMBER)
-        .collect();
+    let filtered_blocks: Vec<u64> =
+        block_numbers.into_iter().filter(|&block_number| block_number >= min_l2_block).collect();
 
     if filtered_blocks.len() != original_count {
         let skipped_count = original_count - filtered_blocks.len();
         info!(
             skipped_count = skipped_count,
-            min_l2_block = MIN_L2_BLOCK_NUMBER,
+            min_l2_block = min_l2_block,
             "Skipped {} L2 blocks below minimum block number {}",
             skipped_count,
-            MIN_L2_BLOCK_NUMBER
+            min_l2_block
         );
     }
 

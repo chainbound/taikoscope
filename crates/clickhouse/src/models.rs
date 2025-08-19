@@ -464,7 +464,7 @@ pub struct SchemaVersion {
     pub checksum: String,
 }
 
-/// Schema migration row for insertion (without applied_at, relies on DEFAULT)
+/// Schema migration row for insertion (without `applied_at`, relies on DEFAULT)
 #[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SchemaVersionInsert {
     /// Migration version number
