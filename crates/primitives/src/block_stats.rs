@@ -44,6 +44,9 @@ mod tests {
     use super::*;
     use alloy_primitives::{Address, B256, BlockHash, TxHash, address};
 
+    const MAINNET_ANCHOR: Address = address!("1670000000000000000000000000000000001001");
+    const HEKLA_ANCHOR: Address = address!("1670090000000000000000000000000000001001");
+
     #[derive(Debug, Clone)]
     struct TestReceipt {
         gas: u64,
@@ -98,16 +101,11 @@ mod tests {
 
     #[test]
     fn compute_block_stats_basic() {
-        let anchor_addr = Address::from_slice(&[
-            0x16, 0x70, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x10, 0x01,
-        ]);
-
         let receipts = vec![
             TestReceipt { gas: 100, price: 10, to_addr: None },
             TestReceipt { gas: 200, price: 20, to_addr: None },
         ];
-        let (gas, count, priority) = compute_block_stats(&receipts, 5, anchor_addr);
+        let (gas, count, priority) = compute_block_stats(&receipts, 5, MAINNET_ANCHOR);
         assert_eq!(gas, 300);
         assert_eq!(count, 2);
         assert_eq!(priority, 3500);
@@ -115,14 +113,8 @@ mod tests {
 
     #[test]
     fn compute_block_stats_zero_base_fee() {
-        // Create anchor address
-        let anchor_addr = Address::from_slice(&[
-            0x16, 0x70, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x10, 0x01,
-        ]);
-
         let receipts = vec![TestReceipt { gas: 150, price: 40, to_addr: None }];
-        let (gas, count, priority) = compute_block_stats(&receipts, 0, anchor_addr);
+        let (gas, count, priority) = compute_block_stats(&receipts, 0, MAINNET_ANCHOR);
         assert_eq!(gas, 150);
         assert_eq!(count, 1);
         assert_eq!(priority, 6000);
@@ -130,21 +122,15 @@ mod tests {
 
     #[test]
     fn compute_block_stats_excludes_anchor() {
-        // Create anchor address
-        let anchor_addr = Address::from_slice(&[
-            0x16, 0x70, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x10, 0x01,
-        ]);
-
         let receipts = vec![
             // Anchor transaction - should be excluded
-            TestReceipt { gas: 50, price: 10, to_addr: Some(anchor_addr) },
+            TestReceipt { gas: 50, price: 10, to_addr: Some(MAINNET_ANCHOR) },
             // Regular transactions - should be included
             TestReceipt { gas: 100, price: 15, to_addr: None },
             TestReceipt { gas: 200, price: 20, to_addr: None },
         ];
 
-        let (gas, count, priority) = compute_block_stats(&receipts, 10, anchor_addr);
+        let (gas, count, priority) = compute_block_stats(&receipts, 10, MAINNET_ANCHOR);
         // Gas and fees exclude anchor, but count includes all transactions
         assert_eq!(gas, 300); // 100 + 200, excluding anchor's 50
         assert_eq!(count, 3); // All 3 transactions including anchor
@@ -153,34 +139,18 @@ mod tests {
 
     #[test]
     fn is_anchor_transaction_test() {
-        use super::is_anchor_transaction;
-
-        let anchor_addr = Address::from_slice(&[
-            0x16, 0x70, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x10, 0x01,
-        ]);
-
-        let anchor_receipt = TestReceipt { gas: 50, price: 10, to_addr: Some(anchor_addr) };
+        let anchor_receipt = TestReceipt { gas: 50, price: 10, to_addr: Some(MAINNET_ANCHOR) };
         let regular_receipt = TestReceipt { gas: 100, price: 15, to_addr: None };
 
-        assert!(is_anchor_transaction(&anchor_receipt, anchor_addr));
-        assert!(!is_anchor_transaction(&regular_receipt, anchor_addr));
+        assert!(is_anchor_transaction(&anchor_receipt, MAINNET_ANCHOR));
+        assert!(!is_anchor_transaction(&regular_receipt, MAINNET_ANCHOR));
     }
 
     #[test]
     fn compute_block_stats_only_anchor() {
-        // Test with only an anchor transaction
-        let anchor_addr = Address::from_slice(&[
-            0x16, 0x70, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x10, 0x01,
-        ]);
+        let receipts = vec![TestReceipt { gas: 50, price: 10, to_addr: Some(MAINNET_ANCHOR) }];
 
-        let receipts = vec![
-            // Only anchor transaction
-            TestReceipt { gas: 50, price: 10, to_addr: Some(anchor_addr) },
-        ];
-
-        let (gas, count, priority) = compute_block_stats(&receipts, 10, anchor_addr);
+        let (gas, count, priority) = compute_block_stats(&receipts, 10, MAINNET_ANCHOR);
         // Should count the transaction but exclude its gas and fees
         assert_eq!(gas, 0); // No gas counted (anchor excluded)
         assert_eq!(count, 1); // Transaction count still includes anchor
@@ -189,41 +159,28 @@ mod tests {
 
     #[test]
     fn compute_block_stats_different_anchor_addresses() {
-        // Test with different anchor addresses (mainnet vs hekla)
-        let mainnet_anchor = Address::from_slice(&[
-            0x16, 0x70, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x10, 0x01,
-        ]);
-
-        let hekla_anchor = Address::from_slice(&[
-            0x16, 0x70, 0x09, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x10, 0x01,
-        ]);
-
-        // Transaction to mainnet anchor
         let mainnet_receipts = vec![
-            TestReceipt { gas: 50, price: 10, to_addr: Some(mainnet_anchor) },
+            TestReceipt { gas: 50, price: 10, to_addr: Some(MAINNET_ANCHOR) },
             TestReceipt { gas: 100, price: 15, to_addr: None },
         ];
 
         // Test with mainnet anchor address - should exclude mainnet anchor tx
-        let (gas, count, _) = compute_block_stats(&mainnet_receipts, 10, mainnet_anchor);
+        let (gas, count, _) = compute_block_stats(&mainnet_receipts, 10, MAINNET_ANCHOR);
         assert_eq!(gas, 100); // Only regular tx gas
         assert_eq!(count, 2); // Both transactions counted
 
         // Test with hekla anchor address - should NOT exclude mainnet anchor tx
-        let (gas, count, _) = compute_block_stats(&mainnet_receipts, 10, hekla_anchor);
+        let (gas, count, _) = compute_block_stats(&mainnet_receipts, 10, HEKLA_ANCHOR);
         assert_eq!(gas, 150); // Both transactions' gas (50 + 100)
         assert_eq!(count, 2); // Both transactions counted
 
-        // Transaction to hekla anchor
         let hekla_receipts = vec![
-            TestReceipt { gas: 50, price: 10, to_addr: Some(hekla_anchor) },
+            TestReceipt { gas: 50, price: 10, to_addr: Some(HEKLA_ANCHOR) },
             TestReceipt { gas: 100, price: 15, to_addr: None },
         ];
 
         // Test with hekla anchor address - should exclude hekla anchor tx
-        let (gas, count, _) = compute_block_stats(&hekla_receipts, 10, hekla_anchor);
+        let (gas, count, _) = compute_block_stats(&hekla_receipts, 10, HEKLA_ANCHOR);
         assert_eq!(gas, 100); // Only regular tx gas
         assert_eq!(count, 2); // Both transactions counted
     }
