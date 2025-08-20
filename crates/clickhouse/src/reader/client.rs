@@ -553,22 +553,22 @@ impl ClickhouseReader {
             ts: u64,
         }
 
+        let rf = self.reorg_filter("h");
         let query = format!(
             "SELECT h.l2_block_number, h.sequencer AS original_sequencer, \
                     b.proposer_addr AS proposer, b.l1_block_number, \
-                    toUInt64(toUnixTimestamp64Milli(l1.inserted_at)) AS ts \
+                    toUInt64(toUnixTimestamp64Milli(b.inserted_at)) AS ts \
              FROM {db}.l2_head_events h \
              INNER JOIN (SELECT DISTINCT batch_id, l2_block_number FROM {db}.batch_blocks) bb \
                ON h.l2_block_number = bb.l2_block_number \
              INNER JOIN {db}.batches b ON bb.batch_id = b.batch_id \
-             INNER JOIN {db}.l1_head_events l1 ON b.l1_block_number = l1.l1_block_number \
-             LEFT JOIN {db}.l2_reorgs r ON h.l2_block_number = r.l2_block_number \
-             WHERE l1.inserted_at > toDateTime64({since}, 3) \
-               AND r.l2_block_number IS NULL \
+             WHERE b.inserted_at > toDateTime64({since}, 3) \
+               AND {rf} \
                AND h.sequencer != b.proposer_addr \
-             ORDER BY l1.inserted_at ASC",
+             ORDER BY b.inserted_at ASC",
             db = self.db_name,
             since = since.timestamp_millis() as f64 / 1000.0,
+            rf = rf,
         );
         let rows =
             self.execute::<RawRow>(&query).await.context("fetching failed proposals failed")?;
@@ -602,24 +602,24 @@ impl ClickhouseReader {
             ts: u64,
         }
 
+        let rf = self.reorg_filter("h");
         let query = format!(
             "SELECT h.l2_block_number, h.sequencer AS original_sequencer, \
                     b.proposer_addr AS proposer, b.l1_block_number, \
-                    toUInt64(toUnixTimestamp64Milli(l1.inserted_at)) AS ts \
+                    toUInt64(toUnixTimestamp64Milli(b.inserted_at)) AS ts \
              FROM {db}.l2_head_events h \
              INNER JOIN (SELECT DISTINCT batch_id, l2_block_number FROM {db}.batch_blocks) bb \
                ON h.l2_block_number = bb.l2_block_number \
              INNER JOIN {db}.batches b ON bb.batch_id = b.batch_id \
-             INNER JOIN {db}.l1_head_events l1 ON b.l1_block_number = l1.l1_block_number \
-             LEFT JOIN {db}.l2_reorgs r ON h.l2_block_number = r.l2_block_number \
-             WHERE l1.inserted_at > toDateTime64({since}, 3) \
-               AND l1.inserted_at <= toDateTime64({until}, 3) \
-               AND r.l2_block_number IS NULL \
+             WHERE b.inserted_at > toDateTime64({since}, 3) \
+               AND b.inserted_at <= toDateTime64({until}, 3) \
+               AND {rf} \
                AND h.sequencer != b.proposer_addr \
-             ORDER BY l1.inserted_at ASC",
+             ORDER BY b.inserted_at ASC",
             db = self.db_name,
             since = since.timestamp_millis() as f64 / 1000.0,
             until = until.timestamp_millis() as f64 / 1000.0,
+            rf = rf,
         );
         let rows =
             self.execute::<RawRow>(&query).await.context("fetching failed proposals failed")?;
