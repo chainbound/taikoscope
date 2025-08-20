@@ -50,6 +50,9 @@ pub struct TaikoAddressOpts {
     /// Taiko wrapper contract address
     #[clap(long, env = "TAIKO_WRAPPER_ADDRESS")]
     pub taiko_wrapper_address: Address,
+    /// Taiko anchor contract address
+    #[clap(long, env = "TAIKO_ANCHOR_ADDRESS")]
+    pub anchor_address: Address,
 }
 
 /// Instatus monitoring configuration options
@@ -253,6 +256,8 @@ mod tests {
             "0x0000000000000000000000000000000000000002",
             "--taiko-wrapper-address",
             "0x0000000000000000000000000000000000000003",
+            "--anchor-address",
+            "0x0000000000000000000000000000000000000004",
             "--api-key",
             "key",
             "--page-id",

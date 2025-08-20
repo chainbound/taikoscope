@@ -96,6 +96,7 @@ impl Driver {
             opts.taiko_addresses.inbox_address,
             opts.taiko_addresses.preconf_whitelist_address,
             opts.taiko_addresses.taiko_wrapper_address,
+            opts.taiko_addresses.anchor_address,
         )
         .await
         .wrap_err("Failed to initialize blockchain extractor. Ensure RPC URLs are WebSocket endpoints (ws:// or wss://)")?;

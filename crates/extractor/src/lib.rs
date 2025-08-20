@@ -42,6 +42,7 @@ pub struct Extractor {
     preconf_whitelist: TaikoPreconfWhitelist,
     taiko_inbox: TaikoInbox,
     taiko_wrapper: TaikoWrapper,
+    anchor_address: Address,
 }
 
 /// Stream of batch proposed events with their L1 transaction hash
@@ -68,6 +69,7 @@ impl Extractor {
         inbox_address: Address,
         preconf_whitelist_address: Address,
         taiko_wrapper_address: Address,
+        anchor_address: Address,
     ) -> Result<Self> {
         // Validate URL schemes
         let l1_scheme = l1_rpc_url.scheme();
@@ -99,7 +101,14 @@ impl Extractor {
             TaikoPreconfWhitelist::new_readonly(preconf_whitelist_address, l1_provider.clone());
         let taiko_wrapper = TaikoWrapper::new_readonly(taiko_wrapper_address, l1_provider.clone());
 
-        Ok(Self { l1_provider, l2_provider, preconf_whitelist, taiko_inbox, taiko_wrapper })
+        Ok(Self {
+            l1_provider,
+            l2_provider,
+            preconf_whitelist,
+            taiko_inbox,
+            taiko_wrapper,
+            anchor_address,
+        })
     }
 
     /// Get a stream of L1 headers. This stream will attempt to automatically
@@ -465,7 +474,7 @@ impl Extractor {
         let receipts_opt = self.l2_provider.get_block_receipts(block).await?;
         let receipts = receipts_opt.ok_or_else(|| eyre::eyre!("missing receipts"))?;
 
-        Ok(compute_block_stats(&receipts, base_fee))
+        Ok(compute_block_stats(&receipts, base_fee, self.anchor_address))
     }
 
     /// Get the latest L1 block number
