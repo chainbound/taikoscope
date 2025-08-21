@@ -11,8 +11,9 @@ use alloy::{
 };
 use alloy_json_rpc::ErrorPayload;
 use serde::Deserialize;
+use std::borrow::Cow;
 use tokio_retry::{Retry, RetryIf, strategy::ExponentialBackoff};
-use tracing::warn;
+use tracing::{error, warn};
 
 /// The default maximum number of retries for a transport error.
 ///
@@ -44,6 +45,8 @@ impl<T> Strategy for T where T: Iterator<Item = Duration> + Clone + Send + Sync 
 pub struct RetryWsConnect<S: Strategy> {
     inner: WsConnect,
     strategy: S,
+    /// Optional label to help identify which component is reconnecting (e.g., "L1", "L2").
+    label: Cow<'static, str>,
 }
 
 impl RetryWsConnect<ExponentialBackoff> {
@@ -53,7 +56,17 @@ impl RetryWsConnect<ExponentialBackoff> {
         Self {
             inner: WsConnect::new(ws_url.into()),
             strategy: ExponentialBackoff::from_millis(DEFAULT_INITIAL_BACKOFF_MS),
+            label: Cow::Borrowed("ws"),
         }
+    }
+}
+
+impl<S: Strategy> RetryWsConnect<S> {
+    /// Attach a human-friendly label used in logs (e.g., "L1", "L2").
+    #[inline]
+    pub fn with_label(mut self, label: impl Into<Cow<'static, str>>) -> Self {
+        self.label = label.into();
+        self
     }
 }
 
@@ -69,8 +82,31 @@ impl<S: Strategy> PubSubConnect for RetryWsConnect<S> {
     fn try_reconnect(
         &self,
     ) -> alloy::transports::impl_future!(<Output = TransportResult<ConnectionHandle>>) {
-        warn!(url = ?self.inner.url(),"Retrying connection to websocket provider");
-        Retry::spawn(self.strategy.clone(), || self.inner.try_reconnect())
+        let url = self.inner.url().clone();
+        let label = self.label.clone();
+        let strategy = self.strategy.clone();
+
+        warn!(
+            role = %label,
+            url = %url,
+            initial_backoff_ms = DEFAULT_INITIAL_BACKOFF_MS,
+            max_retries = DEFAULT_MAX_RETRIES,
+            "WebSocket connection lost; retrying with exponential backoff"
+        );
+
+        async move {
+            let res = Retry::spawn(strategy, || self.inner.try_reconnect()).await;
+            if let Err(ref e) = res {
+                error!(
+                    role = %label,
+                    url = %url,
+                    error = %e,
+                    max_retries = DEFAULT_MAX_RETRIES,
+                    "WebSocket reconnection failed after retries"
+                );
+            }
+            res
+        }
     }
 }
 

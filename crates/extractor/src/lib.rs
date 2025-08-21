@@ -20,7 +20,7 @@ use alloy_consensus::BlockHeader;
 use alloy_rpc_client::ClientBuilder;
 use chainio::TaikoInbox;
 use derive_more::Debug;
-use eyre::Result;
+use eyre::{Context, Result};
 use network::retries::{DEFAULT_RETRY_LAYER, RetryWsConnect};
 use primitives::{
     block_stats::compute_block_stats,
@@ -88,12 +88,20 @@ impl Extractor {
             ));
         }
 
-        let l1_ws = RetryWsConnect::from_url(l1_rpc_url);
-        let l1_client = ClientBuilder::default().layer(DEFAULT_RETRY_LAYER).pubsub(l1_ws).await?;
+        info!(url = %l1_rpc_url, "Connecting to L1 WebSocket provider...");
+        let l1_ws = RetryWsConnect::from_url(l1_rpc_url.clone()).with_label("L1");
+        let l1_client =
+            ClientBuilder::default().layer(DEFAULT_RETRY_LAYER).pubsub(l1_ws).await.wrap_err_with(
+                || format!("Failed to establish L1 WebSocket connection to {}", l1_rpc_url),
+            )?;
         let l1_provider = ProviderBuilder::new().connect_client(l1_client);
 
-        let l2_ws = RetryWsConnect::from_url(l2_rpc_url);
-        let l2_client = ClientBuilder::default().layer(DEFAULT_RETRY_LAYER).pubsub(l2_ws).await?;
+        info!(url = %l2_rpc_url, "Connecting to L2 WebSocket provider...");
+        let l2_ws = RetryWsConnect::from_url(l2_rpc_url.clone()).with_label("L2");
+        let l2_client =
+            ClientBuilder::default().layer(DEFAULT_RETRY_LAYER).pubsub(l2_ws).await.wrap_err_with(
+                || format!("Failed to establish L2 WebSocket connection to {}", l2_rpc_url),
+            )?;
         let l2_provider = ProviderBuilder::new().connect_client(l2_client);
 
         let taiko_inbox = TaikoInbox::new_readonly(inbox_address, l1_provider.clone());
