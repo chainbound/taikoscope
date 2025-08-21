@@ -4,7 +4,7 @@
 // Generated at build time from dashboard/sequencerConfig.ts
 include!(concat!(env!("OUT_DIR"), "/sequencer_mapping.rs"));
 
-/// Return ClickHouse SQL array literals for transform() mapping.
+/// Return `ClickHouse` SQL array literals for `transform()` mapping.
 /// Example: ("['0xabc', '0xdef']", "['Gattaca', 'Chainbound']")
 pub fn transform_arrays_sql() -> (String, String) {
     // Addresses are already lowercased by build.rs

@@ -689,7 +689,8 @@ impl ClickhouseReader {
 
         match (starting_after, ending_before) {
             (Some(start), None) => {
-                // Next page: b.inserted_at > since AND (b.inserted_at < until OR (b.inserted_at = until AND l2 < start))
+                // Next page: b.inserted_at > since AND (b.inserted_at < until OR (b.inserted_at =
+                // until AND l2 < start))
                 query.push_str(&format!(
                     " AND b.inserted_at > toDateTime64({since}, 3) \
                        AND (b.inserted_at < toDateTime64({until}, 3) \

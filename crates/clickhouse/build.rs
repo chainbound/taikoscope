@@ -77,7 +77,9 @@ fn main() {
         .join(", ");
 
     let generated = format!(
-        "pub const SEQUENCER_ADDRS: &[&str] = &[{}];\n\
+        "/// Array of sequencer addresses (lowercased) loaded from dashboard configuration.\n\
+         pub const SEQUENCER_ADDRS: &[&str] = &[{}];\n\
+         /// Array of sequencer names corresponding to the addresses.\n\
          pub const SEQUENCER_NAMES: &[&str] = &[{}];\n",
         addr_entries, name_entries
     );
