@@ -142,7 +142,9 @@ export const TableRoute: React.FC = () => {
           }
         } else if (config.supportsPagination) {
           // For paginated tables, determine if an address param is needed
-          const fetchLimit = tableType === 'l2-block-times' && startingAfter === undefined && endingBefore === undefined
+          const isFirstPage = startingAfter === undefined && endingBefore === undefined;
+          // Fetch +1 on the first failed-proposals page to precisely toggle Next
+          const fetchLimit = tableType === 'failed-proposals' && isFirstPage
             ? PAGE_LIMIT + 1
             : PAGE_LIMIT;
           const needsAddress = ['l2-block-times', 'l2-gas-used', 'l2-tps', 'block-tx'].includes(tableType);
@@ -229,8 +231,9 @@ export const TableRoute: React.FC = () => {
           );
         };
         const isFirstReorgsPage = tableType === 'reorgs' && startingAfter === undefined && endingBefore === undefined;
+        const isFirstFailedProposalsPage = tableType === 'failed-proposals' && startingAfter === undefined && endingBefore === undefined;
         const nextCursor = originalData.length > 0
-          ? (isFirstReorgsPage && originalData.length > PAGE_LIMIT
+          ? ((isFirstReorgsPage || isFirstFailedProposalsPage) && originalData.length > PAGE_LIMIT
             ? getCursor(originalData[PAGE_LIMIT - 1])
             : getCursor(originalData[originalData.length - 1]))
           : undefined;
@@ -240,7 +243,9 @@ export const TableRoute: React.FC = () => {
         const getL2 = (item: any) => (item?.l2_block_number !== undefined ? Number(item.l2_block_number) : undefined);
         const nextCursorL2 =
           tableType === 'failed-proposals' && originalData.length > 0
-            ? getL2(originalData[originalData.length - 1])
+            ? ((isFirstFailedProposalsPage && originalData.length > PAGE_LIMIT)
+              ? getL2(originalData[PAGE_LIMIT - 1])
+              : getL2(originalData[originalData.length - 1]))
             : undefined;
         const prevCursorL2 =
           tableType === 'failed-proposals' && originalData.length > 0
@@ -251,8 +256,8 @@ export const TableRoute: React.FC = () => {
           data = [...data].reverse();
         }
 
-        // If we fetched an extra item on the first reorgs page, trim the display to PAGE_LIMIT
-        if (isFirstReorgsPage && originalData.length > PAGE_LIMIT) {
+        // If we fetched an extra item on the first page (reorgs or failed-proposals), trim to PAGE_LIMIT
+        if ((isFirstReorgsPage || isFirstFailedProposalsPage) && originalData.length > PAGE_LIMIT) {
           data = data.slice(0, PAGE_LIMIT);
         }
 
@@ -277,7 +282,7 @@ export const TableRoute: React.FC = () => {
           // Only show pagination controls when NOT in a custom range on l2-tps
           if (config.supportsPagination && !(config.aggregatedFetcher && isCustomAbsoluteRange)) {
             const disablePrev = page === 0;
-            const disableNext = isFirstReorgsPage
+            const disableNext = (isFirstReorgsPage || isFirstFailedProposalsPage)
               ? originalData.length <= PAGE_LIMIT
               : originalData.length < PAGE_LIMIT;
             view.serverPagination = {
