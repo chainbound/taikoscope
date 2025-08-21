@@ -1,3 +1,5 @@
+#![allow(missing_docs)]
+#![allow(clippy::uninlined_format_args)]
 use std::{env, fs, path::PathBuf};
 
 fn main() {
@@ -55,7 +57,7 @@ fn main() {
 
         if parts.len() == 2 {
             let addr = parts[0].trim().to_lowercase();
-            let name = parts[1].trim().to_string();
+            let name = parts[1].trim().to_owned();
             if addr.starts_with("0x") && addr.len() == 42 {
                 addrs.push(addr);
                 names.push(name);
