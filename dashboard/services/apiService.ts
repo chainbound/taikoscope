@@ -275,22 +275,29 @@ export const fetchFailedProposalCount = async (
 export const fetchFailedProposalEvents = async (
   range: TimeRange,
   limit = 50,
-  startingAfter?: number,
-  endingBefore?: number,
+  startingAfterTs?: number,
+  endingBeforeTs?: number,
+  startingAfterL2?: number,
+  endingBeforeL2?: number,
 ): Promise<RequestResult<FailedProposalEvent[]>> => {
-  // Use time-window pagination like reorgs: adjust created bounds only.
-  // Do NOT pass cursor params here, since the API rejects mixing time and cursor ranges.
+  // Stable pagination using (timestamp, l2_block_number) cursor.
+  // Server supports combining time window with l2_block_number cursor for tie-breaks.
   const baseParams = new URLSearchParams(timeRangeToQuery(range));
   baseParams.set('limit', String(limit));
 
-  if (startingAfter !== undefined) {
-    // Slide the upper bound down exclusively to the last seen timestamp
-    baseParams.delete('created[lte]');
-    baseParams.set('created[lt]', String(startingAfter));
-  } else if (endingBefore !== undefined) {
-    // Slide the lower bound up exclusively to the first seen timestamp
-    baseParams.delete('created[gt]');
-    baseParams.set('created[gt]', String(endingBefore));
+  if (startingAfterTs !== undefined) {
+    // Include rows at the same timestamp by using lte bound and tie-break on l2_block_number
+    baseParams.set('created[lte]', String(startingAfterTs));
+    if (startingAfterL2 !== undefined) {
+      baseParams.set('starting_after', String(startingAfterL2));
+    }
+  } else if (endingBeforeTs !== undefined) {
+    // For previous page, move lower bound just before the first row's timestamp (ts-1)
+    const gt = Math.max(0, endingBeforeTs - 1);
+    baseParams.set('created[gt]', String(gt));
+    if (endingBeforeL2 !== undefined) {
+      baseParams.set('ending_before', String(endingBeforeL2));
+    }
   }
 
   const url = `${API_BASE}/failed-proposals?${baseParams.toString()}`;

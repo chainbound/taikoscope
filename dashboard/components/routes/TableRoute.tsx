@@ -103,8 +103,12 @@ export const TableRoute: React.FC = () => {
         const page = parseInt(pageStr, 10);
         const start = searchParams.get('start');
         const end = searchParams.get('end');
+        const startL2 = searchParams.get('start_l2');
+        const endL2 = searchParams.get('end_l2');
         const startingAfter = start ? Number(start) : undefined;
         const endingBefore = end ? Number(end) : undefined;
+        const startingAfterL2 = startL2 ? Number(startL2) : undefined;
+        const endingBeforeL2 = endL2 ? Number(endL2) : undefined;
 
         if (tableType === 'sequencer-blocks') {
           const address = searchParams.get('address');
@@ -145,7 +149,19 @@ export const TableRoute: React.FC = () => {
           const addressParam = needsAddress
             ? (selectedSequencer ? getSequencerAddress(selectedSequencer) : undefined)
             : undefined;
-          if (config.aggregatedFetcher) {
+          if (tableType === 'failed-proposals') {
+            // Pass tie-breaker cursors (timestamp + l2) for stable pagination
+            [res] = await Promise.all([
+              config.fetcher(
+                range,
+                fetchLimit,
+                startingAfter,
+                endingBefore,
+                startingAfterL2,
+                endingBeforeL2,
+              ),
+            ]);
+          } else if (config.aggregatedFetcher) {
             [res, aggRes] = await Promise.all([
               needsAddress
                 ? config.fetcher(range, addressParam, fetchLimit, startingAfter, endingBefore)
@@ -220,6 +236,16 @@ export const TableRoute: React.FC = () => {
           : undefined;
         const prevCursor =
           originalData.length > 0 ? getCursor(originalData[0]) : undefined;
+        // Compute L2 cursors for failed-proposals
+        const getL2 = (item: any) => (item?.l2_block_number !== undefined ? Number(item.l2_block_number) : undefined);
+        const nextCursorL2 =
+          tableType === 'failed-proposals' && originalData.length > 0
+            ? getL2(originalData[originalData.length - 1])
+            : undefined;
+        const prevCursorL2 =
+          tableType === 'failed-proposals' && originalData.length > 0
+            ? getL2(originalData[0])
+            : undefined;
 
         if (config.reverseOrder) {
           data = [...data].reverse();
@@ -261,7 +287,13 @@ export const TableRoute: React.FC = () => {
                 params.set('page', String(page + 1));
                 if (nextCursor !== undefined)
                   params.set('start', String(nextCursor));
+                if (tableType === 'failed-proposals' && nextCursorL2 !== undefined) {
+                  params.set('start_l2', String(nextCursorL2));
+                } else {
+                  params.delete('start_l2');
+                }
                 params.delete('end');
+                params.delete('end_l2');
                 // Preserve explicit time range bounds for subsequent pages
                 const rangeParam = params.get('range') || '24h';
                 // Only preset ranges are supported here; they will be converted by the API service
@@ -275,10 +307,18 @@ export const TableRoute: React.FC = () => {
                 if (newPage === 0) {
                   // On first page, clear all cursor params
                   params.delete('start');
+                  params.delete('start_l2');
                   params.delete('end');
+                  params.delete('end_l2');
                 } else {
                   if (prevCursor !== undefined) params.set('end', String(prevCursor));
+                  if (tableType === 'failed-proposals' && prevCursorL2 !== undefined) {
+                    params.set('end_l2', String(prevCursorL2));
+                  } else {
+                    params.delete('end_l2');
+                  }
                   params.delete('start');
+                  params.delete('start_l2');
                 }
                 // Preserve explicit time range bounds for previous pages as well
                 const rangeParam = params.get('range') || '24h';

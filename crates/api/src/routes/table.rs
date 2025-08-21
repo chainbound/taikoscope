@@ -165,9 +165,8 @@ pub async fn failed_proposals(
         params.limit.as_ref(),
         MAX_TABLE_LIMIT,
     )?;
-    let has_time_range = has_time_range_params(&params.common.time_range);
-    let has_slot_range = params.starting_after.is_some() || params.ending_before.is_some();
-    validate_range_exclusivity(has_time_range, has_slot_range)?;
+    // Allow combining time range parameters with cursors for failed-proposals
+    // to support stable pagination (timestamp + block-number tie-breaker).
 
     let (since, until) = resolve_time_range_bounds(&params.common.time_range);
     let rows = state
