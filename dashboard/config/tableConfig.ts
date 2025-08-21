@@ -100,11 +100,11 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
   'failed-proposals': {
     title: 'Failed Proposals',
     description:
-      'Blocks where the original sequencer failed to post and another proposer succeeded.',
+      'Batches where the original sequencer failed to post and another proposer succeeded.',
     fetcher: fetchFailedProposalEvents,
     columns: [
       { key: 'timestamp', label: 'Time' },
-      { key: 'l2_block_number', label: 'L2 Block' },
+      { key: 'batch_id', label: 'Batch' },
       { key: 'original_sequencer', label: 'Failed Sequencer' },
       { key: 'proposer', label: 'Proposer' },
       { key: 'l1_block_number', label: 'L1 Block' },
@@ -112,7 +112,7 @@ export const TABLE_CONFIGS: Record<string, TableConfig> = {
     mapData: (data) =>
       (data as FailedProposalEvent[]).map((e) => ({
         timestamp: formatDateTime(e.timestamp),
-        l2_block_number: blockLink(e.l2_block_number),
+        batch_id: blockLink(e.batch_id),
         original_sequencer: getSequencerName(e.original_sequencer),
         proposer: getSequencerName(e.proposer),
         l1_block_number: blockLink(e.l1_block_number),

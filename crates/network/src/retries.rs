@@ -82,7 +82,7 @@ impl<S: Strategy> PubSubConnect for RetryWsConnect<S> {
     fn try_reconnect(
         &self,
     ) -> alloy::transports::impl_future!(<Output = TransportResult<ConnectionHandle>>) {
-        let url = self.inner.url().clone();
+        let url = self.inner.url();
         let label = self.label.clone();
         let strategy = self.strategy.clone();
 

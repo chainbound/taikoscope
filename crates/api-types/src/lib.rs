@@ -116,12 +116,12 @@ pub struct ReorgEventsResponse {
     pub events: Vec<L2ReorgEvent>,
 }
 
-/// Event where a sequencer failed to post its block and another proposer posted it
+/// Event where a sequencer failed to post its batch and another proposer posted it
 #[derive(Debug, Serialize, ToSchema)]
 pub struct FailedProposalEvent {
-    /// L2 block number originally produced
-    pub l2_block_number: u64,
-    /// Address of the sequencer that produced the block
+    /// Batch ID that was originally produced (by the sequencer of the batch's blocks)
+    pub batch_id: u64,
+    /// Address of the sequencer that produced the (last) block in the batch
     pub original_sequencer: String,
     /// Address of the sequencer that posted the batch on L1
     pub proposer: String,

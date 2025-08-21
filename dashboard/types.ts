@@ -49,7 +49,7 @@ export interface ForcedInclusionEvent {
 }
 
 export interface FailedProposalEvent {
-  l2_block_number: number;
+  batch_id: number;
   original_sequencer: string;
   proposer: string;
   l1_block_number: number;

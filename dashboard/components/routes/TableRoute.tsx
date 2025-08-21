@@ -103,12 +103,12 @@ export const TableRoute: React.FC = () => {
         const page = parseInt(pageStr, 10);
         const start = searchParams.get('start');
         const end = searchParams.get('end');
-        const startL2 = searchParams.get('start_l2');
-        const endL2 = searchParams.get('end_l2');
+        const startBatch = searchParams.get('start_batch');
+        const endBatch = searchParams.get('end_batch');
         const startingAfter = start ? Number(start) : undefined;
         const endingBefore = end ? Number(end) : undefined;
-        const startingAfterL2 = startL2 ? Number(startL2) : undefined;
-        const endingBeforeL2 = endL2 ? Number(endL2) : undefined;
+        const startingAfterBatch = startBatch ? Number(startBatch) : undefined;
+        const endingBeforeBatch = endBatch ? Number(endBatch) : undefined;
 
         if (tableType === 'sequencer-blocks') {
           const address = searchParams.get('address');
@@ -159,8 +159,8 @@ export const TableRoute: React.FC = () => {
                 fetchLimit,
                 startingAfter,
                 endingBefore,
-                startingAfterL2,
-                endingBeforeL2,
+                startingAfterBatch,
+                endingBeforeBatch,
               ),
             ]);
           } else if (config.aggregatedFetcher) {
@@ -240,16 +240,16 @@ export const TableRoute: React.FC = () => {
         const prevCursor =
           originalData.length > 0 ? getCursor(originalData[0]) : undefined;
         // Compute L2 cursors for failed-proposals
-        const getL2 = (item: any) => (item?.l2_block_number !== undefined ? Number(item.l2_block_number) : undefined);
-        const nextCursorL2 =
+        const getBatch = (item: any) => (item?.batch_id !== undefined ? Number(item.batch_id) : undefined);
+        const nextCursorBatch =
           tableType === 'failed-proposals' && originalData.length > 0
             ? ((isFirstFailedProposalsPage && originalData.length > PAGE_LIMIT)
-              ? getL2(originalData[PAGE_LIMIT - 1])
-              : getL2(originalData[originalData.length - 1]))
+              ? getBatch(originalData[PAGE_LIMIT - 1])
+              : getBatch(originalData[originalData.length - 1]))
             : undefined;
-        const prevCursorL2 =
+        const prevCursorBatch =
           tableType === 'failed-proposals' && originalData.length > 0
-            ? getL2(originalData[0])
+            ? getBatch(originalData[0])
             : undefined;
 
         if (config.reverseOrder) {
@@ -292,13 +292,13 @@ export const TableRoute: React.FC = () => {
                 params.set('page', String(page + 1));
                 if (nextCursor !== undefined)
                   params.set('start', String(nextCursor));
-                if (tableType === 'failed-proposals' && nextCursorL2 !== undefined) {
-                  params.set('start_l2', String(nextCursorL2));
+                if (tableType === 'failed-proposals' && nextCursorBatch !== undefined) {
+                  params.set('start_batch', String(nextCursorBatch));
                 } else {
-                  params.delete('start_l2');
+                  params.delete('start_batch');
                 }
                 params.delete('end');
-                params.delete('end_l2');
+                params.delete('end_batch');
                 // Preserve explicit time range bounds for subsequent pages
                 const rangeParam = params.get('range') || '24h';
                 // Only preset ranges are supported here; they will be converted by the API service
@@ -312,18 +312,18 @@ export const TableRoute: React.FC = () => {
                 if (newPage === 0) {
                   // On first page, clear all cursor params
                   params.delete('start');
-                  params.delete('start_l2');
+                  params.delete('start_batch');
                   params.delete('end');
-                  params.delete('end_l2');
+                  params.delete('end_batch');
                 } else {
                   if (prevCursor !== undefined) params.set('end', String(prevCursor));
-                  if (tableType === 'failed-proposals' && prevCursorL2 !== undefined) {
-                    params.set('end_l2', String(prevCursorL2));
+                  if (tableType === 'failed-proposals' && prevCursorBatch !== undefined) {
+                    params.set('end_batch', String(prevCursorBatch));
                   } else {
-                    params.delete('end_l2');
+                    params.delete('end_batch');
                   }
                   params.delete('start');
-                  params.delete('start_l2');
+                  params.delete('start_batch');
                 }
                 // Preserve explicit time range bounds for previous pages as well
                 const rangeParam = params.get('range') || '24h';

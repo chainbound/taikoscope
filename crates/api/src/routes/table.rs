@@ -153,7 +153,7 @@ pub async fn forced_inclusions(
     tag = "taikoscope"
 )]
 /// Get failed proposal events within the requested time range, with cursor pagination.
-/// Results are ordered by insertion time (desc), then L2 block number (desc).
+/// Results are ordered by insertion time (desc), then batch id (desc).
 pub async fn failed_proposals(
     Query(params): Query<PaginatedQuery>,
     State(state): State<ApiState>,
@@ -184,7 +184,7 @@ pub async fn failed_proposals(
     let events: Vec<FailedProposalEvent> = rows
         .into_iter()
         .map(|e| FailedProposalEvent {
-            l2_block_number: e.l2_block_number,
+            batch_id: e.batch_id,
             original_sequencer: format_address(e.original_sequencer),
             proposer: format_address(e.proposer),
             l1_block_number: e.l1_block_number,

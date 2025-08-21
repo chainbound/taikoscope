@@ -277,33 +277,33 @@ export const fetchFailedProposalEvents = async (
   limit = 50,
   startingAfterTs?: number,
   endingBeforeTs?: number,
-  startingAfterL2?: number,
-  endingBeforeL2?: number,
+  startingAfterBatch?: number,
+  endingBeforeBatch?: number,
 ): Promise<RequestResult<FailedProposalEvent[]>> => {
-  // Stable pagination using (timestamp, l2_block_number) cursor.
-  // Server supports combining time window with l2_block_number cursor for tie-breaks.
+  // Stable pagination using (timestamp, batch_id) cursor.
+  // Server supports combining time window with batch_id cursor for tie-breaks.
   const baseParams = new URLSearchParams(timeRangeToQuery(range));
   baseParams.set('limit', String(limit));
 
   if (startingAfterTs !== undefined) {
-    // Include rows at the same timestamp by using lte bound and tie-break on l2_block_number
+    // Include rows at the same timestamp by using lte bound and tie-break on batch_id
     baseParams.set('created[lte]', String(startingAfterTs));
-    if (startingAfterL2 !== undefined) {
-      baseParams.set('starting_after', String(startingAfterL2));
+    if (startingAfterBatch !== undefined) {
+      baseParams.set('starting_after', String(startingAfterBatch));
     }
   } else if (endingBeforeTs !== undefined) {
     // For previous page, move lower bound just before the first row's timestamp (ts-1)
     const gt = Math.max(0, endingBeforeTs - 1);
     baseParams.set('created[gt]', String(gt));
-    if (endingBeforeL2 !== undefined) {
-      baseParams.set('ending_before', String(endingBeforeL2));
+    if (endingBeforeBatch !== undefined) {
+      baseParams.set('ending_before', String(endingBeforeBatch));
     }
   }
 
   const url = `${API_BASE}/failed-proposals?${baseParams.toString()}`;
   const res = await fetchJson<{
     events: {
-      l2_block_number: number;
+      batch_id: number;
       original_sequencer: string;
       proposer: string;
       l1_block_number: number;
@@ -313,7 +313,7 @@ export const fetchFailedProposalEvents = async (
   return {
     data: res.data?.events
       ? res.data.events.map((e) => ({
-        l2_block_number: e.l2_block_number,
+        batch_id: e.batch_id,
         original_sequencer: e.original_sequencer,
         proposer: e.proposer,
         l1_block_number: e.l1_block_number,

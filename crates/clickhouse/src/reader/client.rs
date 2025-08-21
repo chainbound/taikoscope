@@ -546,7 +546,7 @@ impl ClickhouseReader {
     ) -> Result<Vec<FailedProposalRow>> {
         #[derive(Row, Deserialize)]
         struct RawRow {
-            l2_block_number: u64,
+            batch_id: u64,
             original_sequencer: AddressBytes,
             proposer: AddressBytes,
             l1_block_number: u64,
@@ -556,13 +556,12 @@ impl ClickhouseReader {
         let rf = self.reorg_filter("h");
         let (addr_arr, name_arr) = crate::mapping::transform_arrays_sql();
         let query = format!(
-            "SELECT h.l2_block_number, h.sequencer AS original_sequencer, \
+            "SELECT b.batch_id, h.sequencer AS original_sequencer, \
                     b.proposer_addr AS proposer, b.l1_block_number, \
                     toUInt64(toUnixTimestamp64Milli(b.inserted_at)) AS ts \
-             FROM {db}.l2_head_events h \
-             INNER JOIN (SELECT DISTINCT batch_id, l2_block_number FROM {db}.batch_blocks) bb \
-               ON h.l2_block_number = bb.l2_block_number \
-             INNER JOIN {db}.batches b ON bb.batch_id = b.batch_id \
+             FROM {db}.batches b \
+             INNER JOIN {db}.l2_head_events h \
+               ON h.l2_block_number = b.last_l2_block_number \
              WHERE b.inserted_at > toDateTime64({since}, 3) \
                AND {rf} \
                AND transform(lower(concat('0x', hex(h.sequencer))), {addr_arr}, {name_arr}, lower(concat('0x', hex(h.sequencer)))) \
@@ -581,7 +580,7 @@ impl ClickhouseReader {
             .filter_map(|r| {
                 let ts = Utc.timestamp_millis_opt(r.ts as i64).single()?;
                 Some(FailedProposalRow {
-                    l2_block_number: r.l2_block_number,
+                    batch_id: r.batch_id,
                     original_sequencer: r.original_sequencer,
                     proposer: r.proposer,
                     l1_block_number: r.l1_block_number,
@@ -599,7 +598,7 @@ impl ClickhouseReader {
     ) -> Result<Vec<FailedProposalRow>> {
         #[derive(Row, Deserialize)]
         struct RawRow {
-            l2_block_number: u64,
+            batch_id: u64,
             original_sequencer: AddressBytes,
             proposer: AddressBytes,
             l1_block_number: u64,
@@ -609,13 +608,12 @@ impl ClickhouseReader {
         let rf = self.reorg_filter("h");
         let (addr_arr, name_arr) = crate::mapping::transform_arrays_sql();
         let query = format!(
-            "SELECT h.l2_block_number, h.sequencer AS original_sequencer, \
+            "SELECT b.batch_id, h.sequencer AS original_sequencer, \
                     b.proposer_addr AS proposer, b.l1_block_number, \
                     toUInt64(toUnixTimestamp64Milli(b.inserted_at)) AS ts \
-             FROM {db}.l2_head_events h \
-             INNER JOIN (SELECT DISTINCT batch_id, l2_block_number FROM {db}.batch_blocks) bb \
-               ON h.l2_block_number = bb.l2_block_number \
-             INNER JOIN {db}.batches b ON bb.batch_id = b.batch_id \
+             FROM {db}.batches b \
+             INNER JOIN {db}.l2_head_events h \
+               ON h.l2_block_number = b.last_l2_block_number \
              WHERE b.inserted_at > toDateTime64({since}, 3) \
                AND b.inserted_at <= toDateTime64({until}, 3) \
                AND {rf} \
@@ -636,7 +634,7 @@ impl ClickhouseReader {
             .filter_map(|r| {
                 let ts = Utc.timestamp_millis_opt(r.ts as i64).single()?;
                 Some(FailedProposalRow {
-                    l2_block_number: r.l2_block_number,
+                    batch_id: r.batch_id,
                     original_sequencer: r.original_sequencer,
                     proposer: r.proposer,
                     l1_block_number: r.l1_block_number,
@@ -658,7 +656,7 @@ impl ClickhouseReader {
     ) -> Result<Vec<FailedProposalRow>> {
         #[derive(Row, Deserialize)]
         struct RawRow {
-            l2_block_number: u64,
+            batch_id: u64,
             original_sequencer: AddressBytes,
             proposer: AddressBytes,
             l1_block_number: u64,
@@ -668,13 +666,12 @@ impl ClickhouseReader {
         let rf = self.reorg_filter("h");
         let (addr_arr, name_arr) = crate::mapping::transform_arrays_sql();
         let mut query = format!(
-            "SELECT h.l2_block_number, h.sequencer AS original_sequencer, \
+            "SELECT b.batch_id, h.sequencer AS original_sequencer, \
                     b.proposer_addr AS proposer, b.l1_block_number, \
                     toUInt64(toUnixTimestamp64Milli(b.inserted_at)) AS ts \
-             FROM {db}.l2_head_events h \
-             INNER JOIN (SELECT DISTINCT batch_id, l2_block_number FROM {db}.batch_blocks) bb \
-               ON h.l2_block_number = bb.l2_block_number \
-             INNER JOIN {db}.batches b ON bb.batch_id = b.batch_id \
+             FROM {db}.batches b \
+             INNER JOIN {db}.l2_head_events h \
+               ON h.l2_block_number = b.last_l2_block_number \
              WHERE {rf} \
                AND transform(lower(concat('0x', hex(h.sequencer))), {addr_arr}, {name_arr}, lower(concat('0x', hex(h.sequencer)))) \
                    != transform(lower(concat('0x', hex(b.proposer_addr))), {addr_arr}, {name_arr}, lower(concat('0x', hex(b.proposer_addr))))",
@@ -694,7 +691,7 @@ impl ClickhouseReader {
                 query.push_str(&format!(
                     " AND b.inserted_at > toDateTime64({since}, 3) \
                        AND (b.inserted_at < toDateTime64({until}, 3) \
-                            OR (b.inserted_at = toDateTime64({until}, 3) AND h.l2_block_number < {start}))",
+                            OR (b.inserted_at = toDateTime64({until}, 3) AND b.batch_id < {start}))",
                     since = since_sec,
                     until = until_sec,
                     start = start,
@@ -706,7 +703,7 @@ impl ClickhouseReader {
                 query.push_str(&format!(
                     " AND b.inserted_at <= toDateTime64({until}, 3) \
                        AND (b.inserted_at > toDateTime64({pivot}, 3) \
-                            OR (b.inserted_at = toDateTime64({pivot}, 3) AND h.l2_block_number > {end}))",
+                            OR (b.inserted_at = toDateTime64({pivot}, 3) AND b.batch_id > {end}))",
                     until = until_sec,
                     pivot = pivot,
                     end = end,
@@ -721,7 +718,7 @@ impl ClickhouseReader {
             }
         }
 
-        query.push_str(" ORDER BY b.inserted_at DESC, h.l2_block_number DESC");
+        query.push_str(" ORDER BY b.inserted_at DESC, b.batch_id DESC");
         query.push_str(&format!(" LIMIT {}", limit));
 
         let rows =
@@ -731,7 +728,7 @@ impl ClickhouseReader {
             .filter_map(|r| {
                 let ts = Utc.timestamp_millis_opt(r.ts as i64).single()?;
                 Some(FailedProposalRow {
-                    l2_block_number: r.l2_block_number,
+                    batch_id: r.batch_id,
                     original_sequencer: r.original_sequencer,
                     proposer: r.proposer,
                     l1_block_number: r.l1_block_number,

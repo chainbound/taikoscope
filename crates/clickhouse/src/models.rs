@@ -195,12 +195,12 @@ pub struct SlashingEventRow {
     pub validator_addr: AddressBytes,
 }
 
-/// Row representing a failed proposal where a block was posted by a different sequencer
+/// Row representing a failed proposal where a batch was posted by a different sequencer
 #[derive(Debug, Row, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
 pub struct FailedProposalRow {
-    /// L2 block number originally produced
-    pub l2_block_number: u64,
-    /// Address of the sequencer that produced the block
+    /// Batch ID that was posted
+    pub batch_id: u64,
+    /// Address of the sequencer that produced the (last) block in the batch
     pub original_sequencer: AddressBytes,
     /// Address of the sequencer that posted the batch on L1
     pub proposer: AddressBytes,
