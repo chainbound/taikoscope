@@ -194,6 +194,11 @@ export const TableRoute: React.FC = () => {
             const ts = (item as { timestamp?: number }).timestamp;
             return ts !== undefined ? ts : undefined;
           }
+          // For failed-proposals, also paginate by timestamp to keep within the same time window
+          if (tableType === 'failed-proposals') {
+            const ts = (item as { timestamp?: number }).timestamp;
+            return ts !== undefined ? ts : undefined;
+          }
           // Otherwise fall back to the numeric value or block/batch fields
           // Reorgs use l2_block_number internally for pagination, which maps to
           // the "to_block_number" field in the UI payload
