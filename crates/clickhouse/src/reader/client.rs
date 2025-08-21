@@ -695,7 +695,7 @@ impl ClickhouseReader {
             query.push_str(&format!(" AND h.l2_block_number > {}", end));
         }
 
-        query.push_str(" ORDER BY b.inserted_at DESC");
+        query.push_str(" ORDER BY b.inserted_at DESC, h.l2_block_number DESC");
         query.push_str(&format!(" LIMIT {}", limit));
 
         let rows =

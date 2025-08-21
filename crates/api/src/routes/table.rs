@@ -153,7 +153,7 @@ pub async fn forced_inclusions(
     tag = "taikoscope"
 )]
 /// Get failed proposal events within the requested time range, with cursor pagination.
-/// Results are ordered by insertion time in descending order.
+/// Results are ordered by insertion time (desc), then L2 block number (desc).
 pub async fn failed_proposals(
     Query(params): Query<PaginatedQuery>,
     State(state): State<ApiState>,
