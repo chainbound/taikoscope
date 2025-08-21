@@ -554,6 +554,7 @@ impl ClickhouseReader {
         }
 
         let rf = self.reorg_filter("h");
+        let (addr_arr, name_arr) = crate::mapping::transform_arrays_sql();
         let query = format!(
             "SELECT h.l2_block_number, h.sequencer AS original_sequencer, \
                     b.proposer_addr AS proposer, b.l1_block_number, \
@@ -564,11 +565,14 @@ impl ClickhouseReader {
              INNER JOIN {db}.batches b ON bb.batch_id = b.batch_id \
              WHERE b.inserted_at > toDateTime64({since}, 3) \
                AND {rf} \
-               AND h.sequencer != b.proposer_addr \
+               AND transform(lower(concat('0x', hex(h.sequencer))), {addr_arr}, {name_arr}, lower(concat('0x', hex(h.sequencer)))) \
+                   != transform(lower(concat('0x', hex(b.proposer_addr))), {addr_arr}, {name_arr}, lower(concat('0x', hex(b.proposer_addr)))) \
              ORDER BY b.inserted_at ASC",
             db = self.db_name,
             since = since.timestamp_millis() as f64 / 1000.0,
             rf = rf,
+            addr_arr = addr_arr,
+            name_arr = name_arr,
         );
         let rows =
             self.execute::<RawRow>(&query).await.context("fetching failed proposals failed")?;
@@ -603,6 +607,7 @@ impl ClickhouseReader {
         }
 
         let rf = self.reorg_filter("h");
+        let (addr_arr, name_arr) = crate::mapping::transform_arrays_sql();
         let query = format!(
             "SELECT h.l2_block_number, h.sequencer AS original_sequencer, \
                     b.proposer_addr AS proposer, b.l1_block_number, \
@@ -614,13 +619,85 @@ impl ClickhouseReader {
              WHERE b.inserted_at > toDateTime64({since}, 3) \
                AND b.inserted_at <= toDateTime64({until}, 3) \
                AND {rf} \
-               AND h.sequencer != b.proposer_addr \
+               AND transform(lower(concat('0x', hex(h.sequencer))), {addr_arr}, {name_arr}, lower(concat('0x', hex(h.sequencer)))) \
+                   != transform(lower(concat('0x', hex(b.proposer_addr))), {addr_arr}, {name_arr}, lower(concat('0x', hex(b.proposer_addr)))) \
              ORDER BY b.inserted_at ASC",
             db = self.db_name,
             since = since.timestamp_millis() as f64 / 1000.0,
             until = until.timestamp_millis() as f64 / 1000.0,
             rf = rf,
+            addr_arr = addr_arr,
+            name_arr = name_arr,
         );
+        let rows =
+            self.execute::<RawRow>(&query).await.context("fetching failed proposals failed")?;
+        Ok(rows
+            .into_iter()
+            .filter_map(|r| {
+                let ts = Utc.timestamp_millis_opt(r.ts as i64).single()?;
+                Some(FailedProposalRow {
+                    l2_block_number: r.l2_block_number,
+                    original_sequencer: r.original_sequencer,
+                    proposer: r.proposer,
+                    l1_block_number: r.l1_block_number,
+                    inserted_at: ts,
+                })
+            })
+            .collect())
+    }
+
+    /// Get failed proposal events since the given time with cursor-based pagination.
+    /// Results are returned in descending order by time recorded.
+    pub async fn get_failed_proposals_paginated(
+        &self,
+        since: DateTime<Utc>,
+        until: DateTime<Utc>,
+        limit: u64,
+        starting_after: Option<u64>,
+        ending_before: Option<u64>,
+    ) -> Result<Vec<FailedProposalRow>> {
+        #[derive(Row, Deserialize)]
+        struct RawRow {
+            l2_block_number: u64,
+            original_sequencer: AddressBytes,
+            proposer: AddressBytes,
+            l1_block_number: u64,
+            ts: u64,
+        }
+
+        let rf = self.reorg_filter("h");
+        let (addr_arr, name_arr) = crate::mapping::transform_arrays_sql();
+        let mut query = format!(
+            "SELECT h.l2_block_number, h.sequencer AS original_sequencer, \
+                    b.proposer_addr AS proposer, b.l1_block_number, \
+                    toUInt64(toUnixTimestamp64Milli(b.inserted_at)) AS ts \
+             FROM {db}.l2_head_events h \
+             INNER JOIN (SELECT DISTINCT batch_id, l2_block_number FROM {db}.batch_blocks) bb \
+               ON h.l2_block_number = bb.l2_block_number \
+             INNER JOIN {db}.batches b ON bb.batch_id = b.batch_id \
+             WHERE b.inserted_at > toDateTime64({since}, 3) \
+               AND b.inserted_at <= toDateTime64({until}, 3) \
+               AND {rf} \
+               AND transform(lower(concat('0x', hex(h.sequencer))), {addr_arr}, {name_arr}, lower(concat('0x', hex(h.sequencer)))) \
+                   != transform(lower(concat('0x', hex(b.proposer_addr))), {addr_arr}, {name_arr}, lower(concat('0x', hex(b.proposer_addr))))",
+            db = self.db_name,
+            since = since.timestamp_millis() as f64 / 1000.0,
+            until = until.timestamp_millis() as f64 / 1000.0,
+            rf = rf,
+            addr_arr = addr_arr,
+            name_arr = name_arr,
+        );
+
+        if let Some(start) = starting_after {
+            query.push_str(&format!(" AND h.l2_block_number < {}", start));
+        }
+        if let Some(end) = ending_before {
+            query.push_str(&format!(" AND h.l2_block_number > {}", end));
+        }
+
+        query.push_str(" ORDER BY b.inserted_at DESC");
+        query.push_str(&format!(" LIMIT {}", limit));
+
         let rows =
             self.execute::<RawRow>(&query).await.context("fetching failed proposals failed")?;
         Ok(rows

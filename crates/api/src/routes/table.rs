@@ -144,7 +144,7 @@ pub async fn forced_inclusions(
     get,
     path = "/failed-proposals",
     params(
-        RangeQuery
+        PaginatedQuery
     ),
     responses(
         (status = 200, description = "Failed proposal events", body = FailedProposalEventsResponse),
@@ -152,21 +152,37 @@ pub async fn forced_inclusions(
     ),
     tag = "taikoscope"
 )]
-/// Get failed proposal events within the requested time range.
+/// Get failed proposal events within the requested time range, with cursor pagination.
+/// Results are ordered by insertion time in descending order.
 pub async fn failed_proposals(
-    Query(params): Query<RangeQuery>,
+    Query(params): Query<PaginatedQuery>,
     State(state): State<ApiState>,
 ) -> Result<Json<FailedProposalEventsResponse>, ErrorResponse> {
-    validate_time_range(&params.time_range)?;
-    let has_time_range = has_time_range_params(&params.time_range);
-    validate_range_exclusivity(has_time_range, false)?;
+    validate_time_range(&params.common.time_range)?;
+    let limit = validate_pagination(
+        params.starting_after.as_ref(),
+        params.ending_before.as_ref(),
+        params.limit.as_ref(),
+        MAX_TABLE_LIMIT,
+    )?;
+    let has_time_range = has_time_range_params(&params.common.time_range);
+    let has_slot_range = params.starting_after.is_some() || params.ending_before.is_some();
+    validate_range_exclusivity(has_time_range, has_slot_range)?;
 
-    let (since, until) = resolve_time_range_bounds(&params.time_range);
-    let events = match state.client.get_failed_proposals_range(since, until).await {
-        Ok(rows) => rows,
-        Err(e) => return Err(query_error("failed proposal events", e)),
-    };
-    let events: Vec<FailedProposalEvent> = events
+    let (since, until) = resolve_time_range_bounds(&params.common.time_range);
+    let rows = state
+        .client
+        .get_failed_proposals_paginated(
+            since,
+            until,
+            limit,
+            params.starting_after,
+            params.ending_before,
+        )
+        .await
+        .map_err(|e| query_error("failed proposal events", e))?;
+
+    let events: Vec<FailedProposalEvent> = rows
         .into_iter()
         .map(|e| FailedProposalEvent {
             l2_block_number: e.l2_block_number,

@@ -278,17 +278,23 @@ export const fetchFailedProposalEvents = async (
   startingAfter?: number,
   endingBefore?: number,
 ): Promise<RequestResult<FailedProposalEvent[]>> => {
-  let url = `${API_BASE}/failed-proposals?`;
-  if (startingAfter === undefined && endingBefore === undefined) {
-    url += `${timeRangeToQuery(range)}&limit=${limit}`;
-  } else {
-    url += `${rangeToQuery(range)}&limit=${limit}`;
-  }
+  // Match reorg pagination style: keep explicit time bounds and slide window with gt/lt
+  const baseParams = new URLSearchParams(timeRangeToQuery(range));
+  baseParams.set('limit', String(limit));
+
   if (startingAfter !== undefined) {
-    url += `&starting_after=${startingAfter}`;
+    // Move upper bound down exclusively to avoid duplicates
+    baseParams.delete('created[lte]');
+    baseParams.set('created[lt]', String(startingAfter));
+    baseParams.set('starting_after', String(startingAfter));
   } else if (endingBefore !== undefined) {
-    url += `&ending_before=${endingBefore}`;
+    // Move lower bound up exclusively to avoid duplicates
+    baseParams.delete('created[gt]');
+    baseParams.set('created[gt]', String(endingBefore));
+    baseParams.set('ending_before', String(endingBefore));
   }
+
+  const url = `${API_BASE}/failed-proposals?${baseParams.toString()}`;
   const res = await fetchJson<{
     events: {
       l2_block_number: number;

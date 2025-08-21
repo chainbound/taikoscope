@@ -13,6 +13,8 @@ pub use primitives::headers::{L1Header, L2Header};
 // Re-export core functionality
 /// Type conversions between external types and internal models
 pub mod conversions;
+/// Sequencer/operator mapping sourced from dashboard at build time
+pub mod mapping;
 /// Data models and structures for `ClickHouse` tables
 pub mod models;
 /// Read-only client for API operations
