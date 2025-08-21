@@ -3,7 +3,10 @@ testground/
 .git/
 .github/
 .gitignore
-dashboard/
+# Exclude dashboard build artifacts by default, but keep the operator mapping
+# used by the API build script. This ensures backend and UI stay in sync.
+dashboard/**
+!dashboard/sequencerConfig.ts
 docs/
 tests/
 dev.env
