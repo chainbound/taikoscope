@@ -74,6 +74,10 @@ pub struct BaseMonitor<K> {
     pub reporting_enabled: bool,
     /// Map of active incidents
     pub active_incidents: std::collections::HashMap<K, String>,
+    /// Number of consecutive healthy checks needed before resolving an incident
+    pub healthy_needed: u8,
+    /// Number of consecutive healthy checks seen
+    pub healthy_seen: u8,
 }
 
 impl<K: Clone + Debug + Eq + std::hash::Hash> BaseMonitor<K> {
@@ -92,6 +96,9 @@ impl<K: Clone + Debug + Eq + std::hash::Hash> BaseMonitor<K> {
             // If no component id is configured, treat reporting as disabled (dry-run)
             reporting_enabled: !component_id.is_empty(),
             active_incidents: std::collections::HashMap::new(),
+            // Default to immediate resolution on first healthy check
+            healthy_needed: 1,
+            healthy_seen: 0,
         }
     }
 
@@ -223,6 +230,19 @@ impl<K: Clone + Debug + Eq + std::hash::Hash> BaseMonitor<K> {
     /// Helper method to mark an incident as healthy and potentially resolve it
     pub async fn mark_healthy(&mut self, key: &K) -> Result<bool> {
         if let Some(incident_id) = self.active_incidents.get(key).cloned() {
+            // Increment healthy streak; only resolve once threshold reached
+            self.healthy_seen = self.healthy_seen.saturating_add(1);
+            tracing::debug!(
+                healthy_seen = self.healthy_seen,
+                healthy_needed = self.healthy_needed,
+                key = ?key,
+                "Healthy streak updated"
+            );
+
+            if self.healthy_seen < self.healthy_needed {
+                return Ok(false);
+            }
+
             tracing::info!(
                 incident_id = %incident_id,
                 key = ?key,
@@ -236,6 +256,7 @@ impl<K: Clone + Debug + Eq + std::hash::Hash> BaseMonitor<K> {
                     let payload = self.create_resolve_payload();
                     self.resolve_incident_with_payload(&incident_id, &payload).await?;
                     self.active_incidents.remove(key);
+                    self.healthy_seen = 0;
                     tracing::info!(
                         incident_id = %incident_id,
                         key = ?key,
@@ -251,6 +272,7 @@ impl<K: Clone + Debug + Eq + std::hash::Hash> BaseMonitor<K> {
                         "Incident not found on current page, removing from tracking"
                     );
                     self.active_incidents.remove(key);
+                    self.healthy_seen = 0;
                     return Ok(false);
                 }
                 Err(e) => {
@@ -275,7 +297,10 @@ impl<K: Clone + Debug + Eq + std::hash::Hash> BaseMonitor<K> {
     }
 
     /// Mark the monitor as unhealthy, dropping the healthy counter behavior.
-    pub const fn mark_unhealthy(&mut self) {}
+    pub const fn mark_unhealthy(&mut self) {
+        // Reset any accumulated healthy streak when component is unhealthy
+        self.healthy_seen = 0;
+    }
 }
 
 #[cfg(test)]
