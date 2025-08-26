@@ -565,12 +565,14 @@ pub async fn backfill_l1_blocks(
                     timestamp: block.header.timestamp,
                 };
 
-                if enable_db_writes {
-                    if let Err(e) = writer.as_ref().unwrap().insert_l1_header(&header).await {
-                        error!(block_number = block_number, err = %e, "Failed to backfill L1 header");
-                        continue;
-                    }
-                } else {
+                if enable_db_writes &&
+                    let Some(w) = writer &&
+                    let Err(e) = w.insert_l1_header(&header).await
+                {
+                    error!(block_number = block_number, err = %e, "Failed to backfill L1 header");
+                    continue;
+                }
+                if !enable_db_writes {
                     info!(
                         block_number = block_number,
                         hash = %header.hash,
@@ -923,12 +925,13 @@ pub async fn backfill_l2_blocks(
                     sequencer: AddressBytes(header.beneficiary.into_array()),
                 };
 
-                if enable_db_writes {
-                    if let Err(e) = writer.as_ref().unwrap().insert_l2_header(&event).await {
-                        error!(block_number = block_number, err = %e, "Failed to backfill L2 block");
-                    } else {
-                        info!(block_number = block_number, "Successfully backfilled L2 block");
-                    }
+                if enable_db_writes &&
+                    let Some(w) = writer &&
+                    let Err(e) = w.insert_l2_header(&event).await
+                {
+                    error!(block_number = block_number, err = %e, "Failed to backfill L2 block");
+                } else if enable_db_writes && let Some(_w) = writer {
+                    info!(block_number = block_number, "Successfully backfilled L2 block");
                 } else {
                     info!(
                         block_number = block_number,
