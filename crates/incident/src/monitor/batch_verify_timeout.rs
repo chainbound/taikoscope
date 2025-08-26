@@ -123,7 +123,7 @@ impl BatchVerifyTimeoutMonitor {
                 self.base.resolve_incident_with_payload(&incident_id, &payload).await?;
                 self.base.active_incidents.remove(&batch_id);
             } else {
-                self.base.mark_unhealthy();
+                // still down, nothing else to do between ticks
             }
         }
 

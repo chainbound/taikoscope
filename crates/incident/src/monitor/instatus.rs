@@ -52,7 +52,7 @@ impl InstatusMonitor {
                 self.base.active_incidents.insert((), id);
             }
             // still down
-            (true, false) => self.base.mark_unhealthy(),
+            (true, false) => {}
             // up again
             (true, true) => {
                 if self.base.mark_healthy(&()).await? {

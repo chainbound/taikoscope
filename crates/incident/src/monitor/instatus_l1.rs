@@ -71,7 +71,7 @@ impl InstatusL1Monitor {
                 self.base.active_incidents.insert((), id);
             }
             // still down
-            (true, false, _) => self.base.mark_unhealthy(),
+            (true, false, _) => {}
             // up again: close when stable
             (true, true, _) => {
                 if self.base.mark_healthy(&()).await? {
