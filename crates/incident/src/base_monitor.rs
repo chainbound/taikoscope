@@ -102,58 +102,22 @@ impl<K: Clone + Debug + Eq + std::hash::Hash> BaseMonitor<K> {
         message: String,
         started: DateTime<Utc>,
     ) -> NewIncident {
-        NewIncident {
+        crate::helpers::build_incident_payload(
+            &self.component_id,
             name,
             message,
-            status: IncidentState::Investigating,
-            components: vec![self.component_id.clone()],
-            statuses: vec![ComponentStatus::major_outage(&self.component_id)],
-            notify: true,
-            started: Some(started.to_rfc3339()),
-        }
+            started,
+        )
     }
 
     /// Create a standard resolve payload
     pub fn create_resolve_payload(&self) -> ResolveIncident {
-        ResolveIncident {
-            status: IncidentState::Resolved,
-            components: vec![self.component_id.clone()],
-            statuses: vec![ComponentStatus::operational(&self.component_id)],
-            notify: true,
-            started: Some(Utc::now().to_rfc3339()),
-        }
+        crate::helpers::build_resolve_payload(&self.component_id)
     }
 
     /// Helper to create an incident
     pub async fn create_incident_with_payload(&self, payload: &NewIncident) -> Result<String> {
-        if self.reporting_enabled {
-            let id =
-                crate::retry::retry_op(|| async { self.client.create_incident(payload).await })
-                    .await?;
-
-            info!(
-                incident_id = %id,
-                name = %payload.name,
-                message = %payload.message,
-                status = ?payload.status,
-                components = ?payload.components,
-                "Created incident"
-            );
-
-            Ok(id)
-        } else {
-            // Dry-run mode: only log that an incident would have been created
-            let synthetic_id = format!("dryrun:{}", chrono::Utc::now().timestamp_millis());
-            tracing::warn!(
-                incident_id = %synthetic_id,
-                name = %payload.name,
-                message = %payload.message,
-                status = ?payload.status,
-                components = ?payload.components,
-                "Instatus monitors disabled - would create incident"
-            );
-            Ok(synthetic_id)
-        }
+        crate::helpers::create_with_retry(&self.client, self.reporting_enabled, payload).await
     }
 
     /// Helper to resolve an incident
@@ -162,26 +126,8 @@ impl<K: Clone + Debug + Eq + std::hash::Hash> BaseMonitor<K> {
         id: &str,
         payload: &ResolveIncident,
     ) -> Result<()> {
-        debug!(%id, "Closing incident");
-
-        if !self.reporting_enabled {
-            // Dry-run mode: log that we would resolve
-            info!(%id, components = ?payload.components, "Instatus monitors disabled - would resolve incident");
-            return Ok(());
-        }
-
-        match crate::retry::retry_op(|| async { self.client.resolve_incident(id, payload).await })
+        crate::helpers::resolve_with_retry(&self.client, self.reporting_enabled, id, payload)
             .await
-        {
-            Ok(_) => {
-                info!(%id, "Successfully resolved incident");
-                Ok(())
-            }
-            Err(e) => {
-                error!(%id, error = %e, "Failed to resolve incident");
-                Err(e)
-            }
-        }
     }
 
     /// Helper method to check for existing open incidents for this component

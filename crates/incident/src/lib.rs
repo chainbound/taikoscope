@@ -9,6 +9,8 @@ pub mod client;
 pub mod monitor;
 /// Retry helpers for HTTP operations
 pub mod retry;
+/// Shared helpers for payload building and retrying operations
+pub mod helpers;
 
 // Re-export monitors for easy access
 pub use base_monitor::Monitor;

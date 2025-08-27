@@ -1,7 +1,4 @@
-use crate::{
-    client::Client as IncidentClient,
-    monitor::{ComponentStatus, IncidentState, NewIncident, ResolveIncident},
-};
+use crate::{client::Client as IncidentClient, helpers};
 use chrono::Utc;
 use network::public_rpc_monitor::check_syncing;
 use reqwest::{Client, Url};
@@ -86,11 +83,7 @@ async fn check_once(
     }
 }
 
-async fn open_if_needed(
-    client: &IncidentClient,
-    component_id: &str,
-    incident_id: &mut Option<String>,
-) {
+async fn open_if_needed(client: &IncidentClient, component_id: &str, incident_id: &mut Option<String>) {
     if incident_id.is_some() {
         return;
     }
@@ -100,16 +93,13 @@ async fn open_if_needed(
             *incident_id = Some(id);
         }
         Ok(None) => {
-            let body = NewIncident {
-                name: "Public RPC Unavailable".to_owned(),
-                message: "Public RPC endpoint is unreachable or syncing".to_owned(),
-                status: IncidentState::Investigating,
-                components: vec![component_id.to_owned()],
-                statuses: vec![ComponentStatus::major_outage(component_id)],
-                notify: true,
-                started: Some(Utc::now().to_rfc3339()),
-            };
-            match client.create_incident(&body).await {
+            let body = helpers::build_incident_payload(
+                component_id,
+                "Public RPC Unavailable".to_owned(),
+                "Public RPC endpoint is unreachable or syncing".to_owned(),
+                Utc::now(),
+            );
+            match helpers::create_with_retry(client, true, &body).await {
                 Ok(id) => {
                     info!(incident_id = %id, "created public rpc incident");
                     *incident_id = Some(id);
@@ -122,14 +112,8 @@ async fn open_if_needed(
 }
 
 async fn resolve(client: &IncidentClient, component_id: &str, id: &str) {
-    let body = ResolveIncident {
-        status: IncidentState::Resolved,
-        components: vec![component_id.to_owned()],
-        statuses: vec![ComponentStatus::operational(component_id)],
-        notify: true,
-        started: Some(Utc::now().to_rfc3339()),
-    };
-    if let Err(e) = client.resolve_incident(id, &body).await {
+    let body = helpers::build_resolve_payload(component_id);
+    if let Err(e) = helpers::resolve_with_retry(client, true, id, &body).await {
         error!(error = %e, incident_id = %id, "failed to resolve incident");
     }
 }
