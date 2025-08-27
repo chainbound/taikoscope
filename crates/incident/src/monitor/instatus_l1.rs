@@ -70,8 +70,6 @@ impl InstatusL1Monitor {
                 let id = self.open(last_batch).await?;
                 self.base.active_incidents.insert((), id);
             }
-            // still down
-            (true, false, _) => {}
             // up again: close when stable
             (true, true, _) => {
                 if self.base.mark_healthy(&()).await? {

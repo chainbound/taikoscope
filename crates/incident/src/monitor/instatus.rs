@@ -51,8 +51,6 @@ impl InstatusMonitor {
                 let id = self.open(last).await?;
                 self.base.active_incidents.insert((), id);
             }
-            // still down
-            (true, false) => {}
             // up again
             (true, true) => {
                 if self.base.mark_healthy(&()).await? {

@@ -1,6 +1,6 @@
 use crate::{
     client::Client as IncidentClient,
-    monitor::{ComponentStatus, IncidentState, NewIncident, ResolveIncident},
+    monitor::{NewIncident, ResolveIncident},
 };
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
@@ -8,7 +8,7 @@ use clickhouse::ClickhouseReader;
 use eyre::Result;
 use std::fmt::Debug;
 use tokio::task::JoinHandle;
-use tracing::{debug, error, info};
+use tracing::{error, info};
 
 /// Monitor trait for different incident types
 #[async_trait]
@@ -218,7 +218,10 @@ impl<K: Clone + Debug + Eq + std::hash::Hash> BaseMonitor<K> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::client::Client as IncidentClient;
+    use crate::{
+        client::Client as IncidentClient,
+        monitor::{ComponentStatus, IncidentState},
+    };
     use chrono::Utc;
     use clickhouse::ClickhouseReader as ClickhouseInternalClient;
     use mockito::{Matcher, Server, ServerGuard};
