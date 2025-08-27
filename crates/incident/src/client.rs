@@ -1,7 +1,7 @@
 use eyre::Result;
 use reqwest::{Client as HttpClient, StatusCode, Url};
 use serde::Deserialize;
-use tracing::{debug, error, warn};
+use tracing::{debug, error};
 
 use crate::monitor::{NewIncident, ResolveIncident};
 
@@ -72,14 +72,6 @@ impl Client {
             "Creating incident"
         );
         let response = self.auth(self.http.post(url.clone())).json(body).send().await?;
-
-        let status = response.status();
-        if status == StatusCode::TOO_MANY_REQUESTS {
-            let body = response.text().await.unwrap_or_default();
-            warn!(status = %status, url = %url, body = %body, "Received 429 from Instatus");
-            return Err(eyre::eyre!("HTTP 429: {}", body));
-        }
-
         let resp = response.error_for_status()?;
         Ok(resp.json::<Resp>().await?.id)
     }
@@ -96,11 +88,6 @@ impl Client {
         let response = self.auth(self.http.put(url.clone())).json(body).send().await?;
 
         let status = response.status();
-        if status == StatusCode::TOO_MANY_REQUESTS {
-            let body_text = response.text().await.unwrap_or_default();
-            warn!(status = %status, url = %url, body = %body_text, "Received 429 from Instatus");
-            return Err(eyre::eyre!("HTTP 429: {}", body_text));
-        }
 
         if !status.is_success() {
             let response_text = match response.text().await {
@@ -139,11 +126,6 @@ impl Client {
         let response = self.auth(self.http.get(url.clone())).send().await?;
 
         let status = response.status();
-        if status == StatusCode::TOO_MANY_REQUESTS {
-            let body = response.text().await.unwrap_or_default();
-            tracing::warn!(status = %status, url = %url, body = %body, "Received 429 from Instatus");
-            return Err(eyre::eyre!("HTTP 429: {}", body));
-        }
 
         if !status.is_success() {
             let body = response.text().await.unwrap_or_default();
@@ -178,11 +160,6 @@ impl Client {
         let response = self.auth(self.http.get(url.clone())).send().await?;
 
         let status = response.status();
-        if status == StatusCode::TOO_MANY_REQUESTS {
-            let body = response.text().await.unwrap_or_default();
-            tracing::warn!(status = %status, url = %url, body = %body, "Received 429 from Instatus");
-            return Err(eyre::eyre!("HTTP 429: {}", body));
-        }
 
         match status {
             StatusCode::OK => Ok(true),

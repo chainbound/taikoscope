@@ -1,5 +1,5 @@
 use eyre::Report;
-pub use network::http_retry::retry_op;
+use network::retries::retry_with_backoff_if;
 use reqwest::{Error as ReqwestError, StatusCode};
 
 /// Determine if an error returned by reqwest/eyre is retryable for the Instatus API.
@@ -26,6 +26,16 @@ pub fn is_retryable(err: &Report) -> bool {
         }
     }
     false
+}
+
+/// Retry the provided async operation with exponential backoff if the returned
+/// error is considered retryable by this crate's policy (`is_retryable`).
+pub async fn retry_op<F, Fut, T>(op: F) -> eyre::Result<T>
+where
+    F: FnMut() -> Fut,
+    Fut: std::future::Future<Output = eyre::Result<T>>,
+{
+    retry_with_backoff_if(op, is_retryable).await
 }
 
 #[cfg(test)]
