@@ -7,20 +7,28 @@ set dotenv-load := true
 default:
     @just --list --unsorted
 
-# start the Taikoscope binary for local development
+# start the Taikoscope binary for local development (optimized for fast compilation)
 dev:
-    ENV_FILE=hekla.env ENABLE_DB_WRITES=false ENABLE_GAP_DETECTION=false INSTATUS_MONITORS_ENABLED=false cargo run --bin taikoscope
+    ENV_FILE=hekla.env ENABLE_DB_WRITES=false ENABLE_GAP_DETECTION=false INSTATUS_MONITORS_ENABLED=false cargo run --profile dev-fast --bin taikoscope
 
-# start the API server for local development
+# start the API server for local development (optimized for fast compilation)
 dev-api:
-    ENV_FILE=hekla.env cargo run --bin api-server
+    ENV_FILE=hekla.env cargo run --profile dev-fast --bin api-server
 
-# start the API server for mainnet
+# start the API server for mainnet (optimized for fast compilation)
 mainnet-api:
-    ENV_FILE=mainnet.env cargo run --bin api-server
+    ENV_FILE=mainnet.env cargo run --profile dev-fast --bin api-server
+
+# Check code (fastest compile check without codegen)
+check:
+    cargo check --workspace --all-targets
+
+# Build workspace (optimized for faster compilation)
+build:
+    cargo build --profile dev-fast --workspace
 
 
-# run all recipes required to pass CI workflows
+# run all recipes required to pass CI workflows (optimized for faster compilation)
 ci:
     @just fmt lint lint-dashboard test check-dashboard test-dashboard
 
@@ -55,7 +63,7 @@ ci-smart:
         echo "No changes detected, skipping CI checks..."
     fi
 
-# run CI checks for Rust code only
+# run CI checks for Rust code only (optimized for faster compilation)
 ci-rust:
     @just fmt lint test
 
@@ -63,13 +71,13 @@ ci-rust:
 ci-dashboard:
     @just lint-dashboard check-dashboard test-dashboard
 
-# run tests
+# run tests (optimized for faster compilation during development)
 test:
-    cargo nextest run --workspace --all-targets
+    cargo nextest run --cargo-profile dev-fast --workspace --all-targets
 
-# run collection of clippy lints
+# run collection of clippy lints (optimized for faster compilation)
 lint:
-    RUSTFLAGS="-D warnings" cargo clippy --examples --tests --benches --all-features --locked
+    RUSTFLAGS="-D warnings" cargo clippy --profile dev-fast --examples --tests --benches --all-features --locked
 
 # format the code using the nightly rustfmt (as we use some nightly lints)
 fmt:
