@@ -83,7 +83,11 @@ async fn check_once(
     }
 }
 
-async fn open_if_needed(client: &IncidentClient, component_id: &str, incident_id: &mut Option<String>) {
+async fn open_if_needed(
+    client: &IncidentClient,
+    component_id: &str,
+    incident_id: &mut Option<String>,
+) {
     if incident_id.is_some() {
         return;
     }

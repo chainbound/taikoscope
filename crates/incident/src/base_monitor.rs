@@ -102,12 +102,7 @@ impl<K: Clone + Debug + Eq + std::hash::Hash> BaseMonitor<K> {
         message: String,
         started: DateTime<Utc>,
     ) -> NewIncident {
-        crate::helpers::build_incident_payload(
-            &self.component_id,
-            name,
-            message,
-            started,
-        )
+        crate::helpers::build_incident_payload(&self.component_id, name, message, started)
     }
 
     /// Create a standard resolve payload
@@ -126,8 +121,7 @@ impl<K: Clone + Debug + Eq + std::hash::Hash> BaseMonitor<K> {
         id: &str,
         payload: &ResolveIncident,
     ) -> Result<()> {
-        crate::helpers::resolve_with_retry(&self.client, self.reporting_enabled, id, payload)
-            .await
+        crate::helpers::resolve_with_retry(&self.client, self.reporting_enabled, id, payload).await
     }
 
     /// Helper method to check for existing open incidents for this component
