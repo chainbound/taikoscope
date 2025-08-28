@@ -25,14 +25,6 @@ pub async fn process_reorg_detection(
     *last_l2_header = Some((header.number, header.beneficiary));
 
     if let Some((depth, orphaned_hash)) = reorg_result {
-        warn!(
-            old_head = old_head,
-            new_head = header.number,
-            depth = depth,
-            orphaned_hash = ?orphaned_hash,
-            "L2 reorg detected"
-        );
-
         // Handle orphaned hash from one-block reorg
         if let Some(hash) = orphaned_hash {
             insert_orphaned_hash(writer, hash, header.number).await;
@@ -50,16 +42,16 @@ pub async fn process_reorg_detection(
             .await;
         }
 
-        // Check if we need to process L2 reorg with previous sequencer
-        if let Some((prev_block_number, prev_sequencer)) = *last_l2_header &&
-            prev_sequencer != header.beneficiary
-        {
+        // Check if we need to process L2 reorg
+        if let Some((prev_block_number, prev_sequencer)) = *last_l2_header {
             info!(
                 prev_block = prev_block_number,
                 new_block = header.number,
                 prev_sequencer = ?prev_sequencer,
                 new_sequencer = ?header.beneficiary,
-                "L2 reorg with sequencer change detected"
+                depth = depth,
+                orphaned_hash = ?orphaned_hash,
+                "L2 reorg detected"
             );
 
             // Insert L2 reorg record
