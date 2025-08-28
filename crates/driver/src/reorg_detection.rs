@@ -42,7 +42,7 @@ pub async fn process_reorg_detection(
             .await;
         }
 
-        // Check if we need to process L2 reorg
+        // Process L2 reorg
         if let Some((prev_block_number, prev_sequencer)) = *last_l2_header {
             info!(
                 prev_block = prev_block_number,
