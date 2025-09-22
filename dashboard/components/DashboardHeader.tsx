@@ -8,7 +8,7 @@ import { DEFAULT_VIEW } from '../constants';
 import { useErrorHandler } from '../hooks/useErrorHandler';
 import { useSearchParams, useLocation } from 'react-router-dom';
 import { showToast } from '../utils/toast';
-import { DayPicker } from 'react-day-picker';
+import { DayPicker, DateRange } from 'react-day-picker';
 import * as Popover from '@radix-ui/react-popover';
 import { TabList, Tab } from './ui/Tabs';
 import { Select } from './ui/Select';
@@ -29,6 +29,8 @@ const NETWORK_NAME =
   rawNetworkName.charAt(0).toUpperCase() +
   rawNetworkName.slice(1).toLowerCase();
 const DASHBOARD_TITLE = `Taikoscope ${NETWORK_NAME}`;
+const MAX_CUSTOM_DAYS = 7;
+const CUSTOM_RANGE_LIMIT_MESSAGE = `Custom time range is limited to ${MAX_CUSTOM_DAYS} days.`;
 
 interface DashboardHeaderProps {
   timeRange: TimeRange;
@@ -138,14 +140,23 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
   ];
   const isCustom = /^\d+-\d+$/.test(currentTimeRange);
   const [open, setOpen] = React.useState(false);
-  const [date, setDate] = React.useState<Date | undefined>(() => {
-    if (isCustom) {
-      const [s, e] = currentTimeRange
-        .split('-')
-        .map((t) => new Date(Number(t)));
-      if (s.toDateString() === e.toDateString()) return s;
+  const [dateRange, setDateRange] = React.useState<DateRange | undefined>(() => {
+    if (!isCustom) return undefined;
+    const [startMs, endMs] = currentTimeRange.split('-').map((t) => Number(t));
+    if (Number.isNaN(startMs) || Number.isNaN(endMs)) return undefined;
+    const start = new Date(startMs);
+    const end = new Date(endMs);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      return undefined;
     }
-    return undefined;
+    const from = new Date(start);
+    from.setHours(0, 0, 0, 0);
+    const to = new Date(end);
+    to.setHours(0, 0, 0, 0);
+    if (to.getTime() === from.getTime()) {
+      return { from, to: undefined };
+    }
+    return { from, to };
   });
   const [fromTime, setFromTime] = React.useState('');
   const [toTime, setToTime] = React.useState('');
@@ -171,24 +182,40 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
 
   React.useEffect(() => {
     if (isCustom) {
-      const [s, e] = currentTimeRange
+      const [startValue, endValue] = currentTimeRange
         .split('-')
-        .map((t) => new Date(Number(t)));
-      if (s.toDateString() === e.toDateString()) {
-        setDate(s);
-        setFromTime(
-          `${s.getHours().toString().padStart(2, '0')}:${s
-            .getMinutes()
-            .toString()
-            .padStart(2, '0')}`,
-        );
-        setToTime(
-          `${e.getHours().toString().padStart(2, '0')}:${e
-            .getMinutes()
-            .toString()
-            .padStart(2, '0')}`,
-        );
-      }
+        .map((t) => Number(t));
+      if (Number.isNaN(startValue) || Number.isNaN(endValue)) return;
+      const start = new Date(startValue);
+      const end = new Date(endValue);
+      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return;
+
+      const fromDay = new Date(start);
+      fromDay.setHours(0, 0, 0, 0);
+      const toDay = new Date(end);
+      toDay.setHours(0, 0, 0, 0);
+      setDateRange({
+        from: fromDay,
+        to: toDay.getTime() === fromDay.getTime() ? undefined : toDay,
+      });
+
+      setFromTime(
+        `${start.getHours().toString().padStart(2, '0')}:${start
+          .getMinutes()
+          .toString()
+          .padStart(2, '0')}`,
+      );
+      setToTime(
+        `${end.getHours().toString().padStart(2, '0')}:${end
+          .getMinutes()
+          .toString()
+          .padStart(2, '0')}`,
+      );
+    }
+    if (!isCustom) {
+      setDateRange(undefined);
+      setFromTime('');
+      setToTime('');
     }
   }, [currentTimeRange, isCustom]);
 
@@ -199,17 +226,22 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
   };
 
   const applyCustom = () => {
-    if (!date) return;
+    if (!dateRange?.from) return;
     const from = fromTime || '00:00';
     const to = toTime || '23:59';
     const [fh, fm] = from.split(':').map(Number);
     const [th, tm] = to.split(':').map(Number);
-    const start = new Date(date);
+    const start = new Date(dateRange.from);
     start.setHours(fh, fm, 0, 0);
-    const end = new Date(date);
+    const rawEndDate = dateRange.to ?? dateRange.from;
+    const end = new Date(rawEndDate);
     end.setHours(th, tm, 0, 0);
-    if (end <= start) {
+    if (!dateRange.to && end <= start) {
       end.setDate(end.getDate() + 1);
+    }
+    if (end.getTime() - start.getTime() > MAX_CUSTOM_DAYS * 24 * 60 * 60 * 1000) {
+      showToast(CUSTOM_RANGE_LIMIT_MESSAGE);
+      return;
     }
     const s = start.getTime();
     const e = end.getTime();
@@ -255,17 +287,44 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
         })}
         <div className="pt-1 border-t border-gray-200 dark:border-gray-700 mt-1 space-y-1">
           <DayPicker
-            mode="single"
-            selected={date}
-            onSelect={(d) => {
-              const newDate = d ?? undefined;
-              setDate(newDate);
-              if (d && !fromTime && !toTime) {
+            mode="range"
+            selected={dateRange}
+            onSelect={(range) => {
+              if (!range?.from) {
+                setDateRange(undefined);
+                return;
+              }
+
+              const normalizedFrom = new Date(range.from);
+              normalizedFrom.setHours(0, 0, 0, 0);
+              let normalizedTo = range.to ? new Date(range.to) : undefined;
+              if (normalizedTo) {
+                normalizedTo.setHours(0, 0, 0, 0);
+              }
+
+              const maxRangeEnd = new Date(normalizedFrom);
+              // Cap custom selection to MAX_CUSTOM_DAYS (inclusive of the start day).
+              maxRangeEnd.setDate(maxRangeEnd.getDate() + (MAX_CUSTOM_DAYS - 1));
+
+              if (normalizedTo && normalizedTo > maxRangeEnd) {
+                normalizedTo = maxRangeEnd;
+                showToast(CUSTOM_RANGE_LIMIT_MESSAGE);
+              }
+
+              setDateRange({
+                from: normalizedFrom,
+                to:
+                  normalizedTo && normalizedTo.getTime() === normalizedFrom.getTime()
+                    ? undefined
+                    : normalizedTo,
+              });
+
+              if (!fromTime && !toTime) {
                 setFromTime('00:00');
                 setToTime('23:59');
               }
             }}
-            defaultMonth={date}
+            defaultMonth={dateRange?.from}
             style={{
               // React Day Picker v8 uses CSS variables for accents
               ['--rdp-accent-color' as unknown as keyof React.CSSProperties]:
@@ -301,7 +360,7 @@ export const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({
           </div>
           <button
             onClick={applyCustom}
-            disabled={isChanging || !date || !fromTime || !toTime}
+            disabled={isChanging || !dateRange?.from || !fromTime || !toTime}
             className="mt-1 px-2 py-1 text-sm rounded-md bg-gray-200 dark:bg-gray-700 w-full"
           >
             Apply
@@ -359,4 +418,3 @@ export const RefreshRateInput: React.FC<RefreshRateInputProps> = ({
     </div>
   );
 };
-
