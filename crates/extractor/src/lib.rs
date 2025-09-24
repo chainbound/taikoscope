@@ -609,26 +609,34 @@ impl ReorgDetector {
         // Check for traditional reorg (block number goes backwards)
         if new_block_number < self.head_number {
             let depth_val = self.head_number.saturating_sub(new_block_number);
-            let depth = (depth_val > 0).then(|| (depth_val.min(u16::MAX as u64) as u16, None));
+
+            // Optimize: only apply min() if depth_val is large
+            let depth = if depth_val > u16::MAX as u64 {
+                u16::MAX
+            } else {
+                depth_val as u16
+            };
 
             // Update head to new block
             self.head_number = new_block_number;
             self.head_hash = Some(new_hash);
 
-            return depth;
+            return Some((depth, None));
         }
 
         // Check for one-block reorg (same block number, different hash)
-        if new_block_number == self.head_number &&
-            let Some(current_hash) = self.head_hash
-        {
-            if current_hash != new_hash {
-                // One-block reorg detected
-                self.head_hash = Some(new_hash);
-                return Some((0, Some(current_hash)));
+        if new_block_number == self.head_number {
+            match self.head_hash {
+                Some(current_hash) if current_hash != new_hash => {
+                    // One-block reorg detected
+                    self.head_hash = Some(new_hash);
+                    return Some((0, Some(current_hash)));
+                }
+                _ => {
+                    // Same block number and same hash (or no previous hash) - no reorg, no update needed
+                    return None;
+                }
             }
-            // Same block number and same hash - no reorg, no update needed
-            return None;
         }
 
         // No reorg - update head to new block

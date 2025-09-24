@@ -39,8 +39,14 @@ const VirtualizedTable: React.FC<VirtualizedTableProps> = ({
   searchTerm = '',
   onSearch,
 }) => {
+  // Use filters prop as single source of truth for column filters
   const [localFilters, setLocalFilters] =
     useState<Record<string, string>>(filters);
+
+  // Sync localFilters with filters prop when prop changes
+  React.useEffect(() => {
+    setLocalFilters(filters);
+  }, [filters]);
 
   // Filter and search data
   const filteredData = useMemo(() => {

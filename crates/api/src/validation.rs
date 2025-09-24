@@ -8,7 +8,18 @@ use serde::Deserialize;
 use utoipa::{IntoParams, ToSchema};
 
 /// Maximum allowed timestamp (reasonable upper bound to prevent overflow)
-const MAX_TIMESTAMP_MS: u64 = 4_102_444_800_000; // Year 2100
+/// Set to approximately 10 years from now to allow for scheduling while preventing abuse
+const MAX_TIMESTAMP_MS: u64 = {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(1_609_459_200_000) // Fallback to 2021-01-01 if system time fails
+        .saturating_add(315_360_000_000) // Add 10 years worth of milliseconds
+};
+
+/// Minimum allowed timestamp (prevents negative or unreasonably old timestamps)
+const MIN_TIMESTAMP_MS: u64 = 946_684_800_000; // Year 2000
 
 /// Base time range filtering parameters
 #[derive(Debug, Deserialize, ToSchema, IntoParams)]
@@ -185,12 +196,23 @@ pub fn validate_time_range(params: &TimeRangeParams) -> Result<(), ErrorResponse
         .iter()
         .flatten()
     {
+        // Check for timestamps that are too large (potential overflow/abuse)
         if timestamp > MAX_TIMESTAMP_MS {
             return Err(ErrorResponse::new(
                 "invalid-params",
                 "Bad Request",
                 StatusCode::BAD_REQUEST,
                 format!("Timestamp {} is too large (max: {})", timestamp, MAX_TIMESTAMP_MS),
+            ));
+        }
+
+        // Check for timestamps that are too small (prevents negative or unreasonably old timestamps)
+        if timestamp < MIN_TIMESTAMP_MS {
+            return Err(ErrorResponse::new(
+                "invalid-params",
+                "Bad Request",
+                StatusCode::BAD_REQUEST,
+                format!("Timestamp {} is too small (min: {})", timestamp, MIN_TIMESTAMP_MS),
             ));
         }
     }
@@ -524,6 +546,23 @@ mod tests {
         assert_eq!(err.r#type, "invalid-params");
         assert!(err.detail.contains("Timestamp"));
         assert!(err.detail.contains("is too large"));
+    }
+
+    #[test]
+    fn test_time_range_validation_too_small_timestamp() {
+        let params = TimeRangeParams {
+            created_gt: Some(MIN_TIMESTAMP_MS - 1),
+            created_gte: None,
+            created_lt: None,
+            created_lte: None,
+        };
+
+        let result = validate_time_range(&params);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err.r#type, "invalid-params");
+        assert!(err.detail.contains("Timestamp"));
+        assert!(err.detail.contains("is too small"));
     }
 
     #[test]
